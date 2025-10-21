@@ -1,88 +1,184 @@
 # Chess Tournament Director
 
-A comprehensive chess tournament management system inspired by SwissSys and ChessManager, built with React and Node.js.
+A comprehensive chess tournament management system with React frontend and Node.js backend, featuring Swiss-system pairings, player management, and tournament analytics.
 
-## Features
+## 🏆 Features
 
-- **Tournament Management**: Create and manage Swiss system, round-robin, and knockout tournaments
-- **Player Management**: Add players with USCF/FIDE ratings and membership verification
-- **Automated Pairings**: USCF-compliant Swiss system pairing algorithm
-- **Real-time Results**: Input game results and automatically update standings
-- **Comprehensive Reporting**: Generate standings, crosstables, and tournament reports
-- **Modern UI**: Responsive design with intuitive user interface
+- **Tournament Management**: Create and manage chess tournaments with multiple sections
+- **Swiss System Pairings**: Automated pairing algorithm with USCF compliance
+- **Player Management**: Add, edit, and search players with rating lookup
+- **Real-time Standings**: Live tournament standings with tiebreakers
+- **Export Capabilities**: PDF reports, CSV exports, and DBF file generation
+- **Responsive Design**: Modern React UI with Tailwind CSS
+- **Authentication**: Secure user authentication and authorization
 
-## Technology Stack
+## 🚀 Quick Start
 
-- **Frontend**: React 18 with TypeScript, Tailwind CSS
-- **Backend**: Node.js with Express
-- **Database**: SQLite
-- **Icons**: Lucide React
+### Prerequisites
 
-## Installation
+- Node.js (v16 or higher)
+- npm or yarn
+- Git
 
-1. Install dependencies:
-```bash
-npm run install-all
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/chughjug/ratings.git
+   cd ratings
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm run install-all
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5000
+
+## 📦 Project Structure
+
+```
+ratings/
+├── client/                 # React frontend application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Application pages
+│   │   ├── services/      # API services
+│   │   └── contexts/      # React contexts
+├── server/                # Node.js backend
+│   ├── routes/           # API routes
+│   ├── services/         # Business logic
+│   ├── middleware/       # Express middleware
+│   └── database.js       # Database configuration
+├── uploads/              # File uploads
+└── docs/                 # Documentation
 ```
 
-2. Set up environment variables:
-Create `.env` files in both root and client directories:
-- Root `.env`: `PORT=5000`
-- Client `.env`: `REACT_APP_API_URL=http://localhost:5000/api`
+## 🛠️ Available Scripts
 
-3. Start the development server:
-```bash
-npm run dev
-```
+- `npm run dev` - Start development server (both frontend and backend)
+- `npm run client` - Start React development server
+- `npm run server` - Start Node.js backend server
+- `npm run build` - Build React app for production
+- `npm start` - Start production server
+- `npm run setup` - Create admin user
 
-This will start both the backend server (port 5000) and frontend development server (port 3000).
+## 🌐 Deployment
 
-## Usage
+### Heroku Deployment
 
-1. **Create Tournament**: Set up a new tournament with basic information and settings
-2. **Add Players**: Register players with their ratings and membership information
-3. **Generate Pairings**: Use the automated Swiss system pairing algorithm
-4. **Input Results**: Record game results and update standings
-5. **View Reports**: Access comprehensive tournament reports and standings
+This application is configured for easy Heroku deployment:
 
-## Tournament Director Certification
+1. **Quick Deploy**
+   ```bash
+   ./deploy.sh
+   ```
 
-This system is designed to support US Chess Federation tournament director certification requirements, including:
+2. **Manual Deploy**
+   - See `HEROKU_DEPLOYMENT.md` for detailed instructions
+   - Or follow `QUICK_DEPLOY.md` for quick reference
 
-- Local TD (26b, b4)
-- Senior TD (30b, b9) 
-- Associate National TD (34b, b3)
-- National TD (38b, b3)
+### Environment Variables
 
-## API Endpoints
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NODE_ENV` | Environment mode | `development` |
+| `PORT` | Server port | `5000` |
+| `JWT_SECRET` | JWT token secret | Required |
+| `CORS_ORIGIN` | CORS allowed origins | `http://localhost:3000` |
 
-### Tournaments
-- `GET /api/tournaments` - Get all tournaments
-- `POST /api/tournaments` - Create tournament
-- `GET /api/tournaments/:id` - Get tournament by ID
-- `PUT /api/tournaments/:id` - Update tournament
-- `DELETE /api/tournaments/:id` - Delete tournament
+## 🎯 Core Features
 
-### Players
-- `GET /api/players/tournament/:tournamentId` - Get players for tournament
-- `POST /api/players` - Add player
-- `POST /api/players/bulk` - Bulk add players
-- `PUT /api/players/:id` - Update player
-- `DELETE /api/players/:id` - Remove player
+### Tournament Management
+- Create tournaments with custom settings
+- Manage multiple tournament sections
+- Set time controls and prize structures
+- Export tournament data in multiple formats
 
-### Pairings
-- `GET /api/pairings/tournament/:tournamentId/round/:round` - Get round pairings
-- `POST /api/pairings/generate` - Generate pairings
-- `PUT /api/pairings/:id/result` - Update pairing result
-- `GET /api/pairings/tournament/:tournamentId/standings` - Get standings
+### Pairing System
+- Swiss-system pairings with USCF compliance
+- Automatic bye assignment
+- Pairing history tracking
+- Conflict resolution
 
-## Contributing
+### Player Management
+- Add players manually or import via CSV
+- USCF rating lookup integration
+- Player search and filtering
+- Rating history tracking
+
+### Analytics & Reporting
+- Real-time tournament standings
+- Comprehensive tiebreaker calculations
+- PDF report generation
+- Tournament statistics
+
+## 🔧 Technology Stack
+
+### Frontend
+- **React 18** - Modern React with hooks
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first CSS framework
+- **Axios** - HTTP client for API calls
+
+### Backend
+- **Node.js** - JavaScript runtime
+- **Express.js** - Web application framework
+- **SQLite** - Lightweight database
+- **JWT** - Authentication tokens
+
+### Additional Tools
+- **Helmet** - Security middleware
+- **CORS** - Cross-origin resource sharing
+- **Rate Limiting** - API protection
+- **Multer** - File upload handling
+
+## 📚 Documentation
+
+- [Heroku Deployment Guide](HEROKU_DEPLOYMENT.md)
+- [Quick Deploy Instructions](QUICK_DEPLOY.md)
+- [Authentication Setup](AUTHENTICATION_README.md)
+- [CSV Import Guide](CSV_IMPORT_README.md)
+- [Player Search Documentation](PLAYER_SEARCH_README.md)
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## 📄 License
 
-MIT License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- USCF (United States Chess Federation) for pairing rules
+- Chess.com for inspiration
+- The open-source community for excellent tools and libraries
+
+## 📞 Support
+
+For support and questions:
+- Create an issue in this repository
+- Check the documentation files in the root directory
+- Review the code comments for implementation details
+
+---
+
+**Built with ❤️ for the chess community**
