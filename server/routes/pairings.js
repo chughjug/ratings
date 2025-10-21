@@ -7,38 +7,103 @@ const roundRobinService = require('../services/roundRobinService');
 const teamService = require('../services/teamService');
 const router = express.Router();
 
+// Helper function to get previous team pairings
+async function getPreviousTeamPairings(tournamentId, round) {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT team_id, opponent_team_id, round 
+       FROM team_results 
+       WHERE tournament_id = ? AND round < ? AND opponent_team_id IS NOT NULL`,
+      [tournamentId, round],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+}
+
 // Get pairings for a tournament round
-router.get('/tournament/:tournamentId/round/:round', (req, res) => {
+router.get('/tournament/:tournamentId/round/:round', async (req, res) => {
   const { tournamentId, round } = req.params;
   const { display_format } = req.query; // Support different display formats
   
-  db.all(
-    `SELECT p.*, 
-            wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id,
-            bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id
-     FROM pairings p
-     LEFT JOIN players wp ON p.white_player_id = wp.id
-     LEFT JOIN players bp ON p.black_player_id = bp.id
-     WHERE p.tournament_id = ? AND p.round = ?
-     ORDER BY p.section, p.board`,
-    [tournamentId, round],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      
-      // Format response based on display format
-      const formattedRows = rows.map(row => ({
-        ...row,
-        board_display: `Board ${row.board}`,
-        white_display: formatPlayerDisplay(row.white_name, row.white_rating, row.white_uscf_id, display_format),
-        black_display: formatPlayerDisplay(row.black_name, row.black_rating, row.black_uscf_id, display_format)
-      }));
-      
-      res.json(formattedRows);
+  try {
+    // Get tournament format to determine pairing type
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT format FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
     }
-  );
+
+    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+      // Get team pairings
+      db.all(
+        `SELECT tr.*, 
+                t1.name as team_name,
+                t2.name as opponent_team_name
+         FROM team_results tr
+         LEFT JOIN teams t1 ON tr.team_id = t1.id
+         LEFT JOIN teams t2 ON tr.opponent_team_id = t2.id
+         WHERE tr.tournament_id = ? AND tr.round = ?
+         ORDER BY tr.board`,
+        [tournamentId, round],
+        (err, rows) => {
+          if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+          }
+          
+          const formattedRows = rows.map(row => ({
+            ...row,
+            board_display: `Board ${row.board}`,
+            team_display: row.team_name || 'BYE',
+            opponent_display: row.opponent_team_name || 'BYE',
+            is_bye: !row.opponent_team_id
+          }));
+          
+          res.json(formattedRows);
+        }
+      );
+    } else {
+      // Get individual pairings
+      db.all(
+        `SELECT p.*, 
+                wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id,
+                bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id
+         FROM pairings p
+         LEFT JOIN players wp ON p.white_player_id = wp.id
+         LEFT JOIN players bp ON p.black_player_id = bp.id
+         WHERE p.tournament_id = ? AND p.round = ?
+         ORDER BY p.section, p.board`,
+        [tournamentId, round],
+        (err, rows) => {
+          if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+          }
+          
+          // Format response based on display format
+          const formattedRows = rows.map(row => ({
+            ...row,
+            board_display: `Board ${row.board}`,
+            white_display: formatPlayerDisplay(row.white_name, row.white_rating, row.white_uscf_id, display_format),
+            black_display: formatPlayerDisplay(row.black_name, row.black_rating, row.black_uscf_id, display_format)
+          }));
+          
+          res.json(formattedRows);
+        }
+      );
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Helper function to format player display based on format preference
@@ -210,41 +275,80 @@ router.post('/generate', async (req, res) => {
     }
 
     // Save pairings to database
-    const stmt = db.prepare(`
-      INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+      // Save team pairings to team_results table
+      const stmt = db.prepare(`
+        INSERT INTO team_results (id, tournament_id, round, team_id, opponent_team_id, board)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
 
-    pairings.forEach((pairing) => {
-      const id = uuidv4();
-      stmt.run([
-        id,
-        tournamentId,
-        round,
-        pairing.board,
-        pairing.white_player_id,
-        pairing.black_player_id,
-        pairing.section
-      ]);
-    });
-
-    stmt.finalize((err) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ 
-        message: 'Pairings generated successfully',
-        pairings: pairings.map((p) => ({
-          board: p.board,
-          white_player_id: p.white_player_id,
-          black_player_id: p.black_player_id,
-          section: p.section
-        })),
-        validation: tournament.format === 'swiss' ? validation : null,
-        pairing_type: tournament.settings ? JSON.parse(tournament.settings).pairing_type || 'standard' : 'standard'
+      pairings.forEach((pairing) => {
+        const id = uuidv4();
+        stmt.run([
+          id,
+          tournamentId,
+          round,
+          pairing.team_id,
+          pairing.opponent_team_id,
+          pairing.board
+        ]);
       });
-    });
+
+      stmt.finalize((err) => {
+        if (err) {
+          res.status(500).json({ error: err.message });
+          return;
+        }
+        res.json({ 
+          message: 'Team pairings generated successfully',
+          pairings: pairings.map((p) => ({
+            board: p.board,
+            team_id: p.team_id,
+            opponent_team_id: p.opponent_team_id,
+            is_bye: p.is_bye
+          })),
+          validation: null,
+          pairing_type: 'team'
+        });
+      });
+    } else {
+      // Save individual pairings to pairings table
+      const stmt = db.prepare(`
+        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      pairings.forEach((pairing) => {
+        const id = uuidv4();
+        stmt.run([
+          id,
+          tournamentId,
+          round,
+          pairing.board,
+          pairing.white_player_id,
+          pairing.black_player_id,
+          pairing.section
+        ]);
+      });
+
+      stmt.finalize((err) => {
+        if (err) {
+          res.status(500).json({ error: err.message });
+          return;
+        }
+        res.json({ 
+          message: 'Pairings generated successfully',
+          pairings: pairings.map((p) => ({
+            board: p.board,
+            white_player_id: p.white_player_id,
+            black_player_id: p.black_player_id,
+            section: p.section
+          })),
+          validation: tournament.format === 'swiss' ? validation : null,
+          pairing_type: tournament.settings ? JSON.parse(tournament.settings).pairing_type || 'standard' : 'standard'
+        });
+      });
+    }
 
   } catch (error) {
     res.status(500).json({ error: error.message });
