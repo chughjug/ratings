@@ -140,3 +140,11 @@ Thumbs.db
 # Test files
 test*.js
 debug*.html
+
+# Python files (if any)
+*.py
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python

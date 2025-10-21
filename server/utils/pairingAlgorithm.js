@@ -11,7 +11,7 @@
  * - Accelerated pairings for large tournaments
  */
 
-function generateSwissPairings(players, round, inactiveRounds = [], previousPairings = [], colorHistory = {}, tournamentSettings = {}) {
+function generateSwissPairings(players, round, inactiveRounds = [], previousPairings = [], colorHistory = {}, tournamentSettings = {}, teamInfo = {}) {
   if (players.length < 2) {
     return [];
   }
@@ -27,6 +27,14 @@ function generateSwissPairings(players, round, inactiveRounds = [], previousPair
   if (activePlayers.length < 2) {
     return [];
   }
+
+  // Add team information to players if available
+  activePlayers.forEach(player => {
+    if (teamInfo[player.id]) {
+      player.team_id = teamInfo[player.id].team_id;
+      player.team_name = teamInfo[player.id].team_name;
+    }
+  });
 
   // Group players by section first
   const sectionGroups = {};

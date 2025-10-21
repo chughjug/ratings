@@ -184,7 +184,7 @@ function generateTeamPairings(db, tournamentId, round) {
 }
 
 /**
- * Calculate team standings
+ * Calculate team standings for team tournaments
  */
 function calculateTeamStandings(db, tournamentId) {
   return new Promise((resolve, reject) => {
@@ -205,6 +205,41 @@ function calculateTeamStandings(db, tournamentId) {
     `;
     
     db.all(query, [tournamentId], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows);
+    });
+  });
+}
+
+/**
+ * Calculate team standings for individual tournaments with team scoring
+ * Players play individually but their results contribute to team scores
+ */
+function calculateIndividualTournamentTeamStandings(db, tournamentId) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT 
+        t.id as team_id,
+        t.name as team_name,
+        COUNT(tm.id) as member_count,
+        COALESCE(SUM(r.points), 0) as total_game_points,
+        COALESCE(AVG(r.points), 0) as avg_game_points,
+        COUNT(r.id) as games_played,
+        COALESCE(SUM(CASE WHEN r.points = 1 THEN 1 ELSE 0 END), 0) as wins,
+        COALESCE(SUM(CASE WHEN r.points = 0.5 THEN 1 ELSE 0 END), 0) as draws,
+        COALESCE(SUM(CASE WHEN r.points = 0 THEN 1 ELSE 0 END), 0) as losses
+      FROM teams t
+      LEFT JOIN team_members tm ON t.id = tm.team_id
+      LEFT JOIN results r ON tm.player_id = r.player_id AND r.tournament_id = ?
+      WHERE t.tournament_id = ? AND t.status = 'active'
+      GROUP BY t.id, t.name
+      ORDER BY total_game_points DESC, avg_game_points DESC, wins DESC
+    `;
+    
+    db.all(query, [tournamentId, tournamentId], (err, rows) => {
       if (err) {
         reject(err);
         return;
@@ -277,6 +312,7 @@ module.exports = {
   getTeamMembers,
   generateTeamPairings,
   calculateTeamStandings,
+  calculateIndividualTournamentTeamStandings,
   recordTeamResult,
   getTeamResults
 };

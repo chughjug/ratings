@@ -267,8 +267,34 @@ router.post('/generate', async (req, res) => {
         );
       });
 
+      // Get team information for individual tournaments with teams
+      const teamInfo = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT tm.player_id, tm.team_id, t.name as team_name
+           FROM team_members tm
+           JOIN teams t ON tm.team_id = t.id
+           WHERE t.tournament_id = ?`,
+          [tournamentId],
+          (err, rows) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            
+            const teamMap = {};
+            rows.forEach(row => {
+              teamMap[row.player_id] = {
+                team_id: row.team_id,
+                team_name: row.team_name
+              };
+            });
+            resolve(teamMap);
+          }
+        );
+      });
+
       // Generate pairings
-      pairings = generateSwissPairings(standings, round, inactiveRounds, previousPairings, colorHistory, tournament);
+      pairings = generateSwissPairings(standings, round, inactiveRounds, previousPairings, colorHistory, tournament, teamInfo);
 
       // Validate pairings
       validation = validatePairings(pairings, standings, round, previousPairings, colorHistory);

@@ -155,12 +155,20 @@ router.post('/pairings/generate', async (req, res) => {
 // Get team standings
 router.get('/tournament/:tournamentId/standings', async (req, res) => {
   const { tournamentId } = req.params;
+  const { type = 'team' } = req.query; // 'team' for team tournaments, 'individual' for individual tournaments with teams
 
   try {
-    const standings = await teamService.calculateTeamStandings(db, tournamentId);
+    let standings;
+    if (type === 'individual') {
+      standings = await teamService.calculateIndividualTournamentTeamStandings(db, tournamentId);
+    } else {
+      standings = await teamService.calculateTeamStandings(db, tournamentId);
+    }
+    
     res.json({
       success: true,
-      standings
+      standings,
+      type
     });
   } catch (error) {
     console.error('Error calculating team standings:', error);
