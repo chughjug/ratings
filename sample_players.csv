@@ -1,0 +1,7 @@
+Name,USCF ID,FIDE ID,Rating,Section,Status,State,City,Email,Phone
+"John Doe","12345678","987654321","1800","Open","active","CA","San Francisco","john@example.com","555-1234"
+"Jane Smith","87654321","","1600","Reserve","active","NY","New York","jane@example.com","555-5678"
+"Bob Johnson","11111111","","1400","Reserve","active","TX","Houston","bob@example.com","555-9012"
+"Alice Brown","22222222","123456789","2000","Open","active","FL","Miami","alice@example.com","555-3456"
+"Charlie Wilson","33333333","","1200","Reserve","active","WA","Seattle","charlie@example.com","555-7890"
+
