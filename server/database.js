@@ -98,6 +98,28 @@ db.serialize(() => {
     // Ignore error if column already exists
   });
 
+  // Registrations table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS registrations (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      player_name TEXT NOT NULL,
+      uscf_id TEXT,
+      email TEXT NOT NULL,
+      phone TEXT,
+      section TEXT,
+      bye_requests TEXT,
+      notes TEXT,
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      approved_at DATETIME,
+      rejected_at DATETIME,
+      approval_notes TEXT,
+      rejection_notes TEXT,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
+
   // Add US Chess specific columns to tournaments table (for existing databases)
   const usChessColumns = [
     'city TEXT',

@@ -56,7 +56,12 @@ const authLimiter = rateLimit({
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : true
-    : ['http://localhost:3000', 'http://localhost:5000'],
+    : [
+        'http://localhost:3000', 
+        'http://localhost:5000',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5000'
+      ],
   credentials: true,
   optionsSuccessStatus: 200 // For legacy browser support
 }));
@@ -88,12 +93,14 @@ const templateRoutes = require('./routes/templates');
 const backupRoutes = require('./routes/backup');
 const teamRoutes = require('./routes/teams');
 const analyticsRoutes = require('./routes/analytics');
+const registrationRoutes = require('./routes/registrations');
 
 // Use routes
 console.log('Setting up routes...');
 
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
+app.use('/api/registrations', registrationRoutes);
 
 // All routes are now public (authentication disabled)
 app.use('/api/users', userRoutes);

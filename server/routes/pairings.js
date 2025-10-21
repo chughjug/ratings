@@ -294,14 +294,29 @@ router.post('/generate', async (req, res) => {
       });
 
       // Generate pairings
+      console.log('Generating pairings for round', round, 'with', standings.length, 'players');
+      console.log('Sections found:', [...new Set(standings.map(p => p.section || 'Open'))]);
       pairings = generateSwissPairings(standings, round, inactiveRounds, previousPairings, colorHistory, tournament, teamInfo);
+      console.log('Generated', pairings.length, 'pairings across', [...new Set(pairings.map(p => p.section))], 'sections');
 
       // Validate pairings
       validation = validatePairings(pairings, standings, round, previousPairings, colorHistory);
     }
 
-    // Save pairings to database
+    // Clear existing pairings for this round before generating new ones
     if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+      // Clear existing team pairings for this round
+      await new Promise((resolve, reject) => {
+        db.run(
+          'DELETE FROM team_results WHERE tournament_id = ? AND round = ?',
+          [tournamentId, round],
+          function(err) {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+      
       // Save team pairings to team_results table
       const stmt = db.prepare(`
         INSERT INTO team_results (id, tournament_id, round, team_id, opponent_team_id, board)
@@ -338,6 +353,18 @@ router.post('/generate', async (req, res) => {
         });
       });
     } else {
+      // Clear existing individual pairings for this round
+      await new Promise((resolve, reject) => {
+        db.run(
+          'DELETE FROM pairings WHERE tournament_id = ? AND round = ?',
+          [tournamentId, round],
+          function(err) {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+      
       // Save individual pairings to pairings table
       const stmt = db.prepare(`
         INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section)
@@ -843,5 +870,63 @@ function formatPlayerForDisplay(name, rating, uscfId, showRatings, showUscfIds, 
   
   return display;
 }
+
+// Reset/clear pairings for a specific round
+router.delete('/tournament/:tournamentId/round/:round', async (req, res) => {
+  const { tournamentId, round } = req.params;
+  
+  try {
+    // Get tournament format to determine which table to clear
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT format FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+
+    let deletedCount = 0;
+
+    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+      // Clear team pairings
+      const result = await new Promise((resolve, reject) => {
+        db.run(
+          'DELETE FROM team_results WHERE tournament_id = ? AND round = ?',
+          [tournamentId, round],
+          function(err) {
+            if (err) reject(err);
+            else resolve(this.changes);
+          }
+        );
+      });
+      deletedCount = result;
+    } else {
+      // Clear individual pairings
+      const result = await new Promise((resolve, reject) => {
+        db.run(
+          'DELETE FROM pairings WHERE tournament_id = ? AND round = ?',
+          [tournamentId, round],
+          function(err) {
+            if (err) reject(err);
+            else resolve(this.changes);
+          }
+        );
+      });
+      deletedCount = result;
+    }
+
+    res.json({ 
+      message: `Successfully cleared ${deletedCount} pairings for round ${round}`,
+      deletedCount: deletedCount
+    });
+  } catch (error) {
+    console.error('Error clearing pairings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router;

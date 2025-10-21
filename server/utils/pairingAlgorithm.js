@@ -51,8 +51,10 @@ function generateSwissPairings(players, round, inactiveRounds = [], previousPair
   // Generate pairings for each section separately - treat each section as independent
   Object.keys(sectionGroups).forEach(sectionName => {
     const sectionPlayers = sectionGroups[sectionName];
+    console.log(`Processing section "${sectionName}" with ${sectionPlayers.length} players`);
     if (sectionPlayers.length >= 1) { // Allow single players (they'll get a bye)
       const sectionPairings = generateSectionPairings(sectionPlayers, round, sectionName, previousPairings, colorHistory, tournamentSettings);
+      console.log(`Generated ${sectionPairings.length} pairings for section "${sectionName}"`);
       allPairings.push(...sectionPairings);
     }
   });
@@ -71,8 +73,8 @@ function generateSectionPairings(players, round, sectionName, previousPairings =
   // Filter previous pairings to only include those involving players in this section
   const sectionPlayerIds = new Set(players.map(p => p.id));
   const sectionPreviousPairings = previousPairings.filter(pairing => 
-    // Include pairings that are in the same section OR involve players from this section
-    (pairing.section === sectionName) ||
+    // Only include pairings that are in the same section AND involve players from this section
+    (pairing.section === sectionName) &&
     ((pairing.white_player_id && sectionPlayerIds.has(pairing.white_player_id)) ||
      (pairing.black_player_id && sectionPlayerIds.has(pairing.black_player_id)))
   );
