@@ -55,7 +55,7 @@ const authLimiter = rateLimit({
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : false
+    ? process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : true
     : ['http://localhost:3000', 'http://localhost:5000'],
   credentials: true,
   optionsSuccessStatus: 200 // For legacy browser support

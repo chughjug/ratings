@@ -155,20 +155,34 @@ router.post('/pairings/generate', async (req, res) => {
 // Get team standings
 router.get('/tournament/:tournamentId/standings', async (req, res) => {
   const { tournamentId } = req.params;
-  const { type = 'team' } = req.query; // 'team' for team tournaments, 'individual' for individual tournaments with teams
+  const { 
+    type = 'team', 
+    scoring_method = 'all_players', 
+    top_n = null 
+  } = req.query; 
 
   try {
     let standings;
     if (type === 'individual') {
-      standings = await teamService.calculateIndividualTournamentTeamStandings(db, tournamentId);
+      // Individual tournaments with team scoring
+      const topN = top_n ? parseInt(top_n) : null;
+      standings = await teamService.calculateIndividualTournamentTeamStandings(
+        db, 
+        tournamentId, 
+        scoring_method, 
+        topN
+      );
     } else {
+      // Team tournaments (teams vs teams)
       standings = await teamService.calculateTeamStandings(db, tournamentId);
     }
     
     res.json({
       success: true,
       standings,
-      type
+      type,
+      scoring_method: type === 'individual' ? scoring_method : 'team_match',
+      top_n: type === 'individual' ? topN : null
     });
   } catch (error) {
     console.error('Error calculating team standings:', error);
