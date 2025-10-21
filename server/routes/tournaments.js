@@ -2,6 +2,8 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../database');
 const router = express.Router();
+const { autoPopulatePrizes } = require('../services/prizeAutoPopulate');
+const { calculateTiebreakers } = require('../utils/tiebreakers');
 
 // Get all tournaments
 router.get('/', (req, res) => {
@@ -378,5 +380,120 @@ router.get('/:id/public', async (req, res) => {
     });
   }
 });
+
+// Complete tournament and auto-populate prizes
+router.post('/:id/complete', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Get tournament
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    // Check if tournament is already completed
+    if (tournament.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Tournament is already completed'
+      });
+    }
+
+    // Get current standings
+    const standings = await getTournamentStandings(id, tournament);
+
+    // Update tournament status to completed
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE tournaments SET status = ? WHERE id = ?', ['completed', id], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    // Auto-populate prizes if enabled
+    const prizeResult = await autoPopulatePrizes(db, id, tournament, standings);
+
+    res.json({
+      success: true,
+      message: 'Tournament completed successfully',
+      prizeResult: prizeResult
+    });
+
+  } catch (error) {
+    console.error('Error completing tournament:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete tournament'
+    });
+  }
+});
+
+// Helper function to get tournament standings
+async function getTournamentStandings(tournamentId, tournament) {
+  // Get players
+  const players = await new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM players WHERE tournament_id = ? AND status = "active" ORDER BY name',
+      [tournamentId],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+
+  // Get results for each player
+  const standings = await Promise.all(players.map(async (player) => {
+    const results = await new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM results WHERE tournament_id = ? AND player_id = ? ORDER BY round',
+        [tournamentId, player.id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    const totalPoints = results.reduce((sum, result) => sum + result.points, 0);
+    const wins = results.filter(r => r.points === 1).length;
+    const losses = results.filter(r => r.points === 0).length;
+    const draws = results.filter(r => r.points === 0.5).length;
+
+    return {
+      id: player.id,
+      name: player.name,
+      rating: player.rating,
+      section: player.section,
+      total_points: totalPoints,
+      games_played: results.length,
+      wins,
+      losses,
+      draws,
+      results
+    };
+  }));
+
+  // Sort by points
+  standings.sort((a, b) => b.total_points - a.total_points);
+
+  // Calculate tiebreakers
+  const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+  const tiebreakCriteria = settings.tie_break_criteria || ['buchholz', 'sonnebornBerger'];
+  
+  const standingsWithTiebreakers = await calculateTiebreakers(standings, tournamentId, tiebreakCriteria);
+
+  return standingsWithTiebreakers;
+}
 
 module.exports = router;
