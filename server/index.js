@@ -124,8 +124,12 @@ app.use('/api/enhanced', enhancedFeaturesRoutes);
 
 console.log('Routes set up successfully');
 
-// Serve React app
-app.get('*', (req, res) => {
+// Serve React app for non-API routes
+app.get('*', (req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
   res.sendFile(path.join(__dirname, '../client/build/index.html'));
 });
 
