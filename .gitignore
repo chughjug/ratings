@@ -9,9 +9,9 @@ client/node_modules/
 .env.test.local
 .env.production.local
 
-# Database
-server/chess_tournaments.db
-*.db
+# Database - Allow production database
+# server/chess_tournaments.db
+# *.db
 
 # Logs
 logs
@@ -109,8 +109,8 @@ dist
 # TernJS port file
 .tern-port
 
-# Build output
-client/build/
+# Build output - Allow production build
+# client/build/
 build/
 
 # Exports and uploads
