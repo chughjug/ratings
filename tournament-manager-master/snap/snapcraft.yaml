@@ -1,0 +1,27 @@
+name: tournament-manager 
+version: git
+summary: Manage Your Tournaments.
+description: |
+  tournament-manager is a command-line tool
+  to manage tournaments with the swiss system.
+
+grade: stable
+confinement: strict
+
+parts:
+  texlive:
+    plugin: texlive
+    source: http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+    build-packages:
+      - wget
+
+  tournament-manager:
+    source: https://github.com/fabianWrede/tournament-manager
+    source-type: git
+    source-subdir: src/
+    plugin: python
+    python-version: python3
+
+apps:
+  tournament-manager:
+    command: bin/tournament-manager

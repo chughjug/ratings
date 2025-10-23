@@ -4,10 +4,70 @@ const db = require('../database');
 const router = express.Router();
 const { autoPopulatePrizes } = require('../services/prizeAutoPopulate');
 const { calculateTiebreakers } = require('../utils/tiebreakers');
+const { calculateAndDistributePrizes, getPrizeDistributions, autoAssignPrizesOnRoundCompletion } = require('../services/prizeService');
+const { authenticate, verifyToken } = require('../middleware/auth');
+
+// Optional authentication middleware - tries to authenticate but doesn't fail if no token
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const decoded = verifyToken(token);
+
+      if (decoded) {
+        // Check if user exists and is active
+        const user = await new Promise((resolve, reject) => {
+          db.get(
+            'SELECT id, username, email, role, is_active FROM users WHERE id = ? AND is_active = 1',
+            [decoded.userId],
+            (err, row) => {
+              if (err) reject(err);
+              else resolve(row);
+            }
+          );
+        });
+
+        if (user) {
+          req.user = user;
+        }
+      }
+    }
+    
+    next();
+  } catch (error) {
+    // If authentication fails, just continue without user info
+    next();
+  }
+};
 
 // Get all tournaments
-router.get('/', (req, res) => {
-  db.all('SELECT * FROM tournaments ORDER BY created_at DESC', (err, rows) => {
+router.get('/', optionalAuth, (req, res) => {
+  const { organization_id, is_public } = req.query;
+  
+  let query = 'SELECT * FROM tournaments WHERE 1=1';
+  const params = [];
+  
+  if (organization_id) {
+    query += ' AND organization_id = ?';
+    params.push(organization_id);
+  }
+  
+  if (is_public !== undefined) {
+    query += ' AND is_public = ?';
+    params.push(is_public === 'true' ? 1 : 0);
+  }
+  
+  // Hide tournaments with no organization from non-admin users
+  // If user is authenticated and not admin, filter out tournaments without organization
+  if (req.user && req.user.role !== 'admin') {
+    query += ' AND organization_id IS NOT NULL';
+  }
+  
+  query += ' ORDER BY created_at DESC';
+  
+  db.all(query, params, (err, rows) => {
     if (err) {
       console.error('Error fetching tournaments:', err);
       return res.status(500).json({ 
@@ -50,6 +110,7 @@ router.get('/:id', (req, res) => {
 // Create new tournament
 router.post('/', (req, res) => {
   const {
+    organization_id,
     name,
     format,
     rounds,
@@ -69,7 +130,10 @@ router.post('/', (req, res) => {
     expected_players,
     website,
     fide_rated,
-    uscf_rated
+    uscf_rated,
+    allow_registration,
+    is_public,
+    public_url
   } = req.body;
 
   // Validate required fields
@@ -84,15 +148,15 @@ router.post('/', (req, res) => {
   const settingsJson = JSON.stringify(settings || {});
 
   db.run(
-    `INSERT INTO tournaments (id, name, format, rounds, time_control, start_date, end_date, status, settings,
+    `INSERT INTO tournaments (id, organization_id, name, format, rounds, time_control, start_date, end_date, status, settings,
                              city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
                              chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-                             expected_players, website, fide_rated, uscf_rated)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, name, format, rounds, time_control, start_date, end_date, 'created', settingsJson,
+                             expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, organization_id || null, name, format, rounds, time_control, start_date, end_date, 'created', settingsJson,
      city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
      chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0],
+     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null],
     function(err) {
       if (err) {
         console.error('Error creating tournament:', err);
@@ -117,6 +181,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const { id } = req.params;
   const {
+    organization_id,
     name,
     format,
     rounds,
@@ -137,7 +202,10 @@ router.put('/:id', (req, res) => {
     expected_players,
     website,
     fide_rated,
-    uscf_rated
+    uscf_rated,
+    allow_registration,
+    is_public,
+    public_url
   } = req.body;
 
   // Validate required fields
@@ -152,17 +220,18 @@ router.put('/:id', (req, res) => {
 
   db.run(
     `UPDATE tournaments 
-     SET name = ?, format = ?, rounds = ?, time_control = ?, 
+     SET organization_id = ?, name = ?, format = ?, rounds = ?, time_control = ?, 
          start_date = ?, end_date = ?, status = ?, settings = ?,
          city = ?, state = ?, location = ?, chief_td_name = ?, chief_td_uscf_id = ?,
          chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
          chief_organizer_fide_id = ?, expected_players = ?, website = ?,
-         fide_rated = ?, uscf_rated = ?
+         fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?
      WHERE id = ?`,
-    [name, format, rounds, time_control, start_date, end_date, status, settingsJson,
+    [organization_id || null, name, format, rounds, time_control, start_date, end_date, status, settingsJson,
      city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
      chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, id],
+     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, 
+     allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, id],
     function(err) {
       if (err) {
         console.error('Error updating tournament:', err);
@@ -208,6 +277,232 @@ router.delete('/:id', (req, res) => {
       message: 'Tournament deleted successfully' 
     });
   });
+});
+
+// Get public tournament display data for a specific organization
+router.get('/public/organization/:orgSlug/:tournamentId', async (req, res) => {
+  try {
+    const { orgSlug, tournamentId } = req.params;
+    
+    // First verify the organization exists and get its ID
+    const organization = await new Promise((resolve, reject) => {
+      db.get('SELECT id, name, slug FROM organizations WHERE slug = ? AND is_active = 1', [orgSlug], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!organization) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Organization not found' 
+      });
+    }
+
+    // Get tournament info and verify it belongs to this organization
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ? AND organization_id = ? AND is_public = 1', [tournamentId, organization.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Tournament not found or not public' 
+      });
+    }
+
+    // Get sections
+    const sections = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM sections WHERE tournament_id = ? ORDER BY name', [tournamentId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Get players for all sections
+    const players = await new Promise((resolve, reject) => {
+      db.all(`
+        SELECT p.*, s.name as section_name, s.id as section_id
+        FROM players p
+        JOIN sections s ON p.section_id = s.id
+        WHERE s.tournament_id = ?
+        ORDER BY s.name, p.last_name, p.first_name
+      `, [tournamentId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Get current round pairings
+    const currentRound = tournament.status === 'active' ? Math.max(1, tournament.current_round || 1) : 1;
+    const pairings = await new Promise((resolve, reject) => {
+      db.all(`
+        SELECT p.*, s.name as section_name
+        FROM pairings p
+        JOIN sections s ON p.section_id = s.id
+        WHERE s.tournament_id = ? AND p.round = ?
+        ORDER BY s.name, p.board_number
+      `, [tournamentId, currentRound], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Get standings for all sections
+    const standings = await new Promise((resolve, reject) => {
+      db.all(`
+        SELECT st.*, s.name as section_name
+        FROM standings st
+        JOIN sections s ON st.section_id = s.id
+        WHERE s.tournament_id = ?
+        ORDER BY s.name, st.rank
+      `, [tournamentId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Get team standings if applicable
+    let teamStandings = [];
+    if (tournament.format.includes('team')) {
+      teamStandings = await new Promise((resolve, reject) => {
+        db.all(`
+          SELECT ts.*, s.name as section_name
+          FROM team_standings ts
+          JOIN sections s ON ts.section_id = s.id
+          WHERE s.tournament_id = ?
+          ORDER BY s.name, ts.rank
+        `, [tournamentId], (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      });
+    }
+
+    // Get prizes if any
+    const prizes = await new Promise((resolve, reject) => {
+      db.all(`
+        SELECT pr.*, s.name as section_name
+        FROM prizes pr
+        JOIN sections s ON pr.section_id = s.id
+        WHERE s.tournament_id = ?
+        ORDER BY s.name, pr.rank
+      `, [tournamentId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    res.json({
+      success: true,
+      data: {
+        organization: {
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug
+        },
+        tournament: {
+          id: tournament.id,
+          name: tournament.name,
+          format: tournament.format,
+          rounds: tournament.rounds,
+          time_control: tournament.time_control,
+          start_date: tournament.start_date,
+          end_date: tournament.end_date,
+          status: tournament.status,
+          city: tournament.city,
+          state: tournament.state,
+          location: tournament.location,
+          website: tournament.website,
+          is_public: tournament.is_public,
+          public_url: tournament.public_url,
+          allow_registration: tournament.allow_registration,
+          created_at: tournament.created_at
+        },
+        sections: sections.map(section => ({
+          id: section.id,
+          name: section.name,
+          max_players: section.max_players,
+          time_control: section.time_control,
+          rating_min: section.rating_min,
+          rating_max: section.rating_max,
+          is_active: section.is_active
+        })),
+        players: players.map(player => ({
+          id: player.id,
+          first_name: player.first_name,
+          last_name: player.last_name,
+          uscf_id: player.uscf_id,
+          fide_id: player.fide_id,
+          rating: player.rating,
+          section_id: player.section_id,
+          section_name: player.section_name,
+          team_name: player.team_name,
+          created_at: player.created_at
+        })),
+        pairings: pairings.map(pairing => ({
+          id: pairing.id,
+          round: pairing.round,
+          board_number: pairing.board_number,
+          white_player_id: pairing.white_player_id,
+          black_player_id: pairing.black_player_id,
+          result: pairing.result,
+          section_id: pairing.section_id,
+          section_name: pairing.section_name,
+          created_at: pairing.created_at
+        })),
+        standings: standings.map(standing => ({
+          id: standing.id,
+          player_id: standing.player_id,
+          section_id: standing.section_id,
+          section_name: standing.section_name,
+          points: standing.points,
+          rank: standing.rank,
+          tiebreak1: standing.tiebreak1,
+          tiebreak2: standing.tiebreak2,
+          tiebreak3: standing.tiebreak3,
+          tiebreak4: standing.tiebreak4,
+          tiebreak5: standing.tiebreak5,
+          updated_at: standing.updated_at
+        })),
+        teamStandings: teamStandings.map(standing => ({
+          id: standing.id,
+          team_name: standing.team_name,
+          section_id: standing.section_id,
+          section_name: standing.section_name,
+          points: standing.points,
+          rank: standing.rank,
+          tiebreak1: standing.tiebreak1,
+          tiebreak2: standing.tiebreak2,
+          tiebreak3: standing.tiebreak3,
+          tiebreak4: standing.tiebreak4,
+          tiebreak5: standing.tiebreak5,
+          updated_at: standing.updated_at
+        })),
+        prizes: prizes.map(prize => ({
+          id: prize.id,
+          section_id: prize.section_id,
+          section_name: prize.section_name,
+          rank: prize.rank,
+          prize_name: prize.prize_name,
+          prize_amount: prize.prize_amount,
+          prize_type: prize.prize_type,
+          created_at: prize.created_at
+        })),
+        currentRound
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching organization public tournament data:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch tournament data' 
+    });
+  }
 });
 
 // Get public tournament display data
@@ -264,7 +559,7 @@ router.get('/:id/public', async (req, res) => {
          LEFT JOIN results r ON p.id = r.player_id
          WHERE p.tournament_id = ? AND p.status = 'active'
          GROUP BY p.id
-         ORDER BY total_points DESC, p.rating DESC`,
+         ORDER BY p.section, total_points DESC, p.rating DESC`,
         [id],
         (err, rows) => {
           if (err) reject(err);
@@ -284,6 +579,7 @@ router.get('/:id/public', async (req, res) => {
           r.points,
           op.name as opponent_name,
           op.rating as opponent_rating,
+          op.section as opponent_section,
           r.color,
           r.board
         FROM results r
@@ -298,26 +594,64 @@ router.get('/:id/public', async (req, res) => {
       );
     });
 
+    // Group standings by section and rank within each section
+    const standingsBySection = {};
+    standings.forEach(player => {
+      const section = player.section || 'Open';
+      if (!standingsBySection[section]) {
+        standingsBySection[section] = [];
+      }
+      standingsBySection[section].push(player);
+    });
+
+    // Rank players within each section
+    Object.keys(standingsBySection).forEach(section => {
+      standingsBySection[section].forEach((player, index) => {
+        player.rank = index + 1;
+      });
+    });
+
     // Group round results by player and add to standings
     const roundResultsByPlayer = {};
     roundResults.forEach(result => {
       if (!roundResultsByPlayer[result.player_id]) {
         roundResultsByPlayer[result.player_id] = {};
       }
+      
+      // Find opponent's rank in their section
+      let opponentRank = null;
+      if (result.opponent_id && result.opponent_section) {
+        const opponentSection = standingsBySection[result.opponent_section];
+        if (opponentSection) {
+          const opponent = opponentSection.find(p => p.id === result.opponent_id);
+          if (opponent) {
+            opponentRank = opponent.rank;
+          }
+        }
+      }
+      
       roundResultsByPlayer[result.player_id][result.round] = {
         result: result.result,
         opponent_name: result.opponent_name,
         opponent_rating: result.opponent_rating,
+        opponent_rank: opponentRank,
         points: result.points,
         color: result.color,
         board: result.board
       };
     });
 
-    // Add round results and rank to standings
-    standings.forEach((player, index) => {
-      player.rank = index + 1;
-      player.roundResults = roundResultsByPlayer[player.id] || {};
+    // Add round results to standings
+    Object.keys(standingsBySection).forEach(section => {
+      standingsBySection[section].forEach((player) => {
+        player.roundResults = roundResultsByPlayer[player.id] || {};
+      });
+    });
+
+    // Flatten back to single array
+    const sortedStandings = [];
+    Object.keys(standingsBySection).sort().forEach(section => {
+      sortedStandings.push(...standingsBySection[section]);
     });
 
     // Get prize information
@@ -334,15 +668,18 @@ router.get('/:id/public', async (req, res) => {
       });
 
       if (prizes && prizes.length > 0) {
-        const { calculatePrizeDistribution } = require('../services/prizeCalculator');
-        const prizeDistributions = calculatePrizeDistribution(
-          standings,
-          prizes.map(prize => ({
-            ...prize,
-            conditions: prize.conditions ? JSON.parse(prize.conditions) : [],
-            amount: prize.amount ? parseFloat(prize.amount) : undefined
-          })),
-          tournament.settings ? JSON.parse(tournament.settings) : {}
+        const { distributeSectionPrizes } = require('../services/prizeService');
+        const prizeDistributions = distributeSectionPrizes(
+          sortedStandings,
+          {
+            name: 'Open',
+            prizes: prizes.map(prize => ({
+              ...prize,
+              conditions: prize.conditions ? JSON.parse(prize.conditions) : [],
+              amount: prize.amount ? parseFloat(prize.amount) : undefined
+            }))
+          },
+          tournament.id
         );
 
         // Add prize information to standings
@@ -351,7 +688,7 @@ router.get('/:id/public', async (req, res) => {
           prizeMap[distribution.player_id] = distribution.prize_amount ? `$${distribution.prize_amount}` : distribution.prize_name;
         });
 
-        standings.forEach(player => {
+        sortedStandings.forEach(player => {
           player.prize = prizeMap[player.id] || '';
         });
       }
@@ -367,7 +704,7 @@ router.get('/:id/public', async (req, res) => {
       data: {
         tournament,
         pairings,
-        standings,
+        standings: sortedStandings,
         currentRound
       }
     });
@@ -422,6 +759,9 @@ router.post('/:id/complete', async (req, res) => {
 
     // Auto-populate prizes if enabled
     const prizeResult = await autoPopulatePrizes(db, id, tournament, standings);
+
+    // Auto-assign prizes according to USCF rules
+    await autoAssignPrizesOnTournamentCompletion(id, db);
 
     res.json({
       success: true,
@@ -495,5 +835,147 @@ async function getTournamentStandings(tournamentId, tournament) {
 
   return standingsWithTiebreakers;
 }
+
+// Prize management endpoints
+
+// Get prize distributions for a tournament
+router.get('/:id/prizes', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const distributions = await getPrizeDistributions(id, db);
+    res.json({
+      success: true,
+      data: distributions
+    });
+  } catch (error) {
+    console.error('Error fetching prize distributions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch prize distributions'
+    });
+  }
+});
+
+// Calculate and distribute prizes for a tournament
+router.post('/:id/prizes/calculate', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const distributions = await calculateAndDistributePrizes(id, db);
+    res.json({
+      success: true,
+      data: distributions,
+      message: `Successfully distributed ${distributions.length} prizes`
+    });
+  } catch (error) {
+    console.error('Error calculating prize distributions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to calculate prize distributions'
+    });
+  }
+});
+
+// Update tournament prize settings
+router.put('/:id/prize-settings', async (req, res) => {
+  const { id } = req.params;
+  const { prizeSettings } = req.body;
+  
+  try {
+    // Get current tournament settings
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    // Update settings with new prize configuration
+    const currentSettings = tournament.settings ? JSON.parse(tournament.settings) : {};
+    const updatedSettings = {
+      ...currentSettings,
+      prizes: prizeSettings
+    };
+
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE tournaments SET settings = ? WHERE id = ?',
+        [JSON.stringify(updatedSettings), id],
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      message: 'Prize settings updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating prize settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update prize settings'
+    });
+  }
+});
+
+// Continue to next round - ENHANCED VERSION
+router.post('/:id/continue', async (req, res) => {
+  const { id } = req.params;
+  const { currentRound } = req.body;
+
+  try {
+    const roundNum = parseInt(currentRound);
+    
+    if (isNaN(roundNum) || roundNum < 1) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid round number. Must be a positive integer.'
+      });
+    }
+
+    // Use the enhanced pairing system's built-in continue functionality
+    const { EnhancedPairingSystem } = require('../utils/enhancedPairingSystem');
+    const result = await EnhancedPairingSystem.continueToNextRound(id, roundNum, db);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error,
+        incompleteSections: result.incompleteSections
+      });
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      nextRound: result.nextRound,
+      currentRound: result.currentRound,
+      pairings: result.pairings,
+      sectionResults: result.sectionResults,
+      tournament: {
+        id: id,
+        status: 'in_progress'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error continuing to next round:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to continue to next round'
+    });
+  }
+});
 
 module.exports = router;

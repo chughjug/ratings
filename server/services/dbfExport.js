@@ -30,32 +30,23 @@ async function createTournamentHeaderFile(db, tournamentId, exportPath) {
         throw new Error('Tournament not found');
       }
 
-      // Define DBF structure for Tournament Header
+      // Define DBF structure for Tournament Header (USCF THEXPORT.DBF specification)
       const dbfStructure = [
-        { name: 'TOURNAME', type: 'C', size: 50 },      // Tournament name
-        { name: 'STARTDATE', type: 'D', size: 8 },                     // Start date (YYYYMMDD)
-        { name: 'ENDDATE', type: 'D', size: 8 },                       // End date (YYYYMMDD)
-        { name: 'ROUNDS', type: 'N', size: 2, decimal: 0 },    // Number of rounds
-        { name: 'TIMECTRL', type: 'C', size: 20 },         // Time control
-        { name: 'FORMAT', type: 'C', size: 20 },               // Tournament format
-        { name: 'TDNAME', type: 'C', size: 50 },        // TD name
-        { name: 'TDID', type: 'C', size: 10 },          // TD USCF ID
-        { name: 'CHIEFARBITER', type: 'C', size: 50 },  // Chief Arbiter name
-        { name: 'CHIEFARBITERID', type: 'C', size: 10 }, // Chief Arbiter FIDE ID
-        { name: 'CHIEFORGANIZER', type: 'C', size: 50 }, // Chief Organizer name
-        { name: 'CHIEFORGANIZERID', type: 'C', size: 10 }, // Chief Organizer FIDE ID
-        { name: 'SITENAME', type: 'C', size: 50 },            // Site/Venue name
-        { name: 'CITY', type: 'C', size: 30 },                 // City
-        { name: 'STATE', type: 'C', size: 2 },                 // State
-        { name: 'ZIPCODE', type: 'C', size: 10 },             // ZIP code
-        { name: 'COUNTRY', type: 'C', size: 3 },               // Country code
-        { name: 'TOTPLAYER', type: 'N', size: 4, decimal: 0 }, // Total players
-        { name: 'EXPECTEDPLAYERS', type: 'N', size: 4, decimal: 0 }, // Expected players
-        { name: 'SECTIONS', type: 'N', size: 2, decimal: 0 },  // Number of sections
-        { name: 'USCFRATED', type: 'L', size: 1 },             // USCF Rated tournament
-        { name: 'FIDERATED', type: 'L', size: 1 },             // FIDE Rated tournament
-        { name: 'WEBSITE', type: 'C', size: 100 },             // Tournament website
-        { name: 'TOURNID', type: 'C', size: 20 }         // Tournament ID
+        { name: 'H_EVENT_ID', type: 'C', size: 9 },      // Unique event ID
+        { name: 'H_NAME', type: 'C', size: 35 },         // Tournament name
+        { name: 'H_TOT_SECT', type: 'N', size: 2, decimal: 0 }, // Total number of sections
+        { name: 'H_BEG_DATE', type: 'D', size: 8 },      // Start date
+        { name: 'H_END_DATE', type: 'D', size: 8 },      // End date
+        { name: 'H_RCV_DATE', type: 'D', size: 8 },      // Date received by USCF
+        { name: 'H_ENT_DATE', type: 'D', size: 8 },      // Date entered into USCF system
+        { name: 'H_AFF_ID', type: 'C', size: 8 },        // Affiliate ID
+        { name: 'H_CITY', type: 'C', size: 21 },         // City
+        { name: 'H_STATE', type: 'C', size: 2 },         // State abbreviation
+        { name: 'H_ZIPCODE', type: 'C', size: 10 },      // ZIP code
+        { name: 'H_COUNTRY', type: 'C', size: 21 },      // Country
+        { name: 'H_SENDCROS', type: 'C', size: 1 },      // Send crosstable flag (Y/N)
+        { name: 'H_SCHOLAST', type: 'C', size: 1 },      // Scholastic tournament flag (Y/N)
+        { name: 'H_SECREC01', type: 'N', size: 7, decimal: 0 } // Internal record number
       ];
 
       // Create DBF file
@@ -99,32 +90,33 @@ async function createTournamentHeaderFile(db, tournamentId, exportPath) {
         return new Date(dateStr);
       };
 
+      // Generate event ID (format: YYMMDD + sequence number)
+      const generateEventId = (tournament) => {
+        const startDate = new Date(tournament.start_date);
+        const year = startDate.getFullYear().toString().slice(-2);
+        const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = startDate.getDate().toString().padStart(2, '0');
+        const sequence = '001'; // Could be made dynamic based on tournament count
+        return `${year}${month}${day}${sequence}`;
+      };
+
       // Add tournament record
       const record = {
-        TOURNAME: tournament.name || '',
-        STARTDATE: formatDate(tournament.start_date),
-        ENDDATE: formatDate(tournament.end_date),
-        ROUNDS: tournament.rounds || 0,
-        TIMECTRL: tournament.time_control || '',
-        FORMAT: tournament.format || '',
-        TDNAME: tournament.chief_td_name || '',
-        TDID: tournament.chief_td_uscf_id || '',
-        CHIEFARBITER: tournament.chief_arbiter_name || '',
-        CHIEFARBITERID: tournament.chief_arbiter_fide_id || '',
-        CHIEFORGANIZER: tournament.chief_organizer_name || '',
-        CHIEFORGANIZERID: tournament.chief_organizer_fide_id || '',
-        SITENAME: tournament.location || '',
-        CITY: tournament.city || '',
-        STATE: tournament.state || '',
-        ZIPCODE: '',
-        COUNTRY: 'USA',
-        TOTPLAYER: playerCount,
-        EXPECTEDPLAYERS: tournament.expected_players || 0,
-        SECTIONS: sectionCount,
-        USCFRATED: tournament.uscf_rated ? 'T' : 'F',
-        FIDERATED: tournament.fide_rated ? 'T' : 'F',
-        WEBSITE: tournament.website || '',
-        TOURNID: tournament.id
+        H_EVENT_ID: generateEventId(tournament),
+        H_NAME: (tournament.name || '').substring(0, 35),
+        H_TOT_SECT: sectionCount,
+        H_BEG_DATE: formatDate(tournament.start_date),
+        H_END_DATE: formatDate(tournament.end_date),
+        H_RCV_DATE: null, // Blank - filled by USCF
+        H_ENT_DATE: null, // Blank - filled by USCF
+        H_AFF_ID: (tournament.affiliate_id || 'A6000220').substring(0, 8),
+        H_CITY: (tournament.city || '').substring(0, 21),
+        H_STATE: (tournament.state || '').substring(0, 2),
+        H_ZIPCODE: (tournament.zipcode || '').substring(0, 10),
+        H_COUNTRY: 'USA',
+        H_SENDCROS: tournament.send_crosstable ? 'Y' : 'N',
+        H_SCHOLAST: tournament.scholastic ? 'Y' : 'N',
+        H_SECREC01: 1
       };
 
       await dbfFile.appendRecords([record]);
@@ -144,18 +136,21 @@ async function createTournamentHeaderFile(db, tournamentId, exportPath) {
 async function createSectionHeaderFile(db, tournamentId, exportPath) {
   return new Promise(async (resolve, reject) => {
     try {
-      // Define DBF structure for Section Header
+      // Define DBF structure for Section Header (USCF TSEXPORT.DBF specification)
       const dbfStructure = [
-        { name: 'SECNAME', type: 'C', size: 30 },         // Section name
-        { name: 'SECTYPE', type: 'C', size: 20 },         // Section type
-        { name: 'PLAYERS', type: 'N', size: 3, decimal: 0 },   // Number of players
-        { name: 'ROUNDS', type: 'N', size: 2, decimal: 0 },    // Rounds in section
-        { name: 'MINRATING', type: 'N', size: 4, decimal: 0 }, // Minimum rating
-        { name: 'MAXRATING', type: 'N', size: 4, decimal: 0 }, // Maximum rating
-        { name: 'AVGRATING', type: 'N', size: 4, decimal: 0 }, // Average rating
-        { name: 'PRIZEFUND', type: 'N', size: 8, decimal: 2 }, // Prize fund
-        { name: 'ENTRYFEE', type: 'N', size: 6, decimal: 2 },  // Entry fee
-        { name: 'SECID', type: 'C', size: 10 }            // Section identifier
+        { name: 'S_EVENT_ID', type: 'C', size: 9 },       // Links to tournament ID
+        { name: 'S_SEC_NUM', type: 'C', size: 2 },        // Section number (space-padded)
+        { name: 'S_SEC_NAME', type: 'C', size: 10 },      // Section name
+        { name: 'S_K_FACTOR', type: 'C', size: 1 },       // K-factor for rating calculations
+        { name: 'S_R_SYSTEM', type: 'C', size: 1 },       // Rating system (R=regular, Q=quick)
+        { name: 'S_CTD_ID', type: 'C', size: 8 },         // Chief TD's USCF ID
+        { name: 'S_ATD_ID', type: 'C', size: 8 },         // Assistant TD's USCF ID
+        { name: 'S_TRN_TYPE', type: 'C', size: 1 },       // Tournament type (S=Swiss, R=round-robin)
+        { name: 'S_TOT_RNDS', type: 'N', size: 2, decimal: 0 }, // Total rounds
+        { name: 'S_LST_PAIR', type: 'N', size: 4, decimal: 0 }, // Last paired player number
+        { name: 'S_DTLREC01', type: 'N', size: 7, decimal: 0 }, // Detail record count
+        { name: 'S_OPERATOR', type: 'C', size: 2 },       // Operator code
+        { name: 'S_STATUS', type: 'C', size: 1 }          // Section status
       ];
 
       // Get tournament settings to check for defined sections
@@ -244,7 +239,7 @@ async function createSectionHeaderFile(db, tournamentId, exportPath) {
       }
 
       // Get tournament rounds
-      const tournament = await new Promise((resolve, reject) => {
+      const tournamentRounds = await new Promise((resolve, reject) => {
         db.get('SELECT rounds FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
           if (err) reject(err);
           else resolve(row);
@@ -263,20 +258,41 @@ async function createSectionHeaderFile(db, tournamentId, exportPath) {
       
       const dbfFile = await DBFFile.create(filePath, dbfStructure);
 
+      // Get tournament data for event ID and TD info
+      const tournament = await new Promise((resolve, reject) => {
+        db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+      // Generate event ID (same as tournament header)
+      const generateEventId = (tournament) => {
+        const startDate = new Date(tournament.start_date);
+        const year = startDate.getFullYear().toString().slice(-2);
+        const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = startDate.getDate().toString().padStart(2, '0');
+        const sequence = '001';
+        return `${year}${month}${day}${sequence}`;
+      };
+
       // Add section records
       for (let index = 0; index < finalSections.length; index++) {
         const section = finalSections[index];
         const record = {
-          SECNAME: section.section_name,
-          SECTYPE: 'Swiss', // Default to Swiss system
-          PLAYERS: section.player_count,
-          ROUNDS: tournament ? tournament.rounds : 0,
-          MINRATING: section.min_rating || 0,
-          MAXRATING: section.max_rating || 0,
-          AVGRATING: section.avg_rating || 0,
-          PRIZEFUND: 0, // TODO: Add prize fund info
-          ENTRYFEE: 0,  // TODO: Add entry fee info
-          SECID: `SEC${index + 1}`
+          S_EVENT_ID: generateEventId(tournament),
+          S_SEC_NUM: ` ${index + 1}`.slice(-2), // Space-padded section number
+          S_SEC_NAME: section.section_name.substring(0, 10),
+          S_K_FACTOR: 'F', // Full K-factor
+          S_R_SYSTEM: 'R', // Regular rating system
+          S_CTD_ID: (tournament.chief_td_uscf_id || '12484800').substring(0, 8),
+          S_ATD_ID: (tournament.assistant_td_uscf_id || '').substring(0, 8),
+          S_TRN_TYPE: 'S', // Swiss system
+          S_TOT_RNDS: tournamentRounds ? tournamentRounds.rounds : 0,
+          S_LST_PAIR: section.player_count,
+          S_DTLREC01: section.player_count,
+          S_OPERATOR: 'XX', // Software-specific operator code
+          S_STATUS: '#' // Section status
         };
         await dbfFile.appendRecords([record]);
       }
@@ -296,27 +312,23 @@ async function createSectionHeaderFile(db, tournamentId, exportPath) {
 async function createPlayerDetailFile(db, tournamentId, exportPath) {
   return new Promise(async (resolve, reject) => {
     try {
-      // Define DBF structure for Player Detail
+      // Define DBF structure for Player Detail (USCF TDEXPORT.DBF specification)
       const dbfStructure = [
-        { name: 'USCFID', type: 'C', size: 10 },              // USCF ID
-        { name: 'NAME', type: 'C', size: 50 },                 // Player name
-        { name: 'SECTION', type: 'C', size: 30 },              // Section name
-        { name: 'RATING', type: 'N', size: 4, decimal: 0 },    // Rating
-        { name: 'R1', type: 'C', size: 8 },               // Round 1 result
-        { name: 'R2', type: 'C', size: 8 },               // Round 2 result
-        { name: 'R3', type: 'C', size: 8 },               // Round 3 result
-        { name: 'R4', type: 'C', size: 8 },               // Round 4 result
-        { name: 'R5', type: 'C', size: 8 },               // Round 5 result
-        { name: 'R6', type: 'C', size: 8 },               // Round 6 result
-        { name: 'R7', type: 'C', size: 8 },               // Round 7 result
-        { name: 'R8', type: 'C', size: 8 },               // Round 8 result
-        { name: 'R9', type: 'C', size: 8 },               // Round 9 result
-        { name: 'R10', type: 'C', size: 8 },              // Round 10 result
-        { name: 'TOTALSCORE', type: 'N', size: 4, decimal: 1 }, // Total score
-        { name: 'STATUS', type: 'C', size: 10 },        // Player status
-        { name: 'MEMBEXP', type: 'D', size: 8 },                 // Membership expiration
-        { name: 'FIDEID', type: 'C', size: 15 },              // FIDE ID (optional)
-        { name: 'NOTES', type: 'C', size: 100 }               // Player notes
+        { name: 'D_EVENT_ID', type: 'C', size: 9 },       // Links to tournament ID
+        { name: 'D_SEC_NUM', type: 'C', size: 2 },        // Links to section number
+        { name: 'D_PAIR_NUM', type: 'C', size: 4 },       // Player's pairing number (space-padded)
+        { name: 'D_REC_SEQ', type: 'C', size: 1 },        // Record sequence (usually "1")
+        { name: 'D_MEM_ID', type: 'C', size: 8 },         // Player's USCF ID
+        { name: 'D_RND01', type: 'C', size: 5 },          // Round 1 result
+        { name: 'D_RND02', type: 'C', size: 5 },          // Round 2 result
+        { name: 'D_RND03', type: 'C', size: 5 },          // Round 3 result
+        { name: 'D_RND04', type: 'C', size: 5 },          // Round 4 result
+        { name: 'D_RND05', type: 'C', size: 5 },          // Round 5 result
+        { name: 'D_RND06', type: 'C', size: 5 },          // Round 6 result
+        { name: 'D_RND07', type: 'C', size: 5 },          // Round 7 result
+        { name: 'D_RND08', type: 'C', size: 5 },          // Round 8 result
+        { name: 'D_RND09', type: 'C', size: 5 },          // Round 9 result
+        { name: 'D_RND10', type: 'C', size: 5 }           // Round 10 result
       ];
 
       // Get players and their results
@@ -354,15 +366,67 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
 
       const maxRounds = tournament ? tournament.rounds : 10;
 
-      // Get results for each player by round
+      // Generate event ID (same as tournament header)
+      const generateEventId = (tournament) => {
+        const startDate = new Date(tournament.start_date);
+        const year = startDate.getFullYear().toString().slice(-2);
+        const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = startDate.getDate().toString().padStart(2, '0');
+        const sequence = '001';
+        return `${year}${month}${day}${sequence}`;
+      };
+
+      // Encode result in USCF format: W  12, L   5, D  3, B   , H   , 0   
+      const encodeResult = (result, opponentPairNum) => {
+        if (!result) return '    0';
+        
+        const opponent = opponentPairNum ? opponentPairNum.toString().padStart(3, ' ') : '   ';
+        
+        switch (result.toUpperCase()) {
+          case 'W':
+          case 'WIN':
+          case '1':
+          case '1.0':
+            return `W  ${opponent}`;
+          case 'L':
+          case 'LOSS':
+          case '0':
+          case '0.0':
+            return `L  ${opponent}`;
+          case 'D':
+          case 'DRAW':
+          case '0.5':
+          case '1/2':
+            return `D  ${opponent}`;
+          case 'B':
+          case 'BYE':
+            return 'B   ';
+          case 'H':
+          case 'HALF_BYE':
+            return 'H   ';
+          case 'F':
+          case 'FORFEIT':
+            return '0   ';
+          default:
+            return '    0';
+        }
+      };
+
+      // Create pairing number mapping for players
+      const pairingMap = new Map();
+      players.forEach((player, index) => {
+        pairingMap.set(player.id, index + 1);
+      });
+
+      // Get results for each player by round with opponent information
       const playerResults = {};
       for (const player of players) {
         const results = await new Promise((resolve, reject) => {
           db.all(`
-            SELECT round, result
-            FROM results 
-            WHERE player_id = ?
-            ORDER BY round
+            SELECT r.round, r.result, r.opponent_id
+            FROM results r
+            WHERE r.player_id = ?
+            ORDER BY r.round
           `, [player.id], (err, rows) => {
             if (err) reject(err);
             else resolve(rows);
@@ -371,9 +435,23 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
 
         playerResults[player.id] = {};
         results.forEach(result => {
-          playerResults[player.id][result.round] = result.result;
+          const opponentPairNum = result.opponent_id ? pairingMap.get(result.opponent_id) : null;
+          playerResults[player.id][result.round] = {
+            result: result.result,
+            opponentPairNum: opponentPairNum
+          };
         });
       }
+
+      // Group players by section to get section numbers
+      const sectionMap = new Map();
+      let sectionIndex = 1;
+      players.forEach(player => {
+        const sectionName = player.section || 'Open';
+        if (!sectionMap.has(sectionName)) {
+          sectionMap.set(sectionName, sectionIndex++);
+        }
+      });
 
       // Create DBF file
       const filePath = path.join(exportPath, 'TDEXPORT.DBF');
@@ -389,22 +467,28 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
 
       // Add player records
       for (const player of players) {
+        const sectionName = player.section || 'Open';
+        const sectionNum = sectionMap.get(sectionName);
+        const pairingNum = pairingMap.get(player.id);
+        
         const record = {
-          USCFID: player.uscf_id || '',
-          NAME: player.name,
-          SECTION: player.section,
-          RATING: player.rating || 0,
-          TOTALSCORE: player.total_score,
-          STATUS: player.status,
-          MEMBEXP: player.expiration_date ? formatDate(player.expiration_date) : new Date('1900-01-01'),
-          FIDEID: player.fide_id || '',
-          NOTES: player.notes || ''
+          D_EVENT_ID: generateEventId(tournament),
+          D_SEC_NUM: ` ${sectionNum}`.slice(-2), // Space-padded section number
+          D_PAIR_NUM: `   ${pairingNum}`.slice(-4), // Space-padded pairing number
+          D_REC_SEQ: '1', // Record sequence (usually 1)
+          D_MEM_ID: (player.uscf_id || '').substring(0, 8)
         };
 
-        // Add round results (up to 10 rounds)
+        // Add round results (up to 10 rounds) in USCF format
         for (let round = 1; round <= Math.min(maxRounds, 10); round++) {
-          const roundKey = `R${round}`;
-          record[roundKey] = playerResults[player.id][round] || '';
+          const roundKey = `D_RND${round.toString().padStart(2, '0')}`;
+          const roundData = playerResults[player.id][round];
+          
+          if (roundData) {
+            record[roundKey] = encodeResult(roundData.result, roundData.opponentPairNum);
+          } else {
+            record[roundKey] = '    0'; // No result
+          }
         }
 
         await dbfFile.appendRecords([record]);

@@ -11,11 +11,11 @@ const { v4: uuidv4 } = require('uuid');
 function createTeam(db, tournamentId, teamData) {
   return new Promise((resolve, reject) => {
     const teamId = uuidv4();
-    const { name, captainId, boardCount = 4 } = teamData;
+    const { name, captainId } = teamData;
     
     db.run(
-      'INSERT INTO teams (id, tournament_id, name, captain_id, board_count) VALUES (?, ?, ?, ?, ?)',
-      [teamId, tournamentId, name, captainId, boardCount],
+      'INSERT INTO teams (id, tournament_id, name, captain_id) VALUES (?, ?, ?, ?)',
+      [teamId, tournamentId, name, captainId],
       function(err) {
         if (err) {
           reject(err);
@@ -30,13 +30,13 @@ function createTeam(db, tournamentId, teamData) {
 /**
  * Add a player to a team
  */
-function addTeamMember(db, teamId, playerId, boardNumber) {
+function addTeamMember(db, teamId, playerId) {
   return new Promise((resolve, reject) => {
     const memberId = uuidv4();
     
     db.run(
-      'INSERT INTO team_members (id, team_id, player_id, board_number) VALUES (?, ?, ?, ?)',
-      [memberId, teamId, playerId, boardNumber],
+      'INSERT INTO team_members (id, team_id, player_id) VALUES (?, ?, ?)',
+      [memberId, teamId, playerId],
       function(err) {
         if (err) {
           reject(err);
@@ -110,10 +110,44 @@ function getTeamMembers(db, teamId) {
       FROM team_members tm
       JOIN players p ON tm.player_id = p.id
       WHERE tm.team_id = ?
-      ORDER BY tm.board_number
+      ORDER BY p.rating DESC, p.name
     `;
     
     db.all(query, [teamId], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows);
+    });
+  });
+}
+
+/**
+ * Get team members for individual tournaments (players with team_id)
+ */
+function getIndividualTournamentTeamMembers(db, tournamentId) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT 
+        p.id as player_id,
+        p.name as player_name,
+        p.rating,
+        p.uscf_id,
+        p.fide_id,
+        p.team_id,
+        t.name as team_name,
+        COALESCE(SUM(r.points), 0) as total_points,
+        COUNT(r.id) as games_played
+      FROM players p
+      LEFT JOIN teams t ON p.team_id = t.id
+      LEFT JOIN results r ON p.id = r.player_id AND r.tournament_id = ?
+      WHERE p.tournament_id = ? AND p.team_id IS NOT NULL AND p.status = 'active'
+      GROUP BY p.id, p.name, p.rating, p.uscf_id, p.fide_id, p.team_id, t.name
+      ORDER BY t.name, total_points DESC, p.rating DESC
+    `;
+    
+    db.all(query, [tournamentId, tournamentId], (err, rows) => {
       if (err) {
         reject(err);
         return;
@@ -217,95 +251,266 @@ function calculateTeamStandings(db, tournamentId) {
 /**
  * Calculate team standings for individual tournaments with team scoring
  * Players play individually but their results contribute to team scores
- * Supports multiple scoring methods: all players, top N players, board-based
+ * Implements USCF-compliant team scoring: sum of top 4 individual scores
+ * Supports team tiebreakers: top 3 sum, top 2 sum, single highest, progressive
  */
-async function calculateIndividualTournamentTeamStandings(db, tournamentId, scoringMethod = 'all_players', topN = null) {
+async function calculateIndividualTournamentTeamStandings(db, tournamentId, scoringMethod = 'top_4', topN = 4) {
   return new Promise((resolve, reject) => {
-    let query;
+    // USCF standard: sum of top 4 individual scores
+    const query = `
+      WITH team_player_scores AS (
+        SELECT 
+          p.team_id,
+          t.name as team_name,
+          p.id as player_id,
+          p.name as player_name,
+          p.rating,
+          COALESCE(SUM(r.points), 0) as player_total_points,
+          COUNT(r.id) as player_games_played,
+          ROW_NUMBER() OVER (PARTITION BY p.team_id ORDER BY COALESCE(SUM(r.points), 0) DESC, p.rating DESC) as player_rank
+        FROM players p
+        LEFT JOIN teams t ON p.team_id = t.id
+        LEFT JOIN results r ON p.id = r.player_id AND r.tournament_id = ?
+        WHERE p.tournament_id = ? AND p.team_id IS NOT NULL AND p.status = 'active'
+        GROUP BY p.team_id, t.name, p.id, p.name, p.rating
+      ),
+      team_top_scores AS (
+        SELECT 
+          team_id,
+          team_name,
+          SUM(CASE WHEN player_rank <= ? THEN player_total_points ELSE 0 END) as team_total_points,
+          COUNT(CASE WHEN player_rank <= ? THEN 1 END) as counted_players,
+          SUM(player_total_points) as all_players_total,
+          COUNT(*) as total_members,
+          -- Individual player scores for tiebreakers
+          MAX(CASE WHEN player_rank = 1 THEN player_total_points END) as top_player_score,
+          SUM(CASE WHEN player_rank <= 2 THEN player_total_points ELSE 0 END) as top_2_sum,
+          SUM(CASE WHEN player_rank <= 3 THEN player_total_points ELSE 0 END) as top_3_sum,
+          -- Individual game counts
+          SUM(CASE WHEN player_rank <= ? THEN player_games_played ELSE 0 END) as counted_games,
+          SUM(player_games_played) as total_games
+        FROM team_player_scores
+        GROUP BY team_id, team_name
+      )
+      SELECT 
+        tts.*,
+        COALESCE(tts.team_total_points / NULLIF(tts.counted_players, 0), 0) as avg_points_per_player,
+        COALESCE(tts.counted_games / NULLIF(tts.counted_players, 0), 0) as avg_games_per_player
+      FROM team_top_scores tts
+      WHERE tts.team_total_points > 0 OR tts.total_members > 0
+      ORDER BY tts.team_total_points DESC, tts.top_3_sum DESC, tts.top_2_sum DESC, tts.top_player_score DESC
+    `;
     
-    if (scoringMethod === 'top_players' && topN) {
-      // Top N players scoring method
-      query = `
+    db.all(query, [tournamentId, tournamentId, topN, topN, topN], async (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      // Add progressive tiebreakers (round-by-round cumulative scores)
+      try {
+        const enhancedRows = await addProgressiveTiebreakers(db, tournamentId, rows);
+        resolve(enhancedRows);
+      } catch (tiebreakerError) {
+        console.error('Error calculating progressive tiebreakers:', tiebreakerError);
+        resolve(rows); // Return basic standings if tiebreakers fail
+      }
+    });
+  });
+}
+
+/**
+ * Calculate team match results for individual tournaments with team scoring
+ * Determines team match outcomes based on individual game results
+ * Returns team match points: 1 for win, 0.5 for draw, 0 for loss
+ */
+async function calculateTeamMatchResults(db, tournamentId, round) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      WITH team_matchups AS (
+        SELECT DISTINCT
+          t1.id as team1_id,
+          t1.name as team1_name,
+          t2.id as team2_id,
+          t2.name as team2_name
+        FROM teams t1
+        JOIN teams t2 ON t1.tournament_id = t2.tournament_id AND t1.id < t2.id
+        WHERE t1.tournament_id = ? AND t1.status = 'active' AND t2.status = 'active'
+      ),
+      team_scores AS (
+        SELECT 
+          tm.team1_id,
+          tm.team1_name,
+          tm.team2_id,
+          tm.team2_name,
+          COALESCE(SUM(CASE WHEN tm1.player_id = r.player_id THEN r.points ELSE 0 END), 0) as team1_score,
+          COALESCE(SUM(CASE WHEN tm2.player_id = r.player_id THEN r.points ELSE 0 END), 0) as team2_score,
+          COUNT(CASE WHEN tm1.player_id = r.player_id OR tm2.player_id = r.player_id THEN 1 END) as games_played
+        FROM team_matchups tm
+        LEFT JOIN team_members tm1 ON tm.team1_id = tm1.team_id
+        LEFT JOIN team_members tm2 ON tm.team2_id = tm2.team_id
+        LEFT JOIN results r ON (tm1.player_id = r.player_id OR tm2.player_id = r.player_id) 
+          AND r.tournament_id = ? AND r.round = ?
+        GROUP BY tm.team1_id, tm.team1_name, tm.team2_id, tm.team2_name
+      )
+      SELECT 
+        team1_id,
+        team1_name,
+        team2_id,
+        team2_name,
+        team1_score,
+        team2_score,
+        games_played,
+        CASE 
+          WHEN team1_score > team2_score THEN 1.0
+          WHEN team1_score < team2_score THEN 0.0
+          ELSE 0.5
+        END as team1_match_points,
+        CASE 
+          WHEN team1_score > team2_score THEN 0.0
+          WHEN team1_score < team2_score THEN 1.0
+          ELSE 0.5
+        END as team2_match_points
+      FROM team_scores
+      WHERE games_played > 0
+      ORDER BY team1_name, team2_name
+    `;
+    
+    db.all(query, [tournamentId, tournamentId, round], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows);
+    });
+  });
+}
+
+/**
+ * Add progressive tiebreakers for team standings
+ * Calculates round-by-round cumulative scores for top 4 players
+ */
+async function addProgressiveTiebreakers(db, tournamentId, teamStandings) {
+  return new Promise((resolve, reject) => {
+    // Get tournament rounds
+    db.get('SELECT rounds FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      if (!tournament) {
+        resolve(teamStandings);
+        return;
+      }
+      
+      const totalRounds = tournament.rounds;
+      
+      // Calculate progressive scores for each team
+      const progressiveQuery = `
         WITH team_player_scores AS (
           SELECT 
-            t.id as team_id,
-            t.name as team_name,
-            tm.player_id,
+            p.team_id,
+            p.id as player_id,
             COALESCE(SUM(r.points), 0) as player_total_points,
-            COUNT(r.id) as player_games_played,
-            ROW_NUMBER() OVER (PARTITION BY t.id ORDER BY COALESCE(SUM(r.points), 0) DESC, COUNT(r.id) DESC) as player_rank
-          FROM teams t
-          LEFT JOIN team_members tm ON t.id = tm.team_id
-          LEFT JOIN results r ON tm.player_id = r.player_id AND r.tournament_id = ?
-          WHERE t.tournament_id = ? AND t.status = 'active'
-          GROUP BY t.id, t.name, tm.player_id
+            ROW_NUMBER() OVER (PARTITION BY p.team_id ORDER BY COALESCE(SUM(r.points), 0) DESC, p.rating DESC) as player_rank
+          FROM players p
+          LEFT JOIN results r ON p.id = r.player_id AND r.tournament_id = ?
+          WHERE p.tournament_id = ? AND p.team_id IS NOT NULL AND p.status = 'active'
+          GROUP BY p.team_id, p.id, p.rating
         ),
-        team_top_scores AS (
+        team_progressive AS (
           SELECT 
-            team_id,
-            team_name,
-            SUM(player_total_points) as total_game_points,
-            COUNT(*) as counted_players,
-            SUM(player_games_played) as total_games_played
-          FROM team_player_scores
-          WHERE player_rank <= ?
-          GROUP BY team_id, team_name
+            p.team_id,
+            r.round,
+            SUM(CASE WHEN tps.player_rank <= 4 THEN r.points ELSE 0 END) as round_team_score
+          FROM players p
+          LEFT JOIN results r ON p.id = r.player_id AND r.tournament_id = ?
+          LEFT JOIN team_player_scores tps ON p.id = tps.player_id
+          WHERE p.tournament_id = ? AND p.team_id IS NOT NULL AND p.status = 'active'
+          GROUP BY p.team_id, r.round
         )
         SELECT 
-          tts.*,
-          COUNT(tm.id) as total_member_count,
-          COALESCE(tts.total_game_points / NULLIF(tts.counted_players, 0), 0) as avg_game_points
-        FROM team_top_scores tts
-        LEFT JOIN teams t ON tts.team_id = t.id
-        LEFT JOIN team_members tm ON t.id = tm.team_id
-        GROUP BY tts.team_id, tts.team_name, tts.total_game_points, tts.counted_players, tts.total_games_played
-        ORDER BY tts.total_game_points DESC, avg_game_points DESC
+          team_id,
+          round,
+          round_team_score
+        FROM team_progressive
+        ORDER BY team_id, round
       `;
       
-      db.all(query, [tournamentId, tournamentId, topN], (err, rows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows);
-      });
-    } else {
-      // All players scoring method (default)
-      query = `
-        SELECT 
-          t.id as team_id,
-          t.name as team_name,
-          COUNT(tm.id) as member_count,
-          COALESCE(SUM(r.points), 0) as total_game_points,
-          COALESCE(AVG(r.points), 0) as avg_game_points,
-          COUNT(r.id) as games_played,
-          COALESCE(SUM(CASE WHEN r.points = 1 THEN 1 ELSE 0 END), 0) as wins,
-          COALESCE(SUM(CASE WHEN r.points = 0.5 THEN 1 ELSE 0 END), 0) as draws,
-          COALESCE(SUM(CASE WHEN r.points = 0 THEN 1 ELSE 0 END), 0) as losses
-        FROM teams t
-        LEFT JOIN team_members tm ON t.id = tm.team_id
-        LEFT JOIN results r ON tm.player_id = r.player_id AND r.tournament_id = ?
-        WHERE t.tournament_id = ? AND t.status = 'active'
-        GROUP BY t.id, t.name
-        ORDER BY total_game_points DESC, avg_game_points DESC, wins DESC
-      `;
-      
-      db.all(query, [tournamentId, tournamentId], async (err, rows) => {
+      db.all(progressiveQuery, [tournamentId, tournamentId, tournamentId, tournamentId], (err, progressiveRows) => {
         if (err) {
           reject(err);
           return;
         }
         
-        // Add team-specific tiebreakers
-        try {
-          const enhancedRows = await addTeamTiebreakers(db, tournamentId, rows);
-          resolve(enhancedRows);
-        } catch (tiebreakerError) {
-          console.error('Error calculating team tiebreakers:', tiebreakerError);
-          resolve(rows); // Return basic standings if tiebreakers fail
-        }
+        // Group progressive scores by team
+        const teamProgressive = {};
+        progressiveRows.forEach(row => {
+          if (!teamProgressive[row.team_id]) {
+            teamProgressive[row.team_id] = {};
+          }
+          teamProgressive[row.team_id][row.round] = row.round_team_score;
+        });
+        
+        // Add progressive tiebreakers to standings
+        const enhancedStandings = teamStandings.map(team => {
+          const progressive = teamProgressive[team.team_id] || {};
+          const progressiveScores = [];
+          
+          // Calculate cumulative scores round by round
+          let cumulative = 0;
+          for (let round = 1; round <= totalRounds; round++) {
+            cumulative += (progressive[round] || 0);
+            progressiveScores.push(cumulative);
+          }
+          
+          return {
+            ...team,
+            progressive_scores: progressiveScores,
+            progressive_tiebreaker: progressiveScores.join(',')
+          };
+        });
+        
+        // Re-sort with progressive tiebreakers
+        enhancedStandings.sort((a, b) => {
+          // Primary: Team total points
+          if (a.team_total_points !== b.team_total_points) {
+            return b.team_total_points - a.team_total_points;
+          }
+          
+          // Secondary: Top 3 sum
+          if (a.top_3_sum !== b.top_3_sum) {
+            return b.top_3_sum - a.top_3_sum;
+          }
+          
+          // Tertiary: Top 2 sum
+          if (a.top_2_sum !== b.top_2_sum) {
+            return b.top_2_sum - a.top_2_sum;
+          }
+          
+          // Quaternary: Single highest
+          if (a.top_player_score !== b.top_player_score) {
+            return b.top_player_score - a.top_player_score;
+          }
+          
+          // Quinary: Progressive tiebreaker (round-by-round comparison)
+          const aProgressive = a.progressive_scores || [];
+          const bProgressive = b.progressive_scores || [];
+          
+          for (let i = 0; i < Math.min(aProgressive.length, bProgressive.length); i++) {
+            if (aProgressive[i] !== bProgressive[i]) {
+              return bProgressive[i] - aProgressive[i];
+            }
+          }
+          
+          // Final: Team name (alphabetical)
+          return a.team_name.localeCompare(b.team_name);
+        });
+        
+        resolve(enhancedStandings);
       });
-    }
+    });
   });
 }
 
@@ -470,10 +675,13 @@ module.exports = {
   removeTeamMember,
   getTournamentTeams,
   getTeamMembers,
+  getIndividualTournamentTeamMembers,
   generateTeamPairings,
   calculateTeamStandings,
   calculateIndividualTournamentTeamStandings,
+  calculateTeamMatchResults,
   addTeamTiebreakers,
+  addProgressiveTiebreakers,
   calculateTeamPerformanceRating,
   recordTeamResult,
   getTeamResults

@@ -16,7 +16,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
       }
       
       if (!tournament || !tournament.settings) {
-        resolve(null); // No sections defined
+        resolve('Open'); // Default to Open section when no sections defined
         return;
       }
       
@@ -25,7 +25,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
         const sections = settings.sections || [];
         
         if (sections.length === 0) {
-          resolve(null); // No sections defined
+          resolve('Open'); // Default to Open section when no sections defined
           return;
         }
         
@@ -40,11 +40,11 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
           }
         }
         
-        // If no section matches, assign to the first section or null
-        resolve(sections.length > 0 ? sections[0].name : null);
+        // If no section matches, assign to the first section or Open
+        resolve(sections.length > 0 ? sections[0].name : 'Open');
       } catch (parseError) {
         console.error('Error parsing tournament settings:', parseError);
-        resolve(null);
+        resolve('Open'); // Default to Open section on error
       }
     });
   });
@@ -54,7 +54,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
 router.get('/tournament/:tournamentId/info', (req, res) => {
   const { tournamentId } = req.params;
   
-  db.get('SELECT id, name, format, rounds, start_date, end_date, settings FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
+  db.get('SELECT id, name, format, rounds, start_date, end_date, settings, allow_registration FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
     if (err) {
       console.error('Error fetching tournament info:', err);
       return res.status(500).json({ 
@@ -90,7 +90,8 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
         rounds: tournament.rounds,
         start_date: tournament.start_date,
         end_date: tournament.end_date,
-        sections: sections
+        sections: sections,
+        allow_registration: Boolean(tournament.allow_registration)
       }
     });
   });
@@ -139,6 +140,7 @@ router.post('/submit', async (req, res) => {
       tournament_id,
       player_name,
       uscf_id,
+      rating,
       email,
       phone,
       section,
@@ -154,9 +156,9 @@ router.post('/submit', async (req, res) => {
       });
     }
 
-    // Check if tournament exists
+    // Check if tournament exists and registration is allowed
     const tournament = await new Promise((resolve, reject) => {
-      db.get('SELECT id, name FROM tournaments WHERE id = ?', [tournament_id], (err, row) => {
+      db.get('SELECT id, name, allow_registration FROM tournaments WHERE id = ?', [tournament_id], (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
@@ -166,6 +168,14 @@ router.post('/submit', async (req, res) => {
       return res.status(404).json({ 
         success: false,
         error: 'Tournament not found' 
+      });
+    }
+
+    // Check if registration is allowed
+    if (tournament.allow_registration === 0) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Registration is currently closed for this tournament' 
       });
     }
 
@@ -186,7 +196,7 @@ router.post('/submit', async (req, res) => {
     }
 
     const playerId = uuidv4();
-    let finalRating = null;
+    let finalRating = rating || null;
     let finalSection = section;
 
     // If player has a USCF ID, look up their rating and expiration date
@@ -240,16 +250,26 @@ router.post('/submit', async (req, res) => {
 
     // Insert player record with pending status
     await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO players (id, tournament_id, name, uscf_id, rating, section, status, expiration_date, intentional_bye_rounds, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [playerId, tournament_id, player_name, uscf_id, finalRating, finalSection, 'pending',
+      const playerValues = [playerId, tournament_id, player_name, uscf_id, finalRating, finalSection, 'pending',
          ratingLookupResult?.expirationDate || null,
          bye_requests.length > 0 ? JSON.stringify(bye_requests) : null, 
-         notes ? `Registration: ${notes}` : 'Public Registration'],
+         notes ? `Registration: ${notes}` : 'Public Registration',
+         email, phone];
+      
+      console.log('Inserting player with values:', playerValues);
+      
+      db.run(
+        `INSERT INTO players (id, tournament_id, name, uscf_id, rating, section, status, expiration_date, intentional_bye_rounds, notes, email, phone)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        playerValues,
         function(err) {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            console.error('Error inserting player:', err);
+            reject(err);
+          } else {
+            console.log('Player inserted successfully with ID:', playerId);
+            resolve();
+          }
         }
       );
     });

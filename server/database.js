@@ -34,6 +34,7 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS tournaments (
       id TEXT PRIMARY KEY,
+      organization_id TEXT,
       name TEXT NOT NULL,
       format TEXT NOT NULL,
       rounds INTEGER NOT NULL,
@@ -55,7 +56,11 @@ db.serialize(() => {
       website TEXT,
       fide_rated BOOLEAN DEFAULT 0,
       uscf_rated BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      allow_registration BOOLEAN DEFAULT 1,
+      is_public BOOLEAN DEFAULT 0,
+      public_url TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id)
     )
   `);
 
@@ -69,6 +74,7 @@ db.serialize(() => {
       fide_id TEXT,
       rating INTEGER,
       section TEXT,
+      team_name TEXT,
       status TEXT DEFAULT 'active' CHECK (status IN ('active', 'withdrawn', 'bye', 'inactive')),
       expiration_date TEXT,
       intentional_bye_rounds TEXT,
@@ -98,6 +104,53 @@ db.serialize(() => {
     // Ignore error if column already exists
   });
 
+  // Add email column if it doesn't exist (for existing databases)
+  db.run(`
+    ALTER TABLE players ADD COLUMN email TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Add phone column if it doesn't exist (for existing databases)
+  db.run(`
+    ALTER TABLE players ADD COLUMN phone TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Add team_name column for individual tournaments with team scoring
+  db.run(`
+    ALTER TABLE players ADD COLUMN team_name TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Remove board_number column from team_members table (migration for new team affiliation model)
+  db.run(`
+    ALTER TABLE team_members DROP COLUMN board_number
+  `, (err) => {
+    // Ignore error if column doesn't exist or can't be dropped
+  });
+
+  // Remove team tables (migration to simple team category model)
+  db.run(`
+    DROP TABLE IF EXISTS team_members
+  `, (err) => {
+    // Ignore error if table doesn't exist
+  });
+  
+  db.run(`
+    DROP TABLE IF EXISTS teams
+  `, (err) => {
+    // Ignore error if table doesn't exist
+  });
+  
+  db.run(`
+    DROP TABLE IF EXISTS team_results
+  `, (err) => {
+    // Ignore error if table doesn't exist
+  });
+
   // Registrations table
   db.run(`
     CREATE TABLE IF NOT EXISTS registrations (
@@ -122,6 +175,7 @@ db.serialize(() => {
 
   // Add US Chess specific columns to tournaments table (for existing databases)
   const usChessColumns = [
+    'organization_id TEXT',
     'city TEXT',
     'state TEXT', 
     'location TEXT',
@@ -134,7 +188,10 @@ db.serialize(() => {
     'expected_players INTEGER',
     'website TEXT',
     'fide_rated BOOLEAN DEFAULT 0',
-    'uscf_rated BOOLEAN DEFAULT 1'
+    'uscf_rated BOOLEAN DEFAULT 1',
+    'allow_registration BOOLEAN DEFAULT 1',
+    'is_public BOOLEAN DEFAULT 0',
+    'public_url TEXT'
   ];
 
   usChessColumns.forEach(column => {
@@ -231,52 +288,7 @@ db.serialize(() => {
     )
   `);
 
-  // Teams table for team tournaments
-  db.run(`
-    CREATE TABLE IF NOT EXISTS teams (
-      id TEXT PRIMARY KEY,
-      tournament_id TEXT,
-      name TEXT NOT NULL,
-      captain_id TEXT,
-      board_count INTEGER DEFAULT 4,
-      status TEXT DEFAULT 'active' CHECK (status IN ('active', 'withdrawn')),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
-      FOREIGN KEY (captain_id) REFERENCES players (id)
-    )
-  `);
-
-  // Team members table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS team_members (
-      id TEXT PRIMARY KEY,
-      team_id TEXT,
-      player_id TEXT,
-      board_number INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (team_id) REFERENCES teams (id),
-      FOREIGN KEY (player_id) REFERENCES players (id),
-      UNIQUE(team_id, board_number)
-    )
-  `);
-
-  // Team results table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS team_results (
-      id TEXT PRIMARY KEY,
-      tournament_id TEXT,
-      team_id TEXT,
-      round INTEGER,
-      opponent_team_id TEXT,
-      team_score REAL,
-      opponent_score REAL,
-      result TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
-      FOREIGN KEY (team_id) REFERENCES teams (id),
-      FOREIGN KEY (opponent_team_id) REFERENCES teams (id)
-    )
-  `);
+  // Teams are now just a category field on players - no separate tables needed
 
   // Users table for authentication
   db.run(`
@@ -307,40 +319,21 @@ db.serialize(() => {
     )
   `);
 
-  // Prizes table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS prizes (
-      id TEXT PRIMARY KEY,
-      tournament_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('cash', 'trophy', 'medal', 'plaque')),
-      position INTEGER,
-      rating_category TEXT,
-      section TEXT,
-      amount REAL,
-      description TEXT,
-      conditions TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE
-    )
-  `);
-
-  // Prize distributions table
+  // Prize distributions table (simplified - no separate prizes table)
   db.run(`
     CREATE TABLE IF NOT EXISTS prize_distributions (
       id TEXT PRIMARY KEY,
       tournament_id TEXT NOT NULL,
       player_id TEXT NOT NULL,
-      prize_id TEXT NOT NULL,
+      prize_name TEXT NOT NULL,
+      prize_type TEXT NOT NULL CHECK (prize_type IN ('cash', 'trophy', 'medal', 'plaque')),
       amount REAL,
       position INTEGER,
-      rating_category TEXT,
       section TEXT,
       tie_group INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
-      FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE,
-      FOREIGN KEY (prize_id) REFERENCES prizes (id) ON DELETE CASCADE
+      FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
     )
   `);
 
@@ -389,6 +382,226 @@ db.serialize(() => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `);
+
+  // Enhanced pairing system tables
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pairing_history (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      player1_id TEXT,
+      player2_id TEXT,
+      round INTEGER,
+      result TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (player1_id) REFERENCES players (id),
+      FOREIGN KEY (player2_id) REFERENCES players (id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS color_preferences (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      player_id TEXT,
+      preferred_color TEXT CHECK (preferred_color IN ('white', 'black', 'either')),
+      priority INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (player_id) REFERENCES players (id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pairing_overrides (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      round INTEGER,
+      original_pairing_id TEXT,
+      new_white_player_id TEXT,
+      new_black_player_id TEXT,
+      reason TEXT,
+      created_by TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (original_pairing_id) REFERENCES pairings (id),
+      FOREIGN KEY (new_white_player_id) REFERENCES players (id),
+      FOREIGN KEY (new_black_player_id) REFERENCES players (id)
+    )
+  `);
+
+  // Tournament templates table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tournament_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      format TEXT NOT NULL,
+      settings TEXT,
+      is_public BOOLEAN DEFAULT 0,
+      created_by TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      usage_count INTEGER DEFAULT 0
+    )
+  `);
+
+  // Player photos table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS player_photos (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      player_id TEXT,
+      photo_url TEXT NOT NULL,
+      uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (player_id) REFERENCES players (id)
+    )
+  `);
+
+  // Time controls table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS time_controls (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      round INTEGER,
+      time_per_player INTEGER,
+      increment INTEGER,
+      delay INTEGER,
+      time_control_string TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
+
+  // Organizations table for multi-tenancy
+  db.run(`
+    CREATE TABLE IF NOT EXISTS organizations (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      description TEXT,
+      website TEXT,
+      logo_url TEXT,
+      contact_email TEXT,
+      contact_phone TEXT,
+      address TEXT,
+      city TEXT,
+      state TEXT,
+      zip_code TEXT,
+      country TEXT DEFAULT 'US',
+      is_active BOOLEAN DEFAULT 1,
+      settings TEXT,
+      created_by TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `);
+
+  // Organization members table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS organization_members (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      role TEXT DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+      invited_by TEXT,
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_active BOOLEAN DEFAULT 1,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+      FOREIGN KEY (invited_by) REFERENCES users (id),
+      UNIQUE(organization_id, user_id)
+    )
+  `);
+
+  // Organization invitations table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS organization_invitations (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+      token TEXT UNIQUE NOT NULL,
+      invited_by TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'expired', 'cancelled')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      accepted_at DATETIME,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      FOREIGN KEY (invited_by) REFERENCES users (id)
+    )
+  `);
+
+  // Tournament archives table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tournament_archives (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      archive_name TEXT NOT NULL,
+      archive_type TEXT CHECK (archive_type IN ('full', 'standings', 'pairings', 'results')),
+      file_path TEXT NOT NULL,
+      file_size INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_by TEXT,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
+
+  // Multi-day tournament days table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS tournament_days (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      day_number INTEGER,
+      date TEXT,
+      rounds TEXT,
+      start_time TEXT,
+      end_time TEXT,
+      location TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
+
+  // Knockout brackets table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS knockout_brackets (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      round INTEGER,
+      match_number INTEGER,
+      player1_id TEXT,
+      player2_id TEXT,
+      winner_id TEXT,
+      result TEXT,
+      board_number INTEGER,
+      is_bye BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (player1_id) REFERENCES players (id),
+      FOREIGN KEY (player2_id) REFERENCES players (id),
+      FOREIGN KEY (winner_id) REFERENCES players (id)
+    )
+  `);
+
+  // Simultaneous players table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS simultaneous_players (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      player_id TEXT,
+      board_number INTEGER,
+      name TEXT,
+      rating INTEGER,
+      result TEXT CHECK (result IN ('win', 'loss', 'draw')),
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (player_id) REFERENCES players (id)
     )
   `);
 });

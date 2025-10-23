@@ -28,7 +28,9 @@ function calculateBuchholz(playerId, tournamentId, db) {
       }
       
       const buchholz = rows.reduce((sum, row) => sum + row.opponent_score, 0);
-      resolve(buchholz);
+      // Round to 1 decimal place to avoid floating point precision issues
+      const roundedBuchholz = Math.round(buchholz * 10) / 10;
+      resolve(roundedBuchholz);
     });
   });
 }
@@ -68,6 +70,9 @@ function calculateSonnebornBerger(playerId, tournamentId, db) {
         }
         // Losses contribute 0 points
       });
+      
+      // Round to 1 decimal place to avoid floating point precision issues
+      sonnebornBerger = Math.round(sonnebornBerger * 10) / 10;
       
       resolve(sonnebornBerger);
     });
@@ -143,7 +148,9 @@ function calculateModifiedBuchholz(playerId, tournamentId, db) {
           
           const lowestOpponentScore = row ? row.opponent_score : 0;
           const modifiedBuchholz = buchholz - lowestOpponentScore;
-          resolve(modifiedBuchholz);
+          // Round to 1 decimal place to avoid floating point precision issues
+          const roundedModifiedBuchholz = Math.round(modifiedBuchholz * 10) / 10;
+          resolve(roundedModifiedBuchholz);
         });
       })
       .catch(reject);
@@ -179,109 +186,16 @@ function calculateCumulative(playerId, tournamentId, db) {
 }
 
 /**
- * Calculate Koya System tiebreaker
- * Number of opponents with 50% or more score
- */
-function calculateKoya(playerId, tournamentId, db) {
-  return new Promise((resolve, reject) => {
-    const query = `
-      SELECT 
-        r1.opponent_id,
-        COALESCE(SUM(r2.points), 0) as opponent_score,
-        COUNT(r2.id) as opponent_games
-      FROM results r1
-      LEFT JOIN results r2 ON r1.opponent_id = r2.player_id AND r1.tournament_id = r2.tournament_id
-      WHERE r1.player_id = ? AND r1.tournament_id = ?
-      GROUP BY r1.opponent_id
-    `;
-    
-    db.all(query, [playerId, tournamentId], (err, rows) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      let koya = 0;
-      rows.forEach(row => {
-        if (row.opponent_games > 0) {
-          const percentage = row.opponent_score / row.opponent_games;
-          if (percentage >= 0.5) {
-            koya++;
-          }
-        }
-      });
-      
-      resolve(koya);
-    });
-  });
-}
-
-/**
- * Calculate Direct Encounter tiebreaker
- * Points scored in games between tied players
- */
-function calculateDirectEncounter(playerId, tournamentId, db, tiedPlayers) {
-  return new Promise((resolve, reject) => {
-    if (!tiedPlayers || tiedPlayers.length === 0) {
-      resolve(0);
-      return;
-    }
-    
-    const placeholders = tiedPlayers.map(() => '?').join(',');
-    const query = `
-      SELECT COALESCE(SUM(points), 0) as direct_points
-      FROM results
-      WHERE player_id = ? AND tournament_id = ? AND opponent_id IN (${placeholders})
-    `;
-    
-    db.get(query, [playerId, tournamentId, ...tiedPlayers], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      resolve(row ? row.direct_points : 0);
-    });
-  });
-}
-
-/**
- * Calculate Average Rating of Opponents tiebreaker
- */
-function calculateAverageOpponentRating(playerId, tournamentId, db) {
-  return new Promise((resolve, reject) => {
-    const query = `
-      SELECT COALESCE(AVG(p2.rating), 0) as avg_opponent_rating
-      FROM results r1
-      LEFT JOIN players p2 ON r1.opponent_id = p2.id
-      WHERE r1.player_id = ? AND r1.tournament_id = ?
-    `;
-    
-    db.get(query, [playerId, tournamentId], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      resolve(row ? Math.round(row.avg_opponent_rating) : 0);
-    });
-  });
-}
-
-/**
  * Calculate all tiebreakers for a player
  */
-async function calculateAllTiebreakers(playerId, tournamentId, db, tiedPlayers = []) {
+async function calculateAllTiebreakers(playerId, tournamentId, db) {
   try {
-    const [buchholz, sonnebornBerger, performanceRating, modifiedBuchholz, cumulative, koya, directEncounter, avgOpponentRating] = await Promise.all([
+    const [buchholz, sonnebornBerger, performanceRating, modifiedBuchholz, cumulative] = await Promise.all([
       calculateBuchholz(playerId, tournamentId, db),
       calculateSonnebornBerger(playerId, tournamentId, db),
       calculatePerformanceRating(playerId, tournamentId, db),
       calculateModifiedBuchholz(playerId, tournamentId, db),
-      calculateCumulative(playerId, tournamentId, db),
-      calculateKoya(playerId, tournamentId, db),
-      calculateDirectEncounter(playerId, tournamentId, db, tiedPlayers),
-      calculateAverageOpponentRating(playerId, tournamentId, db)
+      calculateCumulative(playerId, tournamentId, db)
     ]);
     
     return {
@@ -289,10 +203,7 @@ async function calculateAllTiebreakers(playerId, tournamentId, db, tiedPlayers =
       sonnebornBerger,
       performanceRating,
       modifiedBuchholz,
-      cumulative,
-      koya,
-      directEncounter,
-      avgOpponentRating
+      cumulative
     };
   } catch (error) {
     console.error('Error calculating tiebreakers:', error);
@@ -301,10 +212,7 @@ async function calculateAllTiebreakers(playerId, tournamentId, db, tiedPlayers =
       sonnebornBerger: 0,
       performanceRating: 0,
       modifiedBuchholz: 0,
-      cumulative: 0,
-      koya: 0,
-      directEncounter: 0,
-      avgOpponentRating: 0
+      cumulative: 0
     };
   }
 }

@@ -1,0 +1,86 @@
+h1 {
+	padding-top: 1em;
+}
+
+#content {
+    margin: 0 15px;
+}
+
+.tournament-info th {
+	padding-right: 3em;
+}
+.players-list td {
+	padding-right: 2em;
+}
+.players-list .fide_id, .players-list .rating {
+	text-align: right;
+}
+.players-list .name {
+	min-width: 20em;
+	font-weight: bold;
+}
+
+.games-list .name {
+	font-weight: bold;
+}
+
+.standings-table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 20px 0;
+}
+
+.standings-table th,
+.standings-table td {
+	border: 1px solid #ddd;
+	padding: 8px;
+	text-align: left;
+}
+
+.standings-table th {
+	background-color: #f2f2f2;
+	font-weight: bold;
+	text-align: center;
+}
+
+.standings-table .score {
+	text-align: center;
+	font-size: 1.2em;
+	font-weight: bold;
+	min-width: 40px;
+}
+
+.player {
+	font-weight: bold;
+}
+
+.opponent {
+	font-size: 0.9em;
+	text-align: center;
+	font-weight: bold;
+}
+
+.color {
+	font-size: 0.8em;
+	text-align: center;
+	color: #666;
+	font-style: italic;
+}
+
+.player-color-W {
+	background-color: #f8f8f8;
+	border-left: 3px solid #333;
+}
+
+.player-color-B {
+	background-color: #e8e8e8;
+	border-left: 3px solid #666;
+}
+
+.standings-table tr:nth-child(even) {
+	background-color: #f9f9f9;
+}
+
+.standings-table tr:hover {
+	background-color: #f5f5f5;
+}

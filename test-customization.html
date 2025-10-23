@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Customization Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS Variables */
+        :root {
+            --primary-color: #3B82F6;
+            --secondary-color: #1E40AF;
+            --background-color: #FFFFFF;
+            --text-color: #1F2937;
+            --accent-color: #F59E0B;
+            --border-color: #E5E7EB;
+            --hover-color: #F3F4F6;
+            --border-radius: 8px;
+            --spacing: 16px;
+        }
+
+        /* Custom CSS Example */
+        .custom-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .custom-card {
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .custom-card:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Dynamic styling based on organization settings */
+        .org-theme {
+            --primary-color: #8B4513;
+            --secondary-color: #F5F5DC;
+            --background-color: #FAFAFA;
+            --text-color: #2D3748;
+            --accent-color: #D69E2E;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header with Custom Styling -->
+        <header class="custom-header">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-4">
+                        <div class="h-12 w-12 bg-white rounded-lg flex items-center justify-center">
+                            <span class="text-2xl">♟️</span>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold">Chess Masters Club</h1>
+                            <p class="text-sm opacity-90">Professional Chess Tournament Organization</p>
+                        </div>
+                    </div>
+                    <a href="#" class="bg-white bg-opacity-20 px-4 py-2 rounded-lg hover:bg-opacity-30 transition-colors">
+                        Visit Website
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Section -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mx-auto mb-2">
+                            <span class="text-2xl">🏆</span>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900">24</div>
+                        <div class="text-sm text-gray-600">Total Tournaments</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mx-auto mb-2">
+                            <span class="text-2xl">📈</span>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900">3</div>
+                        <div class="text-sm text-gray-600">Active</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mx-auto mb-2">
+                            <span class="text-2xl">🎖️</span>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900">21</div>
+                        <div class="text-sm text-gray-600">Completed</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-lg mx-auto mb-2">
+                            <span class="text-2xl">👥</span>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900">156</div>
+                        <div class="text-sm text-gray-600">Players</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-8">Recent Tournaments</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Tournament Card 1 -->
+                <div class="custom-card bg-white p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1">Spring Championship 2024</h3>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="text-sm text-gray-600">Swiss System</span>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 border border-green-200">
+                            Active
+                        </span>
+                    </div>
+                    <div class="space-y-2 text-sm text-gray-600">
+                        <div class="flex items-center space-x-2">
+                            <span>📅</span>
+                            <span>March 15-17, 2024</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span>📍</span>
+                            <span>Chess Center, Downtown</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span>👥</span>
+                            <span>24 players</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <a href="#" class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                            View Details →
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 2 -->
+                <div class="custom-card bg-white p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1">Winter Blitz Tournament</h3>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="text-sm text-gray-600">Blitz</span>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                            Completed
+                        </span>
+                    </div>
+                    <div class="space-y-2 text-sm text-gray-600">
+                        <div class="flex items-center space-x-2">
+                            <span>📅</span>
+                            <span>December 10, 2023</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span>📍</span>
+                            <span>Community Center</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span>👥</span>
+                            <span>16 players</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <a href="#" class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                            View Results →
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 3 -->
+                <div class="custom-card bg-white p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1">Summer Rapid Open</h3>
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="text-sm text-gray-600">Rapid</span>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 border border-gray-200">
+                            Upcoming
+                        </span>
+                    </div>
+                    <div class="space-y-2 text-sm text-gray-600">
+                        <div class="flex items-center space-x-2">
+                            <span>📅</span>
+                            <span>June 20-22, 2024</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span>📍</span>
+                            <span>Chess Academy</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span>👥</span>
+                            <span>32 players</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <a href="#" class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                            Register →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-white border-t mt-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="text-center">
+                    <p class="text-gray-600">© 2024 Chess Masters Club. All rights reserved.</p>
+                    <div class="flex justify-center space-x-4 mt-4">
+                        <a href="#" class="text-blue-600 hover:text-blue-800">Facebook</a>
+                        <a href="#" class="text-blue-400 hover:text-blue-600">Twitter</a>
+                        <a href="#" class="text-pink-600 hover:text-pink-800">Instagram</a>
+                        <a href="#" class="text-red-600 hover:text-red-800">YouTube</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Demo: Switch between different themes
+        function switchTheme(theme) {
+            const root = document.documentElement;
+            if (theme === 'classic') {
+                root.style.setProperty('--primary-color', '#8B4513');
+                root.style.setProperty('--secondary-color', '#F5F5DC');
+                root.style.setProperty('--background-color', '#FAFAFA');
+                root.style.setProperty('--text-color', '#2D3748');
+                root.style.setProperty('--accent-color', '#D69E2E');
+            } else if (theme === 'modern') {
+                root.style.setProperty('--primary-color', '#6366F1');
+                root.style.setProperty('--secondary-color', '#4F46E5');
+                root.style.setProperty('--background-color', '#FFFFFF');
+                root.style.setProperty('--text-color', '#111827');
+                root.style.setProperty('--accent-color', '#EC4899');
+            } else {
+                // Default theme
+                root.style.setProperty('--primary-color', '#3B82F6');
+                root.style.setProperty('--secondary-color', '#1E40AF');
+                root.style.setProperty('--background-color', '#FFFFFF');
+                root.style.setProperty('--text-color', '#1F2937');
+                root.style.setProperty('--accent-color', '#F59E0B');
+            }
+        }
+
+        // Add theme switcher buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const header = document.querySelector('header');
+            const themeButtons = document.createElement('div');
+            themeButtons.className = 'absolute top-4 right-4 flex space-x-2';
+            themeButtons.innerHTML = `
+                <button onclick="switchTheme('default')" class="px-3 py-1 bg-white bg-opacity-20 rounded text-sm hover:bg-opacity-30">Default</button>
+                <button onclick="switchTheme('classic')" class="px-3 py-1 bg-white bg-opacity-20 rounded text-sm hover:bg-opacity-30">Classic</button>
+                <button onclick="switchTheme('modern')" class="px-3 py-1 bg-white bg-opacity-20 rounded text-sm hover:bg-opacity-30">Modern</button>
+            `;
+            header.style.position = 'relative';
+            header.appendChild(themeButtons);
+        });
+    </script>
+</body>
+</html>

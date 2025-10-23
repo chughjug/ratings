@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sign-In Functionality</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #2563eb;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sign-In Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Check if React App is Running</h2>
+        <button class="test-button" onclick="testReactApp()">Test React App</button>
+        <div id="react-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Check if Backend API is Running</h2>
+        <button class="test-button" onclick="testBackendAPI()">Test Backend API</button>
+        <div id="backend-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Test Sign-Up API Endpoint</h2>
+        <button class="test-button" onclick="testSignupAPI()">Test Sign-Up API</button>
+        <div id="signup-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Test Login API Endpoint</h2>
+        <button class="test-button" onclick="testLoginAPI()">Test Login API</button>
+        <div id="login-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Click "Test React App" to verify the frontend is running</li>
+            <li>Click "Test Backend API" to verify the backend is running</li>
+            <li>Click "Test Sign-Up API" to test the registration endpoint</li>
+            <li>Click "Test Login API" to test the login endpoint</li>
+            <li>Open <a href="http://localhost:3000" target="_blank">http://localhost:3000</a> to see the landing page with sign-in buttons</li>
+        </ol>
+    </div>
+
+    <script>
+        async function testReactApp() {
+            const resultDiv = document.getElementById('react-result');
+            resultDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch('http://localhost:3000');
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '✅ React app is running successfully!';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = '❌ React app returned status: ' + response.status;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ React app is not running: ' + error.message;
+            }
+        }
+
+        async function testBackendAPI() {
+            const resultDiv = document.getElementById('backend-result');
+            resultDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/tournaments');
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '✅ Backend API is running successfully!';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = '❌ Backend API returned status: ' + response.status;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Backend API is not running: ' + error.message;
+            }
+        }
+
+        async function testSignupAPI() {
+            const resultDiv = document.getElementById('signup-result');
+            resultDiv.style.display = 'block';
+            
+            try {
+                const testUser = {
+                    username: 'testuser' + Date.now(),
+                    email: 'test' + Date.now() + '@example.com',
+                    password: 'TestPassword123',
+                    firstName: 'Test',
+                    lastName: 'User'
+                };
+
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testUser)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '✅ Sign-up API is working! User created: ' + testUser.username;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = '❌ Sign-up API error: ' + (data.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Sign-up API test failed: ' + error.message;
+            }
+        }
+
+        async function testLoginAPI() {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.style.display = 'block';
+            
+            try {
+                const loginData = {
+                    username: 'admin',
+                    password: 'admin123'
+                };
+
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(loginData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '✅ Login API is working! Token received for user: ' + data.data.user.username;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = '❌ Login API error: ' + (data.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Login API test failed: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

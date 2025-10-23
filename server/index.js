@@ -5,6 +5,9 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// Increase max listeners to prevent memory leak warning
+process.setMaxListeners(20);
+
 // Global error handlers
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
@@ -84,16 +87,17 @@ app.use(express.static(path.join(__dirname, '../client/build')));
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
+const organizationRoutes = require('./routes/organizations');
 const tournamentRoutes = require('./routes/tournaments');
 const playerRoutes = require('./routes/players');
 const pairingRoutes = require('./routes/pairings');
 const exportRoutes = require('./routes/export');
-const prizeRoutes = require('./routes/prizes');
 const templateRoutes = require('./routes/templates');
 const backupRoutes = require('./routes/backup');
 const teamRoutes = require('./routes/teams');
 const analyticsRoutes = require('./routes/analytics');
 const registrationRoutes = require('./routes/registrations');
+const enhancedFeaturesRoutes = require('./routes/enhancedFeatures');
 
 // Use routes
 console.log('Setting up routes...');
@@ -104,15 +108,16 @@ app.use('/api/registrations', registrationRoutes);
 
 // All routes are now public (authentication disabled)
 app.use('/api/users', userRoutes);
+app.use('/api/organizations', organizationRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/pairings', pairingRoutes);
 app.use('/api/export', exportRoutes);
-app.use('/api/prizes', prizeRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/enhanced', enhancedFeaturesRoutes);
 
 console.log('Routes set up successfully');
 

@@ -19,7 +19,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
       }
       
       if (!tournament || !tournament.settings) {
-        resolve(null); // No sections defined
+        resolve('Open'); // Default to Open section when no sections defined
         return;
       }
       
@@ -28,7 +28,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
         const sections = settings.sections || [];
         
         if (sections.length === 0) {
-          resolve(null); // No sections defined
+          resolve('Open'); // Default to Open section when no sections defined
           return;
         }
         
@@ -43,11 +43,11 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
           }
         }
         
-        // If no section matches, assign to the first section or null
-        resolve(sections.length > 0 ? sections[0].name : null);
+        // If no section matches, assign to the first section or Open
+        resolve(sections.length > 0 ? sections[0].name : 'Open');
       } catch (parseError) {
         console.error('Error parsing tournament settings:', parseError);
-        resolve(null);
+        resolve('Open'); // Default to Open section on error
       }
     });
   });
@@ -317,6 +317,10 @@ router.put('/:id', (req, res) => {
     updateFields.push('notes = ?');
     updateValues.push(notes);
   }
+  if (req.body.team_name !== undefined) {
+    updateFields.push('team_name = ?');
+    updateValues.push(req.body.team_name);
+  }
 
   // Check if at least one field is being updated
   if (updateFields.length === 0) {
@@ -350,6 +354,56 @@ router.put('/:id', (req, res) => {
       message: 'Player updated successfully' 
     });
   });
+});
+
+// Assign player to team (for individual tournaments with team scoring)
+router.post('/:id/assign-team', (req, res) => {
+  const { id } = req.params;
+  const { team_name } = req.body;
+
+  // Update player's team assignment
+  db.run(
+    'UPDATE players SET team_name = ? WHERE id = ?',
+    [team_name || null, id],
+    function(err) {
+      if (err) {
+        console.error('Error assigning player to team:', err);
+        return res.status(500).json({ 
+          success: false,
+          error: 'Failed to assign player to team' 
+        });
+      }
+      
+      res.json({ 
+        success: true,
+        message: 'Player team assignment updated successfully' 
+      });
+    }
+  );
+});
+
+// Remove player from team
+router.delete('/:id/team', (req, res) => {
+  const { id } = req.params;
+
+  db.run(
+    'UPDATE players SET team_name = NULL WHERE id = ?',
+    [id],
+    function(err) {
+      if (err) {
+        console.error('Error removing player from team:', err);
+        return res.status(500).json({ 
+          success: false,
+          error: 'Failed to remove player from team' 
+        });
+      }
+      
+      res.json({ 
+        success: true,
+        message: 'Player removed from team successfully' 
+      });
+    }
+  );
 });
 
 // Remove player from tournament

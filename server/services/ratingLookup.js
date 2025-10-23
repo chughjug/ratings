@@ -21,42 +21,67 @@ async function getUSCFInfo(playerId) {
       const msaResponse = await axios.get(msaUrl, {
         timeout: 10000,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
         }
       });
 
       const $ = cheerio.load(msaResponse.data);
       
-      // Look for rating in various table formats
-      $('table tr').each((i, row) => {
-        const cells = $(row).find('td');
-        if (cells.length >= 2) {
-          const firstCell = $(cells[0]).text().trim().toLowerCase();
-          const secondCell = $(cells[1]).text().trim();
+      // Look for rating and expiration date using improved parsing logic
+      $('tr').each((i, tr) => {
+        const $tr = $(tr);
+        const firstTd = $tr.find('td').first().text().trim();
+        
+        // Look for Regular Rating
+        if (firstTd.includes('Regular Rating')) {
+          const secondTd = $tr.find('td').eq(1);
+          const fullText = secondTd.text().trim();
           
-          // Look for rating patterns
-          if (firstCell.includes('regular') && firstCell.includes('rating')) {
-            const ratingMatch = secondCell.match(/(\d+)/);
+          // Extract rating from the bold/nobr content
+          const boldText = secondTd.find('b nobr').text().trim();
+          if (boldText) {
+            // Look for the first number in the content (the rating, not the year)
+            const ratingMatch = boldText.match(/(\d+)/);
             if (ratingMatch) {
-              rating = parseInt(ratingMatch[1]);
-            }
-          } else if (firstCell.includes('quick') && firstCell.includes('rating')) {
-            const ratingMatch = secondCell.match(/(\d+)/);
-            if (ratingMatch && !rating) { // Only use if we don't have regular rating
-              rating = parseInt(ratingMatch[1]);
-            }
-          } else if (firstCell.includes('blitz') && firstCell.includes('rating')) {
-            const ratingMatch = secondCell.match(/(\d+)/);
-            if (ratingMatch && !rating) { // Only use if we don't have regular rating
-              rating = parseInt(ratingMatch[1]);
+              const potentialRating = parseInt(ratingMatch[1]);
+              // Valid ratings are typically between 100-3000
+              if (potentialRating >= 100 && potentialRating <= 3000) {
+                rating = potentialRating;
+              }
             }
           }
           
-          // Look for expiration date
-          if (firstCell.includes('expiration') || firstCell.includes('expires')) {
-            const dateMatch = secondCell.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+          // Fallback: extract from the full text
+          if (!rating) {
+            const ratingMatch = fullText.match(/(\d+)/);
+            if (ratingMatch) {
+              const potentialRating = parseInt(ratingMatch[1]);
+              // Valid ratings are typically between 100-3000
+              if (potentialRating >= 100 && potentialRating <= 3000) {
+                rating = potentialRating;
+              }
+            }
+          }
+        }
+        
+        // Look for Expiration Date
+        if (firstTd.includes('Expiration Dt.')) {
+          const secondTd = $tr.find('td').eq(1);
+          const boldText = secondTd.find('b').text().trim();
+          
+          if (boldText) {
+            // Try YYYY-MM-DD format first
+            let dateMatch = boldText.match(/(\d{4}-\d{1,2}-\d{1,2})/);
             if (dateMatch) {
-              expirationDate = dateMatch[1];
+              // Convert YYYY-MM-DD to MM/DD/YYYY for consistency
+              const [year, month, day] = dateMatch[1].split('-');
+              expirationDate = `${month}/${day}/${year}`;
+            } else {
+              // Try MM/DD/YYYY format
+              dateMatch = boldText.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+              if (dateMatch) {
+                expirationDate = dateMatch[1];
+              }
             }
           }
         }

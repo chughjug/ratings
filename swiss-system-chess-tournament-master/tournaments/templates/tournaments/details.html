@@ -1,0 +1,289 @@
+{% extends "base_tournament.html" %}
+{% load i18n %}
+
+{% block title %}{{ tournament.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .details-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  .details-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  
+  .details-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  
+  .tournament-subtitle {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 400;
+  }
+  
+  .info-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .info-section-header {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .info-section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+  }
+  
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0;
+  }
+  
+  .info-item {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .info-item:last-child {
+    border-bottom: none;
+  }
+  
+  .info-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+  }
+  
+  .info-value {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #1f2937;
+  }
+  
+  .players-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+  }
+  
+  .players-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  
+  .players-table thead {
+    background: #f8fafc;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  
+  .players-table th {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  
+  .players-table th:nth-child(1),
+  .players-table th:nth-child(5) {
+    text-align: center;
+    width: 100px;
+  }
+  
+  .players-table th:nth-child(2) {
+    width: 80px;
+  }
+  
+  .players-table th:nth-child(3) {
+    min-width: 200px;
+  }
+  
+  .players-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.15s ease;
+  }
+  
+  .players-table tbody tr:hover {
+    background-color: #f9fafb;
+  }
+  
+  .players-table tbody tr:last-child {
+    border-bottom: none;
+  }
+  
+  .players-table td {
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+  }
+  
+  .fide-id-cell,
+  .rating-cell {
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  }
+  
+  .title-cell {
+    text-align: center;
+    color: #7c3aed;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  
+  .name-cell {
+    font-weight: 500;
+    color: #1f2937;
+    font-size: 1rem;
+  }
+  
+  .country-cell {
+    color: #6b7280;
+    font-size: 0.9rem;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6b7280;
+  }
+  
+  .empty-state h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+  
+  .empty-state p {
+    font-size: 1rem;
+    margin: 0;
+  }
+  
+  @media (max-width: 768px) {
+    .details-container {
+      padding: 1rem;
+    }
+    
+    .details-title {
+      font-size: 2rem;
+    }
+    
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .players-table th,
+    .players-table td {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+    }
+    
+    .players-table th:nth-child(2),
+    .players-table td:nth-child(2) {
+      display: none;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="details-container">
+  <div class="details-header">
+    <h1 class="details-title">{% trans 'Tournament Details' %}</h1>
+    <p class="tournament-subtitle">{{ tournament.name }}</p>
+  </div>
+
+  <div class="info-section">
+    <div class="info-section-header">
+      <h2 class="info-section-title">{% trans 'Tournament Information' %}</h2>
+    </div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">{% trans 'Location' %}</div>
+        <div class="info-value">{{ tournament.city }}, {{ tournament.get_country_display }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">{% trans 'Start Date' %}</div>
+        <div class="info-value">{{ tournament.start_date }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">{% trans 'End Date' %}</div>
+        <div class="info-value">{{ tournament.end_date }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">{% trans 'Players' %}</div>
+        <div class="info-value">{{ tournament.players.count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="players-table-container">
+    <div class="info-section-header">
+      <h2 class="info-section-title">{% trans 'Players' %}</h2>
+    </div>
+    {% if players %}
+      <div class="overflow-x-auto">
+        <table class="players-table">
+          <thead>
+            <tr>
+              <th>{% trans 'FIDE ID' %}</th>
+              <th>{% trans 'Title' %}</th>
+              <th>{% trans 'Name' %}</th>
+              <th>{% trans 'Country' %}</th>
+              <th>{% trans 'Rating' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for player in players %}
+              <tr>
+                <td class="fide-id-cell">{{ player.fide_id|default:"" }}</td>
+                <td class="title-cell">{{ player.get_fide_title_display|default:"" }}</td>
+                <td class="name-cell">{{ player.name }}</td>
+                <td class="country-cell">{{ player.get_country_display }}</td>
+                <td class="rating-cell">{{ player.rating|default:"" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h2>{% trans 'No Players' %}</h2>
+        <p>{% trans 'No players have been registered for this tournament yet.' %}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

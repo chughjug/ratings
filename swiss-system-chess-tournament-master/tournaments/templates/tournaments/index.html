@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Tournaments{% endblock %}
+
+{% block extra_css %}
+<style>
+  .tournaments-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  .tournaments-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  
+  .tournaments-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  
+  .tournaments-subtitle {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 400;
+  }
+  
+  .tournaments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .tournament-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  
+  .tournament-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .tournament-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+  
+  .tournament-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .tournament-detail {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #6b7280;
+  }
+  
+  .tournament-detail-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 0.5rem;
+    opacity: 0.7;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6b7280;
+  }
+  
+  .empty-state h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+  
+  .empty-state p {
+    font-size: 1rem;
+    margin: 0;
+  }
+  
+  @media (max-width: 768px) {
+    .tournaments-container {
+      padding: 1rem;
+    }
+    
+    .tournaments-title {
+      font-size: 2rem;
+    }
+    
+    .tournaments-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .tournament-card {
+      padding: 1.25rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tournaments-container">
+  <div class="tournaments-header">
+    <h1 class="tournaments-title">Tournaments</h1>
+    <p class="tournaments-subtitle">Manage and view your chess tournaments</p>
+  </div>
+
+  {% if tournaments_list %}
+    <div class="tournaments-grid">
+      {% for tournament in tournaments_list %}
+        <a href="{% url 'tournaments:details' tournament.id %}" class="tournament-card">
+          <div class="tournament-name">{{ tournament.name }}</div>
+          <div class="tournament-details">
+            <div class="tournament-detail">
+              <svg class="tournament-detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+              </svg>
+              {{ tournament.city }}, {{ tournament.get_country_display }}
+            </div>
+            <div class="tournament-detail">
+              <svg class="tournament-detail-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+              </svg>
+              {{ tournament.start_date }}
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h2>No Tournaments</h2>
+      <p>No tournaments are available at the moment.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

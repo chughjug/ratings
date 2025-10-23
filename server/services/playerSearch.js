@@ -98,6 +98,50 @@ function initializeInstantCache() {
 initializeInstantCache();
 
 /**
+ * Extract player name from a search card element
+ * @param {Object} card - Selenium WebElement representing a player card
+ * @returns {Promise<string>} The extracted player name
+ */
+async function extractPlayerName(card) {
+  try {
+    // First try to get the full text from the .font-names container
+    const nameContainer = await card.findElement(By.css('.font-names'));
+    const name = await nameContainer.getText();
+    if (name && name.trim()) {
+      return name.trim();
+    }
+  } catch (e) {
+    // If that fails, try getting all span elements and concatenating
+    try {
+      const nameSpans = await card.findElements(By.css('.font-names span'));
+      const nameParts = [];
+      for (const span of nameSpans) {
+        const text = await span.getText();
+        if (text.trim()) {
+          nameParts.push(text.trim());
+        }
+      }
+      if (nameParts.length > 0) {
+        return nameParts.join(' ');
+      }
+    } catch (e2) {
+      // Final fallback - try any text element in the card
+      try {
+        const nameElement = await card.findElement(By.css('.font-names span'));
+        const name = await nameElement.getText();
+        if (name && name.trim()) {
+          return name.trim();
+        }
+      } catch (e3) {
+        console.log('Could not extract name from card');
+        return '';
+      }
+    }
+  }
+  return '';
+}
+
+/**
  * Generate mock player data when US Chess search fails
  * @param {string} searchTerm - Search term to base mock data on
  * @param {number} maxResults - Maximum number of results to return
@@ -128,6 +172,9 @@ function generateMockPlayers(searchTerm, maxResults) {
       },
       uscf_id: `${Math.floor(Math.random() * 90000000) + 10000000}`,
       rating: Math.floor(Math.random() * 1000) + 1200,
+      // Add contact information for mock data
+      email: `${playerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+      phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
       isMockData: true // Flag to indicate this is mock data
     });
   }
@@ -137,24 +184,13 @@ function generateMockPlayers(searchTerm, maxResults) {
 }
 
 /**
- * Preload common searches in background
+ * Preload common searches in background - DISABLED to prevent excessive requests
  */
 async function preloadCommonSearches() {
-  if (preloadPromise) return preloadPromise;
-  
-  preloadPromise = Promise.all(
-    commonSearches.map(async (term) => {
-      try {
-        const players = await searchViaSelenium(term, 5);
-        searchCache.set(`${term.toLowerCase()}_5`, players);
-        console.log(`Preloaded search for: ${term}`);
-      } catch (error) {
-        console.log(`Failed to preload: ${term}`, error.message);
-      }
-    })
-  );
-  
-  return preloadPromise;
+  // Disabled to prevent excessive Selenium requests on startup
+  // The instant cache will handle common searches without external requests
+  console.log('Preloading disabled to prevent network overload');
+  return Promise.resolve();
 }
 
 /**
@@ -698,9 +734,12 @@ async function searchViaSeleniumSubSecond(searchTerm, maxResults) {
       try {
         const card = searchCards[i];
         
-        // Extract player name
-        const nameElement = await card.findElement(By.css('.font-names span'));
-        const name = await nameElement.getText();
+        // Extract player name using improved extraction method
+        const name = await extractPlayerName(card);
+        if (!name) {
+          console.log(`Could not extract name for card ${i}, skipping`);
+          continue;
+        }
         
         // Extract USCF ID from the link
         const linkElement = await card.findElement(By.css('a[href*="/player/"]'));
@@ -767,8 +806,8 @@ async function searchViaSeleniumSubSecond(searchTerm, maxResults) {
           // Expiration date not found, continue
         }
         
-        // Determine primary rating
-        const primaryRating = ratings.regular || ratings.quick || ratings.blitz;
+        // Determine primary rating - use only regular rating for tournaments
+        const primaryRating = ratings.regular || null;
         
         if (name && uscfId) {
           players.push({
@@ -887,9 +926,12 @@ async function searchViaSeleniumUltraFast(searchTerm, maxResults) {
       try {
         const card = searchCards[i];
         
-        // Extract player name
-        const nameElement = await card.findElement(By.css('.font-names span'));
-        const name = await nameElement.getText();
+        // Extract player name using improved extraction method
+        const name = await extractPlayerName(card);
+        if (!name) {
+          console.log(`Could not extract name for card ${i}, skipping`);
+          continue;
+        }
         
         // Extract USCF ID from the link
         const linkElement = await card.findElement(By.css('a[href*="/player/"]'));
@@ -956,8 +998,8 @@ async function searchViaSeleniumUltraFast(searchTerm, maxResults) {
           // Expiration date not found, continue
         }
         
-        // Determine primary rating
-        const primaryRating = ratings.regular || ratings.quick || ratings.blitz;
+        // Determine primary rating - use only regular rating for tournaments
+        const primaryRating = ratings.regular || null;
         
         if (name && uscfId) {
           players.push({
@@ -1054,9 +1096,12 @@ async function searchViaSelenium(searchTerm, maxResults) {
       try {
         const card = searchCards[i];
         
-        // Extract player name
-        const nameElement = await card.findElement(By.css('.font-names span'));
-        const name = await nameElement.getText();
+        // Extract player name using improved extraction method
+        const name = await extractPlayerName(card);
+        if (!name) {
+          console.log(`Could not extract name for card ${i}, skipping`);
+          continue;
+        }
         
         // Extract USCF ID from the link
         const linkElement = await card.findElement(By.css('a[href*="/player/"]'));
@@ -1123,8 +1168,8 @@ async function searchViaSelenium(searchTerm, maxResults) {
           // Expiration date not found, continue
         }
         
-        // Determine primary rating
-        const primaryRating = ratings.regular || ratings.quick || ratings.blitz;
+        // Determine primary rating - use only regular rating for tournaments
+        const primaryRating = ratings.regular || null;
         
         if (name && uscfId) {
           players.push({
@@ -1304,8 +1349,8 @@ async function getPlayerDetails(uscfId) {
       }
     });
     
-    // Set primary rating
-    playerInfo.rating = playerInfo.ratings.regular || playerInfo.ratings.quick || playerInfo.ratings.blitz || null;
+    // Set primary rating - use only regular rating for tournaments
+    playerInfo.rating = playerInfo.ratings.regular || null;
     
     return playerInfo;
     
@@ -1319,8 +1364,8 @@ async function getPlayerDetails(uscfId) {
   }
 }
 
-// Initialize preloading on module load
-preloadCommonSearches().catch(console.error);
+// Initialize preloading on module load - DISABLED to prevent network overload
+// preloadCommonSearches().catch(console.error);
 
 module.exports = {
   searchUSChessPlayers: searchUSChessPlayersSubSecond, // Use sub-second search by default

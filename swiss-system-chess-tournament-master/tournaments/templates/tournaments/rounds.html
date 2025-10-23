@@ -1,0 +1,295 @@
+{% extends "base_tournament.html" %}
+{% load i18n %}
+
+{% block title %}{% trans 'Rounds' %} - {{ tournament.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rounds-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  .rounds-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  
+  .rounds-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+  
+  .tournament-subtitle {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 400;
+  }
+  
+  .round-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .round-header {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .round-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 0.25rem 0;
+  }
+  
+  .round-date {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin: 0;
+  }
+  
+  .games-table-container {
+    overflow-x: auto;
+  }
+  
+  .games-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  
+  .games-table thead {
+    background: #f8fafc;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  
+  .games-table th {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  
+  .games-table th:nth-child(1),
+  .games-table th:nth-child(3),
+  .games-table th:nth-child(5),
+  .games-table th:nth-child(7) {
+    text-align: center;
+    width: 80px;
+  }
+  
+  .games-table th:nth-child(2),
+  .games-table th:nth-child(6) {
+    width: 60px;
+  }
+  
+  .games-table th:nth-child(4) {
+    text-align: center;
+    width: 100px;
+  }
+  
+  .games-table th:nth-child(8) {
+    width: 100px;
+  }
+  
+  .games-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.15s ease;
+  }
+  
+  .games-table tbody tr:hover {
+    background-color: #f9fafb;
+  }
+  
+  .games-table tbody tr:last-child {
+    border-bottom: none;
+  }
+  
+  .games-table td {
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+  }
+  
+  .rating-cell {
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  }
+  
+  .title-cell {
+    text-align: center;
+    color: #7c3aed;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  
+  .name-cell {
+    font-weight: 500;
+    color: #1f2937;
+    font-size: 1rem;
+  }
+  
+  .score-cell {
+    text-align: center;
+    font-weight: 600;
+    color: #059669;
+    font-size: 1rem;
+  }
+  
+  .status-cell {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  
+  .status-planned {
+    color: #6b7280;
+  }
+  
+  .status-finished {
+    color: #059669;
+  }
+  
+  .status-ongoing {
+    color: #d97706;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6b7280;
+  }
+  
+  .empty-state h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+  
+  .empty-state p {
+    font-size: 1rem;
+    margin: 0;
+  }
+  
+  @media (max-width: 768px) {
+    .rounds-container {
+      padding: 1rem;
+    }
+    
+    .rounds-title {
+      font-size: 2rem;
+    }
+    
+    .games-table th,
+    .games-table td {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+    }
+    
+    .games-table th:nth-child(2),
+    .games-table th:nth-child(6),
+    .games-table td:nth-child(2),
+    .games-table td:nth-child(6) {
+      display: none;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rounds-container">
+  <div class="rounds-header">
+    <h1 class="rounds-title">{% trans 'Rounds' %}</h1>
+    <p class="tournament-subtitle">{{ tournament.name }}</p>
+  </div>
+
+  {% if rounds_info %}
+    {% for round_info in rounds_info %}
+      <div class="round-section">
+        <div class="round-header">
+          <h2 class="round-title">{{ round_info.round.name }}</h2>
+          <p class="round-date">{{ round_info.round.round_date }}</p>
+        </div>
+        <div class="games-table-container">
+          <table class="games-table">
+            <thead>
+              <tr>
+                <th>{% trans 'Rating' %}</th>
+                <th>{% trans 'Title' %}</th>
+                <th>{% trans 'Name' %}</th>
+                <th>{% trans 'Score' %}</th>
+                <th>{% trans 'Name' %}</th>
+                <th>{% trans 'Title' %}</th>
+                <th>{% trans 'Rating' %}</th>
+                <th>{% trans 'Status' %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for game in round_info.games %}
+                <tr>
+                  {% if game.game.player_color == 'W' %}
+                    <td class="rating-cell">{{ game.player.rating|default:"" }}</td>
+                    <td class="title-cell">{{ game.player.fide_title|slice:"2:"|default:"" }}</td>
+                    <td class="name-cell">{{ game.player }}</td>
+                    <td class="score-cell">
+                      {% if game.game.status == 'planned' %}
+                        -
+                      {% else %}
+                        {{ game.game.player_score }} : {{ game.game.opponent_score }}
+                      {% endif %}
+                    </td>
+                    <td class="name-cell">{{ game.opponent }}</td>
+                    <td class="title-cell">{{ game.opponent.fide_title|slice:"2:"|default:"" }}</td>
+                    <td class="rating-cell">{{ game.opponent.rating|default:"" }}</td>
+                    <td class="status-cell status-{{ game.game.status }}">
+                      {{ game.game.status|capfirst }}
+                    </td>
+                  {% else %}
+                    <td class="rating-cell">{{ game.opponent.rating|default:"" }}</td>
+                    <td class="title-cell">{{ game.opponent.fide_title|slice:"2:"|default:"" }}</td>
+                    <td class="name-cell">{{ game.opponent }}</td>
+                    <td class="score-cell">
+                      {% if game.game.status == 'planned' %}
+                        -
+                      {% else %}
+                        {{ game.game.opponent_score }} : {{ game.game.player_score }}
+                      {% endif %}
+                    </td>
+                    <td class="name-cell">{{ game.player }}</td>
+                    <td class="title-cell">{{ game.player.fide_title|slice:"2:"|default:"" }}</td>
+                    <td class="rating-cell">{{ game.player.rating|default:"" }}</td>
+                    <td class="status-cell status-{{ game.game.status }}">
+                      {{ game.game.status|capfirst }}
+                    </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <h2>{% trans 'No Rounds Setup' %}</h2>
+      <p>{% trans 'No rounds have been configured for this tournament yet.' %}</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

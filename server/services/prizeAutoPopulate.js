@@ -5,7 +5,7 @@
  * It creates standard prize structures based on tournament settings and player counts.
  */
 
-const { calculatePrizeDistribution } = require('./prizeCalculator');
+const { calculatePrizeDistribution } = require('./prizeService');
 const { calculateTiebreakers } = require('../utils/tiebreakers');
 
 /**
