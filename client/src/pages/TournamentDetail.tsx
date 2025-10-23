@@ -1,0 +1,1912 @@
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw } from 'lucide-react';
+import { useTournament } from '../contexts/TournamentContext';
+import { tournamentApi, playerApi, pairingApi } from '../services/api';
+import { getSectionOptions } from '../utils/sectionUtils';
+import AddPlayerModal from '../components/AddPlayerModal';
+import BulkPlayerAddModal from '../components/BulkPlayerAddModal';
+import BatchOperationsModal from '../components/BatchOperationsModal';
+import CSVImportModal from '../components/CSVImportModal';
+import DBFExportModal from '../components/DBFExportModal';
+import PlayerInactiveRoundsModal from '../components/PlayerInactiveRoundsModal';
+import PrintableView from '../components/PrintableView';
+import ChessStandingsTable from '../components/ChessStandingsTable';
+import TeamStandingsTable from '../components/TeamStandingsTable';
+import TeamPairingsTable from '../components/TeamPairingsTable';
+import RegistrationManagement from '../components/RegistrationManagement';
+import StreamlinedPairingSystem from '../components/StreamlinedPairingSystem';
+import TeamStandings from '../components/TeamStandings';
+// PDF export functions are used in ExportModal component
+
+const TournamentDetail: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { state, dispatch } = useTournament();
+  const [activeTab, setActiveTab] = useState<'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations'>('pairings');
+  const [currentRound, setCurrentRound] = useState(1);
+  const [selectedSection, setSelectedSection] = useState<string>('');
+  const [sectionRounds, setSectionRounds] = useState<{ [section: string]: number }>({});
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editingTeamName, setEditingTeamName] = useState<string>('');
+
+  // Get current round for a specific section
+  const getCurrentRoundForSection = (sectionName: string) => {
+    return sectionRounds[sectionName] || 1;
+  };
+
+  // Set current round for a specific section
+  const setCurrentRoundForSection = (sectionName: string, round: number) => {
+    setSectionRounds(prev => ({
+      ...prev,
+      [sectionName]: round
+    }));
+  };
+
+  // Get the current round for the selected section
+  const getCurrentRound = () => {
+    return getCurrentRoundForSection(selectedSection);
+  };
+
+  // Handle round change for the selected section
+  const handleRoundChange = (round: number) => {
+    setCurrentRoundForSection(selectedSection, round);
+    fetchPairings(round);
+  };
+
+  // Handle section change
+  const handleSectionChange = (sectionName: string) => {
+    setSelectedSection(sectionName);
+    // Fetch pairings for the current round of the new section
+    const roundForSection = getCurrentRoundForSection(sectionName);
+    fetchPairings(roundForSection);
+  };
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [showBulkAddPlayer, setShowBulkAddPlayer] = useState(false);
+  const [showBatchOperations, setShowBatchOperations] = useState(false);
+  const [showCSVImport, setShowCSVImport] = useState(false);
+  const [showDBFExport, setShowDBFExport] = useState(false);
+  const [showDisplaySettings, setShowDisplaySettings] = useState(false);
+  const [showInactiveRounds, setShowInactiveRounds] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<{id: string, name: string} | null>(null);
+  const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
+  const [printView, setPrintView] = useState<'pairings' | 'standings' | 'report' | null>(null);
+  const [displayOptions, setDisplayOptions] = useState({
+    showRatings: true,
+    showUscfIds: false,
+    boardNumbers: true,
+    displayFormat: 'default' as 'default' | 'compact' | 'detailed'
+  });
+  const [showTiebreakers, setShowTiebreakers] = useState(true);
+  const [pairingValidation, setPairingValidation] = useState<{warnings: string[], errors: string[]} | null>(null);
+  const [pairingType, setPairingType] = useState<'standard' | 'accelerated'>('standard');
+  const [isLoading, setIsLoading] = useState(false);
+  const isGeneratingRef = useRef(false);
+  const [showTeamStandings, setShowTeamStandings] = useState(false);
+  const [teamStandings, setTeamStandings] = useState<any[]>([]);
+  const [teamPairings, setTeamPairings] = useState<any[]>([]);
+  const [teamScoringMethod, setTeamScoringMethod] = useState<'all_players' | 'top_players'>('all_players');
+  const [teamTopN, setTeamTopN] = useState<number>(4);
+
+  const tournament = state.currentTournament;
+
+  // Check for expired or expiring IDs
+  const getExpirationWarnings = () => {
+    if (!state.players || state.players.length === 0) return [];
+    
+    const warnings: Array<{type: 'expired' | 'expiring', player: string, message: string}> = [];
+    const now = new Date();
+    
+    state.players.forEach(player => {
+      if (player.expiration_date) {
+        const expirationDate = new Date(player.expiration_date);
+        const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysUntilExpiration < 0) {
+          warnings.push({
+            type: 'expired',
+            player: player.name,
+            message: `${player.name}'s USCF ID has expired`
+          });
+        } else if (daysUntilExpiration <= 30) {
+          warnings.push({
+            type: 'expiring',
+            player: player.name,
+            message: `${player.name}'s USCF ID expires in ${daysUntilExpiration} days`
+          });
+        }
+      }
+    });
+    
+    return warnings;
+  };
+
+  const fetchTournament = useCallback(async () => {
+    if (!id) return;
+    try {
+      console.log('TournamentDetail: Starting fetchTournament for ID:', id);
+      setIsLoading(true);
+      dispatch({ type: 'SET_ERROR', payload: null });
+      
+      const response = await tournamentApi.getById(id);
+      
+      console.log('TournamentDetail: API response:', response);
+      
+      if (response.data.success) {
+        console.log('TournamentDetail: Tournament data loaded:', response.data.data);
+        dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
+      } else {
+        console.error('TournamentDetail: API returned error:', response.data.error);
+        throw new Error(response.data.error || 'Failed to load tournament');
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch tournament:', error);
+      // Set error state for better UX
+      dispatch({ type: 'SET_ERROR', payload: error.message || error.response?.data?.error || 'Failed to load tournament' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, dispatch]);
+
+  const fetchPlayers = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await playerApi.getByTournament(id);
+      if (response.data.success) {
+        dispatch({ type: 'SET_PLAYERS', payload: response.data.data });
+      } else {
+        throw new Error(response.data.error || 'Failed to load players');
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch players:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.response?.data?.error || 'Failed to load players' });
+    }
+  }, [id, dispatch]);
+
+  const fetchPairings = useCallback(async (round: number) => {
+    if (!id) return;
+    try {
+      console.log('🔍 Fetching pairings for tournament:', id, 'round:', round);
+      const response = await pairingApi.getByRound(id, round);
+      console.log('✅ Pairings fetched:', response.data.length, 'pairings');
+      console.log('📊 Pairings data:', response.data);
+      dispatch({ type: 'SET_PAIRINGS', payload: response.data });
+    } catch (error) {
+      console.error('❌ Failed to fetch pairings:', error);
+    }
+  }, [id, dispatch]);
+
+  const fetchStandings = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await pairingApi.getStandings(id, true, true); // Include round results
+      dispatch({ type: 'SET_STANDINGS', payload: response.data });
+    } catch (error: any) {
+      console.error('Failed to fetch standings:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.response?.data?.error || 'Failed to load standings' });
+    }
+  }, [id, dispatch]);
+
+  const fetchTeamStandings = useCallback(async () => {
+    if (!id) return;
+    
+    try {
+      const tournamentApi = require('../services/api').tournamentApi;
+      const response = await tournamentApi.getTeamStandings(id, {
+        scoring_method: teamScoringMethod === 'top_players' ? 'top_4' : 'all_players',
+        top_n: teamScoringMethod === 'top_players' ? teamTopN : undefined
+      });
+      console.log('Team standings response:', response.data);
+      console.log('Team standings data:', response.data.standings);
+      setTeamStandings(response.data.standings || []);
+    } catch (error: any) {
+      console.error('Failed to fetch team standings:', error);
+    }
+  }, [id, teamScoringMethod, teamTopN]);
+
+  const fetchTeamPairings = useCallback(async () => {
+    if (!id || !tournament) return;
+    
+    // Only fetch team pairings for team tournaments
+    if (!['team-swiss', 'team-round-robin'].includes(tournament.format)) {
+      return;
+    }
+    
+    try {
+      const tournamentApi = require('../services/api').tournamentApi;
+      const response = await tournamentApi.getTeamPairings(id, currentRound);
+      setTeamPairings(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to fetch team pairings:', error);
+    }
+  }, [id, tournament, currentRound]);
+
+  useEffect(() => {
+    if (id) {
+      console.log('TournamentDetail: Fetching data for tournament ID:', id);
+      // Clear cache when switching tournaments
+      dispatch({ type: 'CLEAR_CACHE' });
+      // Always fetch fresh data on mount or when ID changes
+      fetchTournament();
+      fetchPlayers();
+      fetchStandings();
+    }
+  }, [id, dispatch, fetchTournament, fetchPlayers, fetchStandings]);
+
+  // Set initial selected section when sections are available
+  useEffect(() => {
+    if (tournament && selectedSection === '') {
+      const availableSections = getAvailableSections();
+      if (availableSections.length > 0) {
+        setSelectedSection(availableSections[0]);
+      }
+    }
+  }, [tournament, selectedSection]);
+
+  useEffect(() => {
+    if (tournament) {
+      fetchTeamStandings();
+      fetchTeamPairings();
+    }
+  }, [tournament, fetchTeamStandings, fetchTeamPairings]);
+
+  // Fetch pairings when component loads or when currentRound changes
+  useEffect(() => {
+    if (id && currentRound) {
+      fetchPairings(currentRound);
+    }
+  }, [id, currentRound, fetchPairings]);
+
+  // Determine current round based on existing pairings when tournament loads
+  useEffect(() => {
+    if (tournament && state.pairings.length > 0) {
+      const maxRound = Math.max(...state.pairings.map(p => p.round));
+      if (maxRound > currentRound) {
+        setCurrentRound(maxRound);
+      }
+    }
+  }, [tournament, state.pairings, currentRound]);
+
+
+  const generatePairingsForSection = async (sectionName: string) => {
+    if (!id || isLoading || isGeneratingRef.current) return; // Prevent multiple calls
+    console.log(`🟢 generatePairingsForSection called for section: ${sectionName}`);
+    try {
+      isGeneratingRef.current = true;
+      setIsLoading(true);
+      
+      // Use enhanced pairing system with FIDE Dutch as default
+      const response = await fetch('/api/enhanced/pairings/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tournamentId: id,
+          round: currentRound,
+          options: {
+            pairingSystem: 'fide_dutch',
+            tiebreakerOrder: ['buchholz', 'sonneborn_berger', 'direct_encounter'],
+            accelerationSettings: {
+              enabled: false,
+              type: 'standard',
+              rounds: 2,
+              threshold: null
+            },
+            colorBalanceRules: 'fide',
+            byeSettings: {
+              fullPointBye: true,
+              avoidUnratedDropping: true
+            },
+            section: sectionName
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate pairings');
+      }
+
+      const data = await response.json();
+      console.log(`✅ Enhanced pairings generated successfully for ${sectionName} section:`, data);
+      
+      // Refresh pairings to show the new ones
+      await fetchPairings(currentRound);
+      
+    } catch (error: any) {
+      console.error(`❌ Failed to generate pairings for ${sectionName}:`, error);
+      
+      // Handle prerequisite error with detailed messaging
+      if (error.message && error.message.includes('Round') && error.message.includes('not complete')) {
+        alert(`Cannot generate Round ${currentRound} pairings for section "${sectionName}".\n\n${error.message}`);
+      } else {
+        alert(`Failed to generate pairings for ${sectionName}: ${error.message || 'Unknown error'}`);
+      }
+      
+      // DO NOT refresh pairings on error - this would clear existing pairings
+      return; // Exit early to prevent any further processing
+    } finally {
+      setIsLoading(false);
+      isGeneratingRef.current = false;
+    }
+  };
+
+  const resetPairings = async () => {
+    if (!id) return;
+    if (!window.confirm(`Are you sure you want to reset all pairings for Round ${currentRound}? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const response = await pairingApi.resetPairings(id, currentRound);
+      alert(response.data.message);
+      await fetchPairings(currentRound);
+      setPairingValidation(null);
+    } catch (error) {
+      console.error('Failed to reset pairings:', error);
+      alert('Failed to reset pairings. Please try again.');
+    }
+  };
+
+  const resetPairingsForSection = async (sectionName: string) => {
+    if (!id) return;
+    if (!window.confirm(`Are you sure you want to reset pairings for ${sectionName} section in Round ${currentRound}? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      // For now, we'll reset all pairings but this could be enhanced to reset only specific section
+      const response = await pairingApi.resetPairings(id, currentRound);
+      alert(`Pairings reset successfully for ${sectionName} section`);
+      await fetchPairings(currentRound);
+      setPairingValidation(null);
+    } catch (error) {
+      console.error(`Failed to reset pairings for ${sectionName}:`, error);
+      alert(`Failed to reset pairings for ${sectionName}. Please try again.`);
+    }
+  };
+
+  const completeRound = async (sectionName: string) => {
+    if (!id) return;
+    try {
+      const response = await pairingApi.completeRound(id, currentRound, sectionName);
+      alert(response.data.message);
+      
+      // Refresh standings and tournament data
+      await fetchStandings();
+      await fetchTournament();
+      
+      // If section is completed, show message
+      if (response.data.sectionCompleted) {
+        alert(`Section ${sectionName} completed!`);
+      } else if (response.data.nextRound) {
+        setCurrentRoundForSection(sectionName, response.data.nextRound);
+        await fetchPairings(response.data.nextRound);
+      }
+    } catch (error: any) {
+      console.error('Failed to complete round:', error);
+      alert(error.response?.data?.error || 'Failed to complete round');
+    }
+  };
+
+  const updatePairingResult = async (pairingId: string, result: string) => {
+    try {
+      console.log('🎯 TournamentDetail: Updating result for pairing:', pairingId, 'result:', result);
+      const response = await pairingApi.updateResult(pairingId, result);
+      console.log('✅ TournamentDetail: Result update response:', response);
+      
+      // Refresh pairings and standings after updating result
+      console.log('🔄 TournamentDetail: Refreshing pairings and standings...');
+      await fetchPairings(currentRound);
+      await fetchStandings();
+      console.log('✅ TournamentDetail: Pairings and standings refreshed');
+    } catch (error) {
+      console.error('❌ TournamentDetail: Failed to update result:', error);
+      alert(`Failed to update result: ${error}`);
+    }
+  };
+
+  const updatePlayer = async (playerId: string, updates: any) => {
+    try {
+      await playerApi.update(playerId, updates);
+      // Refresh players after updating
+      await fetchPlayers();
+      // Refresh standings if section changed
+      if (updates.section !== undefined) {
+        await fetchStandings();
+      }
+    } catch (error) {
+      console.error('Failed to update player:', error);
+      throw error;
+    }
+  };
+
+  // Get available sections for filtering
+  const getAvailableSections = () => {
+    if (!tournament) return [];
+    return getSectionOptions(tournament, state.players);
+  };
+
+  const updateTournamentSettings = async (settings: any) => {
+    try {
+      if (!state.currentTournament) {
+        throw new Error('No tournament data available');
+      }
+      
+      // Include all required fields for the update
+      const updateData = {
+        ...state.currentTournament,
+        settings: settings
+      };
+      
+      await tournamentApi.update(id!, updateData);
+      // Refresh tournament data
+      await fetchTournament();
+    } catch (error) {
+      console.error('Failed to update tournament settings:', error);
+      throw error;
+    }
+  };
+
+  const handleWithdrawPlayer = async (playerId: string) => {
+    // eslint-disable-next-line no-restricted-globals
+    if (!confirm('Are you sure you want to withdraw this player from the tournament?')) {
+      return;
+    }
+    
+    try {
+      await playerApi.update(playerId, { status: 'withdrawn' });
+      // Refresh players after updating
+      await fetchPlayers();
+      // Refresh standings after withdrawal
+      await fetchStandings();
+    } catch (error) {
+      console.error('Failed to withdraw player:', error);
+      alert('Failed to withdraw player. Please try again.');
+    }
+  };
+
+  const handleReactivatePlayer = async (playerId: string) => {
+    try {
+      await playerApi.update(playerId, { status: 'active' });
+      // Refresh players after updating
+      await fetchPlayers();
+      // Refresh standings after reactivation
+      await fetchStandings();
+    } catch (error) {
+      console.error('Failed to reactivate player:', error);
+      alert('Failed to reactivate player. Please try again.');
+    }
+  };
+
+  const handleActivatePlayer = async (playerId: string) => {
+    try {
+      await playerApi.update(playerId, { status: 'active' });
+      // Refresh players after updating
+      await fetchPlayers();
+      // Refresh standings after activation
+      await fetchStandings();
+    } catch (error) {
+      console.error('Failed to activate player:', error);
+      alert('Failed to activate player. Please try again.');
+    }
+  };
+
+  const handleStartTeamEdit = (playerId: string, currentTeamName: string = '') => {
+    setEditingPlayerId(playerId);
+    setEditingTeamName(currentTeamName);
+  };
+
+  const handleSaveTeamEdit = async (playerId: string) => {
+    try {
+      await playerApi.update(playerId, { team_name: editingTeamName || undefined });
+      // Refresh players after updating
+      await fetchPlayers();
+      setEditingPlayerId(null);
+      setEditingTeamName('');
+    } catch (error) {
+      console.error('Failed to update team name:', error);
+      alert('Failed to update team name. Please try again.');
+    }
+  };
+
+  const handleCancelTeamEdit = () => {
+    setEditingPlayerId(null);
+    setEditingTeamName('');
+  };
+
+  const handleBulkTeamAssignment = async () => {
+    const teamName = prompt('Enter team name for selected players:');
+    if (!teamName) return;
+
+    try {
+      const updatePromises = Array.from(selectedPlayers).map(playerId =>
+        playerApi.update(playerId, { team_name: teamName })
+      );
+      
+      await Promise.all(updatePromises);
+      
+      // Refresh players after updating
+      await fetchPlayers();
+      
+      // Clear selection
+      setSelectedPlayers(new Set());
+      
+      alert(`Successfully assigned ${selectedPlayers.size} players to team "${teamName}"`);
+    } catch (error) {
+      console.error('Failed to assign team to players:', error);
+      alert('Failed to assign team to players. Please try again.');
+    }
+  };
+
+  const handleCreateTeamFromSelected = async () => {
+    const teamName = prompt('Enter team name for new team:');
+    if (!teamName) return;
+
+    try {
+      const updatePromises = Array.from(selectedPlayers).map(playerId =>
+        playerApi.update(playerId, { team_name: teamName })
+      );
+      
+      await Promise.all(updatePromises);
+      
+      // Refresh players after updating
+      await fetchPlayers();
+      
+      // Clear selection
+      setSelectedPlayers(new Set());
+      
+      alert(`Successfully created team "${teamName}" with ${selectedPlayers.size} players`);
+    } catch (error) {
+      console.error('Failed to create team:', error);
+      alert('Failed to create team. Please try again.');
+    }
+  };
+
+  // Batch selection functions
+  const handleSelectPlayer = (playerId: string) => {
+    setSelectedPlayers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId);
+      } else {
+        newSet.add(playerId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allPlayers = state.players;
+    if (selectedPlayers.size === allPlayers.length) {
+      // If all players are selected, deselect all
+      setSelectedPlayers(new Set());
+    } else {
+      // Select all players
+      setSelectedPlayers(new Set(allPlayers.map(p => p.id)));
+    }
+  };
+
+  const handleCompleteTournament = async () => {
+    if (!id) {
+      alert('Tournament ID not found');
+      return;
+    }
+    
+    if (!window.confirm('Are you sure you want to complete this tournament? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await tournamentApi.update(id, { status: 'completed' });
+      
+      if (response.data.success) {
+        // Refresh tournament data
+        await fetchTournament();
+        await fetchStandings();
+        
+        // Show success message
+        alert(`Tournament completed successfully! ${response.data.prizeResult?.message || ''}`);
+      } else {
+        throw new Error(response.data.error || 'Failed to complete tournament');
+      }
+    } catch (error: any) {
+      console.error('Error completing tournament:', error);
+      alert(`Failed to complete tournament: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBatchActivate = async () => {
+    if (selectedPlayers.size === 0) return;
+    
+    try {
+      const promises = Array.from(selectedPlayers).map(playerId => 
+        playerApi.update(playerId, { status: 'active' })
+      );
+      
+      await Promise.all(promises);
+      
+      // Clear selection
+      setSelectedPlayers(new Set());
+      
+      // Refresh players and standings
+      await fetchPlayers();
+      await fetchStandings();
+      
+      alert(`Successfully activated ${selectedPlayers.size} player(s)`);
+    } catch (error) {
+      console.error('Failed to batch activate players:', error);
+      alert('Failed to activate some players. Please try again.');
+    }
+  };
+
+  const handleBatchDeactivate = async () => {
+    if (selectedPlayers.size === 0) return;
+    
+    try {
+      const promises = Array.from(selectedPlayers).map(playerId => 
+        playerApi.update(playerId, { status: 'inactive' })
+      );
+      
+      await Promise.all(promises);
+      
+      // Clear selection
+      setSelectedPlayers(new Set());
+      
+      // Refresh players and standings
+      await fetchPlayers();
+      await fetchStandings();
+      
+      alert(`Successfully deactivated ${selectedPlayers.size} player(s)`);
+    } catch (error) {
+      console.error('Failed to batch deactivate players:', error);
+      alert('Failed to deactivate some players. Please try again.');
+    }
+  };
+
+  console.log('TournamentDetail: Render state:', { 
+    tournament, 
+    isLoading, 
+    error: state.error,
+    hasTournament: !!tournament,
+    shouldShowLoading: !tournament && (isLoading || !state.error)
+  });
+
+  if (!tournament && (isLoading || !state.error)) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-chess-board mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading tournament...</p>
+        {/* <p className="mt-2 text-sm text-gray-500">Debug: isLoading={isLoading.toString()}, error={state.error || 'none'}</p> */}
+        <div className="mt-4 space-x-2">
+          <button
+            onClick={() => {
+              console.log('Manual test - fetching tournament...');
+              fetchTournament();
+            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Test API Call
+          </button>
+          <button
+            onClick={() => {
+              console.log('Manual test - clearing cache and refetching...');
+              dispatch({ type: 'CLEAR_CACHE' });
+              fetchTournament();
+            }}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            Clear Cache & Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <div className="text-center py-12">
+        <div className="space-y-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <p className="font-bold">Error</p>
+            <p>{state.error}</p>
+          </div>
+          <button
+            onClick={() => {
+              dispatch({ type: 'SET_ERROR', payload: null });
+              fetchTournament();
+              fetchPlayers();
+              fetchStandings();
+            }}
+            className="bg-chess-board text-white px-4 py-2 rounded-lg hover:bg-chess-dark transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+          <p className="font-bold">Tournament Not Found</p>
+          <p>The tournament you're looking for doesn't exist or has been removed.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getStatusColor = (status: string | null) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                <span className="text-sm font-medium">Back</span>
+              </button>
+              <div className="h-6 w-px bg-gray-300"></div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">{tournament.name}</h1>
+                <div className="flex items-center space-x-3 mt-1">
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                      tournament.status
+                    )}`}
+                  >
+                    {tournament.status ? tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1) : 'Unknown'}
+                  </span>
+                  <span className="text-sm text-gray-500 capitalize">
+                    {tournament.format ? tournament.format.replace('-', ' ') : 'Unknown'}
+                  </span>
+                  <span className="text-sm text-gray-500">{tournament.rounds} rounds</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => {
+                  dispatch({ type: 'SET_ERROR', payload: null });
+                  fetchTournament();
+                  fetchPlayers();
+                  fetchStandings();
+                }}
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Refresh</span>
+              </button>
+              <a
+                href={`/public/tournaments/${id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>Public View</span>
+              </a>
+              {activeTab === 'pairings' && (
+                <button
+                  onClick={() => setShowDisplaySettings(!showDisplaySettings)}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Display Options</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tournament Details Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Tournament Details</h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <Calendar className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Start Date</p>
+                  <p className="text-sm text-gray-900">
+                    {tournament.start_date 
+                      ? new Date(tournament.start_date).toLocaleDateString()
+                      : 'TBD'
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <Calendar className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">End Date</p>
+                  <p className="text-sm text-gray-900">
+                    {tournament.end_date 
+                      ? new Date(tournament.end_date).toLocaleDateString()
+                      : 'TBD'
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <Clock className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Time Control</p>
+                  <p className="text-sm text-gray-900">{tournament.time_control || 'TBD'}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <Users className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Players</p>
+                  <p className="text-sm text-gray-900">{state.players.length}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Registration Settings */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Registration Settings</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Control whether players can register for this tournament
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className={`text-sm font-medium ${tournament.allow_registration ? 'text-green-600' : 'text-red-600'}`}>
+                    {tournament.allow_registration ? 'Registration Open' : 'Registration Closed'}
+                  </span>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const updatedTournament = {
+                          ...tournament,
+                          allow_registration: !tournament.allow_registration
+                        };
+                        await tournamentApi.update(id!, updatedTournament);
+                        await fetchTournament();
+                      } catch (error) {
+                        console.error('Failed to update registration setting:', error);
+                        alert('Failed to update registration setting. Please try again.');
+                      }
+                    }}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-chess-board focus:ring-offset-2 ${
+                      tournament.allow_registration ? 'bg-chess-board' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        tournament.allow_registration ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+        {/* US Chess specific information */}
+        {(tournament.city || tournament.state || tournament.location || tournament.chief_td_name || tournament.website) && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tournament.city && tournament.state && (
+                <div className="flex items-center">
+                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
+                    📍
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Location</p>
+                    <p className="font-medium">{tournament.city}, {tournament.state}</p>
+                    {tournament.location && (
+                      <p className="text-sm text-gray-500">{tournament.location}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {tournament.chief_td_name && (
+                <div className="flex items-center">
+                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
+                    👨‍💼
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Chief TD</p>
+                    <p className="font-medium">{tournament.chief_td_name}</p>
+                    {tournament.chief_td_uscf_id && (
+                      <p className="text-sm text-gray-500">USCF ID: {tournament.chief_td_uscf_id}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {tournament.chief_arbiter_name && (
+                <div className="flex items-center">
+                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
+                    ⚖️
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Chief Arbiter</p>
+                    <p className="font-medium">{tournament.chief_arbiter_name}</p>
+                    {tournament.chief_arbiter_fide_id && (
+                      <p className="text-sm text-gray-500">FIDE ID: {tournament.chief_arbiter_fide_id}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {tournament.expected_players && (
+                <div className="flex items-center">
+                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
+                    👥
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Expected Players</p>
+                    <p className="font-medium">{tournament.expected_players}</p>
+                  </div>
+                </div>
+              )}
+
+              {tournament.website && (
+                <div className="flex items-center">
+                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
+                    🌐
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Website</p>
+                    <a 
+                      href={tournament.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      Visit Website
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center">
+                <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
+                  🏆
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Rating</p>
+                  <div className="flex space-x-2">
+                    {tournament.uscf_rated && (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                        USCF
+                      </span>
+                    )}
+                    {tournament.fide_rated && (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        FIDE
+                      </span>
+                    )}
+                    {!tournament.uscf_rated && !tournament.fide_rated && (
+                      <span className="text-sm text-gray-500">Unrated</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Expiration Warnings */}
+      {(() => {
+        const warnings = getExpirationWarnings();
+        if (warnings.length === 0) return null;
+        
+        return (
+          <div className="space-y-2">
+            {warnings.map((warning, index) => (
+              <div
+                key={index}
+                className={`px-4 py-3 rounded-md ${
+                  warning.type === 'expired'
+                    ? 'bg-red-100 border border-red-400 text-red-700'
+                    : 'bg-yellow-100 border border-yellow-400 text-yellow-700'
+                }`}
+              >
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    {warning.type === 'expired' ? (
+                      <X className="h-5 w-5 text-red-400" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-yellow-400" />
+                    )}
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium">
+                      {warning.type === 'expired' ? 'Expired ID' : 'Expiring ID'}
+                    </p>
+                    <p className="text-sm">{warning.message}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* Display Settings Panel */}
+      {showDisplaySettings && activeTab === 'pairings' && (
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <h3 className="text-lg font-medium mb-4">Pairings Display Options</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={displayOptions.showRatings}
+                  onChange={(e) => setDisplayOptions(prev => ({ ...prev, showRatings: e.target.checked }))}
+                  className="rounded"
+                />
+                <span className="text-sm">Show Ratings</span>
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={displayOptions.showUscfIds}
+                  onChange={(e) => setDisplayOptions(prev => ({ ...prev, showUscfIds: e.target.checked }))}
+                  className="rounded"
+                />
+                <span className="text-sm">Show USCF IDs</span>
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={displayOptions.boardNumbers}
+                  onChange={(e) => setDisplayOptions(prev => ({ ...prev, boardNumbers: e.target.checked }))}
+                  className="rounded"
+                />
+                <span className="text-sm">Board Numbers</span>
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <label className="text-sm">Format:</label>
+              <select
+                value={displayOptions.displayFormat}
+                onChange={(e) => setDisplayOptions(prev => ({ ...prev, displayFormat: e.target.value as any }))}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                <option value="default">Default</option>
+                <option value="compact">Compact</option>
+                <option value="detailed">Detailed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
+              <button
+                onClick={() => setActiveTab('players')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'players'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Players ({state.players.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('pairings')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'pairings'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Pairings
+              </button>
+              <button
+                onClick={() => setActiveTab('standings')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'standings'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Standings
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('team-standings');
+                  fetchTeamStandings();
+                }}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'team-standings'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Team Standings
+              </button>
+              {tournament && ['team-swiss', 'team-round-robin'].includes(tournament.format) && (
+                <button
+                  onClick={() => setActiveTab('team-pairings')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === 'team-pairings'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Team Pairings
+                </button>
+              )}
+              <button
+                onClick={() => setActiveTab('registrations')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'registrations'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Registrations
+              </button>
+            </nav>
+          </div>
+
+          <div className="p-6">
+              {activeTab === 'players' && (
+              <div>
+                {/* Combined Player Management Toolbar */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-gray-900">Player Management</h2>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setShowAddPlayer(true)}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Player</span>
+                      </button>
+                      <button
+                        onClick={() => setShowBulkAddPlayer(true)}
+                        className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        <Users className="h-4 w-4" />
+                        <span>Bulk Add</span>
+                      </button>
+                      <button
+                        onClick={() => setShowCSVImport(true)}
+                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span>Import CSV</span>
+                      </button>
+                      <button
+                        onClick={() => setShowDBFExport(true)}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span>Export USCF</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 mt-2">
+                    <p>• Click ✏️ next to team names to edit them inline</p>
+                    <p>• Select multiple players to assign them to teams or perform bulk operations</p>
+                  </div>
+                </div>
+              
+              {/* Batch Actions Bar */}
+              {selectedPlayers.size > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm font-medium text-blue-800">
+                        {selectedPlayers.size} player(s) selected
+                      </span>
+                      <button
+                        onClick={() => setSelectedPlayers(new Set())}
+                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      >
+                        Clear selection
+                      </button>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setShowBatchOperations(true)}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Users className="h-4 w-4" />
+                        <span>Batch Operations</span>
+                      </button>
+                      <button
+                        onClick={handleBatchActivate}
+                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <span>Activate Selected</span>
+                      </button>
+                      <button
+                        onClick={handleBatchDeactivate}
+                        className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        <span>Deactivate Selected</span>
+                      </button>
+                      <button
+                        onClick={handleBulkTeamAssignment}
+                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <Users className="h-4 w-4" />
+                        <span>Assign to Team</span>
+                      </button>
+                      <button
+                        onClick={handleCreateTeamFromSelected}
+                        className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Create New Team</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {state.players.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">No players added yet</p>
+                  <button
+                    onClick={() => setShowAddPlayer(true)}
+                    className="text-chess-board hover:text-chess-dark font-medium"
+                  >
+                    Add your first player
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <input
+                            type="checkbox"
+                            checked={state.players.length > 0 && selectedPlayers.size === state.players.length}
+                            onChange={handleSelectAll}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Rating
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          USCF ID
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Section
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Team
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ID Expires
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {state.players.map((player) => (
+                        <tr key={player.id} className={selectedPlayers.has(player.id) ? 'bg-blue-50' : ''}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedPlayers.has(player.id)}
+                              onChange={() => handleSelectPlayer(player.id)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {player.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {player.rating || 'Unrated'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {player.uscf_id || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {player.section || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {editingPlayerId === player.id ? (
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="text"
+                                  value={editingTeamName}
+                                  onChange={(e) => setEditingTeamName(e.target.value)}
+                                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Enter team name"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleSaveTeamEdit(player.id);
+                                    } else if (e.key === 'Escape') {
+                                      handleCancelTeamEdit();
+                                    }
+                                  }}
+                                />
+                                <button
+                                  onClick={() => handleSaveTeamEdit(player.id)}
+                                  className="text-green-600 hover:text-green-800"
+                                  title="Save"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={handleCancelTeamEdit}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Cancel"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <span>{player.team_name || '-'}</span>
+                                <button
+                                  onClick={() => handleStartTeamEdit(player.id, player.team_name || '')}
+                                  className="text-blue-600 hover:text-blue-800 text-xs"
+                                  title="Edit team"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                  player.status === 'active'
+                                    ? 'bg-green-100 text-green-800'
+                                    : player.status === 'withdrawn'
+                                    ? 'bg-red-100 text-red-800'
+                                    : player.status === 'inactive'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {player.status}
+                              </span>
+                              {player.expiration_date && (
+                                (() => {
+                                  const expirationDate = new Date(player.expiration_date);
+                                  const now = new Date();
+                                  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                  
+                                  if (daysUntilExpiration < 0) {
+                                    return (
+                                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                        ID Expired
+                                      </span>
+                                    );
+                                  } else if (daysUntilExpiration <= 30) {
+                                    return (
+                                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                        Expires in {daysUntilExpiration} days
+                                      </span>
+                                    );
+                                  }
+                                  return null;
+                                })()
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {player.expiration_date ? (
+                              (() => {
+                                const expirationDate = new Date(player.expiration_date);
+                                const now = new Date();
+                                const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                
+                                if (daysUntilExpiration < 0) {
+                                  return (
+                                    <span className="text-red-600 font-medium">
+                                      Expired
+                                    </span>
+                                  );
+                                } else if (daysUntilExpiration <= 30) {
+                                  return (
+                                    <span className="text-yellow-600 font-medium">
+                                      {daysUntilExpiration} days
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <span className="text-gray-600">
+                                      {expirationDate.toLocaleDateString()}
+                                    </span>
+                                  );
+                                }
+                              })()
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedPlayer({ id: player.id, name: player.name });
+                                  setShowInactiveRounds(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 transition-colors"
+                              >
+                                Manage Inactive Rounds
+                              </button>
+                              {player.status === 'active' && (
+                                <button
+                                  onClick={() => handleWithdrawPlayer(player.id)}
+                                  className="text-red-600 hover:text-red-800 transition-colors"
+                                >
+                                  Withdraw
+                                </button>
+                              )}
+                              {player.status === 'withdrawn' && (
+                                <button
+                                  onClick={() => handleReactivatePlayer(player.id)}
+                                  className="text-green-600 hover:text-green-800 transition-colors"
+                                >
+                                  Reactivate
+                                </button>
+                              )}
+                              {player.status === 'inactive' && (
+                                <button
+                                  onClick={() => handleActivatePlayer(player.id)}
+                                  className="text-green-600 hover:text-green-800 transition-colors"
+                                >
+                                  Activate
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'pairings' && (
+            <StreamlinedPairingSystem
+              tournament={tournament}
+              players={state.players}
+              pairings={state.pairings}
+              currentRound={getCurrentRound()}
+              onRoundChange={handleRoundChange}
+              onPairingsUpdate={(newPairings: any[]) => {
+                dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
+              }}
+              onCompleteRound={completeRound}
+              onResetPairings={resetPairings}
+              onResetPairingsForSection={resetPairingsForSection}
+              onGeneratePairingsForSection={generatePairingsForSection}
+              onUpdateResult={updatePairingResult}
+              onSectionChange={handleSectionChange}
+              onPrint={() => setPrintView('pairings')}
+              availableSections={getAvailableSections()}
+              isLoading={isLoading}
+            />
+          )}
+
+          {activeTab === 'standings' && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold">Standings</h2>
+                  <select
+                    value={selectedSection}
+                    onChange={(e) => setSelectedSection(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                  >
+                    {getAvailableSections().map(section => (
+                      <option key={section} value={section}>
+                        {section} Section
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setShowTiebreakers(!showTiebreakers)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                      showTiebreakers 
+                        ? 'bg-chess-board text-white hover:bg-chess-dark' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Trophy className="h-4 w-4" />
+                    <span>Tiebreakers</span>
+                  </button>
+                  <button
+                    onClick={() => setPrintView('standings')}
+                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>Print</span>
+                  </button>
+                </div>
+              </div>
+              
+              {!state.standings || !Array.isArray(state.standings) || state.standings.length === 0 ? (
+                <div className="text-center py-8">
+                  <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No standings available yet</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {(() => {
+                    // Group standings by section
+                    const standingsBySection: { [key: string]: any[] } = {};
+                    state.standings.forEach((standing, index) => {
+                      const section = standing.section || 'Open';
+                      if (!standingsBySection[section]) {
+                        standingsBySection[section] = [];
+                      }
+                      standingsBySection[section].push({ ...standing, originalIndex: index });
+                    });
+
+                    // Filter sections based on selected section
+                    let sectionsToShow = Object.keys(standingsBySection).sort();
+                    if (selectedSection && selectedSection !== '') {
+                      sectionsToShow = sectionsToShow.filter(section => section === selectedSection);
+                    }
+
+                    return sectionsToShow.map(sectionName => {
+                      const sectionStandings = standingsBySection[sectionName];
+                      // Re-sort within section by points (descending)
+                      sectionStandings.sort((a, b) => b.total_points - a.total_points);
+
+                      return (
+                        <div key={sectionName} className="border border-gray-200 rounded-lg">
+                          <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
+                            <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
+                          </div>
+                          
+                          <div className="p-4">
+                            <ChessStandingsTable
+                              standings={sectionStandings}
+                              tournament={tournament}
+                              selectedSection={sectionName}
+                              showTiebreakers={showTiebreakers}
+                              showPrizes={true}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'team-standings' && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold">Team Standings</h2>
+                  {tournament.format === 'individual-team-swiss' && (
+                    <div className="flex items-center space-x-2">
+                      <select
+                        value={teamScoringMethod}
+                        onChange={(e) => setTeamScoringMethod(e.target.value as 'all_players' | 'top_players')}
+                        className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                      >
+                        <option value="all_players">All Players</option>
+                        <option value="top_players">Top N Players</option>
+                      </select>
+                      {teamScoringMethod === 'top_players' && (
+                        <input
+                          type="number"
+                          value={teamTopN}
+                          onChange={(e) => setTeamTopN(parseInt(e.target.value) || 4)}
+                          min="1"
+                          max="10"
+                          className="px-3 py-1 border border-gray-300 rounded-md text-sm w-20"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={fetchTeamStandings}
+                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Refresh</span>
+                  </button>
+                  <button
+                    onClick={() => setShowTiebreakers(!showTiebreakers)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                      showTiebreakers 
+                        ? 'bg-chess-board text-white hover:bg-chess-dark' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Trophy className="h-4 w-4" />
+                    <span>Tiebreakers</span>
+                  </button>
+                  <button
+                    onClick={() => setPrintView('standings')}
+                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>Print</span>
+                  </button>
+                </div>
+              </div>
+              
+              <TeamStandingsTable
+                standings={teamStandings}
+                tournamentFormat={tournament.format as 'team-swiss' | 'team-round-robin' | 'individual-team-swiss'}
+                scoringMethod={teamScoringMethod}
+                topN={teamScoringMethod === 'top_players' ? teamTopN : undefined}
+                showTiebreakers={showTiebreakers}
+                totalRounds={tournament.rounds}
+              />
+            </div>
+          )}
+
+          {activeTab === 'team-pairings' && tournament && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold">Team Pairings</h2>
+                  <div className="flex items-center space-x-2">
+                    <label className="text-sm text-gray-600">Round:</label>
+                    <select
+                      value={currentRound}
+                      onChange={(e) => setCurrentRound(parseInt(e.target.value))}
+                      className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                    >
+                      {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                        <option key={round} value={round}>Round {round}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setPrintView('pairings')}
+                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>Print</span>
+                  </button>
+                </div>
+              </div>
+              
+              {teamPairings.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No team pairings available for this round</p>
+                </div>
+              ) : (
+                <TeamPairingsTable
+                  pairings={teamPairings}
+                  round={currentRound}
+                  tournamentFormat={tournament.format as 'team-swiss' | 'team-round-robin' | 'individual-team-swiss'}
+                  showResults={false}
+                />
+              )}
+            </div>
+          )}
+
+
+
+
+          {activeTab === 'registrations' && (
+            <div>
+              <RegistrationManagement tournamentId={id || ''} />
+            </div>
+          )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Player Modal */}
+      <AddPlayerModal
+        isOpen={showAddPlayer}
+        onClose={() => setShowAddPlayer(false)}
+        tournamentId={id || ''}
+      />
+
+      {/* Bulk Add Players Modal */}
+      <BulkPlayerAddModal
+        isOpen={showBulkAddPlayer}
+        onClose={() => setShowBulkAddPlayer(false)}
+        tournamentId={id || ''}
+      />
+
+      {/* Batch Operations Modal */}
+      <BatchOperationsModal
+        isOpen={showBatchOperations}
+        onClose={() => setShowBatchOperations(false)}
+        selectedPlayers={selectedPlayers}
+        onPlayersUpdated={() => {
+          // Refresh players data
+          fetchTournament();
+        }}
+      />
+
+      {/* CSV Import Modal */}
+      <CSVImportModal
+        isOpen={showCSVImport}
+        onClose={() => setShowCSVImport(false)}
+        tournamentId={id || ''}
+      />
+
+      {/* DBF Export Modal */}
+      <DBFExportModal
+        isOpen={showDBFExport}
+        onClose={() => setShowDBFExport(false)}
+        tournamentId={id || ''}
+        tournamentName={tournament?.name || ''}
+      />
+
+      {/* Player Inactive Rounds Modal */}
+      {selectedPlayer && (
+        <PlayerInactiveRoundsModal
+          isOpen={showInactiveRounds}
+          onClose={() => {
+            setShowInactiveRounds(false);
+            setSelectedPlayer(null);
+          }}
+          playerId={selectedPlayer.id}
+          playerName={selectedPlayer.name}
+          tournamentId={id || ''}
+          maxRounds={tournament?.rounds || 1}
+        />
+      )}
+
+
+
+      {/* Print View */}
+      {printView && tournament && (
+        <div className="fixed inset-0 bg-white z-50 overflow-auto">
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">
+                {printView === 'pairings' && `Round ${currentRound} Pairings`}
+                {printView === 'standings' && 'Tournament Standings'}
+                {printView === 'report' && 'Tournament Report'}
+              </h2>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Print</span>
+                </button>
+                <button
+                  onClick={() => setPrintView(null)}
+                  className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Close</span>
+                </button>
+              </div>
+            </div>
+            {(
+              <PrintableView
+                tournament={tournament}
+                pairings={state.pairings.map(p => ({
+                  id: p.id,
+                  board: p.board,
+                  white_name: p.white_name,
+                  white_rating: p.white_rating,
+                  white_uscf_id: p.white_uscf_id,
+                  black_name: p.black_name,
+                  black_rating: p.black_rating,
+                  black_uscf_id: p.black_uscf_id,
+                  result: p.result,
+                  section: p.section,
+                  is_bye: p.is_bye,
+                  white_id: p.white_id || p.white_player_id,
+                  black_id: p.black_id || p.black_player_id,
+                  round: p.round
+                }))}
+                standings={Array.isArray(state.standings) ? state.standings.map(s => ({
+                  id: s.id,
+                  name: s.name,
+                  rating: s.rating,
+                  uscf_id: undefined,
+                  total_points: s.total_points,
+                  games_played: s.games_played,
+                  wins: s.wins,
+                  losses: s.losses,
+                  draws: s.draws,
+                  buchholz: s.tiebreakers?.buchholz || 0,
+                  sonneborn_berger: s.tiebreakers?.sonnebornBerger || 0,
+                  section: s.section,
+                  rank: s.rank
+                })) : []}
+                currentRound={currentRound}
+                viewType={printView as 'pairings' | 'standings' | 'report'}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Team Standings Modal */}
+      <TeamStandings
+        tournamentId={id || ''}
+        isVisible={showTeamStandings}
+        onClose={() => setShowTeamStandings(false)}
+      />
+
+
+    </div>
+  );
+};
+
+export default TournamentDetail;

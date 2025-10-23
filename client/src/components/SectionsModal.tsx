@@ -1,0 +1,363 @@
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Edit, Save, Users } from 'lucide-react';
+import { Section, Player } from '../types';
+
+interface SectionsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  tournamentId: string;
+  players: Player[];
+  onUpdatePlayer: (playerId: string, updates: Partial<Player>) => Promise<void>;
+  tournamentSettings?: any;
+  onUpdateTournamentSettings?: (settings: any) => Promise<void>;
+}
+
+const SectionsModal: React.FC<SectionsModalProps> = ({
+  isOpen,
+  onClose,
+  tournamentId,
+  players,
+  onUpdatePlayer,
+  tournamentSettings,
+  onUpdateTournamentSettings
+}) => {
+  const [sections, setSections] = useState<Section[]>([]);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [newSection, setNewSection] = useState<Partial<Section>>({});
+  const [isAdding, setIsAdding] = useState(false);
+  const [playerSectionAssignments, setPlayerSectionAssignments] = useState<{ [playerId: string]: string }>({});
+
+  useEffect(() => {
+    if (isOpen) {
+      // Load existing sections from tournament settings
+      const existingSections = tournamentSettings?.sections || [];
+      setSections(existingSections);
+      
+      // Initialize player section assignments
+      const assignments: { [playerId: string]: string } = {};
+      players.forEach(player => {
+        assignments[player.id] = player.section || 'Open';
+      });
+      setPlayerSectionAssignments(assignments);
+    }
+  }, [isOpen, tournamentSettings, players]);
+
+  const handleAddSection = async () => {
+    if (!newSection.name?.trim()) return;
+
+    const section: Section = {
+      name: newSection.name.trim(),
+      min_rating: newSection.min_rating || undefined,
+      max_rating: newSection.max_rating || undefined,
+      description: newSection.description || undefined
+    };
+
+    const updatedSections = [...sections, section];
+    setSections(updatedSections);
+    setNewSection({});
+    setIsAdding(false);
+
+    // Update tournament settings if callback provided
+    if (onUpdateTournamentSettings) {
+      await onUpdateTournamentSettings({
+        ...tournamentSettings,
+        sections: updatedSections
+      });
+    }
+  };
+
+  const handleUpdateSection = async (index: number, updatedSection: Section) => {
+    const updatedSections = [...sections];
+    updatedSections[index] = updatedSection;
+    setSections(updatedSections);
+    setEditingSection(null);
+
+    // Update tournament settings if callback provided
+    if (onUpdateTournamentSettings) {
+      await onUpdateTournamentSettings({
+        ...tournamentSettings,
+        sections: updatedSections
+      });
+    }
+  };
+
+  const handleDeleteSection = async (index: number) => {
+    const sectionToDelete = sections[index];
+    // eslint-disable-next-line no-restricted-globals
+    if (confirm(`Are you sure you want to delete the "${sectionToDelete.name}" section? Players in this section will be moved to "Open".`)) {
+      const updatedSections = sections.filter((_, i) => i !== index);
+      setSections(updatedSections);
+
+      // Move players from deleted section to Open
+      const playersToUpdate = players.filter(p => p.section === sectionToDelete.name);
+      for (const player of playersToUpdate) {
+        await onUpdatePlayer(player.id, { section: 'Open' });
+      }
+
+      // Update player assignments state
+      const updatedAssignments = { ...playerSectionAssignments };
+      playersToUpdate.forEach(player => {
+        updatedAssignments[player.id] = 'Open';
+      });
+      setPlayerSectionAssignments(updatedAssignments);
+
+      // Update tournament settings if callback provided
+      if (onUpdateTournamentSettings) {
+        await onUpdateTournamentSettings({
+          ...tournamentSettings,
+          sections: updatedSections
+        });
+      }
+    }
+  };
+
+  const handlePlayerSectionChange = async (playerId: string, sectionName: string) => {
+    await onUpdatePlayer(playerId, { section: sectionName });
+    setPlayerSectionAssignments(prev => ({
+      ...prev,
+      [playerId]: sectionName
+    }));
+  };
+
+  const getPlayersInSection = (sectionName: string) => {
+    return players.filter(p => (p.section || 'Open') === sectionName);
+  };
+
+  const getAvailableSections = () => {
+    return ['Open', ...sections.map(s => s.name)];
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-900">Manage Sections</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Sections Management */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Sections</h3>
+                <button
+                  onClick={() => setIsAdding(true)}
+                  className="flex items-center space-x-2 bg-chess-board text-white px-3 py-2 rounded-lg hover:bg-chess-dark transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Section</span>
+                </button>
+              </div>
+
+              {/* Add New Section */}
+              {isAdding && (
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <h4 className="font-medium mb-3">Add New Section</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Section Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newSection.name || ''}
+                        onChange={(e) => setNewSection(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                        placeholder="e.g., U1600, Open, Reserve"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Min Rating
+                        </label>
+                        <input
+                          type="number"
+                          value={newSection.min_rating || ''}
+                          onChange={(e) => setNewSection(prev => ({ ...prev, min_rating: e.target.value ? parseInt(e.target.value) : undefined }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                          placeholder="e.g., 1200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Max Rating
+                        </label>
+                        <input
+                          type="number"
+                          value={newSection.max_rating || ''}
+                          onChange={(e) => setNewSection(prev => ({ ...prev, max_rating: e.target.value ? parseInt(e.target.value) : undefined }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                          placeholder="e.g., 1599"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Description
+                      </label>
+                      <input
+                        type="text"
+                        value={newSection.description || ''}
+                        onChange={(e) => setNewSection(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                        placeholder="Optional description"
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleAddSection}
+                        className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Save className="h-4 w-4" />
+                        <span>Save</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsAdding(false);
+                          setNewSection({});
+                        }}
+                        className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Existing Sections */}
+              <div className="space-y-3">
+                {sections.map((section, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    {editingSection === section.name ? (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          defaultValue={section.name}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board font-medium"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            type="number"
+                            defaultValue={section.min_rating || ''}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                            placeholder="Min Rating"
+                          />
+                          <input
+                            type="number"
+                            defaultValue={section.max_rating || ''}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                            placeholder="Max Rating"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          defaultValue={section.description || ''}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                          placeholder="Description"
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => setEditingSection(null)}
+                            className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            <Save className="h-4 w-4" />
+                            <span>Save</span>
+                          </button>
+                          <button
+                            onClick={() => setEditingSection(null)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-gray-900">{section.name}</h4>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => setEditingSection(section.name)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSection(index)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          {section.min_rating && section.max_rating && (
+                            <p>Rating Range: {section.min_rating} - {section.max_rating}</p>
+                          )}
+                          {section.description && <p>{section.description}</p>}
+                          <p className="flex items-center">
+                            <Users className="h-4 w-4 mr-1" />
+                            {getPlayersInSection(section.name).length} players
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Player Section Assignments */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Player Assignments</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {players.map(player => (
+                  <div key={player.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{player.name}</p>
+                      <p className="text-sm text-gray-600">
+                        {player.rating ? `Rating: ${player.rating}` : 'Unrated'}
+                      </p>
+                    </div>
+                    <select
+                      value={playerSectionAssignments[player.id] || 'Open'}
+                      onChange={(e) => handlePlayerSectionChange(player.id, e.target.value)}
+                      className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                    >
+                      {getAvailableSections().map(sectionName => (
+                        <option key={sectionName} value={sectionName}>
+                          {sectionName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SectionsModal;

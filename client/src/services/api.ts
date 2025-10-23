@@ -1,0 +1,339 @@
+import axios from 'axios';
+import { Tournament, Player, Pairing, Standing, PlayerInactiveRound, Prize, PrizeDistribution } from '../types';
+
+// Determine API base URL based on environment
+const getApiBaseUrl = () => {
+  // If explicitly set in environment variables, use that
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // In production (Heroku), use relative URLs
+  if (process.env.NODE_ENV === 'production') {
+    return '/api';
+  }
+  
+  // In development, use relative URL (proxy will handle routing to localhost:5000)
+  return '/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Window location:', window.location.href);
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  },
+  timeout: 15000, // 15 second timeout for better error handling
+  withCredentials: false // Disable credentials for CORS
+});
+
+// Add request interceptor for authentication and debugging
+api.interceptors.request.use(
+  (config) => {
+    // Add authentication token if available
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Enhanced debugging
+    console.log('🌐 API Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      headers: config.headers,
+      timeout: config.timeout,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      location: window.location.href
+    });
+    
+    return config;
+  },
+  (error) => {
+    console.error('❌ API Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for debugging and authentication error handling
+api.interceptors.response.use(
+  (response) => {
+    console.log('✅ API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      dataLength: response.data ? JSON.stringify(response.data).length : 0,
+      headers: response.headers,
+      timestamp: new Date().toISOString()
+    });
+    return response;
+  },
+  async (error) => {
+    console.error('❌ API Response Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      message: error.message,
+      code: error.code,
+      timeout: error.code === 'ECONNABORTED',
+      networkError: !error.response,
+      fullError: error,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Handle network errors with retry logic
+    if (error.code === 'NETWORK_ERROR' || error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || !error.response) {
+      console.log('Network error detected, attempting retry...');
+      
+      // Retry logic for network errors
+      const config = error.config;
+      if (!config || config.__retryCount >= 3) {
+        return Promise.reject(error);
+      }
+      
+      // Initialize retry count if not exists
+      if (!config.__retryCount) {
+        config.__retryCount = 0;
+      }
+      
+      config.__retryCount++;
+      console.log(`Retrying request (${config.__retryCount}/3)...`);
+      
+      // Wait before retry with exponential backoff
+      const delay = 1000 * Math.pow(2, config.__retryCount - 1);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      return api(config);
+    }
+    
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Redirect to login or refresh the page
+      window.location.reload();
+    }
+    
+    // Handle server errors
+    if (error.response?.status >= 500) {
+      console.error('Server error:', error.response.status, error.response.data);
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// Tournament API
+export const tournamentApi = {
+  getAll: () => api.get<{success: boolean, data: Tournament[], error?: string}>(`/tournaments?t=${Date.now()}`),
+  getById: (id: string) => api.get<{success: boolean, data: Tournament, error?: string}>(`/tournaments/${id}?t=${Date.now()}`),
+  getPublic: (id: string) => api.get<{success: boolean, data: any, error?: string}>(`/tournaments/${id}/public?t=${Date.now()}`),
+  create: (tournament: Omit<Tournament, 'id' | 'created_at'>) => 
+    api.post<{success: boolean, data: {id: string}, error?: string}>('/tournaments', tournament),
+  update: (id: string, tournament: Partial<Tournament>) => 
+    api.put(`/tournaments/${id}`, tournament),
+  delete: (id: string) => api.delete(`/tournaments/${id}`),
+  completeTournament: (id: string) => 
+    api.post<{success: boolean, message: string, prizeResult?: any, error?: string}>(`/tournaments/${id}/complete`),
+  // Prize management
+  getPrizes: (id: string) => api.get<{success: boolean, data: any[], error?: string}>(`/tournaments/${id}/prizes`),
+  calculatePrizes: (id: string) => api.post<{success: boolean, data: any[], message?: string, error?: string}>(`/tournaments/${id}/prizes/calculate`),
+  updatePrizeSettings: (id: string, prizeSettings: any) => 
+    api.put<{success: boolean, message: string, error?: string}>(`/tournaments/${id}/prize-settings`, { prizeSettings }),
+  // Team-related endpoints
+  getTeamStandings: (id: string, params?: {type?: string, scoring_method?: string, top_n?: number}) => {
+    const queryParams = new URLSearchParams();
+    if (params?.scoring_method) queryParams.append('scoring_method', params.scoring_method);
+    if (params?.top_n) queryParams.append('top_n', params.top_n.toString());
+    queryParams.append('t', Date.now().toString());
+    
+    return api.get<{success: boolean, standings: any[], type: string, scoring_method: string, top_n?: number, error?: string}>(`/teams/tournament/${id}/standings?${queryParams.toString()}`);
+  },
+  getTeamPairings: (id: string, round: number) => 
+    api.get<{success: boolean, data: any[], error?: string}>(`/teams/tournament/${id}/round/${round}/results?t=${Date.now()}`),
+  getTeamMatchResults: (id: string, round: number) => 
+    api.get<{success: boolean, results: any[], error?: string}>(`/teams/tournament/${id}/round/${round}/match-results?t=${Date.now()}`),
+};
+
+// Player API
+export const playerApi = {
+  getByTournament: (tournamentId: string) => 
+    api.get<{success: boolean, data: Player[], error?: string}>(`/players/tournament/${tournamentId}?t=${Date.now()}`),
+  getById: (id: string) => api.get<{success: boolean, data: Player, error?: string}>(`/players/${id}?t=${Date.now()}`),
+  create: (player: Omit<Player, 'id' | 'created_at'>) => 
+    api.post<{success: boolean, data: Player, error?: string}>('/players', player),
+  update: (id: string, player: Partial<Player>) => 
+    api.put(`/players/${id}`, player),
+  delete: (id: string) => api.delete(`/players/${id}`),
+  bulkCreate: (tournamentId: string, players: Omit<Player, 'id' | 'tournament_id' | 'created_at'>[]) =>
+    api.post('/players/bulk', { tournament_id: tournamentId, players }),
+  search: (searchTerm: string, limit?: number) =>
+    api.get<{success: boolean, data: {players: any[], count: number}, error?: string}>(`/players/search?q=${encodeURIComponent(searchTerm)}${limit ? `&limit=${limit}` : ''}&t=${Date.now()}`),
+  getDetails: (uscfId: string) =>
+    api.get<any>(`/players/details/${uscfId}?t=${Date.now()}`),
+  downloadTemplate: () =>
+    api.get('/players/csv-template', { responseType: 'blob' }),
+  uploadCSV: (file: File, tournamentId: string, lookupRatings: boolean = true) => {
+    const formData = new FormData();
+    formData.append('csvFile', file);
+    formData.append('tournament_id', tournamentId);
+    formData.append('lookup_ratings', lookupRatings.toString());
+    return api.post('/players/csv-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  importCSV: (tournamentId: string, players: any[], lookupRatings: boolean = true) =>
+    api.post('/players/csv-import', { tournament_id: tournamentId, players, lookup_ratings: lookupRatings }),
+  setInactiveRound: (playerId: string, round: number, reason?: string) =>
+    api.post(`/players/${playerId}/inactive-round`, { round, reason }),
+  removeInactiveRound: (playerId: string, round: number) =>
+    api.delete(`/players/${playerId}/inactive-round/${round}`),
+  getInactiveRounds: (playerId: string) =>
+    api.get<{success: boolean, data: PlayerInactiveRound[], error?: string}>(`/players/${playerId}/inactive-rounds?t=${Date.now()}`),
+  getTournamentInactiveRounds: (tournamentId: string) =>
+    api.get<{success: boolean, data: PlayerInactiveRound[], error?: string}>(`/players/tournament/${tournamentId}/inactive-rounds?t=${Date.now()}`),
+};
+
+// Pairing API
+export const pairingApi = {
+  getByRound: (tournamentId: string, round: number) => 
+    api.get<Pairing[]>(`/pairings/tournament/${tournamentId}/round/${round}?t=${Date.now()}`),
+  getDisplay: (tournamentId: string, options?: {
+    round?: number;
+    display_format?: 'default' | 'compact' | 'detailed';
+    show_ratings?: boolean;
+    show_uscf_ids?: boolean;
+    board_numbers?: boolean;
+  }) => {
+    const params = new URLSearchParams();
+    if (options?.round) params.append('round', options.round.toString());
+    if (options?.display_format) params.append('display_format', options.display_format);
+    if (options?.show_ratings !== undefined) params.append('show_ratings', options.show_ratings.toString());
+    if (options?.show_uscf_ids !== undefined) params.append('show_uscf_ids', options.show_uscf_ids.toString());
+    if (options?.board_numbers !== undefined) params.append('board_numbers', options.board_numbers.toString());
+    params.append('t', Date.now().toString());
+    
+    return api.get<any>(`/pairings/tournament/${tournamentId}/display?${params.toString()}`);
+  },
+  generate: (tournamentId: string, round: number) => 
+    api.post('/pairings/generate', { tournamentId, round }),
+  generateForSection: (tournamentId: string, round: number, sectionName: string) => 
+    api.post('/pairings/generate/section', { tournamentId, round, sectionName }),
+  updateResult: (id: string, result: string) => 
+    api.put(`/pairings/${id}/result`, { result }),
+  completeRound: (tournamentId: string, round: number, sectionName: string) => 
+    api.post(`/pairings/tournament/${tournamentId}/round/${round}/complete`, { sectionName }),
+  getRoundStatus: (tournamentId: string, round: number, section?: string) => 
+    api.get<any>(`/pairings/tournament/${tournamentId}/round/${round}/status?t=${Date.now()}${section ? `&section=${section}` : ''}`),
+  getStandings: (tournamentId: string, includeRoundResults: boolean = false, showPrizes: boolean = false) => 
+    api.get<Standing[]>(`/pairings/tournament/${tournamentId}/standings?t=${Date.now()}&includeRoundResults=${includeRoundResults}&showPrizes=${showPrizes}`),
+  resetPairings: (tournamentId: string, round: number) => 
+    api.delete<{message: string, deletedCount: number}>(`/pairings/tournament/${tournamentId}/round/${round}`),
+};
+
+// Export API
+export const exportApi = {
+  exportDBF: (tournamentId: string, exportPath?: string) =>
+    api.get(`/export/dbf/${tournamentId}${exportPath ? `?exportPath=${encodeURIComponent(exportPath)}` : ''}`),
+  downloadDBF: (tournamentId: string) =>
+    api.get(`/export/dbf/${tournamentId}/download`, { responseType: 'blob' }),
+  getExportStatus: (tournamentId: string) =>
+    api.get(`/export/status/${tournamentId}`),
+};
+
+
+// Team API
+export const teamApi = {
+  getTournamentTeams: (tournamentId: string) =>
+    api.get<{success: boolean, teams: any[], error?: string}>(`/teams/tournament/${tournamentId}`),
+  getTeamMembers: (tournamentId: string) =>
+    api.get<{success: boolean, members: any[], error?: string}>(`/teams/tournament/${tournamentId}/members`),
+  getTeamStandings: (tournamentId: string, scoringMethod?: string, topN?: number) => {
+    const params = new URLSearchParams();
+    if (scoringMethod) params.append('scoring_method', scoringMethod);
+    if (topN) params.append('top_n', topN.toString());
+    return api.get<{success: boolean, standings: any[], type: string, scoring_method: string, top_n?: number, error?: string}>(`/teams/tournament/${tournamentId}/standings?${params.toString()}`);
+  }
+};
+
+// Registration API
+export const registrationApi = {
+  getTournamentInfo: (tournamentId: string) =>
+    api.get<{success: boolean, data: {
+      id: string;
+      name: string;
+      format: string;
+      rounds: number;
+      start_date?: string;
+      end_date?: string;
+      sections: Array<{
+        name: string;
+        min_rating?: number;
+        max_rating?: number;
+        description?: string;
+      }>;
+    }, error?: string}>(`/registrations/tournament/${tournamentId}/info`),
+  searchPlayers: (searchTerm: string, limit: number = 10) =>
+    api.get<{success: boolean, data: {
+      players: Array<{
+        name: string;
+        memberId: string;
+        state: string;
+        ratings: {
+          regular: number | null;
+          quick: number | null;
+          blitz: number | null;
+          online_regular: number | null;
+          online_quick: number | null;
+          online_blitz: number | null;
+        };
+        uscf_id: string;
+        rating: number | null;
+        email?: string;
+        phone?: string;
+      }>;
+      count: number;
+    }, error?: string}>(`/registrations/search-players?q=${encodeURIComponent(searchTerm)}&limit=${limit}`),
+  submitRegistration: (registrationData: {
+    tournament_id: string;
+    player_name: string;
+    uscf_id?: string;
+    rating?: number;
+    email: string;
+    phone?: string;
+    section?: string;
+    bye_requests?: number[];
+    notes?: string;
+  }) =>
+    api.post<{success: boolean, data: {
+      registration_id: string;
+      player_id: string;
+    }, message?: string, error?: string}>(`/registrations/submit`, registrationData),
+  getRegistrationStatus: (registrationId: string) =>
+    api.get<{success: boolean, data: {
+      id: string;
+      tournament_id: string;
+      player_name: string;
+      uscf_id?: string;
+      email: string;
+      phone?: string;
+      section?: string;
+      status: string;
+      created_at: string;
+      tournament_name?: string;
+      player_status?: string;
+    }, error?: string}>(`/registrations/status/${registrationId}`),
+};
+
+export default api;
