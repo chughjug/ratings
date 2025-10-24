@@ -74,9 +74,22 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
   // Load saved configuration
   useEffect(() => {
     const loadFullScript = async () => {
-      const code = await getAppsScriptCode();
-      setFullScriptCode(code);
+      try {
+        const response = await fetch('/google-apps-script.js');
+        if (response.ok) {
+          const scriptContent = await response.text();
+          console.log(`Loaded complete script: ${scriptContent.split('\n').length} lines`);
+          setFullScriptCode(scriptContent);
+        } else {
+          console.error('Failed to fetch script:', response.statusText);
+          setTestMessage({ type: 'error', text: 'Could not load complete script file' });
+        }
+      } catch (err) {
+        console.error('Error loading script:', err);
+        setTestMessage({ type: 'error', text: 'Failed to load Google Apps Script' });
+      }
     };
+    
     if (isOpen) {
       loadConfiguration();
       loadFullScript();

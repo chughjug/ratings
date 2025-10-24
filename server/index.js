@@ -158,7 +158,9 @@ app.use('/docs', express.static(path.join(__dirname, './public/docs')));
 // Serve the complete google-apps-script.js file
 app.get('/google-apps-script.js', (req, res) => {
   const scriptPath = path.join(__dirname, '../google-apps-script.js');
-  res.sendFile(scriptPath, { headers: { 'Content-Type': 'application/javascript; charset=utf-8' } }, (err) => {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', 'inline');
+  res.sendFile(scriptPath, (err) => {
     if (err) {
       console.error('Error serving google-apps-script.js:', err);
       res.status(404).json({
