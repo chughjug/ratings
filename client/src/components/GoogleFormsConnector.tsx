@@ -203,6 +203,7 @@ const FORMS_CONFIG = {
 
   // Build the complete code to copy (FORMS_CONFIG + full script)
   const getCompleteCopyCode = () => {
+    // Create the tournament-specific FORMS_CONFIG
     const formsConfig = `const FORMS_CONFIG = {
   ENABLE_FORM_IMPORT: true,
   FORM_ID: '${config.formId}',
@@ -213,9 +214,23 @@ const FORMS_CONFIG = {
   SEND_CONFIRMATION_EMAILS: ${config.sendConfirmationEmails},
   AUTO_ASSIGN_SECTIONS: ${config.autoAssignSections},
   LOOKUP_RATINGS: ${config.lookupRatings}
-};\n\n`;
+};`;
     
-    return formsConfig + fullScriptCode;
+    // Find where the hardcoded FORMS_CONFIG ends in the full script
+    // Look for "let FORMS_CONFIG = {" or "const FORMS_CONFIG = {" and replace it
+    const configStartPattern = /let FORMS_CONFIG = \{[\s\S]*?\};/;
+    const configEndPattern = /const FORMS_CONFIG = \{[\s\S]*?\};/;
+    
+    let updatedScript = fullScriptCode;
+    
+    // Try to replace the existing FORMS_CONFIG
+    if (configStartPattern.test(updatedScript)) {
+      updatedScript = updatedScript.replace(configStartPattern, formsConfig);
+    } else if (configEndPattern.test(updatedScript)) {
+      updatedScript = updatedScript.replace(configEndPattern, formsConfig);
+    }
+    
+    return updatedScript;
   };
 
   if (!isOpen) return null;
