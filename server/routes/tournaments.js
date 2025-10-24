@@ -978,4 +978,41 @@ router.post('/:id/continue', async (req, res) => {
   }
 });
 
+// Update tournament status
+router.put('/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ error: 'Status is required' });
+  }
+
+  const validStatuses = ['upcoming', 'active', 'completed', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status. Must be one of: ' + validStatuses.join(', ') });
+  }
+
+  db.run(
+    'UPDATE tournaments SET status = ? WHERE id = ?',
+    [status, id],
+    function(err) {
+      if (err) {
+        console.error('Error updating tournament status:', err);
+        return res.status(500).json({ error: 'Failed to update tournament status' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Tournament not found' });
+      }
+
+      res.json({
+        success: true,
+        message: 'Tournament status updated successfully',
+        tournamentId: id,
+        newStatus: status
+      });
+    }
+  );
+});
+
 module.exports = router;

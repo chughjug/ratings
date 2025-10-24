@@ -15,6 +15,9 @@ import ChessStandingsTable from '../components/ChessStandingsTable';
 import TeamStandingsTable from '../components/TeamStandingsTable';
 import TeamPairingsTable from '../components/TeamPairingsTable';
 import RegistrationManagement from '../components/RegistrationManagement';
+import SectionPairingManager from '../components/SectionPairingManager';
+import DraggablePairingManager from '../components/DraggablePairingManager';
+import ConcisePairingManager from '../components/ConcisePairingManager';
 import StreamlinedPairingSystem from '../components/StreamlinedPairingSystem';
 import TeamStandings from '../components/TeamStandings';
 // PDF export functions are used in ExportModal component
@@ -29,6 +32,7 @@ const TournamentDetail: React.FC = () => {
   const [sectionRounds, setSectionRounds] = useState<{ [section: string]: number }>({});
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState<string>('');
+  const [useAdvancedPairingView, setUseAdvancedPairingView] = useState(false);
 
   // Get current round for a specific section
   const getCurrentRoundForSection = (sectionName: string) => {
@@ -180,7 +184,11 @@ const TournamentDetail: React.FC = () => {
     if (!id) return;
     try {
       const response = await pairingApi.getStandings(id, true, true); // Include round results
-      dispatch({ type: 'SET_STANDINGS', payload: response.data });
+      if (response.data.success) {
+        dispatch({ type: 'SET_STANDINGS', payload: response.data.data });
+      } else {
+        throw new Error(response.data.error || 'Failed to load standings');
+      }
     } catch (error: any) {
       console.error('Failed to fetch standings:', error);
       dispatch({ type: 'SET_ERROR', payload: error.response?.data?.error || 'Failed to load standings' });
@@ -1515,25 +1523,111 @@ const TournamentDetail: React.FC = () => {
           )}
 
           {activeTab === 'pairings' && (
-            <StreamlinedPairingSystem
-              tournament={tournament}
-              players={state.players}
-              pairings={state.pairings}
-              currentRound={getCurrentRound()}
-              onRoundChange={handleRoundChange}
-              onPairingsUpdate={(newPairings: any[]) => {
-                dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
-              }}
-              onCompleteRound={completeRound}
-              onResetPairings={resetPairings}
-              onResetPairingsForSection={resetPairingsForSection}
-              onGeneratePairingsForSection={generatePairingsForSection}
-              onUpdateResult={updatePairingResult}
-              onSectionChange={handleSectionChange}
-              onPrint={() => setPrintView('pairings')}
-              availableSections={getAvailableSections()}
-              isLoading={isLoading}
-            />
+            <div className="space-y-4">
+              {/* Pairing System Toggle */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Pairing Management</h3>
+                    <p className="text-sm text-gray-600">
+                      {useAdvancedPairingView 
+                        ? 'Advanced pairing editor with drag-and-drop functionality and custom pairing creation.'
+                        : 'Each section operates completely independently with its own pairing generation and management.'
+                      }
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-sm font-medium ${!useAdvancedPairingView ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Section View
+                      </span>
+                      <button
+                        onClick={() => setUseAdvancedPairingView(!useAdvancedPairingView)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          useAdvancedPairingView ? 'bg-blue-600' : 'bg-gray-200'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            useAdvancedPairingView ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className={`text-sm font-medium ${useAdvancedPairingView ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Advanced Editor
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pairing System */}
+              {useAdvancedPairingView ? (
+                <StreamlinedPairingSystem
+                  tournament={tournament}
+                  players={state.players}
+                  pairings={state.pairings || []}
+                  currentRound={currentRound}
+                  onRoundChange={setCurrentRound}
+                  onPairingsUpdate={(newPairings) => {
+                    dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
+                  }}
+                  onCompleteRound={(sectionName) => {
+                    // Handle round completion
+                    console.log(`Completing round for ${sectionName}`);
+                  }}
+                  onResetPairings={() => {
+                    // Handle pairing reset
+                    console.log('Resetting pairings');
+                  }}
+                  onPrint={() => setPrintView('pairings')}
+                  onGeneratePairingsForSection={async (sectionName) => {
+                    try {
+                      const response = await pairingApi.generateForSection(tournament.id, currentRound, sectionName);
+                      if (response.data.success) {
+                        await fetchPairings(currentRound);
+                        await fetchStandings();
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate pairings:', error);
+                    }
+                  }}
+                  onResetPairingsForSection={async (sectionName) => {
+                    try {
+                      await pairingApi.resetPairings(tournament.id, currentRound);
+                      await fetchPairings(currentRound);
+                    } catch (error) {
+                      console.error('Failed to reset pairings:', error);
+                    }
+                  }}
+                  onUpdateResult={updatePairingResult}
+                  onSectionChange={(sectionName) => {
+                    setSelectedSection(sectionName);
+                  }}
+                  availableSections={getAvailableSections()}
+                  isLoading={isLoading}
+                />
+              ) : (
+                <div className="separate-sections-container">
+                  {getAvailableSections().map((sectionName) => (
+                    <ConcisePairingManager
+                      key={sectionName}
+                      tournament={tournament}
+                      sectionName={sectionName}
+                      players={state.players}
+                      onPairingsUpdate={() => {
+                        // Refresh pairings and standings after update
+                        fetchPairings(currentRound);
+                        fetchStandings();
+                      }}
+                      onUpdateResult={updatePairingResult}
+                      onPrint={() => setPrintView('pairings')}
+                      isLoading={isLoading}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'standings' && (
@@ -1803,8 +1897,8 @@ const TournamentDetail: React.FC = () => {
             setShowInactiveRounds(false);
             setSelectedPlayer(null);
           }}
-          playerId={selectedPlayer.id}
-          playerName={selectedPlayer.name}
+          playerId={selectedPlayer?.id || ''}
+          playerName={selectedPlayer?.name || ''}
           tournamentId={id || ''}
           maxRounds={tournament?.rounds || 1}
         />
@@ -1839,7 +1933,7 @@ const TournamentDetail: React.FC = () => {
                 </button>
               </div>
             </div>
-            {(
+            {tournament && (
               <PrintableView
                 tournament={tournament}
                 pairings={state.pairings.map(p => ({

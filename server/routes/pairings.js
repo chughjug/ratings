@@ -24,7 +24,8 @@ class PairingStorageService {
     const {
       clearExisting = false,
       validateBeforeStore = true,
-      validateRoundSeparation = true
+      validateRoundSeparation = true,
+      section = null
     } = options;
 
     return new Promise((resolve, reject) => {
@@ -41,10 +42,15 @@ class PairingStorageService {
           return;
         }
 
-        // Step 3: Check for existing pairings
-        this.getExistingPairingsCount(tournamentId, round).then((existingPairings) => {
+        // Step 3: Check for existing pairings (section-specific if provided)
+        const checkExistingPairings = section ? 
+          this.getExistingPairingsCountForSection(tournamentId, round, section) :
+          this.getExistingPairingsCount(tournamentId, round);
+          
+        checkExistingPairings.then((existingPairings) => {
           if (existingPairings > 0 && !clearExisting) {
-            reject(new Error(`Round ${round} already has ${existingPairings} pairings. Use clearExisting=true to replace them.`));
+            const sectionText = section ? ` for section "${section}"` : '';
+            reject(new Error(`Round ${round} already has ${existingPairings} pairings${sectionText}. Use clearExisting=true to replace them.`));
             return;
           }
           
@@ -182,6 +188,19 @@ class PairingStorageService {
           }
         );
       });
+  }
+
+  getExistingPairingsCountForSection(tournamentId, round, section) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT COUNT(*) as count FROM pairings WHERE tournament_id = ? AND round = ? AND COALESCE(section, "Open") = ?',
+        [tournamentId, round, section],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
   }
 
   /**
@@ -415,7 +434,7 @@ class PairingStorageService {
   }
 
   /**
-   * Get pairings for a specific round
+   * Get pairings for a specific round with enhanced round independence
    */
   getRoundPairings(tournamentId, round) {
     return new Promise((resolve, reject) => {
@@ -435,6 +454,214 @@ class PairingStorageService {
           }
         );
       });
+  }
+
+  /**
+   * Get all pairings for a tournament with round independence
+   */
+  getAllTournamentPairings(tournamentId) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT p.*, 
+                wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id,
+                bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id
+         FROM pairings p
+         LEFT JOIN players wp ON p.white_player_id = wp.id
+         LEFT JOIN players bp ON p.black_player_id = bp.id
+         WHERE p.tournament_id = ?
+         ORDER BY p.round, p.section, p.board`,
+        [tournamentId],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+          }
+        );
+      });
+  }
+
+  /**
+   * Get pairings grouped by round for independent round management
+   */
+  getPairingsByRound(tournamentId) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT p.*, 
+                wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id,
+                bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id
+         FROM pairings p
+         LEFT JOIN players wp ON p.white_player_id = wp.id
+         LEFT JOIN players bp ON p.black_player_id = bp.id
+         WHERE p.tournament_id = ?
+         ORDER BY p.round, p.section, p.board`,
+        [tournamentId],
+          (err, rows) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            
+            // Group by round for independent round management
+            const groupedByRound = {};
+            rows.forEach(pairing => {
+              const round = pairing.round;
+              if (!groupedByRound[round]) {
+                groupedByRound[round] = [];
+              }
+              groupedByRound[round].push(pairing);
+            });
+            
+            resolve(groupedByRound);
+          }
+        );
+      });
+  }
+
+  /**
+   * Get round status with enhanced independence checking
+   */
+  getRoundStatus(tournamentId, round) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT 
+          p.round,
+          p.section,
+          COUNT(*) as total_pairings,
+          SUM(CASE WHEN p.result IS NOT NULL THEN 1 ELSE 0 END) as completed_pairings,
+          SUM(CASE WHEN p.result IS NULL THEN 1 ELSE 0 END) as pending_pairings
+         FROM pairings p
+         WHERE p.tournament_id = ? AND p.round = ?
+         GROUP BY p.round, p.section
+         ORDER BY p.section`,
+        [tournamentId, round],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          const sections = {};
+          let totalPairings = 0;
+          let completedPairings = 0;
+          let pendingPairings = 0;
+          
+          rows.forEach(row => {
+            const section = row.section || 'Open';
+            sections[section] = {
+              total: row.total_pairings,
+              completed: row.completed_pairings,
+              pending: row.pending_pairings,
+              percentage: row.total_pairings > 0 ? 
+                Math.round((row.completed_pairings / row.total_pairings) * 100) : 0,
+              isComplete: row.pending_pairings === 0 && row.total_pairings > 0
+            };
+            
+            totalPairings += row.total_pairings;
+            completedPairings += row.completed_pairings;
+            pendingPairings += row.pending_pairings;
+          });
+          
+          const overallPercentage = totalPairings > 0 ? 
+            Math.round((completedPairings / totalPairings) * 100) : 0;
+          
+          resolve({
+            round,
+            totalPairings,
+            completedPairings,
+            pendingPairings,
+            percentage: overallPercentage,
+            isComplete: pendingPairings === 0 && totalPairings > 0,
+            sections,
+            canGenerateNextRound: pendingPairings === 0 && totalPairings > 0
+          });
+        }
+      );
+    });
+  }
+
+  /**
+   * Get status for a specific section and round
+   */
+  getSectionStatus(tournamentId, round, sectionName) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        `SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) as completed,
+          SUM(CASE WHEN result IS NULL THEN 1 ELSE 0 END) as pending
+        FROM pairings 
+        WHERE tournament_id = ? AND round = ? AND COALESCE(section, 'Open') = ?`,
+        [tournamentId, round, sectionName],
+        (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          const total = row.total || 0;
+          const completed = row.completed || 0;
+          const pending = row.pending || 0;
+          const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+          const isComplete = completed === total && total > 0;
+
+          resolve({
+            section: sectionName,
+            round: round,
+            totalPairings: total,
+            completedPairings: completed,
+            pendingPairings: pending,
+            percentage: percentage,
+            isComplete: isComplete,
+            hasPairings: total > 0,
+            canGenerateNextRound: isComplete
+          });
+        }
+      );
+    });
+  }
+
+  /**
+   * Get status for all rounds of a tournament
+   */
+  getAllRoundsStatus(tournamentId) {
+    return new Promise((resolve, reject) => {
+      // Get tournament info first
+      this.getTournament(tournamentId).then((tournament) => {
+        if (!tournament) {
+          reject(new Error('Tournament not found'));
+          return;
+        }
+
+        const roundsStatus = {};
+        let completedRounds = 0;
+
+        const checkRounds = async () => {
+          for (let round = 1; round <= tournament.rounds; round++) {
+            try {
+              const roundStatus = await this.getRoundStatus(tournamentId, round);
+              roundsStatus[round] = roundStatus;
+              if (roundStatus.isComplete) {
+                completedRounds++;
+              }
+            } catch (error) {
+              console.warn(`Error checking status for round ${round}:`, error.message);
+              roundsStatus[round] = {
+                round: round,
+                totalPairings: 0,
+                completedPairings: 0,
+                pendingPairings: 0,
+                percentage: 0,
+                isComplete: false,
+                sections: {},
+                canGenerateNextRound: false
+              };
+            }
+          }
+          resolve(roundsStatus);
+        };
+
+        checkRounds();
+      }).catch(reject);
+    });
   }
 
   /**
@@ -594,11 +821,11 @@ const pairingStorage = new PairingStorageService(db);
 // ============================================================================
 
 /**
- * Generate and store pairings for a round - ENHANCED VERSION
- * This endpoint uses the enhanced pairing system for complete section independence
+ * Generate and store pairings for a round - ENHANCED VERSION with round independence
+ * This endpoint uses the enhanced pairing system for complete section and round independence
  */
 router.post('/generate', async (req, res) => {
-  const { tournamentId, round } = req.body;
+  const { tournamentId, round, clearExisting = false } = req.body;
 
   try {
     const currentRound = parseInt(round);
@@ -611,27 +838,77 @@ router.post('/generate', async (req, res) => {
       return;
     }
 
-    // Use the enhanced pairing system
-    const result = await EnhancedPairingSystem.generateTournamentPairings(tournamentId, currentRound, db);
+    // Check if round already has pairings (unless clearExisting is true)
+    if (!clearExisting) {
+      const existingPairings = await pairingStorage.getRoundPairings(tournamentId, currentRound);
+      if (existingPairings.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: `Round ${currentRound} already has ${existingPairings.length} pairings. Use clearExisting=true to replace them.`,
+          existingPairingsCount: existingPairings.length
+        });
+        return;
+      }
+    }
 
-    if (!result.success) {
+    // Clear existing pairings if requested
+    if (clearExisting) {
+      await pairingStorage.clearRoundPairings(tournamentId, currentRound);
+    }
+
+    // Main generation endpoint now only provides section information
+    // Individual sections must be generated separately using /generate/section
+    
+    // Get all sections for this tournament
+    const sections = await new Promise((resolve, reject) => {
+      db.all(
+        'SELECT DISTINCT COALESCE(section, "Open") as section_name FROM players WHERE tournament_id = ? AND status = "active"',
+        [tournamentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows.map(row => row.section_name));
+        }
+      );
+    });
+
+    if (sections.length === 0) {
       res.status(400).json({
         success: false,
-        error: result.error,
-        sectionResults: result.sectionResults
+        error: 'No active players found for any section'
       });
       return;
     }
 
-    // Store pairings using the enhanced system's built-in storage
-    await EnhancedPairingSystem.storePairings(tournamentId, currentRound, result.pairings, db);
+    res.json({
+      success: true,
+      message: `Round ${currentRound} - Use section-specific endpoints to generate pairings`,
+      availableSections: sections,
+      instructions: {
+        message: 'Sections must be generated individually for complete independence',
+        endpoints: {
+          generateSection: `/api/pairings/generate/section`,
+          getSectionStatus: `/api/pairings/tournament/${tournamentId}/round/${currentRound}/section/{sectionName}/status`,
+          getSectionPairings: `/api/pairings/tournament/${tournamentId}/round/${currentRound}/section/{sectionName}`
+        }
+      },
+      metadata: {
+        tournamentId,
+        round: currentRound,
+        sectionsAvailable: sections.length
+      }
+    });
+    return;
+
+    // Get updated round status after generation
+    const roundStatus = await pairingStorage.getRoundStatus(tournamentId, currentRound);
 
     res.json({ 
       success: true,
       message: `Round ${currentRound} pairings generated and stored successfully`,
       pairings: result.pairings,
       sectionResults: result.sectionResults,
-      metadata: result.metadata
+      metadata: result.metadata,
+      roundStatus
     });
 
   } catch (error) {
@@ -748,29 +1025,495 @@ router.post('/generate/section', async (req, res) => {
     // Get previous pairings for Swiss system (filtered by section)
     const previousPairings = await pairingStorage.getPreviousPairings(tournamentId, currentRound, sectionName);
 
-    // Generate pairings using the enhanced FIDE Dutch algorithm
-    const pairingResult = generateEnhancedSwissPairings(players, currentRound, {
+    // Get color history for this section
+    const sectionColorHistory = {};
+    for (const player of players) {
+      try {
+        const results = await new Promise((resolve, reject) => {
+          db.all(
+            'SELECT color FROM results WHERE player_id = ? ORDER BY round',
+            [player.id],
+            (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows);
+            }
+          );
+        });
+
+        let balance = 0;
+        results.forEach(result => {
+          balance += result.color === 'white' ? 1 : -1;
+        });
+        sectionColorHistory[player.id] = balance;
+      } catch (error) {
+        console.warn(`Could not get color history for player ${player.id}:`, error.message);
+        sectionColorHistory[player.id] = 0;
+      }
+    }
+
+    // Create enhanced pairing system for this section only
+    const sectionSystem = new EnhancedPairingSystem(players, {
       previousPairings,
-      tournamentSettings: tournament,
-      section: sectionName
+      colorHistory: sectionColorHistory,
+      section: sectionName,
+      tournamentId,
+      db,
+      round: currentRound
     });
-    const generatedPairings = pairingResult.pairings;
+
+    // Generate pairings for this section only
+    const generatedPairings = sectionSystem.generatePairings();
+    
+    // Assign board numbers and section info
+    generatedPairings.forEach((pairing, index) => {
+      pairing.board = index + 1;
+      pairing.section = sectionName;
+      pairing.round = currentRound;
+      pairing.tournament_id = tournamentId;
+    });
+
+    // Check for existing pairings in this specific section
+    const existingSectionPairings = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT COUNT(*) as count FROM pairings WHERE tournament_id = ? AND round = ? AND COALESCE(section, "Open") = ?',
+        [tournamentId, currentRound, sectionName],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    if (existingSectionPairings > 0) {
+      res.status(400).json({ 
+        error: `Round ${currentRound} already has ${existingSectionPairings} pairings for section "${sectionName}". Use clearExisting=true to replace them.` 
+      });
+      return;
+    }
 
     // Store pairings using the robust storage system
     const storeResult = await pairingStorage.storePairings(tournamentId, currentRound, generatedPairings, {
       clearExisting: false,
       validateBeforeStore: true,
-      validateRoundSeparation: true
+      validateRoundSeparation: false, // Allow section independence
+      section: sectionName
     });
 
     res.json({ 
       success: true,
       message: `Round ${currentRound} pairings generated and stored successfully for section "${sectionName}"`,
+      pairings: generatedPairings,
+      sectionResults: {
+        [sectionName]: {
+          success: true,
+          pairingsCount: generatedPairings.length,
+          playersCount: players.length
+        }
+      },
       ...storeResult
     });
 
   } catch (error) {
     console.error('Error generating pairings for section:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get pairings for a specific section and round
+ */
+router.get('/tournament/:tournamentId/round/:round/section/:sectionName', async (req, res) => {
+  const { tournamentId, round, sectionName } = req.params;
+  const currentRound = parseInt(round);
+
+  try {
+    // Get pairings for this specific section and round
+    const pairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT p.*, 
+                pw.name as white_name, pw.rating as white_rating, pw.uscf_id as white_uscf_id,
+                pb.name as black_name, pb.rating as black_rating, pb.uscf_id as black_uscf_id
+         FROM pairings p
+         LEFT JOIN players pw ON p.white_player_id = pw.id
+         LEFT JOIN players pb ON p.black_player_id = pb.id
+         WHERE p.tournament_id = ? AND p.round = ? AND p.section = ?
+         ORDER BY p.board`,
+        [tournamentId, currentRound, sectionName],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    // Get section status
+    const sectionStatus = await pairingStorage.getSectionStatus(tournamentId, currentRound, sectionName);
+
+    res.json({
+      success: true,
+      tournamentId,
+      round: currentRound,
+      section: sectionName,
+      pairings,
+      sectionStatus,
+      pairingsCount: pairings.length
+    });
+
+  } catch (error) {
+    console.error('Error getting section pairings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get status for a specific section and round
+ */
+router.get('/tournament/:tournamentId/round/:round/section/:sectionName/status', async (req, res) => {
+  const { tournamentId, round, sectionName } = req.params;
+  const currentRound = parseInt(round);
+
+  try {
+    const sectionStatus = await pairingStorage.getSectionStatus(tournamentId, currentRound, sectionName);
+    
+    res.json({
+      success: true,
+      tournamentId,
+      round: currentRound,
+      section: sectionName,
+      ...sectionStatus
+    });
+
+  } catch (error) {
+    console.error('Error getting section status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Check if tournament is ready for final confirmation
+ */
+router.get('/tournament/:tournamentId/completion-status', async (req, res) => {
+  const { tournamentId } = req.params;
+
+  try {
+    // Get tournament info
+    const tournament = await pairingStorage.getTournament(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+
+    // Get all rounds status
+    const allRoundsStatus = await pairingStorage.getAllRoundsStatus(tournamentId);
+    
+    // Check if all rounds are complete
+    let allRoundsComplete = true;
+    let completedRounds = 0;
+    let totalRounds = tournament.rounds;
+
+    for (let round = 1; round <= totalRounds; round++) {
+      const roundStatus = allRoundsStatus[round];
+      if (roundStatus && roundStatus.isComplete) {
+        completedRounds++;
+      } else {
+        allRoundsComplete = false;
+      }
+    }
+
+    res.json({
+      success: true,
+      tournamentId,
+      totalRounds,
+      completedRounds,
+      allRoundsComplete,
+      readyForConfirmation: allRoundsComplete,
+      roundsStatus: allRoundsStatus
+    });
+
+  } catch (error) {
+    console.error('Error checking tournament completion status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Update pairing players (for drag and drop)
+ */
+router.put('/pairing/:pairingId/players', async (req, res) => {
+  const { pairingId } = req.params;
+  const { whitePlayerId, blackPlayerId, whitePlayer, blackPlayer } = req.body;
+
+  try {
+    // Update the pairing with new players
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE pairings 
+         SET white_player_id = ?, black_player_id = ?, 
+             white_name = ?, white_rating = ?, white_uscf_id = ?,
+             black_name = ?, black_rating = ?, black_uscf_id = ?
+         WHERE id = ?`,
+        [
+          whitePlayerId, blackPlayerId,
+          whitePlayer.name, whitePlayer.rating, whitePlayer.uscf_id,
+          blackPlayer.name, blackPlayer.rating, blackPlayer.uscf_id,
+          pairingId
+        ],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      message: 'Pairing updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating pairing players:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Create custom pairing
+ */
+router.post('/pairing/custom', async (req, res) => {
+  const { tournamentId, round, section, whitePlayer, blackPlayer } = req.body;
+
+  try {
+    // Get the next available board number for this section and round
+    const maxBoard = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT MAX(board) as maxBoard 
+         FROM pairings 
+         WHERE tournament_id = ? AND round = ? AND COALESCE(section, 'Open') = ?`,
+        [tournamentId, round, section],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.maxBoard || 0);
+        }
+      );
+    });
+
+    const newBoard = maxBoard + 1;
+
+    // Create the custom pairing
+    const pairingId = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO pairings 
+         (tournament_id, round, board, white_player_id, black_player_id, 
+          white_name, white_rating, white_uscf_id, black_name, black_rating, black_uscf_id, 
+          section, result, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, datetime('now'), datetime('now'))`,
+        [
+          tournamentId, round, newBoard,
+          whitePlayer.id, blackPlayer.id,
+          whitePlayer.name, whitePlayer.rating, whitePlayer.uscf_id,
+          blackPlayer.name, blackPlayer.rating, blackPlayer.uscf_id,
+          section
+        ],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      message: 'Custom pairing created successfully',
+      pairingId: pairingId,
+      board: newBoard
+    });
+
+  } catch (error) {
+    console.error('Error creating custom pairing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Delete custom pairing
+ */
+router.delete('/pairing/:pairingId', async (req, res) => {
+  const { pairingId } = req.params;
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM pairings WHERE id = ?', [pairingId], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({
+      success: true,
+      message: 'Pairing deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting pairing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Reset pairings for a specific round and section
+ */
+router.post('/tournament/:tournamentId/round/:round/reset', async (req, res) => {
+  const { tournamentId, round } = req.params;
+  const { sectionName } = req.body;
+
+  try {
+    let query = 'DELETE FROM pairings WHERE tournament_id = ? AND round = ?';
+    let params = [tournamentId, parseInt(round)];
+
+    if (sectionName) {
+      query += ' AND COALESCE(section, "Open") = ?';
+      params.push(sectionName);
+    }
+
+    await new Promise((resolve, reject) => {
+      db.run(query, params, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({
+      success: true,
+      message: `Pairings reset for Round ${round}${sectionName ? ` (${sectionName} section)` : ''}`
+    });
+
+  } catch (error) {
+    console.error('Error resetting pairings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Confirm tournament completion and finalize standings
+ */
+router.post('/tournament/:tournamentId/confirm-completion', async (req, res) => {
+  const { tournamentId } = req.params;
+
+  try {
+    // Get tournament info
+    const tournament = await pairingStorage.getTournament(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+
+    // Check if all rounds are complete
+    const completionStatus = await new Promise((resolve, reject) => {
+      const allRoundsStatus = {};
+      let allRoundsComplete = true;
+      let completedRounds = 0;
+
+      const checkRounds = async () => {
+        for (let round = 1; round <= tournament.rounds; round++) {
+          try {
+            const roundStatus = await pairingStorage.getRoundStatus(tournamentId, round);
+            allRoundsStatus[round] = roundStatus;
+            if (roundStatus.isComplete) {
+              completedRounds++;
+            } else {
+              allRoundsComplete = false;
+            }
+          } catch (error) {
+            console.warn(`Error checking status for round ${round}:`, error.message);
+            allRoundsComplete = false;
+          }
+        }
+        resolve({ allRoundsComplete, completedRounds, allRoundsStatus });
+      };
+
+      checkRounds();
+    });
+
+    if (!completionStatus.allRoundsComplete) {
+      res.status(400).json({
+        success: false,
+        error: 'Not all rounds are complete. Cannot confirm tournament completion.',
+        completedRounds: completionStatus.completedRounds,
+        totalRounds: tournament.rounds
+      });
+      return;
+    }
+
+    // Update tournament status to completed
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE tournaments SET status = ? WHERE id = ?', ['completed', tournamentId], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    // Get final standings
+    const standings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT p.id, p.name, p.rating, p.section, p.uscf_id,
+                COALESCE(SUM(
+                  CASE 
+                    WHEN (pair.white_player_id = p.id AND pair.result = '1-0') OR 
+                         (pair.white_player_id = p.id AND pair.result = '1-0F') OR
+                         (pair.black_player_id = p.id AND pair.result = '0-1') OR
+                         (pair.black_player_id = p.id AND pair.result = '0-1F')
+                    THEN 1.0
+                    WHEN (pair.white_player_id = p.id AND pair.result = '1/2-1/2') OR
+                         (pair.white_player_id = p.id AND pair.result = '1/2-1/2F') OR
+                         (pair.black_player_id = p.id AND pair.result = '1/2-1/2') OR
+                         (pair.black_player_id = p.id AND pair.result = '1/2-1/2F')
+                    THEN 0.5
+                    ELSE 0
+                  END
+                ), 0) as total_points,
+                COUNT(pair.id) as games_played,
+                COUNT(CASE 
+                  WHEN (pair.white_player_id = p.id AND (pair.result = '1-0' OR pair.result = '1-0F')) OR
+                       (pair.black_player_id = p.id AND (pair.result = '0-1' OR pair.result = '0-1F'))
+                  THEN 1 
+                END) as wins,
+                COUNT(CASE 
+                  WHEN (pair.white_player_id = p.id AND (pair.result = '0-1' OR pair.result = '0-1F')) OR
+                       (pair.black_player_id = p.id AND (pair.result = '1-0' OR pair.result = '1-0F'))
+                  THEN 1 
+                END) as losses,
+                COUNT(CASE 
+                  WHEN (pair.white_player_id = p.id AND (pair.result = '1/2-1/2' OR pair.result = '1/2-1/2F')) OR
+                       (pair.black_player_id = p.id AND (pair.result = '1/2-1/2' OR pair.result = '1/2-1/2F'))
+                  THEN 1 
+                END) as draws
+         FROM players p
+         LEFT JOIN pairings pair ON (p.id = pair.white_player_id OR p.id = pair.black_player_id) 
+                                  AND pair.tournament_id = p.tournament_id 
+                                  AND pair.result IS NOT NULL
+         WHERE p.tournament_id = ? AND p.status = 'active'
+         GROUP BY p.id
+         ORDER BY total_points DESC, p.rating DESC`,
+        [tournamentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      message: 'Tournament completed successfully! Final standings have been calculated.',
+      tournamentId,
+      totalRounds: tournament.rounds,
+      completedRounds: completionStatus.completedRounds,
+      standings: standings,
+      standingsCount: standings.length
+    });
+
+  } catch (error) {
+    console.error('Error confirming tournament completion:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -797,7 +1540,7 @@ router.get('/tournament/:tournamentId/round/:round', async (req, res) => {
 });
 
 /**
- * Get round status - ENHANCED VERSION
+ * Get round status - ENHANCED VERSION with round independence
  */
 router.get('/tournament/:tournamentId/round/:round/status', async (req, res) => {
   const { tournamentId, round } = req.params;
@@ -812,16 +1555,9 @@ router.get('/tournament/:tournamentId/round/:round/status', async (req, res) => 
       });
     }
 
-    // Use the enhanced pairing system for status checking
-    const roundStatus = await EnhancedPairingSystem.isRoundComplete(tournamentId, roundNum, db);
+    // Use the enhanced round status checking
+    const roundStatus = await pairingStorage.getRoundStatus(tournamentId, roundNum);
     const pairings = await pairingStorage.getRoundPairings(tournamentId, roundNum);
-    
-    // Check if previous rounds are complete
-    let previousRoundsComplete = true;
-    if (roundNum > 1) {
-      const previousRoundStatus = await EnhancedPairingSystem.isRoundComplete(tournamentId, roundNum - 1, db);
-      previousRoundsComplete = previousRoundStatus.isComplete;
-    }
     
     res.json({
       success: true,
@@ -829,17 +1565,95 @@ router.get('/tournament/:tournamentId/round/:round/status', async (req, res) => 
       round: roundNum,
       totalPairings: roundStatus.totalPairings,
       completedPairings: roundStatus.completedPairings,
-      incompletePairings: roundStatus.incompleteCount,
-      completionPercentage: roundStatus.totalPairings > 0 ? 
-        Math.round((roundStatus.completedPairings / roundStatus.totalPairings) * 100) : 0,
+      incompletePairings: roundStatus.pendingPairings,
+      completionPercentage: roundStatus.percentage,
       isComplete: roundStatus.isComplete,
       hasPairings: pairings.length > 0,
-      canGenerateNextRound: roundStatus.isComplete,
-      previousRoundsComplete: previousRoundsComplete,
-      incompleteSections: roundStatus.incompleteSections
+      canGenerateNextRound: roundStatus.canGenerateNextRound,
+      sections: roundStatus.sections
     });
   } catch (error) {
     console.error('Error fetching round status:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Get all pairings for a tournament grouped by round - NEW ENDPOINT
+ */
+router.get('/tournament/:tournamentId/all', async (req, res) => {
+  const { tournamentId } = req.params;
+  
+  try {
+    const pairingsByRound = await pairingStorage.getPairingsByRound(tournamentId);
+    
+    res.json({
+      success: true,
+      tournamentId,
+      pairingsByRound,
+      totalRounds: Object.keys(pairingsByRound).length,
+      rounds: Object.keys(pairingsByRound).map(round => ({
+        round: parseInt(round),
+        pairingsCount: pairingsByRound[round].length,
+        sections: [...new Set(pairingsByRound[round].map(p => p.section || 'Open'))]
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching all pairings:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Get round status for all rounds - NEW ENDPOINT
+ */
+router.get('/tournament/:tournamentId/rounds/status', async (req, res) => {
+  const { tournamentId } = req.params;
+  
+  try {
+    // Get tournament info to know how many rounds there should be
+    const tournament = await pairingStorage.getTournament(tournamentId);
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    const roundsStatus = {};
+    
+    // Check status for each round
+    for (let round = 1; round <= tournament.rounds; round++) {
+      try {
+        const roundStatus = await pairingStorage.getRoundStatus(tournamentId, round);
+        roundsStatus[round] = roundStatus;
+      } catch (error) {
+        console.warn(`Error checking status for round ${round}:`, error.message);
+        roundsStatus[round] = {
+          round,
+          totalPairings: 0,
+          completedPairings: 0,
+          pendingPairings: 0,
+          percentage: 0,
+          isComplete: false,
+          sections: {},
+          canGenerateNextRound: false,
+          error: error.message
+        };
+      }
+    }
+    
+    res.json({
+      success: true,
+      tournamentId,
+      totalRounds: tournament.rounds,
+      roundsStatus
+    });
+  } catch (error) {
+    console.error('Error fetching rounds status:', error);
     res.status(500).json({ 
       success: false,
       error: error.message 
@@ -868,17 +1682,45 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
   const { includeRoundResults = 'false', showPrizes = 'false' } = req.query;
   
   try {
-    // Get basic standings data
+    // Get basic standings data from pairings table
     const basicStandings = await new Promise((resolve, reject) => {
       db.all(
         `SELECT p.id, p.name, p.rating, p.section, p.uscf_id,
-                COALESCE(SUM(r.points), 0) as total_points,
-                COUNT(r.id) as games_played,
-                COUNT(CASE WHEN r.result = '1-0' OR r.result = '1-0F' THEN 1 END) as wins,
-                COUNT(CASE WHEN r.result = '0-1' OR r.result = '0-1F' THEN 1 END) as losses,
-                COUNT(CASE WHEN r.result = '1/2-1/2' OR r.result = '1/2-1/2F' THEN 1 END) as draws
+                COALESCE(SUM(
+                  CASE 
+                    WHEN (pair.white_player_id = p.id AND pair.result = '1-0') OR 
+                         (pair.white_player_id = p.id AND pair.result = '1-0F') OR
+                         (pair.black_player_id = p.id AND pair.result = '0-1') OR
+                         (pair.black_player_id = p.id AND pair.result = '0-1F')
+                    THEN 1.0
+                    WHEN (pair.white_player_id = p.id AND pair.result = '1/2-1/2') OR
+                         (pair.white_player_id = p.id AND pair.result = '1/2-1/2F') OR
+                         (pair.black_player_id = p.id AND pair.result = '1/2-1/2') OR
+                         (pair.black_player_id = p.id AND pair.result = '1/2-1/2F')
+                    THEN 0.5
+                    ELSE 0
+                  END
+                ), 0) as total_points,
+                COUNT(pair.id) as games_played,
+                COUNT(CASE 
+                  WHEN (pair.white_player_id = p.id AND (pair.result = '1-0' OR pair.result = '1-0F')) OR
+                       (pair.black_player_id = p.id AND (pair.result = '0-1' OR pair.result = '0-1F'))
+                  THEN 1 
+                END) as wins,
+                COUNT(CASE 
+                  WHEN (pair.white_player_id = p.id AND (pair.result = '0-1' OR pair.result = '0-1F')) OR
+                       (pair.black_player_id = p.id AND (pair.result = '1-0' OR pair.result = '1-0F'))
+                  THEN 1 
+                END) as losses,
+                COUNT(CASE 
+                  WHEN (pair.white_player_id = p.id AND (pair.result = '1/2-1/2' OR pair.result = '1/2-1/2F')) OR
+                       (pair.black_player_id = p.id AND (pair.result = '1/2-1/2' OR pair.result = '1/2-1/2F'))
+                  THEN 1 
+                END) as draws
          FROM players p
-         LEFT JOIN results r ON p.id = r.player_id
+         LEFT JOIN pairings pair ON (p.id = pair.white_player_id OR p.id = pair.black_player_id) 
+                                  AND pair.tournament_id = p.tournament_id 
+                                  AND pair.result IS NOT NULL
          WHERE p.tournament_id = ? AND p.status = 'active'
          GROUP BY p.id`,
         [tournamentId],

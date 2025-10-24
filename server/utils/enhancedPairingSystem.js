@@ -104,13 +104,29 @@ class EnhancedPairingSystem {
             );
           });
 
-          const sectionColorHistory = {};
-          for (const player of players) {
+          // Calculate points for each player from results
+          const playersWithPoints = await Promise.all(players.map(async (player) => {
             try {
               const results = await new Promise((resolve, reject) => {
                 db.all(
-                  'SELECT color FROM results WHERE player_id = ? ORDER BY round',
-                  [player.id],
+                  `SELECT 
+                    CASE 
+                      WHEN (pair.white_player_id = ? AND (pair.result = '1-0' OR pair.result = '1-0F')) OR
+                           (pair.black_player_id = ? AND (pair.result = '0-1' OR pair.result = '0-1F'))
+                      THEN 1
+                      WHEN (pair.white_player_id = ? AND pair.result = '1/2-1/2') OR
+                           (pair.black_player_id = ? AND pair.result = '1/2-1/2')
+                      THEN 0.5
+                      ELSE 0
+                    END as points,
+                    pair.color
+                   FROM pairings pair
+                   WHERE (pair.white_player_id = ? OR pair.black_player_id = ?) 
+                     AND pair.tournament_id = ? 
+                     AND pair.round < ?
+                     AND pair.result IS NOT NULL
+                   ORDER BY pair.round`,
+                  [player.id, player.id, player.id, player.id, player.id, player.id, tournamentId, round],
                   (err, rows) => {
                     if (err) reject(err);
                     else resolve(rows);
@@ -118,19 +134,37 @@ class EnhancedPairingSystem {
                 );
               });
 
+              // Calculate total points
+              const totalPoints = results.reduce((sum, result) => sum + (result.points || 0), 0);
+              
+              // Calculate color balance
               let balance = 0;
               results.forEach(result => {
                 balance += result.color === 'white' ? 1 : -1;
               });
-              sectionColorHistory[player.id] = balance;
+
+              return {
+                ...player,
+                points: totalPoints,
+                colorBalance: balance
+              };
             } catch (error) {
-              console.warn(`[EnhancedPairingSystem] Could not get color history for player ${player.id}:`, error.message);
-              sectionColorHistory[player.id] = 0;
+              console.warn(`[EnhancedPairingSystem] Could not get results for player ${player.id}:`, error.message);
+              return {
+                ...player,
+                points: 0,
+                colorBalance: 0
+              };
             }
-          }
+          }));
+
+          const sectionColorHistory = {};
+          playersWithPoints.forEach(player => {
+            sectionColorHistory[player.id] = player.colorBalance;
+          });
 
           // Create enhanced pairing system for this section
-          const sectionSystem = new EnhancedPairingSystem(players, {
+          const sectionSystem = new EnhancedPairingSystem(playersWithPoints, {
             ...options,
             previousPairings: sectionPreviousPairings,
             colorHistory: sectionColorHistory,
@@ -448,17 +482,23 @@ class EnhancedPairingSystem {
     for (const score of sortedScores) {
       const group = scoreGroups[score];
       
-      // Handle odd number of players
+      // For Dutch system, handle odd numbers by giving a bye to the lowest rated player
+      // Don't move players between score groups to maintain points-based pairing
       if (group.length % 2 === 1) {
-        const floater = this.selectFloaterDutch(group);
-        if (floater) {
-          group.splice(group.indexOf(floater), 1);
-          const nextScore = this.getNextLowerScore(score, sortedScores);
-          if (nextScore !== null) {
-            if (!scoreGroups[nextScore]) scoreGroups[nextScore] = [];
-            scoreGroups[nextScore].push(floater);
-          }
-        }
+        const sortedGroup = [...group].sort((a, b) => (a.rating || 0) - (b.rating || 0));
+        const byePlayer = sortedGroup[0]; // Lowest rated player gets bye
+        
+        pairings.push({
+          white_player_id: byePlayer.id,
+          black_player_id: null,
+          is_bye: true,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        
+        // Remove bye player from group
+        group.splice(group.indexOf(byePlayer), 1);
+        used.add(byePlayer.id);
       }
       
       // Use proper Swiss system pairing within score group
@@ -848,6 +888,7 @@ class EnhancedPairingSystem {
 
   /**
    * Generate Swiss system pairings for a score group
+   * Implements proper Swiss system rules with color balance, repeat avoidance, and team avoidance
    */
   generateSwissPairingsForGroup(group, used) {
     const pairings = [];
@@ -858,29 +899,31 @@ class EnhancedPairingSystem {
       return this.generateRound1Pairings(sortedGroup);
     }
     
-    for (let i = 0; i < sortedGroup.length; i++) {
-      if (used.has(sortedGroup[i].id)) continue;
-      
-      const currentPlayer = sortedGroup[i];
+    // For subsequent rounds, use proper Swiss system pairing with all rules
+    const availablePlayers = sortedGroup.filter(player => !used.has(player.id));
+    
+    while (availablePlayers.length >= 2) {
+      const currentPlayer = availablePlayers.shift();
       let bestOpponent = null;
       let bestScore = -Infinity;
+      let bestOpponentIndex = -1;
       
-      // Find the best opponent within the same score group
-      for (let j = i + 1; j < sortedGroup.length; j++) {
-        if (used.has(sortedGroup[j].id)) continue;
-        
-        const opponent = sortedGroup[j];
+      // Find the best opponent following Swiss system rules
+      for (let i = 0; i < availablePlayers.length; i++) {
+        const opponent = availablePlayers[i];
         
         // Calculate pairing score based on Swiss system criteria
-        const score = this.calculatePairingScore(currentPlayer, opponent);
+        const score = this.calculateSwissPairingScore(currentPlayer, opponent);
         
         if (score > bestScore) {
           bestScore = score;
           bestOpponent = opponent;
+          bestOpponentIndex = i;
         }
       }
       
       if (bestOpponent) {
+        // Create the pairing
         const whitePlayer = this.assignColorsDutch(currentPlayer, bestOpponent);
         const blackPlayer = whitePlayer.id === currentPlayer.id ? bestOpponent : currentPlayer;
         
@@ -892,8 +935,16 @@ class EnhancedPairingSystem {
           board: pairings.length + 1
         });
         
+        // Mark both players as used
         used.add(currentPlayer.id);
         used.add(bestOpponent.id);
+        
+        // Remove opponent from available players
+        availablePlayers.splice(bestOpponentIndex, 1);
+      } else {
+        // No valid opponent found, this shouldn't happen in a proper Swiss system
+        console.warn(`[EnhancedPairingSystem] No valid opponent found for player ${currentPlayer.name}`);
+        break;
       }
     }
     
@@ -975,34 +1026,74 @@ class EnhancedPairingSystem {
 
   /**
    * Calculate pairing score for Swiss system
+   * Implements all standard Swiss system rules
    */
-  calculatePairingScore(player1, player2) {
+  calculateSwissPairingScore(player1, player2) {
     let score = 0;
     
-    // Avoid repeat pairings (highest priority)
+    // Rule 1: Avoid repeat pairings (highest priority - absolute veto)
     if (this.hasPlayedBefore(player1.id, player2.id)) {
-      return -1000;
+      return -10000; // Absolute veto for repeat pairings
     }
     
-    // Prefer similar ratings
-    const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
-    score -= ratingDiff / 100; // Smaller rating difference is better
+    // Rule 2: Avoid team member pairings when possible
+    if (this.areTeamMembers(player1, player2)) {
+      score -= 1000; // Strong penalty but not absolute veto
+    }
     
-    // Color balance considerations
+    // Rule 3: Color balance considerations (very important)
     const balance1 = this.getColorBalance(player1.id);
     const balance2 = this.getColorBalance(player2.id);
     
     // Prefer pairings that correct color imbalances
     if ((balance1 > 0 && balance2 < 0) || (balance1 < 0 && balance2 > 0)) {
-      score += 10;
+      score += 100; // Strong bonus for color correction
     }
     
     // Avoid pairings that worsen color imbalances
     if ((balance1 > 0 && balance2 > 0) || (balance1 < 0 && balance2 < 0)) {
-      score -= 5;
+      score -= 50; // Penalty for worsening color balance
+    }
+    
+    // Rule 4: Prefer similar ratings (but not too similar)
+    const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
+    
+    // Optimal rating difference is around 50-100 points
+    if (ratingDiff >= 50 && ratingDiff <= 100) {
+      score += 20; // Bonus for good rating difference
+    } else if (ratingDiff < 50) {
+      score += 10 - (ratingDiff / 5); // Small bonus for close ratings
+    } else {
+      score -= Math.min(ratingDiff / 200, 20); // Penalty for large rating differences
+    }
+    
+    // Rule 5: Avoid same color three times in a row
+    const lastColors1 = this.getLastTwoColors(player1.id);
+    const lastColors2 = this.getLastTwoColors(player2.id);
+    
+    if (lastColors1 === 'WW' || lastColors2 === 'WW') {
+      score -= 30; // Penalty for potential third white
+    }
+    if (lastColors1 === 'BB' || lastColors2 === 'BB') {
+      score -= 30; // Penalty for potential third black
+    }
+    
+    // Rule 6: Prefer players who haven't played recently (if available)
+    const gamesPlayed1 = this.getGamesPlayed(player1.id);
+    const gamesPlayed2 = this.getGamesPlayed(player2.id);
+    
+    if (gamesPlayed1 < gamesPlayed2) {
+      score += 5; // Slight bonus for pairing with less active player
     }
     
     return score;
+  }
+
+  /**
+   * Calculate pairing score for Swiss system (legacy method for compatibility)
+   */
+  calculatePairingScore(player1, player2) {
+    return this.calculateSwissPairingScore(player1, player2);
   }
 
   /**
@@ -1013,6 +1104,32 @@ class EnhancedPairingSystem {
       (pairing.white_player_id === player1Id && pairing.black_player_id === player2Id) ||
       (pairing.white_player_id === player2Id && pairing.black_player_id === player1Id)
     );
+  }
+
+  /**
+   * Check if two players are team members
+   */
+  areTeamMembers(player1, player2) {
+    // Check if both players have the same team name
+    if (player1.team_name && player2.team_name) {
+      return player1.team_name === player2.team_name;
+    }
+    
+    // Check if they have the same team_id (if available)
+    if (player1.team_id && player2.team_id) {
+      return player1.team_id === player2.team_id;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Get number of games played by a player
+   */
+  getGamesPlayed(playerId) {
+    return this.previousPairings.filter(pairing => 
+      pairing.white_player_id === playerId || pairing.black_player_id === playerId
+    ).length;
   }
 
   /**
@@ -1230,23 +1347,35 @@ class EnhancedPairingSystem {
 
   /**
    * Assign colors for Dutch system
+   * Implements comprehensive color assignment rules
    */
   assignColorsDutch(player1, player2) {
     const balance1 = this.getColorBalance(player1.id);
     const balance2 = this.getColorBalance(player2.id);
     
-    // Dutch system prioritizes color balance
+    // Rule 1: Player with more black pieces should get white (highest priority)
     if (balance1 < balance2) {
-      return player1;
+      return player1; // player1 gets white
     } else if (balance1 > balance2) {
-      return player2;
+      return player2; // player2 gets white
     }
     
-    // If equal, use rating
-    if ((player1.rating || 0) !== (player2.rating || 0)) {
+    // Rule 2: Avoid same color three times in a row
+    const lastColors1 = this.getLastTwoColors(player1.id);
+    const lastColors2 = this.getLastTwoColors(player2.id);
+    
+    if (lastColors1 === 'WW') return player2; // player1 had WW, give white to player2
+    if (lastColors2 === 'WW') return player1; // player2 had WW, give white to player1
+    if (lastColors1 === 'BB') return player1; // player1 had BB, give white to player1
+    if (lastColors2 === 'BB') return player2; // player2 had BB, give white to player2
+    
+    // Rule 3: Higher rated player gets due color (if significantly different)
+    const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
+    if (ratingDiff >= 50) {
       return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
     }
     
+    // Rule 4: Final tiebreaker - consistent ordering
     return player1.id < player2.id ? player1 : player2;
   }
 

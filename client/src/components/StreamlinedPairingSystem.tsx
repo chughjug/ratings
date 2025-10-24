@@ -14,7 +14,10 @@ import {
 } from 'lucide-react';
 import { Pairing } from '../types';
 import EnhancedPairingGenerator from './EnhancedPairingGenerator';
-import { pairingApi } from '../services/api';
+import AdvancedPairingEditor from './AdvancedPairingEditor';
+import BulkPairingOperations from './BulkPairingOperations';
+import PairingTemplates from './PairingTemplates';
+import { pairingApi, pairingEditorApi } from '../services/api';
 
 interface StreamlinedPairingSystemProps {
   tournament: any;
@@ -54,7 +57,7 @@ const StreamlinedPairingSystem: React.FC<StreamlinedPairingSystemProps> = ({
   const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState(availableSections[0] || 'Open');
   const [showSectionDropdown, setShowSectionDropdown] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pairings' | 'generator'>('pairings');
+  const [activeTab, setActiveTab] = useState<'pairings' | 'generator' | 'editor' | 'bulk' | 'templates'>('pairings');
   const [roundStatus, setRoundStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
 
@@ -229,6 +232,39 @@ const StreamlinedPairingSystem: React.FC<StreamlinedPairingSystemProps> = ({
               <Cog className="h-4 w-4 mr-2" />
               Generator
             </button>
+            <button
+              onClick={() => setActiveTab('editor')}
+              className={`${
+                activeTab === 'editor'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+            >
+              <Edit3 className="h-4 w-4 mr-2" />
+              Editor
+            </button>
+            <button
+              onClick={() => setActiveTab('bulk')}
+              className={`${
+                activeTab === 'bulk'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Bulk Ops
+            </button>
+            <button
+              onClick={() => setActiveTab('templates')}
+              className={`${
+                activeTab === 'templates'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Templates
+            </button>
           </nav>
         </div>
       </div>
@@ -249,6 +285,67 @@ const StreamlinedPairingSystem: React.FC<StreamlinedPairingSystemProps> = ({
             const errorMessage = typeof error === 'string' ? error : (error?.message || 'Unknown error');
             alert(`Pairing generation failed: ${errorMessage}`);
           }}
+        />
+      )}
+
+      {/* Advanced Editor Tab Content */}
+      {activeTab === 'editor' && (
+        <AdvancedPairingEditor
+          pairings={currentRoundPairings}
+          players={players}
+          onPairingsUpdate={onPairingsUpdate}
+          onSave={async (updatedPairings) => {
+            try {
+              await pairingEditorApi.bulkUpdate(updatedPairings);
+              console.log('Pairings saved successfully');
+            } catch (error) {
+              console.error('Failed to save pairings:', error);
+              throw error;
+            }
+          }}
+          tournamentId={tournament?.id}
+          round={currentRound}
+          section={selectedSection}
+          isLoading={isLoading}
+        />
+      )}
+
+      {/* Bulk Operations Tab Content */}
+      {activeTab === 'bulk' && (
+        <BulkPairingOperations
+          pairings={currentRoundPairings}
+          players={players}
+          onPairingsUpdate={onPairingsUpdate}
+          tournamentId={tournament?.id}
+          round={currentRound}
+          section={selectedSection}
+        />
+      )}
+
+      {/* Templates Tab Content */}
+      {activeTab === 'templates' && (
+        <PairingTemplates
+          pairings={currentRoundPairings}
+          players={players}
+          onPairingsUpdate={onPairingsUpdate}
+          onApplyTemplate={async (template) => {
+            try {
+              // Apply template logic here
+              console.log('Applying template:', template);
+              // This would call the appropriate pairing generation based on template
+              const response = await pairingApi.generate(tournament?.id, currentRound, true);
+              if (response.data.success) {
+                onPairingsUpdate(response.data.pairings);
+                setActiveTab('pairings');
+              }
+            } catch (error) {
+              console.error('Failed to apply template:', error);
+              throw error;
+            }
+          }}
+          tournamentId={tournament?.id}
+          round={currentRound}
+          section={selectedSection}
         />
       )}
 

@@ -205,10 +205,34 @@ export const playerApi = {
     api.get<{success: boolean, data: PlayerInactiveRound[], error?: string}>(`/players/tournament/${tournamentId}/inactive-rounds?t=${Date.now()}`),
 };
 
-// Pairing API
+// Pairing API with enhanced round independence
 export const pairingApi = {
   getByRound: (tournamentId: string, round: number) => 
     api.get<Pairing[]>(`/pairings/tournament/${tournamentId}/round/${round}?t=${Date.now()}`),
+  
+  // NEW: Get all pairings grouped by round for independent round management
+  getAllByTournament: (tournamentId: string) => 
+    api.get<{
+      success: boolean;
+      tournamentId: string;
+      pairingsByRound: Record<string, Pairing[]>;
+      totalRounds: number;
+      rounds: Array<{
+        round: number;
+        pairingsCount: number;
+        sections: string[];
+      }>;
+    }>(`/pairings/tournament/${tournamentId}/all?t=${Date.now()}`),
+  
+  // NEW: Get status for all rounds
+  getAllRoundsStatus: (tournamentId: string) => 
+    api.get<{
+      success: boolean;
+      tournamentId: string;
+      totalRounds: number;
+      roundsStatus: Record<string, any>;
+    }>(`/pairings/tournament/${tournamentId}/rounds/status?t=${Date.now()}`),
+  
   getDisplay: (tournamentId: string, options?: {
     round?: number;
     display_format?: 'default' | 'compact' | 'detailed';
@@ -226,20 +250,103 @@ export const pairingApi = {
     
     return api.get<any>(`/pairings/tournament/${tournamentId}/display?${params.toString()}`);
   },
-  generate: (tournamentId: string, round: number) => 
-    api.post('/pairings/generate', { tournamentId, round }),
+  
+  // Enhanced generate with round independence
+  generate: (tournamentId: string, round: number, clearExisting: boolean = false) => 
+    api.post<{
+      success: boolean;
+      message: string;
+      pairings: Pairing[];
+      sectionResults: any;
+      metadata: any;
+      roundStatus: any;
+    }>('/pairings/generate', { tournamentId, round, clearExisting }),
+  
   generateForSection: (tournamentId: string, round: number, sectionName: string) => 
     api.post('/pairings/generate/section', { tournamentId, round, sectionName }),
+  
+  // Section-specific pairing methods
+  generateSectionPairings: (tournamentId: string, round: number, sectionName: string) => 
+    api.post<{
+      success: boolean;
+      message: string;
+      pairings: any[];
+      sectionResults: any;
+      sectionStatus: any;
+    }>('/pairings/generate/section', { tournamentId, round, sectionName }),
+  
+  getSectionPairings: (tournamentId: string, round: number, sectionName: string) => 
+    api.get<{
+      success: boolean;
+      tournamentId: string;
+      round: number;
+      section: string;
+      pairings: any[];
+      sectionStatus: any;
+      pairingsCount: number;
+    }>(`/pairings/tournament/${tournamentId}/round/${round}/section/${sectionName}`),
+  
+  getSectionStatus: (tournamentId: string, round: number, sectionName: string) => 
+    api.get<{
+      success: boolean;
+      tournamentId: string;
+      round: number;
+      section: string;
+      totalPairings: number;
+      completedPairings: number;
+      pendingPairings: number;
+      percentage: number;
+      isComplete: boolean;
+      hasPairings: boolean;
+      canGenerateNextRound: boolean;
+    }>(`/pairings/tournament/${tournamentId}/round/${round}/section/${sectionName}/status`),
+  
   updateResult: (id: string, result: string) => 
     api.put(`/pairings/${id}/result`, { result }),
+
+  // Drag and drop pairing methods
+  updatePairingPlayers: (pairingId: string, whitePlayerId: string, blackPlayerId: string, whitePlayer: any, blackPlayer: any) => 
+    api.put(`/pairings/pairing/${pairingId}/players`, { whitePlayerId, blackPlayerId, whitePlayer, blackPlayer }),
+
+  createCustomPairing: (tournamentId: string, round: number, section: string, whitePlayer: any, blackPlayer: any) => 
+    api.post('/pairings/pairing/custom', { tournamentId, round, section, whitePlayer, blackPlayer }),
+
+  deletePairing: (pairingId: string) => 
+    api.delete(`/pairings/pairing/${pairingId}`),
+
+  resetPairings: (tournamentId: string, round: number, sectionName?: string) => 
+    api.post(`/pairings/tournament/${tournamentId}/round/${round}/reset`, { sectionName }),
+
+  updateTournamentStatus: (tournamentId: string, status: string) => 
+    api.put(`/tournaments/${tournamentId}/status`, { status }),
+  
   completeRound: (tournamentId: string, round: number, sectionName: string) => 
     api.post(`/pairings/tournament/${tournamentId}/round/${round}/complete`, { sectionName }),
+  
+  // Enhanced round status with section breakdown
   getRoundStatus: (tournamentId: string, round: number, section?: string) => 
-    api.get<any>(`/pairings/tournament/${tournamentId}/round/${round}/status?t=${Date.now()}${section ? `&section=${section}` : ''}`),
+    api.get<{
+      success: boolean;
+      tournamentId: string;
+      round: number;
+      totalPairings: number;
+      completedPairings: number;
+      incompletePairings: number;
+      completionPercentage: number;
+      isComplete: boolean;
+      hasPairings: boolean;
+      canGenerateNextRound: boolean;
+      sections: Record<string, {
+        total: number;
+        completed: number;
+        pending: number;
+        percentage: number;
+        isComplete: boolean;
+      }>;
+    }>(`/pairings/tournament/${tournamentId}/round/${round}/status?t=${Date.now()}${section ? `&section=${section}` : ''}`),
+  
   getStandings: (tournamentId: string, includeRoundResults: boolean = false, showPrizes: boolean = false) => 
-    api.get<Standing[]>(`/pairings/tournament/${tournamentId}/standings?t=${Date.now()}&includeRoundResults=${includeRoundResults}&showPrizes=${showPrizes}`),
-  resetPairings: (tournamentId: string, round: number) => 
-    api.delete<{message: string, deletedCount: number}>(`/pairings/tournament/${tournamentId}/round/${round}`),
+    api.get<{success: boolean, data: Standing[], error?: string}>(`/pairings/tournament/${tournamentId}/standings?t=${Date.now()}&includeRoundResults=${includeRoundResults}&showPrizes=${showPrizes}`),
 };
 
 // Export API
@@ -334,6 +441,49 @@ export const registrationApi = {
       tournament_name?: string;
       player_status?: string;
     }, error?: string}>(`/registrations/status/${registrationId}`),
+};
+
+// Pairing Editor API for advanced editing features
+export const pairingEditorApi = {
+  // Update a single pairing
+  updatePairing: (pairingId: string, updates: Partial<Pairing>) =>
+    api.put(`/pairing-editor/pairing/${pairingId}`, updates),
+  
+  // Swap players in a pairing
+  swapPlayers: (pairingId: string) =>
+    api.post(`/pairing-editor/pairing/${pairingId}/swap`),
+  
+  // Swap two pairings (exchange board numbers)
+  swapPairings: (pairingId1: string, pairingId2: string) =>
+    api.post('/pairing-editor/pairings/swap', { pairingId1, pairingId2 }),
+  
+  // Move a player from one pairing to another
+  movePlayer: (fromPairingId: string, toPairingId: string, position: 'white' | 'black') =>
+    api.post('/pairing-editor/pairings/move-player', { fromPairingId, toPairingId, position }),
+  
+  // Delete a pairing
+  deletePairing: (pairingId: string) =>
+    api.delete(`/pairing-editor/pairing/${pairingId}`),
+  
+  // Duplicate a pairing
+  duplicatePairing: (pairingId: string, newBoard?: number) =>
+    api.post(`/pairing-editor/pairing/${pairingId}/duplicate`, { newBoard }),
+  
+  // Bulk update pairings
+  bulkUpdate: (pairings: Pairing[]) =>
+    api.put('/pairing-editor/pairings/bulk', { pairings }),
+  
+  // Validate pairings for conflicts
+  validatePairings: (pairings: Pairing[], tournamentId: string, round: number) =>
+    api.post('/pairing-editor/pairings/validate', { pairings, tournamentId, round }),
+  
+  // Get pairing history
+  getHistory: (tournamentId: string, round?: number, section?: string) => {
+    const params = new URLSearchParams();
+    if (round) params.append('round', round.toString());
+    if (section) params.append('section', section);
+    return api.get(`/pairing-editor/tournament/${tournamentId}/history?${params.toString()}`);
+  }
 };
 
 export default api;

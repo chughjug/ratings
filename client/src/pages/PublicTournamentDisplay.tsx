@@ -51,6 +51,45 @@ const PublicTournamentDisplay: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
+  // Calculate player scores from all pairings
+  const calculatePlayerScores = useCallback(() => {
+    if (!data?.pairings) return {};
+    
+    const playerScores: Record<string, number> = {};
+    
+    // Initialize all players with 0 points
+    if (data.tournament?.players) {
+      data.tournament.players.forEach((player: any) => {
+        playerScores[player.id] = 0;
+      });
+    }
+    
+    // Calculate scores from all pairings
+    data.pairings.forEach((pairing: any) => {
+      if (pairing.result && pairing.result !== 'TBD') {
+        // White player score
+        if (pairing.white_player_id) {
+          if (pairing.result === '1-0' || pairing.result === '1-0F') {
+            playerScores[pairing.white_player_id] = (playerScores[pairing.white_player_id] || 0) + 1;
+          } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
+            playerScores[pairing.white_player_id] = (playerScores[pairing.white_player_id] || 0) + 0.5;
+          }
+        }
+        
+        // Black player score
+        if (pairing.black_player_id) {
+          if (pairing.result === '0-1' || pairing.result === '0-1F') {
+            playerScores[pairing.black_player_id] = (playerScores[pairing.black_player_id] || 0) + 1;
+          } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
+            playerScores[pairing.black_player_id] = (playerScores[pairing.black_player_id] || 0) + 0.5;
+          }
+        }
+      }
+    });
+    
+    return playerScores;
+  }, [data?.pairings, data?.tournament?.players]);
+
   // Scroll detection
   useEffect(() => {
     const handleScroll = () => {
@@ -1116,8 +1155,14 @@ const PublicTournamentDisplay: React.FC = () => {
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       White
                                     </th>
+                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Score
+                                    </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       Black
+                                    </th>
+                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Score
                                     </th>
                                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       Result
@@ -1142,6 +1187,9 @@ const PublicTournamentDisplay: React.FC = () => {
                                 )}
                               </div>
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-black text-center font-semibold">
+                              {pairing.white_player_id ? calculatePlayerScores()[pairing.white_player_id] || 0 : '-'}
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                               <div className="flex items-center">
                                 <div className="w-4 h-4 bg-gray-800 border border-gray-300 rounded mr-3"></div>
@@ -1153,6 +1201,9 @@ const PublicTournamentDisplay: React.FC = () => {
                                   <span className="text-gray-500 ml-2">[{pairing.black_uscf_id}]</span>
                                 )}
                               </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-black text-center font-semibold">
+                              {pairing.black_player_id ? calculatePlayerScores()[pairing.black_player_id] || 0 : '-'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-black text-center">
                               <span className={`inline-flex px-3 py-1 text-xs font-medium rounded ${

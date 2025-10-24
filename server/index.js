@@ -101,6 +101,7 @@ const teamRoutes = require('./routes/teams');
 const analyticsRoutes = require('./routes/analytics');
 const registrationRoutes = require('./routes/registrations');
 const enhancedFeaturesRoutes = require('./routes/enhancedFeatures');
+const pairingEditorRoutes = require('./routes/pairingEditor');
 
 // Use routes
 console.log('Setting up routes...');
@@ -121,6 +122,7 @@ app.use('/api/backup', backupRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/enhanced', enhancedFeaturesRoutes);
+app.use('/api/pairing-editor', pairingEditorRoutes);
 
 console.log('Routes set up successfully');
 
