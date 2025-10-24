@@ -6,7 +6,7 @@
     "tournamentId": null
   },
   "production": {
-    "apiBaseUrl": "https://your-production-api.com",
+    "apiBaseUrl": "https://chess-tournament-director-6ce5e76147d7.herokuapp.com",
     "username": "admin",
     "password": "your-production-password",
     "tournamentId": null

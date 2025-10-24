@@ -1036,7 +1036,7 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
   const { tournamentId, playerId } = req.params;
 
   try {
-    // Get player info
+    // 1. Get player info
     const player = await new Promise((resolve, reject) => {
       db.get(
         'SELECT * FROM players WHERE id = ? AND tournament_id = ?',
@@ -1055,7 +1055,7 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
       });
     }
 
-    // Get tournament info
+    // 2. Get tournament info
     const tournament = await new Promise((resolve, reject) => {
       db.get(
         'SELECT * FROM tournaments WHERE id = ?',
@@ -1067,7 +1067,7 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
       );
     });
 
-    // Get all pairings for this player
+    // 3. Get player's pairings
     const pairings = await new Promise((resolve, reject) => {
       db.all(
         `SELECT p.*, 
@@ -1086,62 +1086,10 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
       );
     });
 
-    // Calculate player performance across rounds
-    const roundPerformance = {};
-    const roundPositions = {};
-    let totalPoints = 0;
-
-    pairings.forEach(pairing => {
-      if (!roundPerformance[pairing.round]) {
-        roundPerformance[pairing.round] = {
-          round: pairing.round,
-          result: pairing.result,
-          opponent: pairing.white_player_id === playerId ? 
-            { name: pairing.black_name, rating: pairing.black_rating, id: pairing.black_player_id } :
-            { name: pairing.white_name, rating: pairing.white_rating, id: pairing.white_player_id },
-          color: pairing.white_player_id === playerId ? 'white' : 'black',
-          board: pairing.board,
-          points: 0
-        };
-
-        // Calculate points
-        if (pairing.result) {
-          if (pairing.white_player_id === playerId) {
-            if (pairing.result === '1-0' || pairing.result === '1-0F') {
-              roundPerformance[pairing.round].points = 1;
-            } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
-              roundPerformance[pairing.round].points = 0.5;
-            } else if (pairing.result === '0-1' || pairing.result === '0-1F') {
-              roundPerformance[pairing.round].points = 0;
-            }
-          } else {
-            if (pairing.result === '0-1' || pairing.result === '0-1F') {
-              roundPerformance[pairing.round].points = 1;
-            } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
-              roundPerformance[pairing.round].points = 0.5;
-            } else if (pairing.result === '1-0' || pairing.result === '1-0F') {
-              roundPerformance[pairing.round].points = 0;
-            }
-          }
-          totalPoints += roundPerformance[pairing.round].points;
-        }
-      }
-    });
-
-    // Get standings for this player
-    const standings = await new Promise((resolve, reject) => {
+    // 4. Get all players for standings
+    const allPlayers = await new Promise((resolve, reject) => {
       db.all(
-        `SELECT p.id, p.name, p.rating, p.section,
-                COALESCE(SUM(r.points), 0) as total_points,
-                COUNT(r.id) as games_played,
-                COUNT(CASE WHEN r.result = '1-0' OR r.result = '1-0F' THEN 1 END) as wins,
-                COUNT(CASE WHEN r.result = '0-1' OR r.result = '0-1F' THEN 1 END) as losses,
-                COUNT(CASE WHEN r.result = '1/2-1/2' OR r.result = '1/2-1/2F' THEN 1 END) as draws
-         FROM players p
-         LEFT JOIN results r ON p.id = r.player_id
-         WHERE p.tournament_id = ? AND p.status = 'active'
-         GROUP BY p.id
-         ORDER BY total_points DESC, p.rating DESC`,
+        'SELECT id, name, rating, section FROM players WHERE tournament_id = ? AND status = "active" ORDER BY name',
         [tournamentId],
         (err, rows) => {
           if (err) reject(err);
@@ -1150,64 +1098,106 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
       );
     });
 
-    // Find player's rank
-    let playerRank = 0;
-    standings.forEach((p, index) => {
-      if (p.id === playerId) {
-        playerRank = index + 1;
-      }
-    });
+    // 5. Calculate player's round performance
+    const roundPerformance = [];
+    let totalPoints = 0;
 
-    // Calculate tiebreaker scores
-    const tiebreakers = await new Promise((resolve, reject) => {
-      db.all(
-        `SELECT r.tiebreak_1, r.tiebreak_2, r.tiebreak_3, r.tiebreak_4, r.tiebreak_5
-         FROM results r
-         WHERE r.player_id = ? AND r.tournament_id = ?
-         ORDER BY r.round`,
-        [playerId, tournamentId],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
+    pairings.forEach(pairing => {
+      let points = 0;
+      let result = pairing.result || 'TBD';
+      const isWhite = pairing.white_player_id === playerId;
+      
+      if (result && result !== 'TBD') {
+        if (isWhite) {
+          if (result === '1-0' || result === '1-0F') points = 1;
+          else if (result === '1/2-1/2' || result === '1/2-1/2F') points = 0.5;
+          else points = 0;
+        } else {
+          if (result === '0-1' || result === '0-1F') points = 1;
+          else if (result === '1/2-1/2' || result === '1/2-1/2F') points = 0.5;
+          else points = 0;
         }
-      );
+        totalPoints += points;
+      }
+
+      const opponent = isWhite 
+        ? { name: pairing.black_name, rating: pairing.black_rating, id: pairing.black_player_id }
+        : { name: pairing.white_name, rating: pairing.white_rating, id: pairing.white_player_id };
+
+      roundPerformance.push({
+        round: pairing.round,
+        result: result,
+        opponent: opponent,
+        color: isWhite ? 'white' : 'black',
+        board: pairing.board,
+        points: points
+      });
     });
 
-    // Calculate tiebreak scores (Median, Solkoff, Cumulative, Opponents' Oppponents)
-    const roundByRound = pairings.reduce((acc, pairing) => {
-      if (!acc[pairing.round]) {
-        acc[pairing.round] = null;
+    // 6. Calculate player stats
+    let wins = 0, draws = 0, losses = 0;
+    pairings.forEach(p => {
+      if (!p.result || p.result === 'TBD') return;
+      const isWhite = p.white_player_id === playerId;
+      if (isWhite) {
+        if (p.result === '1-0' || p.result === '1-0F') wins++;
+        else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') draws++;
+        else losses++;
+      } else {
+        if (p.result === '0-1' || p.result === '0-1F') wins++;
+        else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') draws++;
+        else losses++;
       }
-      return acc;
-    }, {});
+    });
 
-    // Sort rounds
-    const sortedRounds = Object.keys(roundPerformance)
-      .map(r => parseInt(r))
-      .sort((a, b) => a - b);
-
-    // Calculate running totals and positions
-    let cumulativePoints = 0;
-    const positionHistory = [{ round: 'start', position: player.start_number || 1 }];
-
-    sortedRounds.forEach((round, idx) => {
-      cumulativePoints += roundPerformance[round].points;
-      roundPerformance[round].cumulative = cumulativePoints;
-
-      // Find position after this round
-      let position = 1;
-      standings.forEach(p => {
-        if (p.id !== playerId) {
-          let opponentPointsAfterRound = 0;
-          sortedRounds.slice(0, idx + 1).forEach(r => {
-            if (roundPerformance[r] && roundPerformance[r].opponent.id === p.id) {
-              // This would require more complex logic to track
+    // 7. Calculate standings and find player rank
+    const standingsData = allPlayers.map(p => {
+      let playerTotalPoints = 0;
+      let playerWins = 0, playerDraws = 0, playerLosses = 0;
+      
+      pairings.forEach(pairing => {
+        if ((pairing.white_player_id === p.id || pairing.black_player_id === p.id) && pairing.result && pairing.result !== 'TBD') {
+          const isWhite = pairing.white_player_id === p.id;
+          if (isWhite) {
+            if (pairing.result === '1-0' || pairing.result === '1-0F') {
+              playerTotalPoints += 1;
+              playerWins++;
+            } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
+              playerTotalPoints += 0.5;
+              playerDraws++;
+            } else {
+              playerLosses++;
             }
-          });
+          } else {
+            if (pairing.result === '0-1' || pairing.result === '0-1F') {
+              playerTotalPoints += 1;
+              playerWins++;
+            } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
+              playerTotalPoints += 0.5;
+              playerDraws++;
+            } else {
+              playerLosses++;
+            }
+          }
         }
       });
 
-      positionHistory.push({ round: round, position: Math.ceil(Math.random() * 10) }); // Simplified
+      return {
+        id: p.id,
+        name: p.name,
+        rating: p.rating,
+        section: p.section,
+        total_points: playerTotalPoints,
+        games_played: playerWins + playerDraws + playerLosses,
+        wins: playerWins,
+        draws: playerDraws,
+        losses: playerLosses
+      };
+    }).sort((a, b) => b.total_points - a.total_points);
+
+    let playerPlace = 1;
+    standingsData.forEach((s, idx) => {
+      if (s.id === playerId) playerPlace = idx + 1;
     });
 
     res.json({
@@ -1225,34 +1215,20 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
         uscf_id: player.uscf_id,
         fide_id: player.fide_id,
         section: player.section,
-        start_number: player.start_number,
+        start_number: player.start_number || 1,
         totalPoints: totalPoints,
-        place: playerRank
+        place: playerPlace
       },
-      roundPerformance: Object.values(roundPerformance).sort((a, b) => a.round - b.round),
-      positionHistory: positionHistory,
-      standings: standings,
+      roundPerformance: roundPerformance,
+      positionHistory: [
+        { round: 'start', position: player.start_number || 1 }
+      ],
+      standings: standingsData.slice(0, 20),
       statistics: {
         gamesPlayed: pairings.length,
-        wins: pairings.filter(p => {
-          if (p.result === '1-0' || p.result === '1-0F') {
-            return p.white_player_id === playerId;
-          }
-          if (p.result === '0-1' || p.result === '0-1F') {
-            return p.black_player_id === playerId;
-          }
-          return false;
-        }).length,
-        draws: pairings.filter(p => p.result === '1/2-1/2' || p.result === '1/2-1/2F').length,
-        losses: pairings.filter(p => {
-          if (p.result === '0-1' || p.result === '0-1F') {
-            return p.white_player_id === playerId;
-          }
-          if (p.result === '1-0' || p.result === '1-0F') {
-            return p.black_player_id === playerId;
-          }
-          return false;
-        }).length
+        wins: wins,
+        draws: draws,
+        losses: losses
       }
     });
 
@@ -1260,7 +1236,7 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
     console.error('Error fetching player performance:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch player performance'
+      error: 'Failed to fetch player performance: ' + error.message
     });
   }
 });

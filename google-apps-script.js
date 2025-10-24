@@ -18,7 +18,7 @@
 
 const CONFIG = {
   // Tournament API settings
-  API_BASE_URL: 'https://your-domain.com', // Replace with your tournament system URL
+  API_BASE_URL: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com', // Replace with your tournament system URL
   API_KEY: 'demo-key-123', // Replace with your API key
   TOURNAMENT_ID: 'your-tournament-id', // Replace with your tournament ID
   

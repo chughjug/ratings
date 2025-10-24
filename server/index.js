@@ -171,6 +171,24 @@ app.get('/google-apps-script.js', (req, res) => {
   });
 });
 
+// Serve markdown files from root directory
+app.get('/:filename.md', (req, res) => {
+  const { filename } = req.params;
+  // Sanitize filename to prevent directory traversal
+  const sanitizedFilename = filename.replace(/\.\./g, '').replace(/\//g, '');
+  const filePath = path.join(__dirname, '../', `${sanitizedFilename}.md`);
+  
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      res.status(404).json({
+        success: false,
+        error: `Markdown file not found: ${filename}`
+      });
+    }
+  });
+});
+
 // Documentation route that serves markdown files as plain text
 app.get('/api/docs/:filename', (req, res) => {
   const { filename } = req.params;
