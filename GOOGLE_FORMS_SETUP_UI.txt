@@ -1,0 +1,211 @@
+================================================================================
+GOOGLE FORMS REGISTRATION INTEGRATION - SETUP UI
+================================================================================
+
+📝 SETUP INSTRUCTIONS FOR GOOGLE FORMS AUTO-IMPORT
+
+================================================================================
+STEP 1: GET YOUR FORM ID
+================================================================================
+
+1. Open your Google Form
+2. Click the three-dot menu (⋮) → "Get prefilled link" or go to the form URL
+3. Your Form ID is in the URL: https://forms.google.com/u/1/d/FORM_ID/edit
+4. Copy just the FORM_ID part (the long string)
+
+Example Form URL:
+https://forms.google.com/u/1/d/1A2b3C4d5E6f7G8h9I0j1K2l3M4n5O6p7Q8r9S0t/edit
+
+Your Form ID:
+1A2b3C4d5E6f7G8h9I0j1K2l3M4n5O6p7Q8r9S0t
+
+================================================================================
+STEP 2: CONFIGURE GOOGLE APPS SCRIPT
+================================================================================
+
+1. Open your Google Sheet
+2. Go to Extensions → Apps Script
+3. Find the FORMS_CONFIG section (around line 410)
+4. Update these values:
+
+PASTE THIS INTO YOUR SCRIPT:
+================================================================================
+
+const FORMS_CONFIG = {
+  ENABLE_FORM_IMPORT: true,                    // Set to true to enable
+  FORM_ID: 'YOUR_FORM_ID_HERE',               // Paste your Form ID here
+  API_BASE_URL: 'https://your-domain.com',    // Your tournament system URL
+  API_KEY: 'demo-key-123',                     // Your API key
+  TOURNAMENT_ID: 'your-tournament-id',         // Your tournament ID
+  CHECK_INTERVAL: 5,                           // Check every 5 minutes
+  RESPONSE_LIMIT: 100                          // Max 100 responses per import
+};
+
+================================================================================
+STEP 3: SETUP THE AUTO-IMPORT
+================================================================================
+
+After updating the FORMS_CONFIG:
+
+1. In the Apps Script editor, find the function: setupFormImport()
+2. Click the Play button (▶) to run it
+3. Grant permission when prompted
+4. You'll see a confirmation: "✅ Form import configured!"
+
+If it says "Form import is disabled":
+→ Make sure ENABLE_FORM_IMPORT is set to true
+
+If it says "Please set your FORM_ID":
+→ Make sure FORM_ID is filled in (not 'your-form-id-here')
+
+================================================================================
+STEP 4: WHAT HAPPENS NEXT
+================================================================================
+
+✅ Real-time Import:
+   When someone submits your form, they're automatically imported to the tournament
+
+✅ Backup Periodic Check:
+   Every 5 minutes, the script checks for any missed responses
+
+✅ Auto-lookup:
+   Player ratings and sections are automatically looked up and assigned
+
+✅ Confirmation Emails:
+   Players receive a registration confirmation (if email field is mapped)
+
+================================================================================
+STEP 5: FORM FIELD MAPPING
+================================================================================
+
+Your form questions are AUTOMATICALLY DETECTED by keywords:
+
+FORM QUESTION TITLE          →    MAPPED TO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"Player Name"                →    name *
+"USCF ID" or "Member ID"     →    uscf_id
+"FIDE ID"                    →    fide_id
+"Rating" or "ELO"            →    rating
+"Section" or "Division"      →    section
+"Email"                      →    email
+"Phone" or "Telephone"       →    phone
+"School" or "Institution"    →    school
+"Grade" or "Year"            →    grade
+"City" or "Town"             →    city
+"State" or "Province"        →    state
+"Team" or "Club"             →    team_name
+"Notes" or "Comments"        →    notes
+"Parent Name"                →    parent_name
+"Parent Email"               →    parent_email
+"Parent Phone"               →    parent_phone
+"Emergency Contact"          →    emergency_contact
+"Emergency Phone"            →    emergency_phone
+
+* = required field (form must have a player name field)
+
+Your form doesn't need all fields - just map the ones you use!
+
+================================================================================
+STEP 6: EXAMPLE FORM FIELDS
+================================================================================
+
+Here's a good form structure:
+
+1. Player Name * (required)
+2. USCF ID (optional)
+3. Email (for confirmation)
+4. Phone (contact)
+5. School (optional)
+6. Grade (optional)
+7. Parent Name (optional)
+8. Parent Email (optional)
+9. Parent Phone (optional)
+10. Notes / Special Needs (optional)
+
+The script will automatically detect and map these!
+
+================================================================================
+STEP 7: TROUBLESHOOTING
+================================================================================
+
+❌ "Form responses not importing"
+   → Check the FormImportLog sheet for errors
+   → Verify FORM_ID is correct
+   → Ensure API credentials are valid
+
+❌ "Email not recognized"
+   → Make sure your form has an "Email" question
+   → Check spelling in form question title
+
+❌ "Players importing with wrong data"
+   → Review FormImportLog sheet for details
+   → Check that form question titles match keywords
+
+❌ "Want to stop auto-import temporarily"
+   → Set ENABLE_FORM_IMPORT: false
+   → Run setupFormImport() again
+
+================================================================================
+STEP 8: MONITORING
+================================================================================
+
+Check these sheets to see what's happening:
+
+📊 SyncStatus Sheet
+   - Shows all manual sheet syncs
+   - Timestamp, action, success/failure
+
+📊 FormImportLog Sheet
+   - Shows all form response imports
+   - Individual responses logged
+   - Errors and details tracked
+
+================================================================================
+STEP 9: TESTING
+================================================================================
+
+Test your setup with a test submission:
+
+1. Go to your Google Form
+2. Click "Preview" (eye icon)
+3. Fill it out with test data
+4. Submit
+5. Wait 1 minute
+6. Check the FormImportLog sheet - should show the import
+7. Verify the player was added to your tournament
+
+================================================================================
+QUICK COPY-PASTE VALUES
+================================================================================
+
+Create a checklist of what you need to paste into FORMS_CONFIG:
+
+□ Your Form ID: _________________________________
+□ Tournament System URL: _________________________________
+□ API Key: _________________________________
+□ Tournament ID: _________________________________
+
+================================================================================
+SUPPORT & DOCUMENTATION
+================================================================================
+
+Full Documentation: See GOOGLE_FORMS_INTEGRATION.md
+Questions: Check the "Chess Tournament" menu in your Google Sheet
+Issues: Review the SyncStatus or FormImportLog sheets for error details
+
+================================================================================
+READY TO USE
+================================================================================
+
+After completing all steps:
+
+✅ Form auto-import is running
+✅ Players submit form → auto-imported to tournament
+✅ Ratings are automatically looked up
+✅ Sections are auto-assigned
+✅ Confirmation emails sent
+✅ Everything logged and tracked
+
+Questions? Check your FormImportLog sheet for detailed error messages!
+
+================================================================================

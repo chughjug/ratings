@@ -1,0 +1,97 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    🏆 CHESS TOURNAMENT FORM SETUP
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ GOOGLE FORMS AUTO-IMPORT CONFIGURATION
+
+Step 1️⃣  - GET YOUR FORM ID
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Open your Google Form → Copy the ID from the URL:
+https://forms.google.com/u/1/d/[FORM_ID]/edit
+                            ↑
+                     Copy THIS part
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Step 2️⃣  - PASTE THIS INTO YOUR SCRIPT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Replace YOUR_FORM_ID and other placeholders:
+
+const FORMS_CONFIG = {
+  ENABLE_FORM_IMPORT: true,
+  FORM_ID: 'YOUR_FORM_ID',
+  API_BASE_URL: 'https://your-domain.com',
+  API_KEY: 'demo-key-123',
+  TOURNAMENT_ID: 'your-tournament-id',
+  CHECK_INTERVAL: 5,
+  RESPONSE_LIMIT: 100
+};
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Step 3️⃣  - RUN THE SETUP FUNCTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In Apps Script Editor:
+  1. Find: setupFormImport()
+  2. Click Play ▶
+  3. Grant permissions when prompted
+  4. Done! ✅
+
+═══════════════════════════════════════════════════════════════════════════════
+
+⚙️  FORM FIELD AUTO-DETECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your form questions are AUTOMATICALLY mapped:
+
+  "Player Name"        → Player Name ✓
+  "USCF ID"            → USCF ID
+  "Email"              → Email
+  "Phone"              → Phone
+  "School"             → School
+  "Grade"              → Grade
+  "Parent Name"        → Parent Info
+  "Notes"              → Additional Info
+
+No manual mapping needed!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ WHAT HAPPENS NEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✓ Form submit → Auto-import to tournament (real-time)
+  ✓ Ratings auto-lookup
+  ✓ Sections auto-assign
+  ✓ Confirmation email sent
+  ✓ All imports logged
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🧪 TEST IT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Submit test response to your form
+  2. Wait 1 minute
+  3. Check FormImportLog sheet → Should see your test entry
+  4. Verify player was added to tournament
+
+═══════════════════════════════════════════════════════════════════════════════
+
+❓ ISSUES?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Check FormImportLog sheet for error details
+  • Verify FORM_ID is correct
+  • Make sure API credentials are valid
+  • Review form question titles match keywords
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Ready? 🚀
+Set ENABLE_FORM_IMPORT to true and run setupFormImport()!
+
+═══════════════════════════════════════════════════════════════════════════════

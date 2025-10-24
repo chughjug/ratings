@@ -114,7 +114,7 @@ async function lookupRatingsUltraFast(playersWithUSCF) {
     if (cached) {
       cachedResults.push({
         id: player.id,
-        name: player.name,
+        name: cached.name || player.name, // Use cached name if available
         uscf_id: player.uscf_id,
         success: true,
         rating: cached.rating,
@@ -189,7 +189,7 @@ async function processWorkerBatch(worker, players) {
         
         results.push({
           id: data.playerId,
-          name: data.name,
+          name: data.result.name || data.name, // Use USCF name if available, otherwise use provided name
           uscf_id: data.uscfId,
           success: true,
           rating: data.result.rating,

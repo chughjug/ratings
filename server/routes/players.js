@@ -235,14 +235,17 @@ router.get('/search', async (req, res) => {
     
     // Use real US Chess search
     const players = await searchUSChessPlayers(searchTerm.trim(), parseInt(limit));
-    console.log(`Search completed. Found ${players.length} players`);
+    
+    // Filter results by relevance to ensure accuracy
+    const filteredPlayers = filterSearchResults(players, searchTerm.trim(), parseInt(limit));
+    console.log(`Search completed. Found ${filteredPlayers.length} relevant players`);
     
     console.log('Sending response...');
     res.json({
       success: true,
       data: {
-        players,
-        count: players.length
+        players: filteredPlayers,
+        count: filteredPlayers.length
       }
     });
   } catch (error) {
@@ -253,6 +256,71 @@ router.get('/search', async (req, res) => {
     });
   }
 });
+
+/**
+ * Filter and rank search results by relevance to the search term
+ */
+function filterSearchResults(players, searchTerm, maxResults) {
+  if (!Array.isArray(players) || players.length === 0) {
+    return [];
+  }
+  
+  const searchLower = searchTerm.toLowerCase().trim();
+  
+  // Score each player based on name relevance
+  const scoredPlayers = players.map(player => {
+    let relevanceScore = 0;
+    const nameLower = player.name ? player.name.toLowerCase() : '';
+    
+    // Exact match gets highest score
+    if (nameLower === searchLower) {
+      relevanceScore = 1000;
+    }
+    // Starts with search term
+    else if (nameLower.startsWith(searchLower)) {
+      relevanceScore = 100;
+    }
+    // Contains complete search term as a word
+    else if (nameLower.includes(` ${searchLower}`) || nameLower.includes(`${searchLower} `)) {
+      relevanceScore = 75;
+    }
+    // Starts with first word of search term
+    else if (searchLower.includes(' ')) {
+      const firstWord = searchLower.split(' ')[0];
+      if (nameLower.startsWith(firstWord)) {
+        relevanceScore = 50;
+      } else if (nameLower.includes(` ${firstWord}`)) {
+        relevanceScore = 30;
+      }
+    }
+    // Contains search term (substring)
+    else if (nameLower.includes(searchLower)) {
+      relevanceScore = 20;
+    }
+    // Last word match
+    else if (searchLower.includes(' ')) {
+      const lastWord = searchLower.split(' ').pop();
+      if (nameLower.endsWith(lastWord) || nameLower.includes(` ${lastWord}`)) {
+        relevanceScore = 25;
+      }
+    }
+    
+    return { ...player, relevanceScore };
+  });
+  
+  // Sort by relevance score (highest first), then by name alphabetically
+  const sorted = scoredPlayers
+    .filter(p => p.relevanceScore > 0) // Only keep relevant results
+    .sort((a, b) => {
+      if (b.relevanceScore !== a.relevanceScore) {
+        return b.relevanceScore - a.relevanceScore;
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  
+  // Remove the relevanceScore before returning
+  return sorted.slice(0, maxResults).map(({ relevanceScore, ...player }) => player);
+}
 
 // Download CSV template - MUST be before /:id route
 router.get('/csv-template', (req, res) => {
@@ -1177,483 +1245,3 @@ router.post('/api-import/:tournamentId', async (req, res) => {
     });
   }
 });
-
-// Real-time player registration endpoint
-router.post('/register/:tournamentId', async (req, res) => {
-  try {
-    console.log('Registration endpoint called for tournament:', req.params.tournamentId);
-    console.log('Request body:', req.body);
-    
-    const { tournamentId } = req.params;
-    const { 
-      api_key,
-      name,
-      uscf_id,
-      fide_id,
-      rating,
-      section,
-      school,
-      grade,
-      email,
-      phone,
-      state,
-      city,
-      notes,
-      parent_name,
-      parent_email,
-      parent_phone,
-      emergency_contact,
-      emergency_phone,
-      tshirt_size,
-      dietary_restrictions,
-      special_needs,
-      lookup_ratings = true,
-      auto_assign_sections = true,
-      source = 'registration_form'
-    } = req.body;
-
-    // Validate API key
-    if (!api_key) {
-      return res.status(401).json({
-        success: false,
-        error: 'API key is required'
-      });
-    }
-
-    const validApiKeys = process.env.API_KEYS ? process.env.API_KEYS.split(',') : ['demo-key-123'];
-    if (!validApiKeys.includes(api_key)) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid API key'
-      });
-    }
-
-    // Validate required fields
-    if (!name || !tournamentId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Name and tournament ID are required'
-      });
-    }
-
-    // Validate tournament exists
-    const tournament = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
-    if (!tournament) {
-      return res.status(404).json({
-        success: false,
-        error: 'Tournament not found'
-      });
-    }
-
-    // Create player object
-    console.log('Creating player object for:', name);
-    const player = {
-      name: name.trim(),
-      uscf_id: uscf_id || null,
-      fide_id: fide_id || null,
-      rating: rating || null,
-      section: section || null,
-      school: school || null,
-      grade: grade || null,
-      email: email || null,
-      phone: phone || null,
-      state: state || null,
-      city: city || null,
-      notes: notes || null,
-      parent_name: parent_name || null,
-      parent_email: parent_email || null,
-      parent_phone: parent_phone || null,
-      emergency_contact: emergency_contact || null,
-      emergency_phone: emergency_phone || null,
-      tshirt_size: tshirt_size || null,
-      dietary_restrictions: dietary_restrictions || null,
-      special_needs: special_needs || null
-    };
-    console.log('Player object created:', player);
-
-    // Generate player ID
-    const playerId = uuidv4();
-    let finalRating = player.rating;
-    let finalSection = player.section;
-
-    // Enhanced USCF lookup - try both existing USCF ID and name search
-    let ratingLookupResult = {
-      success: false,
-      rating: null,
-      expirationDate: null,
-      isActive: false,
-      error: 'No lookup attempted',
-      searchAttempted: false
-    };
-    
-    // First try direct lookup if USCF ID is provided
-    if (uscf_id && uscf_id.trim() !== '') {
-      try {
-        ratingLookupResult = await lookupAndUpdatePlayer(db, playerId, uscf_id);
-        if (ratingLookupResult.success) {
-          finalRating = ratingLookupResult.rating;
-          console.log(`✅ Direct USCF lookup successful for ${name}: ${finalRating}`);
-        }
-      } catch (error) {
-        console.error(`Error in direct USCF lookup for ${name}:`, error.message);
-        ratingLookupResult = {
-          success: false,
-          error: error.message
-        };
-      }
-    }
-    
-    // If direct lookup failed or no USCF ID provided, try name search
-    if (!ratingLookupResult.success) {
-      try {
-        console.log(`Attempting name-based USCF search for: ${name}`);
-        const nameSearchResult = await findUSCFInfoByName(name, playerId);
-        if (nameSearchResult.success) {
-          ratingLookupResult = nameSearchResult;
-          finalRating = nameSearchResult.rating;
-          // Update the player's USCF ID with the found one
-          if (nameSearchResult.uscf_id) {
-            player.uscf_id = nameSearchResult.uscf_id;
-          }
-          console.log(`✅ Name-based USCF lookup successful for ${name}: ${finalRating} (USCF ID: ${nameSearchResult.uscf_id})`);
-        } else {
-          console.log(`❌ Name-based USCF lookup failed for ${name}: ${nameSearchResult.error}`);
-          ratingLookupResult = nameSearchResult;
-        }
-      } catch (error) {
-        console.error(`Error in name-based USCF lookup for ${name}:`, error.message);
-        ratingLookupResult = {
-          success: false,
-          error: error.message,
-          searchAttempted: true
-        };
-      }
-    }
-
-    // Auto-assign section if not provided and rating is available
-    if (!finalSection && finalRating) {
-      try {
-        finalSection = await assignSectionToPlayer(db, tournamentId, finalRating);
-      } catch (error) {
-        console.error(`Error assigning section for ${name}:`, error);
-        // Continue without section assignment
-        finalSection = null;
-      }
-    }
-
-    // Insert player into database
-    console.log('Attempting to insert player:', {
-      playerId, tournamentId, name: player.name, finalRating, finalSection
-    });
-    
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO players (id, tournament_id, name, uscf_id, fide_id, rating, section, status, school, email, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [playerId, tournamentId, player.name, player.uscf_id, player.fide_id, finalRating, finalSection, 'active', player.school, player.email, source],
-        function(err) {
-          if (err) {
-            console.error('Database insert error:', err);
-            reject(err);
-          } else {
-            console.log('Player inserted successfully');
-            resolve();
-          }
-        }
-      );
-    });
-
-    // Send webhook notification if webhook URL is provided
-    if (req.body.webhook_url) {
-      try {
-        const webhookData = {
-          event: 'player_registered',
-          tournament_id: tournamentId,
-          tournament_name: tournament.name,
-          player: {
-            id: playerId,
-            name: player.name,
-            uscf_id: player.uscf_id,
-            rating: finalRating,
-            section: finalSection,
-            school: player.school,
-            email: player.email
-          },
-          timestamp: new Date().toISOString()
-        };
-
-        // Send webhook asynchronously (don't wait for response)
-        fetch(req.body.webhook_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(webhookData)
-        }).catch(err => console.error('Webhook failed:', err));
-      } catch (error) {
-        console.error('Error sending webhook:', error);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Player registered successfully',
-      data: {
-        player_id: playerId,
-        tournament_id: tournamentId,
-        tournament_name: tournament.name,
-        player: {
-          name: player.name,
-          uscf_id: player.uscf_id,
-          rating: finalRating,
-          section: finalSection,
-          school: player.school,
-          email: player.email
-        },
-        rating_lookup: ratingLookupResult,
-        auto_assigned_section: finalSection && !player.section
-      }
-    });
-
-  } catch (error) {
-    console.error('Error in player registration:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to register player',
-      details: error.message
-    });
-  }
-});
-
-// Get tournament registration info and links
-router.get('/tournament/:tournamentId/registration-info', async (req, res) => {
-  try {
-    const { tournamentId } = req.params;
-    const { api_key } = req.query;
-
-    // Validate API key
-    if (!api_key) {
-      return res.status(401).json({
-        success: false,
-        error: 'API key is required'
-      });
-    }
-
-    const validApiKeys = process.env.API_KEYS ? process.env.API_KEYS.split(',') : ['demo-key-123'];
-    if (!validApiKeys.includes(api_key)) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid API key'
-      });
-    }
-
-    // Get tournament info
-    const tournament = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
-    if (!tournament) {
-      return res.status(404).json({
-        success: false,
-        error: 'Tournament not found'
-      });
-    }
-
-    const baseUrl = req.protocol + '://' + req.get('host');
-    
-    res.json({
-      success: true,
-      data: {
-        tournament: {
-          id: tournament.id,
-          name: tournament.name,
-          format: tournament.format,
-          rounds: tournament.rounds,
-          start_date: tournament.start_date,
-          end_date: tournament.end_date,
-          city: tournament.city,
-          state: tournament.state,
-          location: tournament.location
-        },
-        api_endpoints: {
-          register_player: `${baseUrl}/api/players/register/${tournamentId}`,
-          import_players: `${baseUrl}/api/players/api-import/${tournamentId}`,
-          get_players: `${baseUrl}/api/players/tournament/${tournamentId}`
-        },
-        registration_form_url: `${baseUrl}/register/${tournamentId}`,
-        public_tournament_url: `${baseUrl}/public/tournaments/${tournamentId}`,
-        api_key: api_key,
-        webhook_support: true,
-        supported_fields: [
-          'name', 'uscf_id', 'fide_id', 'rating', 'section', 'school', 'grade',
-          'email', 'phone', 'state', 'city', 'notes', 'parent_name', 'parent_email',
-          'parent_phone', 'emergency_contact', 'emergency_phone', 'tshirt_size',
-          'dietary_restrictions', 'special_needs', 'expiration_date', 'intentional_bye_rounds',
-          'uscf_regular_rating_date', 'uscf_name', 'created_at', 'source'
-        ]
-      }
-    });
-
-  } catch (error) {
-    console.error('Error getting registration info:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get registration info'
-    });
-  }
-});
-
-// Delete duplicates endpoint
-router.post('/delete-duplicates/:tournamentId', async (req, res) => {
-  try {
-    const { tournamentId } = req.params;
-    const { criteria = 'name' } = req.body; // 'name', 'uscf_id', or 'both'
-    
-    console.log(`Deleting duplicates for tournament ${tournamentId} using criteria: ${criteria}`);
-    
-    // First, find all players in the tournament
-    const players = await new Promise((resolve, reject) => {
-      db.all(
-        'SELECT * FROM players WHERE tournament_id = ? ORDER BY created_at ASC',
-        [tournamentId],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
-      );
-    });
-    
-    if (!players || players.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No players found in tournament',
-        deletedCount: 0,
-        duplicates: []
-      });
-    }
-    
-    // Group players by the specified criteria
-    const groups = new Map();
-    const duplicates = [];
-    
-    for (const player of players) {
-      let key;
-      
-      if (criteria === 'name') {
-        key = player.name.toLowerCase().trim();
-      } else if (criteria === 'uscf_id') {
-        key = player.uscf_id || 'no_uscf_id';
-      } else if (criteria === 'both') {
-        key = `${player.name.toLowerCase().trim()}_${player.uscf_id || 'no_uscf_id'}`;
-      } else {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid criteria. Must be "name", "uscf_id", or "both"'
-        });
-      }
-      
-      if (!groups.has(key)) {
-        groups.set(key, []);
-      }
-      groups.get(key).push(player);
-    }
-    
-    // Find groups with duplicates (more than 1 player)
-    for (const [key, group] of groups) {
-      if (group.length > 1) {
-        // Keep the first player (oldest by created_at), mark others as duplicates
-        const [keep, ...dups] = group;
-        duplicates.push({
-          key,
-          keep: keep,
-          duplicates: dups
-        });
-      }
-    }
-    
-    if (duplicates.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No duplicates found',
-        deletedCount: 0,
-        duplicates: []
-      });
-    }
-    
-    // Delete the duplicate players
-    let deletedCount = 0;
-    const deletedPlayers = [];
-    
-    for (const duplicateGroup of duplicates) {
-      for (const duplicate of duplicateGroup.duplicates) {
-        try {
-          // Delete the player
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM players WHERE id = ?', [duplicate.id], function(err) {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
-          
-          // Also delete any related data
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM player_inactive_rounds WHERE player_id = ?', [duplicate.id], function(err) {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
-          
-          deletedCount++;
-          deletedPlayers.push({
-            id: duplicate.id,
-            name: duplicate.name,
-            uscf_id: duplicate.uscf_id,
-            reason: `Duplicate of ${duplicateGroup.keep.name}`
-          });
-          
-        } catch (deleteErr) {
-          console.error(`Error deleting duplicate player ${duplicate.id}:`, deleteErr);
-        }
-      }
-    }
-    
-    console.log(`Successfully deleted ${deletedCount} duplicate players`);
-    
-    res.json({
-      success: true,
-      message: `Successfully deleted ${deletedCount} duplicate players`,
-      deletedCount,
-      duplicates: duplicates.map(d => ({
-        key: d.key,
-        kept: {
-          id: d.keep.id,
-          name: d.keep.name,
-          uscf_id: d.keep.uscf_id
-        },
-        deleted: d.duplicates.map(dup => ({
-          id: dup.id,
-          name: dup.name,
-          uscf_id: dup.uscf_id
-        }))
-      })),
-      deletedPlayers
-    });
-    
-  } catch (error) {
-    console.error('Error deleting duplicates:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to delete duplicates'
-    });
-  }
-});
-
-module.exports = router;

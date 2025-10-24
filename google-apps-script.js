@@ -50,6 +50,23 @@ const CONFIG = {
 };
 
 // ============================================================================
+// SAFE UI HELPER
+// ============================================================================
+
+/**
+ * Safely show an alert dialog, with console fallback for non-UI contexts
+ * @param {string} message - The message to display
+ */
+function safeAlert(message) {
+  try {
+    SpreadsheetApp.getUi().alert(message);
+  } catch (e) {
+    // If UI is not available (e.g., from a trigger), log to console instead
+    console.log('Alert: ' + message);
+  }
+}
+
+// ============================================================================
 // MAIN FUNCTIONS
 // ============================================================================
 
@@ -142,7 +159,7 @@ function syncAllPlayers() {
     
     if (players.length === 0) {
       logStatus('No Players Found', 0, false, '', 'No players found in sheet');
-      SpreadsheetApp.getUi().alert('No players found in the sheet.');
+      safeAlert('No players found in the sheet.');
       return;
     }
     
@@ -150,16 +167,16 @@ function syncAllPlayers() {
     
     if (result.success) {
       logStatus('Full Sync Complete', result.imported_count, true, '', '');
-      SpreadsheetApp.getUi().alert(`Successfully synced ${result.imported_count} players!`);
+      safeAlert(`Successfully synced ${result.imported_count} players!`);
     } else {
       logStatus('Full Sync Failed', 0, false, result.error, '');
-      SpreadsheetApp.getUi().alert(`Sync failed: ${result.error}`);
+      safeAlert(`Sync failed: ${result.error}`);
     }
     
   } catch (error) {
     console.error('Sync error:', error);
     logStatus('Sync Error', 0, false, error.toString(), '');
-    SpreadsheetApp.getUi().alert(`Error: ${error.toString()}`);
+    safeAlert(`Error: ${error.toString()}`);
   }
 }
 
@@ -176,7 +193,7 @@ function syncNewPlayers() {
     
     if (newPlayers.length === 0) {
       logStatus('No New Players', 0, true, '', 'All players already synced');
-      SpreadsheetApp.getUi().alert('No new players to sync.');
+      safeAlert('No new players to sync.');
       return;
     }
     
@@ -185,16 +202,16 @@ function syncNewPlayers() {
     if (result.success) {
       markPlayersAsSynced(newPlayers);
       logStatus('New Players Sync Complete', result.imported_count, true, '', '');
-      SpreadsheetApp.getUi().alert(`Successfully synced ${result.imported_count} new players!`);
+      safeAlert(`Successfully synced ${result.imported_count} new players!`);
     } else {
       logStatus('New Players Sync Failed', 0, false, result.error, '');
-      SpreadsheetApp.getUi().alert(`Sync failed: ${result.error}`);
+      safeAlert(`Sync failed: ${result.error}`);
     }
     
   } catch (error) {
     console.error('New players sync error:', error);
     logStatus('New Players Sync Error', 0, false, error.toString(), '');
-    SpreadsheetApp.getUi().alert(`Error: ${error.toString()}`);
+    safeAlert(`Error: ${error.toString()}`);
   }
 }
 
@@ -203,22 +220,47 @@ function syncNewPlayers() {
  */
 function testConnection() {
   try {
-    const response = UrlFetchApp.fetch(`${CONFIG.API_BASE_URL}/api/players/tournament/${CONFIG.TOURNAMENT_ID}`, {
-      method: 'GET',
+    console.log('Testing connection to API...');
+    
+    // Test with the form import endpoint
+    const baseURL = FORMS_CONFIG.API_BASE_URL.replace(/\/$/, '');
+    const endpoint = `${baseURL}/api/players/api-import/${FORMS_CONFIG.TOURNAMENT_ID}`;
+    
+    console.log(`Testing endpoint: ${endpoint}`);
+    
+    // Send a test payload (minimal player data)
+    const testPayload = {
+      api_key: FORMS_CONFIG.API_KEY,
+      players: [],  // Empty players list for test
+      source: 'test',
+      lookup_ratings: false
+    };
+    
+    const response = UrlFetchApp.fetch(endpoint, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${CONFIG.API_KEY}`
-      }
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(testPayload),
+      muteHttpExceptions: true,
+      timeout: 10000
     });
     
-    if (response.getResponseCode() === 200) {
-      SpreadsheetApp.getUi().alert('✅ Connection successful!');
+    const status = response.getResponseCode();
+    const content = response.getContentText();
+    
+    console.log(`Connection test response: ${status}`);
+    
+    if (status === 200 || status === 201) {
+      safeAlert('✅ Connection successful!\n\nAPI is responding correctly.\n\nTournament: ' + FORMS_CONFIG.TOURNAMENT_ID);
       logStatus('Connection Test', 0, true, '', 'API connection successful');
     } else {
-      SpreadsheetApp.getUi().alert('❌ Connection failed. Check your configuration.');
-      logStatus('Connection Test', 0, false, `HTTP ${response.getResponseCode()}`, '');
+      safeAlert(`❌ Connection failed.\nStatus: ${status}\n\nCheck your configuration.`);
+      logStatus('Connection Test', 0, false, `HTTP ${status}`, '');
     }
   } catch (error) {
-    SpreadsheetApp.getUi().alert(`❌ Connection error: ${error.toString()}`);
+    console.error('Connection test error:', error);
+    safeAlert(`❌ Connection error:\n${error.toString()}`);
     logStatus('Connection Test', 0, false, error.toString(), '');
   }
 }
@@ -228,29 +270,46 @@ function testConnection() {
  */
 function showRegistrationInfo() {
   const info = `
-Chess Tournament Registration Info
+╔════════════════════════════════════════════════════════════════╗
+║        GOOGLE FORMS IMPORT CONFIGURATION STATUS                ║
+╚════════════════════════════════════════════════════════════════╝
 
-Tournament ID: ${CONFIG.TOURNAMENT_ID}
-API Base URL: ${CONFIG.API_BASE_URL}
-API Key: ${CONFIG.API_KEY}
+FORM CONFIGURATION:
+  Form ID: ${FORMS_CONFIG.FORM_ID}
+  ✓ Form Import Enabled: ${FORMS_CONFIG.ENABLE_FORM_IMPORT ? 'YES' : 'NO'}
+  ✓ Check Interval: Every ${FORMS_CONFIG.CHECK_INTERVAL} minutes
 
-Registration Endpoint:
-${CONFIG.API_BASE_URL}/api/players/register/${CONFIG.TOURNAMENT_ID}
+API CONFIGURATION:
+  API Base URL: ${FORMS_CONFIG.API_BASE_URL}
+  Tournament ID: ${FORMS_CONFIG.TOURNAMENT_ID}
+  API Key: ${FORMS_CONFIG.API_KEY}
 
-Supported Fields:
-- name (required)
-- uscf_id, fide_id, rating, section
-- school, grade, email, phone
-- state, city, notes
-- parent_name, parent_email, parent_phone
-- emergency_contact, emergency_phone
-- tshirt_size, dietary_restrictions, special_needs
+IMPORT OPTIONS:
+  ✓ Lookup Ratings: ${FORMS_CONFIG.LOOKUP_RATINGS ? 'YES' : 'NO'}
+  ✓ Auto-Assign Sections: ${FORMS_CONFIG.AUTO_ASSIGN_SECTIONS ? 'YES' : 'NO'}
+  ✓ Send Emails: ${FORMS_CONFIG.SEND_CONFIRMATION_EMAILS ? 'YES' : 'NO'}
 
-Webhook Support: ${CONFIG.WEBHOOK_URL ? 'Yes' : 'No'}
-Auto Sync: ${CONFIG.AUTO_SYNC ? 'Yes' : 'No'}
+IMPORT ENDPOINT:
+${FORMS_CONFIG.API_BASE_URL}/api/players/api-import/${FORMS_CONFIG.TOURNAMENT_ID}
+
+SUPPORTED FORM FIELDS:
+  • Player Name (required)
+  • USCF ID / Member ID
+  • FIDE ID
+  • Email
+  • Phone
+  • School / Institution
+  • Grade / Year
+  • City / State
+  • Team / Club
+  • Parent Name / Email / Phone
+  • Emergency Contact / Phone
+  • Notes / Comments
+
+STATUS: Ready to import from Google Forms!
   `;
   
-  SpreadsheetApp.getUi().alert(info);
+  safeAlert(info);
 }
 
 // ============================================================================
@@ -333,28 +392,65 @@ function markPlayersAsSynced(players) {
  */
 function syncPlayersToAPI(players) {
   const payload = {
-    api_key: CONFIG.API_KEY,
+    api_key: FORMS_CONFIG.API_KEY,
     players: players,
-    lookup_ratings: true,
-    auto_assign_sections: true,
+    lookup_ratings: FORMS_CONFIG.LOOKUP_RATINGS,
+    auto_assign_sections: FORMS_CONFIG.AUTO_ASSIGN_SECTIONS,
     source: 'google_sheets'
   };
   
-  const response = UrlFetchApp.fetch(`${CONFIG.API_BASE_URL}/api/players/api-import/${CONFIG.TOURNAMENT_ID}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    payload: JSON.stringify(payload)
-  });
+  // Ensure proper URL construction (remove trailing slash if present)
+  const baseURL = FORMS_CONFIG.API_BASE_URL.replace(/\/$/, '');
+  const endpoint = `${baseURL}/api/players/api-import/${FORMS_CONFIG.TOURNAMENT_ID}`;
   
-  const result = JSON.parse(response.getContentText());
+  console.log(`Calling API: ${endpoint}`);
+  console.log(`Payload: ${JSON.stringify(payload, null, 2)}`);
   
-  if (!result.success) {
-    throw new Error(result.error || 'Unknown API error');
+  try {
+    const response = UrlFetchApp.fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,  // Don't throw on HTTP errors
+      timeout: 30000  // 30 second timeout
+    });
+    
+    const status = response.getResponseCode();
+    const content = response.getContentText();
+    
+    console.log(`API Response Status: ${status}`);
+    console.log(`API Response (first 500 chars): ${content.substring(0, 500)}`);
+    
+    // Check if response is HTML (error page)
+    if (content.trim().startsWith('<')) {
+      throw new Error(`API returned HTML error page (status ${status}). Server may be down or endpoint doesn't exist. Response: ${content.substring(0, 200)}`);
+    }
+    
+    if (status !== 200 && status !== 201) {
+      throw new Error(`API returned status ${status}: ${content}`);
+    }
+    
+    // Parse JSON response
+    let result;
+    try {
+      result = JSON.parse(content);
+    } catch (parseError) {
+      throw new Error(`Failed to parse API response as JSON: ${parseError.toString()}. Response was: ${content.substring(0, 200)}`);
+    }
+    
+    if (!result.success) {
+      throw new Error(result.error || result.message || 'API returned success: false');
+    }
+    
+    console.log(`API call successful. Imported ${result.data.imported_count || 0} players.`);
+    return result.data;
+    
+  } catch (error) {
+    console.error(`API call error: ${error.toString()}`);
+    throw error;
   }
-  
-  return result.data;
 }
 
 /**
@@ -409,22 +505,15 @@ function onInstall() {
  * FORMS CONFIGURATION - UPDATE THESE VALUES FOR GOOGLE FORMS
  */
 const FORMS_CONFIG = {
-  // Set to true to enable automatic form response import
   ENABLE_FORM_IMPORT: true,
-  
-  // Your Google Form ID (get from form URL: https://forms.google.com/u/1/d/FORM_ID/edit)
-  FORM_ID: 'your-form-id-here',
-  
-  // API Configuration (same as above)
-  API_BASE_URL: CONFIG.API_BASE_URL,
-  API_KEY: CONFIG.API_KEY,
-  TOURNAMENT_ID: CONFIG.TOURNAMENT_ID,
-  
-  // How often to check for new responses (in minutes)
+  FORM_ID: '15fTL-FenfGKK3s_6IMcu6FeeYFONIyJUD9s0eWSqCS4',
+  API_BASE_URL: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/',
+  API_KEY: 'demo-key-123',
+  TOURNAMENT_ID: '399a6188-406c-45ea-b078-ae37a0fdd509',
   CHECK_INTERVAL: 5,
-  
-  // Optional: Response limit per import
-  RESPONSE_LIMIT: 100
+  SEND_CONFIRMATION_EMAILS: true,
+  AUTO_ASSIGN_SECTIONS: true,
+  LOOKUP_RATINGS: true
 };
 
 /**
@@ -438,9 +527,13 @@ function setupFormImport() {
   }
   
   if (!FORMS_CONFIG.FORM_ID || FORMS_CONFIG.FORM_ID === 'your-form-id-here') {
-    SpreadsheetApp.getUi().alert(
-      'Error: Please set your FORM_ID in FORMS_CONFIG before setting up form import.'
-    );
+    const errorMsg = 'Error: Please set your FORM_ID in FORMS_CONFIG before setting up form import.';
+    console.error(errorMsg);
+    try {
+      SpreadsheetApp.getUi().alert(errorMsg);
+    } catch (e) {
+      console.log('UI not available - check console for errors');
+    }
     return;
   }
   
@@ -454,24 +547,44 @@ function setupFormImport() {
   });
   
   // Create new triggers
-  // 1. On form submit trigger (real-time)
-  ScriptApp.newTrigger('onFormSubmit')
-    .onFormSubmit()
-    .create();
+  // Note: onFormSubmit cannot be set up as a trigger via ScriptApp.newTrigger()
+  // Instead, we rely on the periodic time-based trigger to check for new responses
+  // The onFormSubmit function remains available if called directly
   
-  // 2. Periodic trigger (backup/batch processing)
+  // Periodic trigger (backup/batch processing)
   ScriptApp.newTrigger('checkFormResponses')
     .timeBased()
     .everyMinutes(FORMS_CONFIG.CHECK_INTERVAL)
     .create();
   
   console.log('Form import triggers set up successfully!');
-  SpreadsheetApp.getUi().alert('✅ Form import configured! New form responses will be automatically imported.');
+  const successMsg = '✅ Form import configured! New form responses will be checked every ' + FORMS_CONFIG.CHECK_INTERVAL + ' minutes and automatically imported.';
+  console.log(successMsg);
+  
+  try {
+    SpreadsheetApp.getUi().alert(successMsg);
+  } catch (e) {
+    console.log('UI not available - setup completed successfully (check console)');
+  }
 }
 
 /**
  * Triggered automatically when form is submitted
  * This function is called immediately when someone submits the form
+ * 
+ * Note: This is an event handler that can only be triggered by Google Forms directly,
+ * not through ScriptApp.newTrigger(). If you want real-time imports, you have two options:
+ * 
+ * Option 1 (Recommended): Use the time-based trigger (setupFormImport)
+ *   - checkFormResponses() runs every 5 minutes
+ *   - Catches all responses automatically
+ *   - No additional setup needed
+ * 
+ * Option 2 (Advanced): Manual trigger setup
+ *   - Open your Google Form
+ *   - Go to the three-dot menu → Script editor
+ *   - Add an onSubmit trigger to call onFormSubmit
+ *   - This enables real-time processing
  */
 function onFormSubmit(e) {
   if (!FORMS_CONFIG.ENABLE_FORM_IMPORT) {
@@ -502,7 +615,7 @@ function onFormSubmit(e) {
       logFormImport(`Single Form Response: ${player.name}`, 1, true, '', 'Auto-imported on submission');
       
       // Optional: Send confirmation email
-      if (player.email) {
+      if (player.email && FORMS_CONFIG.SEND_CONFIRMATION_EMAILS) {
         sendConfirmationEmail(player.email, player.name);
       }
     } else {
@@ -565,7 +678,7 @@ function checkFormResponses() {
     // Import all players
     const result = syncPlayersToAPI(players);
     
-    if (result.success) {
+    if (result && result.imported_count) {
       logFormImport(
         `Batch Import (${players.length} players)`,
         result.imported_count || players.length,
@@ -579,7 +692,7 @@ function checkFormResponses() {
       
       // Optional: Send confirmation emails
       players.forEach(player => {
-        if (player.email) {
+        if (player.email && FORMS_CONFIG.SEND_CONFIRMATION_EMAILS) {
           sendConfirmationEmail(player.email, player.name);
         }
       });
@@ -588,8 +701,8 @@ function checkFormResponses() {
         'Batch Import Failed',
         0,
         false,
-        result.error || 'Unknown error',
-        `Failed to import ${players.length} players`
+        'Invalid response from API',
+        ''
       );
     }
   } catch (error) {
@@ -598,109 +711,258 @@ function checkFormResponses() {
   }
 }
 
+// ============================================================================
+// FIELD MAPPING CONFIGURATION
+// ============================================================================
+
+/**
+ * Custom field mapping configuration
+ * Maps form question titles to player fields
+ * Add more keywords to improve detection
+ */
+const FIELD_MAPPING = {
+  name: {
+    keywords: ['name', 'player', 'full name', 'player name', 'first name and last name', 'full player name'],
+    excludeKeywords: ['parent', 'guardian', 'emergency'],
+    required: true
+  },
+  uscf_id: {
+    keywords: ['uscf', 'uscf id', 'uscf number', 'member id', 'membership id', 'chess id', 'player id'],
+    excludeKeywords: []
+  },
+  fide_id: {
+    keywords: ['fide', 'fide id', 'fide number', 'international rating'],
+    excludeKeywords: []
+  },
+  rating: {
+    keywords: ['rating', 'elo', 'chess rating', 'current rating', 'rating number'],
+    excludeKeywords: []
+  },
+  section: {
+    keywords: ['section', 'division', 'category', 'level', 'class'],
+    excludeKeywords: []
+  },
+  email: {
+    keywords: ['email', 'email address', 'e-mail'],
+    excludeKeywords: ['parent', 'guardian']
+  },
+  phone: {
+    keywords: ['phone', 'telephone', 'phone number', 'mobile', 'contact number'],
+    excludeKeywords: ['parent', 'guardian', 'emergency']
+  },
+  school: {
+    keywords: ['school', 'institution', 'college', 'university', 'organization'],
+    excludeKeywords: ['parent']
+  },
+  grade: {
+    keywords: ['grade', 'year', 'level', 'class', 'grade level'],
+    excludeKeywords: ['parent']
+  },
+  city: {
+    keywords: ['city', 'town', 'locality', 'location'],
+    excludeKeywords: []
+  },
+  state: {
+    keywords: ['state', 'province', 'region', 'country'],
+    excludeKeywords: []
+  },
+  team_name: {
+    keywords: ['team', 'club', 'organization', 'group', 'squad'],
+    excludeKeywords: []
+  },
+  parent_name: {
+    keywords: ['parent name', 'parent', 'guardian name', 'guardian', 'mother', 'father', 'caregiver'],
+    excludeKeywords: ['email', 'phone', 'contact']
+  },
+  parent_email: {
+    keywords: ['parent email', 'parent e-mail', 'guardian email', 'parents email'],
+    excludeKeywords: []
+  },
+  parent_phone: {
+    keywords: ['parent phone', 'parent number', 'guardian phone', 'parents phone'],
+    excludeKeywords: []
+  },
+  emergency_contact: {
+    keywords: ['emergency', 'emergency contact', 'emergency name'],
+    excludeKeywords: ['phone', 'number']
+  },
+  emergency_phone: {
+    keywords: ['emergency phone', 'emergency number', 'emergency contact number'],
+    excludeKeywords: []
+  },
+  notes: {
+    keywords: ['notes', 'comments', 'additional', 'special needs', 'dietary', 'restrictions'],
+    excludeKeywords: []
+  }
+};
+
+/**
+ * Calculate match score for a question to a field
+ * Higher score = better match
+ */
+function calculateFieldScore(question, field) {
+  const config = FIELD_MAPPING[field];
+  if (!config) return 0;
+  
+  const questionLower = question.toLowerCase().trim();
+  let score = 0;
+  
+  // Check if exclude keywords are present
+  for (const exclude of config.excludeKeywords) {
+    if (questionLower.includes(exclude.toLowerCase())) {
+      return 0; // Exclude this match entirely
+    }
+  }
+  
+  // Check keywords with scoring
+  for (const keyword of config.keywords) {
+    const keywordLower = keyword.toLowerCase();
+    
+    // Exact match = highest score
+    if (questionLower === keywordLower) {
+      score += 100;
+    }
+    // Starts with keyword = high score
+    else if (questionLower.startsWith(keywordLower)) {
+      score += 50;
+    }
+    // Ends with keyword = high score
+    else if (questionLower.endsWith(keywordLower)) {
+      score += 50;
+    }
+    // Contains keyword = medium score
+    else if (questionLower.includes(keywordLower)) {
+      score += 30;
+    }
+  }
+  
+  return score;
+}
+
+/**
+ * Find the best field match for a form question
+ * Returns field name with highest score
+ */
+function findBestFieldMatch(question) {
+  let bestField = null;
+  let bestScore = 0;
+  const scores = {};
+  
+  for (const field in FIELD_MAPPING) {
+    const score = calculateFieldScore(question, field);
+    scores[field] = score;
+    
+    if (score > bestScore) {
+      bestScore = score;
+      bestField = field;
+    }
+  }
+  
+  // Only return match if score is above threshold (20 points minimum)
+  if (bestScore >= 20) {
+    return { field: bestField, score: bestScore };
+  }
+  
+  return null;
+}
+
+// ============================================================================
+// FIELD EXTRACTION FUNCTIONS
+// ============================================================================
+
 /**
  * Convert a form response to a player object
- * Automatically detects field names from form questions
+ * Uses intelligent field matching with scoring
  */
 function convertFormResponseToPlayer(itemResponses) {
   const player = {};
+  const fieldMatches = []; // For debugging
   
   // Map form questions to player fields
-  itemResponses.forEach(itemResponse => {
-    const question = itemResponse.getItem().getTitle().toLowerCase();
+  itemResponses.forEach((itemResponse, index) => {
+    const question = itemResponse.getItem().getTitle();
     const answer = itemResponse.getResponse();
     
-    if (!answer) return;
+    if (!answer || !answer.trim()) return;
     
-    // Name field
-    if (question.includes('name') || question.includes('player')) {
-      if (question.includes('parent') || question.includes('guardian')) {
-        player.parent_name = answer;
-      } else {
-        player.name = answer;
+    // Find best field match
+    const match = findBestFieldMatch(question);
+    
+    if (match) {
+      const field = match.field;
+      const answerValue = answer.toString().trim();
+      
+      // Log match for debugging
+      fieldMatches.push({
+        index: index,
+        question: question,
+        field: field,
+        score: match.score,
+        value: answerValue.substring(0, 50) // First 50 chars
+      });
+      
+      // Type-specific processing
+      switch (field) {
+        case 'rating':
+          const rating = parseFloat(answerValue);
+          if (!isNaN(rating) && rating > 0) {
+            player.rating = rating;
+          }
+          break;
+          
+        case 'name':
+        case 'parent_name':
+        case 'emergency_contact':
+          // Clean up name: title case
+          player[field] = answerValue
+            .toLowerCase()
+            .replace(/\b\w/g, l => l.toUpperCase())
+            .trim();
+          break;
+          
+        case 'email':
+        case 'parent_email':
+          // Validate email format
+          if (answerValue.includes('@')) {
+            player[field] = answerValue.toLowerCase().trim();
+          }
+          break;
+          
+        case 'phone':
+        case 'parent_phone':
+        case 'emergency_phone':
+          // Clean up phone number
+          player[field] = answerValue.replace(/\D/g, ''); // Keep only digits
+          break;
+          
+        default:
+          player[field] = answerValue;
       }
-    }
-    
-    // USCF ID
-    if (question.includes('uscf') || question.includes('member id') || question.includes('membership')) {
-      player.uscf_id = answer.toString().trim();
-    }
-    
-    // FIDE ID
-    if (question.includes('fide')) {
-      player.fide_id = answer.toString().trim();
-    }
-    
-    // Rating
-    if (question.includes('rating') || question.includes('elo')) {
-      const rating = parseFloat(answer);
-      if (!isNaN(rating)) {
-        player.rating = rating;
-      }
-    }
-    
-    // Section
-    if (question.includes('section') || question.includes('division') || question.includes('category')) {
-      player.section = answer;
-    }
-    
-    // Email
-    if (question.includes('email')) {
-      if (question.includes('parent')) {
-        player.parent_email = answer;
-      } else {
-        player.email = answer;
-      }
-    }
-    
-    // Phone
-    if (question.includes('phone') || question.includes('telephone')) {
-      if (question.includes('parent')) {
-        player.parent_phone = answer;
-      } else {
-        player.phone = answer;
-      }
-    }
-    
-    // School
-    if (question.includes('school') || question.includes('institution')) {
-      player.school = answer;
-    }
-    
-    // Grade
-    if (question.includes('grade') || question.includes('year')) {
-      player.grade = answer;
-    }
-    
-    // City
-    if (question.includes('city') || question.includes('town')) {
-      player.city = answer;
-    }
-    
-    // State
-    if (question.includes('state') || question.includes('province')) {
-      player.state = answer;
-    }
-    
-    // Team
-    if (question.includes('team') || question.includes('club') || question.includes('organization')) {
-      player.team_name = answer;
-    }
-    
-    // Notes
-    if (question.includes('notes') || question.includes('comments') || question.includes('additional')) {
-      player.notes = answer;
-    }
-    
-    // Parent contact
-    if (question.includes('emergency')) {
-      if (question.includes('name')) {
-        player.emergency_contact = answer;
-      } else if (question.includes('phone') || question.includes('number')) {
-        player.emergency_phone = answer;
-      }
+    } else {
+      // Log unmatched fields for debugging
+      fieldMatches.push({
+        index: index,
+        question: question,
+        field: 'UNMATCHED',
+        score: 0,
+        value: answer.toString().substring(0, 50)
+      });
     }
   });
+  
+  // Log field extraction for debugging
+  if (fieldMatches.length > 0) {
+    const matches = fieldMatches.filter(m => m.field !== 'UNMATCHED').length;
+    const unmatched = fieldMatches.filter(m => m.field === 'UNMATCHED').length;
+    console.log(`Field extraction: ${matches} matched, ${unmatched} unmatched`);
+    
+    // Log unmatched fields (might need mapping)
+    fieldMatches.forEach(m => {
+      if (m.field === 'UNMATCHED') {
+        console.log(`  ⚠️ Unmatched field: "${m.question}" = "${m.value}"`);
+      }
+    });
+  }
   
   return player;
 }
@@ -710,15 +972,15 @@ function convertFormResponseToPlayer(itemResponses) {
  */
 function manualImportFormResponses() {
   if (!FORMS_CONFIG.FORM_ID || FORMS_CONFIG.FORM_ID === 'your-form-id-here') {
-    SpreadsheetApp.getUi().alert('Please set your FORM_ID in FORMS_CONFIG first');
+    safeAlert('Please set your FORM_ID in FORMS_CONFIG first');
     return;
   }
   
   try {
     checkFormResponses();
-    SpreadsheetApp.getUi().alert('Form responses imported successfully!');
+    safeAlert('Form responses imported successfully!');
   } catch (error) {
-    SpreadsheetApp.getUi().alert(`Error importing form responses: ${error.toString()}`);
+    safeAlert(`Error importing form responses: ${error.toString()}`);
   }
 }
 
@@ -743,25 +1005,61 @@ function setLastFormImportTime(time) {
  * Log form import activity
  */
 function logFormImport(action, count, success, error, details) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  let logSheet = spreadsheet.getSheetByName('FormImportLog');
-  
-  if (!logSheet) {
-    logSheet = spreadsheet.insertSheet('FormImportLog');
-    logSheet.getRange('A1:F1').setValues([[
-      'Timestamp', 'Action', 'Responses Imported', 'Success', 'Error', 'Details'
-    ]]);
-    logSheet.getRange('A1:F1').setFontWeight('bold');
+  try {
+    // Get spreadsheet - handle both interactive and trigger contexts
+    let spreadsheet;
+    try {
+      spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    } catch (e) {
+      console.log('Cannot get active spreadsheet (running from trigger?), trying alternative...');
+      spreadsheet = null;
+    }
+    
+    // If active spreadsheet not available, try to get from trigger or properties
+    if (!spreadsheet) {
+      try {
+        // Try to open using the document's own context
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        if (ss) {
+          spreadsheet = ss;
+        }
+      } catch (e) {
+        console.log('Could not get spreadsheet from trigger context');
+        return; // Cannot log without spreadsheet access
+      }
+    }
+    
+    if (!spreadsheet) {
+      console.log('Skipping log - no spreadsheet access from this context');
+      return;
+    }
+    
+    let logSheet = spreadsheet.getSheetByName('FormImportLog');
+    
+    if (!logSheet) {
+      logSheet = spreadsheet.insertSheet('FormImportLog');
+      logSheet.getRange('A1:F1').setValues([[
+        'Timestamp', 'Action', 'Responses Imported', 'Success', 'Error', 'Details'
+      ]]);
+      logSheet.getRange('A1:F1').setFontWeight('bold');
+    }
+    
+    // Add log entry
+    const timestamp = new Date().toLocaleString();
+    const successText = success ? 'Yes' : 'No';
+    logSheet.appendRow([
+      timestamp,
+      action,
+      count,
+      successText,
+      error || '',
+      details || ''
+    ]);
+    
+  } catch (error) {
+    console.error('Error logging form import:', error.toString());
+    // Silently fail - don't break the main process
   }
-  
-  logSheet.appendRow([
-    new Date(),
-    action,
-    count,
-    success ? 'Yes' : 'No',
-    error || '',
-    details || ''
-  ]);
 }
 
 /**
@@ -771,11 +1069,12 @@ function sendConfirmationEmail(email, playerName) {
   try {
     GmailApp.sendEmail(
       email,
-      `Registration Confirmation - ${CONFIG.TOURNAMENT_ID}`,
-      `Dear ${playerName},\n\nYour registration has been received and imported into the tournament system.\n\nTournament: ${CONFIG.TOURNAMENT_ID}\n\nThank you!\n\nIf you have any questions, please contact the tournament organizer.`
+      `Registration Confirmation - ${FORMS_CONFIG.TOURNAMENT_ID}`,
+      `Dear ${playerName},\n\nYour registration has been received and imported into the tournament system.\n\nTournament: ${FORMS_CONFIG.TOURNAMENT_ID}\n\nThank you!\n\nIf you have any questions, please contact the tournament organizer.`
     );
+    console.log(`Confirmation email sent to ${email}`);
   } catch (error) {
-    console.log(`Failed to send confirmation email: ${error}`);
+    console.log(`Failed to send confirmation email to ${email}: ${error.toString()}`);
   }
 }
 
@@ -799,11 +1098,42 @@ function viewFormImportLog() {
   const logSheet = spreadsheet.getSheetByName('FormImportLog');
   
   if (!logSheet) {
-    SpreadsheetApp.getUi().alert('No form import log found. Run a form import first.');
+    safeAlert('No form import log found. Run a form import first.');
     return;
   }
   
   spreadsheet.setActiveSheet(logSheet);
   SpreadsheetApp.getActiveRange().activate();
 }
+
+// ============================================================================
+// INITIALIZATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Runs when the spreadsheet is opened
+ * Automatically sets up the menu and UI
+ */
+function onOpen(e) {
+  try {
+    // Create the menu
+    createMenu();
+    
+    // Add form import menu items if applicable
+    if (FORMS_CONFIG.ENABLE_FORM_IMPORT) {
+      addFormImportMenu();
+    }
+    
+    console.log('✅ Google Apps Script initialized');
+    console.log(`✓ Tournament: ${FORMS_CONFIG.TOURNAMENT_ID}`);
+    console.log(`✓ Form Import: ${FORMS_CONFIG.ENABLE_FORM_IMPORT ? 'Enabled' : 'Disabled'}`);
+    
+  } catch (error) {
+    console.error('Error in onOpen:', error);
+  }
+}
+
+/**
+ * Setup function - run this to configure everything
+ */
 

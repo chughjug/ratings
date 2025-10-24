@@ -4,17 +4,18 @@ const cheerio = require('cheerio');
 /**
  * Look up a player's USCF rating and expiration date using the test.py approach
  * @param {string} playerId - The USCF player ID
- * @returns {Promise<{rating: number|null, expirationDate: string|null, isActive: boolean, error: string|null}>}
+ * @returns {Promise<{rating: number|null, expirationDate: string|null, isActive: boolean, name: string|null, error: string|null}>}
  */
 async function getUSCFInfo(playerId) {
   try {
     if (!playerId || playerId.trim() === '') {
-      return { rating: null, expirationDate: null, isActive: false, error: 'No USCF ID provided' };
+      return { rating: null, expirationDate: null, isActive: false, name: null, error: 'No USCF ID provided' };
     }
 
     // Get rating and expiration date from the MSA page (same as test.py)
     let rating = null;
     let expirationDate = null;
+    let name = null;
     
     try {
       const msaUrl = `https://www.uschess.org/msa/MbrDtlMain.php?${playerId}`;
@@ -27,10 +28,27 @@ async function getUSCFInfo(playerId) {
 
       const $ = cheerio.load(msaResponse.data);
       
-      // Look for rating and expiration date using improved parsing logic
+      // Look for player name, rating and expiration date using improved parsing logic
       $('tr').each((i, tr) => {
         const $tr = $(tr);
         const firstTd = $tr.find('td').first().text().trim();
+        
+        // Look for USCF ID and Name at the beginning of the page (format: "14970943: AARUSH CHUGH")
+        // This appears in the first row of actual content
+        if (!name && firstTd.includes(':') && firstTd.includes(playerId)) {
+          // Extract name from "ID: NAME" format
+          // The format is "14970943: AARUSH CHUGH"
+          const nameMatch = firstTd.match(new RegExp(`${playerId}\\s*:\\s*(.+?)$`));
+          if (nameMatch) {
+            name = nameMatch[1].trim();
+          } else {
+            // Fallback: if there's colon-separated content, take what's after the ID
+            const parts = firstTd.split(':');
+            if (parts.length > 1) {
+              name = parts.slice(1).join(':').trim();
+            }
+          }
+        }
         
         // Look for Regular Rating
         if (firstTd.includes('Regular Rating')) {
@@ -114,6 +132,7 @@ async function getUSCFInfo(playerId) {
       rating,
       expirationDate,
       isActive,
+      name,
       error: null
     };
 
@@ -123,6 +142,7 @@ async function getUSCFInfo(playerId) {
       rating: null,
       expirationDate: null,
       isActive: false,
+      name: null,
       error: error.message
     };
   }
@@ -133,7 +153,7 @@ async function getUSCFInfo(playerId) {
  * @param {Object} db - Database connection
  * @param {string} playerId - Database player ID
  * @param {string} uscfId - USCF player ID
- * @returns {Promise<{success: boolean, rating: number|null, expirationDate: string|null, isActive: boolean, error: string|null}>}
+ * @returns {Promise<{success: boolean, rating: number|null, expirationDate: string|null, isActive: boolean, name: string|null, error: string|null}>}
  */
 async function lookupAndUpdatePlayer(db, playerId, uscfId) {
   try {
@@ -145,15 +165,16 @@ async function lookupAndUpdatePlayer(db, playerId, uscfId) {
         rating: null,
         expirationDate: null,
         isActive: false,
+        name: null,
         error: result.error
       };
     }
 
-    // Update the player in the database with rating, expiration date, and active status
+    // Update the player in the database with name, rating, expiration date, and active status
     return new Promise((resolve) => {
       db.run(
-        `UPDATE players SET rating = ?, expiration_date = ?, status = ? WHERE id = ?`,
-        [result.rating, result.expirationDate, result.isActive ? 'active' : 'inactive', playerId],
+        `UPDATE players SET name = ?, rating = ?, expiration_date = ?, status = ? WHERE id = ?`,
+        [result.name, result.rating, result.expirationDate, result.isActive ? 'active' : 'inactive', playerId],
         function(err) {
           if (err) {
             resolve({
@@ -161,6 +182,7 @@ async function lookupAndUpdatePlayer(db, playerId, uscfId) {
               rating: result.rating,
               expirationDate: result.expirationDate,
               isActive: result.isActive,
+              name: result.name,
               error: err.message
             });
           } else {
@@ -169,6 +191,7 @@ async function lookupAndUpdatePlayer(db, playerId, uscfId) {
               rating: result.rating,
               expirationDate: result.expirationDate,
               isActive: result.isActive,
+              name: result.name,
               error: null
             });
           }

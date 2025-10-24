@@ -151,36 +151,10 @@ function generateMockPlayers(searchTerm, maxResults) {
   const mockPlayers = [];
   const states = ['CA', 'NY', 'TX', 'FL', 'IL', 'PA', 'OH', 'GA', 'NC', 'MI'];
   
-  // Generate 1-3 mock players based on search term
-  const numResults = Math.min(Math.max(1, Math.floor(Math.random() * 3) + 1), maxResults);
-  
-  for (let i = 0; i < numResults; i++) {
-    // Use the exact search term as the player name, without adding random last names
-    const playerName = searchTerm.trim();
-    
-    mockPlayers.push({
-      name: playerName,
-      memberId: `${Math.floor(Math.random() * 90000000) + 10000000}`,
-      state: states[Math.floor(Math.random() * states.length)],
-      ratings: {
-        regular: Math.floor(Math.random() * 1000) + 1200,
-        quick: Math.floor(Math.random() * 1000) + 1200,
-        blitz: Math.floor(Math.random() * 1000) + 1200,
-        online_regular: null,
-        online_quick: null,
-        online_blitz: null
-      },
-      uscf_id: `${Math.floor(Math.random() * 90000000) + 10000000}`,
-      rating: Math.floor(Math.random() * 1000) + 1200,
-      // Add contact information for mock data
-      email: `${playerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-      phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
-      isMockData: true // Flag to indicate this is mock data
-    });
-  }
-  
-  console.log(`Generated ${mockPlayers.length} mock players for search term: ${searchTerm}`);
-  return mockPlayers;
+  // Only return empty array when real search fails (don't return fake results)
+  // This prevents returning inaccurate players
+  console.log(`Search for "${searchTerm}" returned no real results - returning empty array instead of mock data`);
+  return [];
 }
 
 /**
@@ -315,7 +289,73 @@ async function instantFuzzySearch(searchTerm, maxResults) {
     index === self.findIndex(p => p.memberId === player.memberId)
   );
   
-  return uniqueResults.slice(0, maxResults);
+  // Apply relevance filtering before returning
+  return filterSearchResults(uniqueResults, searchTerm, maxResults);
+}
+
+/**
+ * Filter and rank search results by relevance to the search term
+ */
+function filterSearchResults(players, searchTerm, maxResults) {
+  if (!Array.isArray(players) || players.length === 0) {
+    return [];
+  }
+  
+  const searchLower = searchTerm.toLowerCase().trim();
+  
+  // Score each player based on name relevance
+  const scoredPlayers = players.map(player => {
+    let relevanceScore = 0;
+    const nameLower = player.name ? player.name.toLowerCase() : '';
+    
+    // Exact match gets highest score
+    if (nameLower === searchLower) {
+      relevanceScore = 1000;
+    }
+    // Starts with search term
+    else if (nameLower.startsWith(searchLower)) {
+      relevanceScore = 100;
+    }
+    // Contains complete search term as a word
+    else if (nameLower.includes(` ${searchLower}`) || nameLower.includes(`${searchLower} `)) {
+      relevanceScore = 75;
+    }
+    // Starts with first word of search term
+    else if (searchLower.includes(' ')) {
+      const firstWord = searchLower.split(' ')[0];
+      if (nameLower.startsWith(firstWord)) {
+        relevanceScore = 50;
+      } else if (nameLower.includes(` ${firstWord}`)) {
+        relevanceScore = 30;
+      }
+    }
+    // Contains search term (substring)
+    else if (nameLower.includes(searchLower)) {
+      relevanceScore = 20;
+    }
+    // Last word match
+    else if (searchLower.includes(' ')) {
+      const lastWord = searchLower.split(' ').pop();
+      if (nameLower.endsWith(lastWord) || nameLower.includes(` ${lastWord}`)) {
+        relevanceScore = 25;
+      }
+    }
+    
+    return { ...player, relevanceScore };
+  });
+  
+  // Sort by relevance score (highest first), then by name alphabetically
+  const sorted = scoredPlayers
+    .filter(p => p.relevanceScore > 0) // Only keep relevant results
+    .sort((a, b) => {
+      if (b.relevanceScore !== a.relevanceScore) {
+        return b.relevanceScore - a.relevanceScore;
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  
+  // Remove the relevanceScore before returning
+  return sorted.slice(0, maxResults).map(({ relevanceScore, ...player }) => player);
 }
 
 /**

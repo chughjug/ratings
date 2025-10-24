@@ -329,7 +329,7 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
             const nameParts = [];
             for (let j = 0; j < nameSpans.length; j++) {
               const text = await nameSpans[j].evaluate(el => el.textContent.trim());
-              if (text) {
+              if (text && text.length > 0) {
                 nameParts.push(text);
               }
             }
@@ -339,27 +339,42 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
               const firstName = nameParts[0];
               const lastName = nameParts[nameParts.length - 1];
               
-              // Format names properly (Title Case)
-              const formatName = (name) => {
-                return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+              // Format names properly (Title Case) and validate they're actual names
+              const formatName = (n) => {
+                return n.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
               };
               
-              name = `${formatName(firstName)} ${formatName(lastName)}`;
-            } else {
+              // Validate names are not empty or just symbols
+              const formattedFirst = formatName(firstName);
+              const formattedLast = formatName(lastName);
+              
+              if (formattedFirst.length > 1 && formattedLast.length > 1 && 
+                  /^[a-zA-Z\s'-]+$/.test(formattedFirst) && /^[a-zA-Z\s'-]+$/.test(formattedLast)) {
+                name = `${formattedFirst} ${formattedLast}`;
+              } else {
+                // If validation fails, try to use full name from single span
+                const fullName = nameParts.join(' ');
+                if (fullName.length > 2 && /^[a-zA-Z\s'-]+$/.test(fullName)) {
+                  name = formatName(fullName);
+                }
+              }
+            } else if (nameParts.length === 1) {
               // Format the entire name if we can't split it
-              const formatName = (name) => {
-                return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+              const formatName = (n) => {
+                return n.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
               };
-              name = formatName(nameParts.join(' '));
+              const fullName = formatName(nameParts[0]);
+              if (fullName.length > 2 && /^[a-zA-Z\s'-]+$/.test(fullName)) {
+                name = fullName;
+              }
             }
-          } else {
-            const rawName = await nameElement.evaluate(el => el.textContent.trim());
-            // Format the entire name
-            const formatName = (name) => {
-              return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-            };
-            name = formatName(rawName);
           }
+        }
+        
+        // Skip if name extraction failed or resulted in an invalid name
+        if (!name || name.trim().length < 3 || !/^[a-zA-Z\s'-]+$/.test(name)) {
+          console.log(`Skipping card ${i}: Invalid name extracted`);
+          continue;
         }
         
         // Extract USCF ID
