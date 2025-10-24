@@ -77,7 +77,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signup = async (userData: SignupData): Promise<{ success: boolean; error?: string }> => {
     try {
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+      // Determine API base URL based on environment - same logic as api.ts
+      let API_BASE_URL = process.env.REACT_APP_API_URL;
+      if (!API_BASE_URL) {
+        if (process.env.NODE_ENV === 'production') {
+          API_BASE_URL = '/api';
+        } else {
+          API_BASE_URL = 'http://localhost:5000/api';
+        }
+      }
+      
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
