@@ -299,6 +299,41 @@ function applyColorPreferences(pairings, colorPreferences, colorHistory) {
 }
 
 /**
+ * Basic pairing validation
+ */
+function validatePairings(pairings, players, round, previousPairings, colorHistory) {
+  const errors = [];
+  const warnings = [];
+  
+  // Basic validation checks
+  if (!Array.isArray(pairings)) {
+    errors.push('Pairings must be an array');
+    return { is_valid: errors.length === 0, errors, warnings };
+  }
+  
+  if (pairings.length === 0) {
+    warnings.push('No pairings generated');
+    return { is_valid: true, errors, warnings };
+  }
+  
+  // Check for duplicate pairings
+  const seenPairs = new Set();
+  pairings.forEach((pairing, index) => {
+    if (pairing.white_player_id && pairing.black_player_id) {
+      const pairKey = `${pairing.white_player_id}-${pairing.black_player_id}`;
+      const reversePairKey = `${pairing.black_player_id}-${pairing.white_player_id}`;
+      
+      if (seenPairs.has(pairKey) || seenPairs.has(reversePairKey)) {
+        errors.push(`Duplicate pairing at index ${index}`);
+      }
+      seenPairs.add(pairKey);
+    }
+  });
+  
+  return { is_valid: errors.length === 0, errors, warnings };
+}
+
+/**
  * Enhanced pairing validation
  */
 function validateEnhancedPairings(pairings, players, round, previousPairings, colorHistory) {
