@@ -299,24 +299,45 @@ const FORMS_CONFIG = {
           <div className="border-2 border-blue-600 rounded-lg p-6 bg-gradient-to-br from-gray-50 to-gray-100 mb-6">
             <div className="mb-4">
               <p className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                <Code size={20} /> Complete Google Apps Script ({fullScriptCode.split('\n').length} lines)
+                <Code size={20} /> Complete Google Apps Script (1200+ Lines)
               </p>
-              <p className="text-sm text-gray-600">
-                The full 1200+ line script with all functions:
+              <p className="text-sm text-gray-600 mb-4">
+                The complete script is ready to copy. Choose one option below:
               </p>
             </div>
 
-            <div className="bg-gray-900 text-green-400 p-6 rounded-lg font-mono text-sm overflow-x-auto mb-6 border border-gray-700 max-h-96 overflow-y-auto">
-              <pre className="whitespace-pre-wrap break-words">{fullScriptCode}</pre>
+            {/* Option 1: Direct Link */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <p className="font-semibold text-green-900 mb-2">✅ Recommended: Copy from File</p>
+              <a
+                href="/GOOGLE_APPS_SCRIPT_COMPLETE.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
+              >
+                <ExternalLink size={18} />
+                Open Complete Script in New Tab
+              </a>
+              <p className="text-xs text-green-700 mt-2">
+                Opens the complete 1200+ line script - easy to copy all at once
+              </p>
             </div>
 
-            <button
-              onClick={() => copyToClipboard(getCompleteCopyCode())}
-              className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition transform hover:scale-105 active:scale-95"
-            >
-              <Copy size={20} />
-              <span className="text-lg">{copied ? '✓ Copied Complete Code!' : 'Copy Complete Code (1200+ lines)'}</span>
-            </button>
+            {/* Option 2: Download Link */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="font-semibold text-blue-900 mb-2">📥 Or Download Raw File</p>
+              <a
+                href="/google-apps-script.js"
+                download="google-apps-script.js"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
+              >
+                <FileText size={18} />
+                Download google-apps-script.js
+              </a>
+              <p className="text-xs text-blue-700 mt-2">
+                Downloads the raw JavaScript file for direct copy
+              </p>
+            </div>
           </div>
 
           {/* Setup Instructions */}
