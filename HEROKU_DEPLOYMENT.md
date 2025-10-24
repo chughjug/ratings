@@ -48,12 +48,17 @@ heroku config:set NODE_ENV=production
 # Set JWT secret (generate a secure random string)
 heroku config:set JWT_SECRET=your-super-secret-jwt-key-here
 
-# Set CORS origin to your Heroku app URL
+# Set CORS origin to your Heroku app URL (replace 'your-app-name' with your actual app name)
 heroku config:set CORS_ORIGIN=https://your-app-name.herokuapp.com
+
+# Set Heroku app name (replace 'your-app-name' with your actual app name)
+heroku config:set HEROKU_APP_NAME=your-app-name
 
 # Optional: Set custom port (Heroku will set PORT automatically)
 # heroku config:set PORT=5000
 ```
+
+**Important**: Replace `your-app-name` with your actual Heroku app name in the CORS_ORIGIN and HEROKU_APP_NAME variables.
 
 ### 4. Deploy to Heroku
 ```bash
@@ -114,12 +119,31 @@ heroku open
 | `PORT` | Server port (set by Heroku) | `5000` |
 | `JWT_SECRET` | Secret for JWT tokens | `your-secret-key` |
 | `CORS_ORIGIN` | Allowed CORS origins | `https://your-app.herokuapp.com` |
+| `HEROKU_APP_NAME` | Heroku app name | `your-app-name` |
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Build Failures**
+1. **Network Errors / CORS Issues**
+   ```bash
+   # Check if CORS_ORIGIN is set correctly
+   heroku config:get CORS_ORIGIN
+   
+   # Set CORS_ORIGIN to your app URL
+   heroku config:set CORS_ORIGIN=https://your-app-name.herokuapp.com
+   
+   # Check if HEROKU_APP_NAME is set
+   heroku config:get HEROKU_APP_NAME
+   
+   # Set HEROKU_APP_NAME
+   heroku config:set HEROKU_APP_NAME=your-app-name
+   
+   # Restart the app after setting config vars
+   heroku restart
+   ```
+
+2. **Build Failures**
    ```bash
    # Check build logs
    heroku logs --tail
@@ -128,7 +152,7 @@ heroku open
    npm install --production
    ```
 
-2. **App Crashes**
+3. **App Crashes**
    ```bash
    # View real-time logs
    heroku logs --tail
@@ -137,13 +161,25 @@ heroku open
    heroku ps
    ```
 
-3. **Database Issues**
+4. **Database Issues**
    ```bash
    # Access Heroku bash
    heroku run bash
    
    # Check if database file exists
    ls -la server/
+   ```
+
+5. **API Connection Issues**
+   ```bash
+   # Check if the app is responding
+   curl https://your-app-name.herokuapp.com/api/tournaments
+   
+   # Check environment variables
+   heroku config
+   
+   # Verify the app is running
+   heroku ps:scale web=1
    ```
 
 ### Useful Commands

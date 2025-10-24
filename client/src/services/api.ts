@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Tournament, Player, Pairing, Standing, PlayerInactiveRound, Prize, PrizeDistribution } from '../types';
+import { Tournament, Player, Pairing, Standing, PlayerInactiveRound } from '../types';
 
 // Determine API base URL based on environment
 const getApiBaseUrl = () => {
@@ -13,8 +13,8 @@ const getApiBaseUrl = () => {
     return '/api';
   }
   
-  // In development, use relative URL (proxy will handle routing to localhost:5000)
-  return '/api';
+  // In development, use full URL to localhost:5000
+  return 'http://localhost:5000/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -42,6 +42,12 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Add cache-busting parameter to prevent cached requests
+    if (config.method === 'get') {
+      const separator = config.url?.includes('?') ? '&' : '?';
+      config.url = `${config.url}${separator}t=${Date.now()}`;
     }
     
     // Enhanced debugging
@@ -184,6 +190,8 @@ export const playerApi = {
     api.get<any>(`/players/details/${uscfId}?t=${Date.now()}`),
   downloadTemplate: () =>
     api.get('/players/csv-template', { responseType: 'blob' }),
+  downloadExcelTemplate: () =>
+    api.get('/players/excel-template', { responseType: 'blob' }),
   uploadCSV: (file: File, tournamentId: string, lookupRatings: boolean = true) => {
     const formData = new FormData();
     formData.append('csvFile', file);
@@ -193,8 +201,19 @@ export const playerApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  uploadExcel: (file: File, tournamentId: string, lookupRatings: boolean = true) => {
+    const formData = new FormData();
+    formData.append('excelFile', file);
+    formData.append('tournament_id', tournamentId);
+    formData.append('lookup_ratings', lookupRatings.toString());
+    return api.post('/players/excel-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   importCSV: (tournamentId: string, players: any[], lookupRatings: boolean = true) =>
     api.post('/players/csv-import', { tournament_id: tournamentId, players, lookup_ratings: lookupRatings }),
+  importExcel: (tournamentId: string, players: any[], lookupRatings: boolean = true) =>
+    api.post('/players/excel-import', { tournament_id: tournamentId, players, lookup_ratings: lookupRatings }),
   setInactiveRound: (playerId: string, round: number, reason?: string) =>
     api.post(`/players/${playerId}/inactive-round`, { round, reason }),
   removeInactiveRound: (playerId: string, round: number) =>
@@ -203,6 +222,23 @@ export const playerApi = {
     api.get<{success: boolean, data: PlayerInactiveRound[], error?: string}>(`/players/${playerId}/inactive-rounds?t=${Date.now()}`),
   getTournamentInactiveRounds: (tournamentId: string) =>
     api.get<{success: boolean, data: PlayerInactiveRound[], error?: string}>(`/players/tournament/${tournamentId}/inactive-rounds?t=${Date.now()}`),
+  deleteDuplicates: (tournamentId: string, criteria: 'name' | 'uscf_id' | 'both' = 'name') =>
+    api.post<{
+      success: boolean;
+      message: string;
+      deletedCount: number;
+      duplicates: Array<{
+        key: string;
+        kept: { id: string; name: string; uscf_id?: string };
+        deleted: Array<{ id: string; name: string; uscf_id?: string }>;
+      }>;
+      deletedPlayers: Array<{
+        id: string;
+        name: string;
+        uscf_id?: string;
+        reason: string;
+      }>;
+    }>(`/players/delete-duplicates/${tournamentId}`, { criteria }),
 };
 
 // Pairing API with enhanced round independence
@@ -441,6 +477,39 @@ export const registrationApi = {
       tournament_name?: string;
       player_status?: string;
     }, error?: string}>(`/registrations/status/${registrationId}`),
+};
+
+// User API for profile and API key management
+export const userApi = {
+  // Get user's API keys
+  getApiKeys: (userId: string) =>
+    api.get<{success: boolean, data: any[], error?: string}>(`/users/${userId}/api-keys`),
+  
+  // Generate new API key
+  generateApiKey: (userId: string, keyData: {
+    name: string;
+    description: string;
+    permissions: string;
+    rate_limit: number;
+  }) =>
+    api.post<{success: boolean, data: {api_key: string, key_id: string}, error?: string}>(`/users/${userId}/api-key`, keyData),
+  
+  // Update API key
+  updateApiKey: (userId: string, keyId: string, updates: {
+    name?: string;
+    description?: string;
+    permissions?: string;
+    rate_limit?: number;
+  }) =>
+    api.put<{success: boolean, error?: string}>(`/users/${userId}/api-keys/${keyId}`, updates),
+  
+  // Revoke API key
+  revokeApiKey: (userId: string, keyId: string) =>
+    api.delete<{success: boolean, error?: string}>(`/users/${userId}/api-keys/${keyId}`),
+  
+  // Get API key statistics
+  getApiKeyStats: (userId: string, keyId: string) =>
+    api.get<{success: boolean, data: any, error?: string}>(`/users/${userId}/api-keys/${keyId}/stats`)
 };
 
 // Pairing Editor API for advanced editing features

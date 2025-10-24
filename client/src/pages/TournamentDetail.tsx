@@ -1,15 +1,19 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
 import AddPlayerModal from '../components/AddPlayerModal';
 import BulkPlayerAddModal from '../components/BulkPlayerAddModal';
 import BatchOperationsModal from '../components/BatchOperationsModal';
-import CSVImportModal from '../components/CSVImportModal';
+import FileImportModal from '../components/FileImportModal';
+import GoogleImportModal from '../components/GoogleImportModal';
+import GoogleFormsConnector from '../components/GoogleFormsConnector';
+import UnifiedImportModal from '../components/UnifiedImportModal';
 import DBFExportModal from '../components/DBFExportModal';
 import PlayerInactiveRoundsModal from '../components/PlayerInactiveRoundsModal';
+import EditPlayerModal from '../components/EditPlayerModal';
 import PrintableView from '../components/PrintableView';
 import ChessStandingsTable from '../components/ChessStandingsTable';
 import TeamStandingsTable from '../components/TeamStandingsTable';
@@ -20,6 +24,10 @@ import DraggablePairingManager from '../components/DraggablePairingManager';
 import ConcisePairingManager from '../components/ConcisePairingManager';
 import StreamlinedPairingSystem from '../components/StreamlinedPairingSystem';
 import TeamStandings from '../components/TeamStandings';
+import APIDocumentationModal from '../components/APIDocumentationModal';
+import APIStatusIndicator from '../components/APIStatusIndicator';
+import NotificationButton from '../components/NotificationButton';
+import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
 const TournamentDetail: React.FC = () => {
@@ -69,10 +77,18 @@ const TournamentDetail: React.FC = () => {
   const [showBulkAddPlayer, setShowBulkAddPlayer] = useState(false);
   const [showBatchOperations, setShowBatchOperations] = useState(false);
   const [showCSVImport, setShowCSVImport] = useState(false);
+  const [showGoogleImport, setShowGoogleImport] = useState(false);
+  const [showGoogleFormsConnector, setShowGoogleFormsConnector] = useState(false);
+  const [showUnifiedImport, setShowUnifiedImport] = useState(false);
   const [showDBFExport, setShowDBFExport] = useState(false);
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
   const [showInactiveRounds, setShowInactiveRounds] = useState(false);
+  const [showEditPlayer, setShowEditPlayer] = useState(false);
+  const [showAPIDocs, setShowAPIDocs] = useState(false);
+  const [showDeleteDuplicates, setShowDeleteDuplicates] = useState(false);
+  const [deleteDuplicatesCriteria, setDeleteDuplicatesCriteria] = useState<'name' | 'uscf_id' | 'both'>('name');
   const [selectedPlayer, setSelectedPlayer] = useState<{id: string, name: string} | null>(null);
+  const [playerToEdit, setPlayerToEdit] = useState<any>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
   const [printView, setPrintView] = useState<'pairings' | 'standings' | 'report' | null>(null);
   const [displayOptions, setDisplayOptions] = useState({
@@ -91,8 +107,117 @@ const TournamentDetail: React.FC = () => {
   const [teamPairings, setTeamPairings] = useState<any[]>([]);
   const [teamScoringMethod, setTeamScoringMethod] = useState<'all_players' | 'top_players'>('all_players');
   const [teamTopN, setTeamTopN] = useState<number>(4);
+  
+  // Sorting state - default to section sorting as requested
+  const [sortField, setSortField] = useState<string>('section');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // Section grouping state
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const tournament = state.currentTournament;
+
+  // Sorting function
+  const sortPlayers = (players: any[]) => {
+    return [...players].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+      
+      // Handle null/undefined values - put them at the end
+      if (aValue == null) aValue = sortDirection === 'asc' ? 'zzz' : '';
+      if (bValue == null) bValue = sortDirection === 'asc' ? 'zzz' : '';
+      
+      // Handle numeric fields
+      if (sortField === 'rating') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      // Handle date fields
+      if (sortField === 'expiration_date') {
+        const aDate = aValue ? new Date(aValue).getTime() : 0;
+        const bDate = bValue ? new Date(bValue).getTime() : 0;
+        return sortDirection === 'asc' ? aDate - bDate : bDate - aDate;
+      }
+      
+      // Handle boolean fields (status)
+      if (sortField === 'is_active') {
+        const aBool = aValue ? 1 : 0;
+        const bBool = bValue ? 1 : 0;
+        return sortDirection === 'asc' ? aBool - bBool : bBool - aBool;
+      }
+      
+      // Convert to strings for comparison
+      const aStr = String(aValue).toLowerCase();
+      const bStr = String(bValue).toLowerCase();
+      
+      if (aStr < bStr) return sortDirection === 'asc' ? -1 : 1;
+      if (aStr > bStr) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // Handle column header click for sorting
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Group players by section
+  const groupPlayersBySection = (players: any[]) => {
+    const grouped = players.reduce((acc, player) => {
+      const section = player.section || 'No Section';
+      if (!acc[section]) {
+        acc[section] = [];
+      }
+      acc[section].push(player);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Sort sections alphabetically
+    const sortedSections = Object.keys(grouped).sort();
+    
+    return sortedSections.map(section => ({
+      section,
+      players: grouped[section],
+      count: grouped[section].length
+    }));
+  };
+
+  // Toggle section collapse
+  const toggleSectionCollapse = (section: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showDisplaySettings) {
+        const target = event.target as Element;
+        if (!target.closest('.relative')) {
+          setShowDisplaySettings(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDisplaySettings]);
 
   // Check for expired or expiring IDs
   const getExpirationWarnings = () => {
@@ -658,6 +783,40 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const handleDeleteDuplicates = async () => {
+    if (!id) return;
+    
+    try {
+      const response = await playerApi.deleteDuplicates(id, deleteDuplicatesCriteria);
+      
+      if (response.data.success) {
+        const { deletedCount, duplicates } = response.data;
+        
+        if (deletedCount > 0) {
+          // Refresh players and standings after deletion
+          await fetchPlayers();
+          await fetchStandings();
+          
+          // Show success message with details
+          const duplicateDetails = duplicates.map(d => 
+            `• ${d.kept.name} (kept) - deleted ${d.deleted.length} duplicate(s)`
+          ).join('\n');
+          
+          alert(`Successfully deleted ${deletedCount} duplicate player(s)!\n\nDetails:\n${duplicateDetails}`);
+        } else {
+          alert('No duplicates found based on the selected criteria.');
+        }
+      } else {
+        throw new Error('Failed to delete duplicates');
+      }
+    } catch (error: any) {
+      console.error('Failed to delete duplicates:', error);
+      alert(`Failed to delete duplicates: ${error.message || error}`);
+    } finally {
+      setShowDeleteDuplicates(false);
+    }
+  };
+
   console.log('TournamentDetail: Render state:', { 
     tournament, 
     isLoading, 
@@ -749,10 +908,11 @@ const TournamentDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Simplified Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
+            {/* Left side - Navigation and Title */}
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate(-1)}
@@ -780,37 +940,153 @@ const TournamentDetail: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => {
-                  dispatch({ type: 'SET_ERROR', payload: null });
-                  fetchTournament();
-                  fetchPlayers();
-                  fetchStandings();
-                }}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Refresh</span>
-              </button>
-              <a
-                href={`/public/tournaments/${id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>Public View</span>
-              </a>
-              {activeTab === 'pairings' && (
+            {/* Right side - Essential Actions Only */}
+            <div className="flex items-center space-x-2">
+              {/* API Status - Compact */}
+              <APIStatusIndicator 
+                tournamentId={id || ''} 
+                apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94" 
+              />
+              
+              {/* Notifications - Only show if there are any */}
+              {(() => {
+                const warnings = getExpirationWarnings();
+                const notifications = getAllTournamentNotifications(tournament, state.players, warnings);
+                return notifications.length > 0 ? (
+                  <NotificationButton
+                    notifications={notifications}
+                    onDismiss={(notificationId) => {
+                      console.log('Dismissed notification:', notificationId);
+                    }}
+                    onMarkAsRead={(notificationId) => {
+                      console.log('Marked as read:', notificationId);
+                    }}
+                    onViewPlayer={(playerName) => {
+                      const player = state.players.find(p => p.name === playerName);
+                      if (player) {
+                        setActiveTab('players');
+                        console.log('Viewing player:', playerName);
+                      }
+                    }}
+                  />
+                ) : null;
+              })()}
+              
+              {/* Actions Dropdown */}
+              <div className="relative">
                 <button
                   onClick={() => setShowDisplaySettings(!showDisplaySettings)}
                   className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   <Settings className="h-4 w-4" />
-                  <span>Display Options</span>
+                  <span>Actions</span>
                 </button>
-              )}
+                
+                {/* Dropdown Menu */}
+                {showDisplaySettings && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          dispatch({ type: 'SET_ERROR', payload: null });
+                          fetchTournament();
+                          fetchPlayers();
+                          fetchStandings();
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-3" />
+                        Refresh Data
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          const apiUrl = `${window.location.origin}/api/players/api-import/${id}`;
+                          const registerUrl = `${window.location.origin}/api/players/register/${id}`;
+                          const registrationFormUrl = `${window.location.origin}/register/${id}`;
+                          const apiKey = 'demo-key-123';
+                          
+                          const modal = document.createElement('div');
+                          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                          modal.innerHTML = `
+                            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                              <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">API Integration & Registration</h3>
+                                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                  </svg>
+                                </button>
+                              </div>
+                              <div class="space-y-6">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                  <h4 class="font-semibold text-gray-900 mb-2">Tournament Information</h4>
+                                  <p class="text-sm text-gray-600">Tournament ID: <code class="bg-gray-200 px-2 py-1 rounded">${id}</code></p>
+                                  <p class="text-sm text-gray-600">Tournament Name: ${tournament?.name || 'Loading...'}</p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Bulk Import API:</label>
+                                    <div class="flex">
+                                      <input type="text" value="${apiUrl}" readonly 
+                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                      <button onclick="navigator.clipboard.writeText('${apiUrl}')" 
+                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
+                                        Copy
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Single Registration API:</label>
+                                    <div class="flex">
+                                      <input type="text" value="${registerUrl}" readonly 
+                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                      <button onclick="navigator.clipboard.writeText('${registerUrl}')" 
+                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
+                                        Copy
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-2">Registration Form URL:</label>
+                                  <div class="flex">
+                                    <input type="text" value="${registrationFormUrl}" readonly 
+                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                    <button onclick="navigator.clipboard.writeText('${registrationFormUrl}')" 
+                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm">
+                                      Copy
+                                    </button>
+                                    <button onclick="window.open('${registrationFormUrl}', '_blank')" 
+                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm ml-1">
+                                      Open
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          `;
+                          document.body.appendChild(modal);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <FileText className="h-4 w-4 mr-3" />
+                        API & Registration
+                      </button>
+                      
+                      <a
+                        href={`/public/tournaments/${id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-3" />
+                        Public View
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -818,13 +1094,14 @@ const TournamentDetail: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tournament Details Card */}
+        {/* Consolidated Tournament Overview */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Tournament Details</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Tournament Overview</h2>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Primary Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
                   <Calendar className="h-5 w-5 text-gray-400" />
@@ -873,192 +1150,140 @@ const TournamentDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* Registration Settings */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
+            {/* Registration Status - Prominent */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Registration Settings</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Control whether players can register for this tournament
-                  </p>
-                </div>
                 <div className="flex items-center space-x-3">
-                  <span className={`text-sm font-medium ${tournament.allow_registration ? 'text-green-600' : 'text-red-600'}`}>
-                    {tournament.allow_registration ? 'Registration Open' : 'Registration Closed'}
-                  </span>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const updatedTournament = {
-                          ...tournament,
-                          allow_registration: !tournament.allow_registration
-                        };
-                        await tournamentApi.update(id!, updatedTournament);
-                        await fetchTournament();
-                      } catch (error) {
-                        console.error('Failed to update registration setting:', error);
-                        alert('Failed to update registration setting. Please try again.');
-                      }
-                    }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-chess-board focus:ring-offset-2 ${
-                      tournament.allow_registration ? 'bg-chess-board' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        tournament.allow_registration ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-        {/* US Chess specific information */}
-        {(tournament.city || tournament.state || tournament.location || tournament.chief_td_name || tournament.website) && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tournament.city && tournament.state && (
-                <div className="flex items-center">
-                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
-                    📍
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Location</p>
-                    <p className="font-medium">{tournament.city}, {tournament.state}</p>
-                    {tournament.location && (
-                      <p className="text-sm text-gray-500">{tournament.location}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {tournament.chief_td_name && (
-                <div className="flex items-center">
-                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
-                    👨‍💼
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Chief TD</p>
-                    <p className="font-medium">{tournament.chief_td_name}</p>
-                    {tournament.chief_td_uscf_id && (
-                      <p className="text-sm text-gray-500">USCF ID: {tournament.chief_td_uscf_id}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {tournament.chief_arbiter_name && (
-                <div className="flex items-center">
-                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
-                    ⚖️
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Chief Arbiter</p>
-                    <p className="font-medium">{tournament.chief_arbiter_name}</p>
-                    {tournament.chief_arbiter_fide_id && (
-                      <p className="text-sm text-gray-500">FIDE ID: {tournament.chief_arbiter_fide_id}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {tournament.expected_players && (
-                <div className="flex items-center">
-                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
-                    👥
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Expected Players</p>
-                    <p className="font-medium">{tournament.expected_players}</p>
-                  </div>
-                </div>
-              )}
-
-              {tournament.website && (
-                <div className="flex items-center">
-                  <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
-                    🌐
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Website</p>
-                    <a 
-                      href={tournament.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="font-medium text-blue-600 hover:text-blue-800"
-                    >
-                      Visit Website
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center">
-                <div className="h-6 w-6 text-gray-400 mr-3 flex items-center justify-center">
-                  🏆
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Rating</p>
-                  <div className="flex space-x-2">
-                    {tournament.uscf_rated && (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        USCF
-                      </span>
-                    )}
-                    {tournament.fide_rated && (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                        FIDE
-                      </span>
-                    )}
-                    {!tournament.uscf_rated && !tournament.fide_rated && (
-                      <span className="text-sm text-gray-500">Unrated</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Expiration Warnings */}
-      {(() => {
-        const warnings = getExpirationWarnings();
-        if (warnings.length === 0) return null;
-        
-        return (
-          <div className="space-y-2">
-            {warnings.map((warning, index) => (
-              <div
-                key={index}
-                className={`px-4 py-3 rounded-md ${
-                  warning.type === 'expired'
-                    ? 'bg-red-100 border border-red-400 text-red-700'
-                    : 'bg-yellow-100 border border-yellow-400 text-yellow-700'
-                }`}
-              >
-                <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    {warning.type === 'expired' ? (
-                      <X className="h-5 w-5 text-red-400" />
-                    ) : (
-                      <Clock className="h-5 w-5 text-yellow-400" />
-                    )}
+                    <div className={`h-3 w-3 rounded-full ${tournament.allow_registration ? 'bg-green-400' : 'bg-red-400'}`}></div>
                   </div>
-                  <div className="ml-3">
-                    <p className="text-sm font-medium">
-                      {warning.type === 'expired' ? 'Expired ID' : 'Expiring ID'}
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Registration</h3>
+                    <p className="text-sm text-gray-600">
+                      {tournament.allow_registration ? 'Open for new players' : 'Currently closed'}
                     </p>
-                    <p className="text-sm">{warning.message}</p>
                   </div>
                 </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const updatedTournament = {
+                        ...tournament,
+                        allow_registration: !tournament.allow_registration
+                      };
+                      await tournamentApi.update(id!, updatedTournament);
+                      await fetchTournament();
+                    } catch (error) {
+                      console.error('Failed to update registration setting:', error);
+                      alert('Failed to update registration setting. Please try again.');
+                    }
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-chess-board focus:ring-offset-2 ${
+                    tournament.allow_registration ? 'bg-chess-board' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      tournament.allow_registration ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
-            ))}
+            </div>
+
+            {/* Additional Details - Only show if there's meaningful data */}
+            {(tournament.city || tournament.state || tournament.location || tournament.chief_td_name || tournament.website || tournament.uscf_rated || tournament.fide_rated) && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Additional Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {tournament.city && tournament.state && (
+                    <div className="flex items-start space-x-3">
+                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
+                        📍
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{tournament.city}, {tournament.state}</p>
+                        {tournament.location && (
+                          <p className="text-sm text-gray-500">{tournament.location}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {tournament.chief_td_name && (
+                    <div className="flex items-start space-x-3">
+                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
+                        👨‍💼
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{tournament.chief_td_name}</p>
+                        {tournament.chief_td_uscf_id && (
+                          <p className="text-sm text-gray-500">USCF ID: {tournament.chief_td_uscf_id}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {tournament.chief_arbiter_name && (
+                    <div className="flex items-start space-x-3">
+                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
+                        ⚖️
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{tournament.chief_arbiter_name}</p>
+                        {tournament.chief_arbiter_fide_id && (
+                          <p className="text-sm text-gray-500">FIDE ID: {tournament.chief_arbiter_fide_id}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {tournament.website && (
+                    <div className="flex items-start space-x-3">
+                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
+                        🌐
+                      </div>
+                      <div>
+                        <a 
+                          href={tournament.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          Visit Website
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {(tournament.uscf_rated || tournament.fide_rated) && (
+                    <div className="flex items-start space-x-3">
+                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
+                        🏆
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Rating System</p>
+                        <div className="flex space-x-2 mt-1">
+                          {tournament.uscf_rated && (
+                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                              USCF
+                            </span>
+                          )}
+                          {tournament.fide_rated && (
+                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                              FIDE
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        );
-      })()}
+        </div>
+
 
       {/* Display Settings Panel */}
       {showDisplaySettings && activeTab === 'pairings' && (
@@ -1117,74 +1342,105 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
-        {/* Tab Navigation */}
+        {/* Streamlined Tab Navigation */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
+            <nav className="flex flex-wrap gap-1 px-4 sm:px-6 overflow-x-auto">
+              {/* Core Tabs */}
               <button
                 onClick={() => setActiveTab('players')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
                   activeTab === 'players'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                Players ({state.players.length})
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4" />
+                  <span>Players</span>
+                  <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
+                    {state.players.length}
+                  </span>
+                </div>
               </button>
+              
               <button
                 onClick={() => setActiveTab('pairings')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
                   activeTab === 'pairings'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                Pairings
+                <div className="flex items-center space-x-2">
+                  <Trophy className="h-4 w-4" />
+                  <span>Pairings</span>
+                </div>
               </button>
+              
               <button
                 onClick={() => setActiveTab('standings')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
                   activeTab === 'standings'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                Standings
+                <div className="flex items-center space-x-2">
+                  <Trophy className="h-4 w-4" />
+                  <span>Standings</span>
+                </div>
               </button>
-              <button
-                onClick={() => {
-                  setActiveTab('team-standings');
-                  fetchTeamStandings();
-                }}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'team-standings'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Team Standings
-              </button>
+
+              {/* Team-specific tabs - only show if relevant */}
               {tournament && ['team-swiss', 'team-round-robin'].includes(tournament.format) && (
-                <button
-                  onClick={() => setActiveTab('team-pairings')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === 'team-pairings'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Team Pairings
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveTab('team-standings');
+                      fetchTeamStandings();
+                    }}
+                    className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
+                      activeTab === 'team-standings'
+                        ? 'border-blue-500 text-blue-600 bg-blue-50'
+                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4" />
+                      <span>Team Standings</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('team-pairings')}
+                    className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
+                      activeTab === 'team-pairings'
+                        ? 'border-blue-500 text-blue-600 bg-blue-50'
+                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Trophy className="h-4 w-4" />
+                      <span>Team Pairings</span>
+                    </div>
+                  </button>
+                </>
               )}
+
+              {/* Registration Management */}
               <button
                 onClick={() => setActiveTab('registrations')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
                   activeTab === 'registrations'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                Registrations
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4" />
+                  <span>Registrations</span>
+                </div>
               </button>
             </nav>
           </div>
@@ -1212,11 +1468,18 @@ const TournamentDetail: React.FC = () => {
                         <span>Bulk Add</span>
                       </button>
                       <button
-                        onClick={() => setShowCSVImport(true)}
-                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                        onClick={() => setShowUnifiedImport(true)}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         <Upload className="h-4 w-4" />
-                        <span>Import CSV</span>
+                        <span>Import Players</span>
+                      </button>
+                      <button
+                        onClick={() => setShowGoogleFormsConnector(true)}
+                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <LinkIcon className="h-4 w-4" />
+                        <span>Connect Google Form</span>
                       </button>
                       <button
                         onClick={() => setShowDBFExport(true)}
@@ -1224,6 +1487,20 @@ const TournamentDetail: React.FC = () => {
                       >
                         <Download className="h-4 w-4" />
                         <span>Export USCF</span>
+                      </button>
+                      <button
+                        onClick={() => setShowAPIDocs(true)}
+                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <Code className="h-4 w-4" />
+                        <span>API Docs</span>
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteDuplicates(true)}
+                        className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete Duplicates</span>
                       </button>
                     </div>
                   </div>
@@ -1299,46 +1576,144 @@ const TournamentDetail: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          <input
-                            type="checkbox"
-                            checked={state.players.length > 0 && selectedPlayers.size === state.players.length}
-                            onChange={handleSelectAll}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rating
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          USCF ID
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Section
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Team
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ID Expires
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {state.players.map((player) => (
+                <div className="space-y-4">
+                  {/* Sectioned Players Display */}
+                  {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
+                    <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      {/* Section Header */}
+                      <div 
+                        className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-blue-100 hover:to-indigo-100 transition-colors"
+                        onClick={() => toggleSectionCollapse(sectionGroup.section)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <button className="text-gray-600 hover:text-gray-800 transition-colors">
+                              {collapsedSections.has(sectionGroup.section) ? (
+                                <ChevronRight className="h-5 w-5" />
+                              ) : (
+                                <ChevronDown className="h-5 w-5" />
+                              )}
+                            </button>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {sectionGroup.section}
+                            </h3>
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {sectionGroup.count} player{sectionGroup.count !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Click to {collapsedSections.has(sectionGroup.section) ? 'expand' : 'collapse'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section Content */}
+                      {!collapsedSections.has(sectionGroup.section) && (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <input
+                                    type="checkbox"
+                                    checked={sectionGroup.players.length > 0 && sectionGroup.players.every((p: any) => selectedPlayers.has(p.id))}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        sectionGroup.players.forEach((player: any) => selectedPlayers.add(player.id));
+                                        setSelectedPlayers(new Set(selectedPlayers));
+                                      } else {
+                                        sectionGroup.players.forEach((player: any) => selectedPlayers.delete(player.id));
+                                        setSelectedPlayers(new Set(selectedPlayers));
+                                      }
+                                    }}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
+                                    onClick={() => handleSort('name')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>Name</span>
+                                    {sortField === 'name' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
+                                    onClick={() => handleSort('rating')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>Rating</span>
+                                    {sortField === 'rating' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
+                                    onClick={() => handleSort('uscf_id')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>USCF ID</span>
+                                    {sortField === 'uscf_id' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
+                                    onClick={() => handleSort('team_name')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>Team</span>
+                                    {sortField === 'team_name' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
+                                    onClick={() => handleSort('is_active')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>Status</span>
+                                    {sortField === 'is_active' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
+                                    onClick={() => handleSort('expiration_date')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>ID Expires</span>
+                                    {sortField === 'expiration_date' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {sectionGroup.players.map((player: any) => (
                         <tr key={player.id} className={selectedPlayers.has(player.id) ? 'bg-blue-50' : ''}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
@@ -1480,6 +1855,15 @@ const TournamentDetail: React.FC = () => {
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => {
+                                  setPlayerToEdit(player);
+                                  setShowEditPlayer(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => {
                                   setSelectedPlayer({ id: player.id, name: player.name });
                                   setShowInactiveRounds(true);
                                 }}
@@ -1514,9 +1898,13 @@ const TournamentDetail: React.FC = () => {
                             </div>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1844,7 +2232,6 @@ const TournamentDetail: React.FC = () => {
               <RegistrationManagement tournamentId={id || ''} />
             </div>
           )}
-            </div>
           </div>
         </div>
       </div>
@@ -1875,9 +2262,31 @@ const TournamentDetail: React.FC = () => {
       />
 
       {/* CSV Import Modal */}
-      <CSVImportModal
+      <FileImportModal
         isOpen={showCSVImport}
         onClose={() => setShowCSVImport(false)}
+        tournamentId={id || ''}
+      />
+
+      {/* Google Import Modal */}
+      <GoogleImportModal
+        isOpen={showGoogleImport}
+        onClose={() => setShowGoogleImport(false)}
+        tournamentId={id || ''}
+      />
+
+      {/* Google Forms Connector Modal */}
+      <GoogleFormsConnector
+        isOpen={showGoogleFormsConnector}
+        onClose={() => setShowGoogleFormsConnector(false)}
+        tournamentId={id || ''}
+        tournamentName={tournament?.name || 'Tournament'}
+      />
+
+      {/* Unified Import Modal */}
+      <UnifiedImportModal
+        isOpen={showUnifiedImport}
+        onClose={() => setShowUnifiedImport(false)}
         tournamentId={id || ''}
       />
 
@@ -1935,7 +2344,7 @@ const TournamentDetail: React.FC = () => {
             </div>
             {tournament && (
               <PrintableView
-                tournament={tournament}
+                tournament={tournament as any}
                 pairings={state.pairings.map(p => ({
                   id: p.id,
                   board: p.board,
@@ -1982,6 +2391,109 @@ const TournamentDetail: React.FC = () => {
         onClose={() => setShowTeamStandings(false)}
       />
 
+      {/* Edit Player Modal */}
+      <EditPlayerModal
+        isOpen={showEditPlayer}
+        onClose={() => {
+          setShowEditPlayer(false);
+          setPlayerToEdit(null);
+        }}
+        player={playerToEdit}
+        tournamentId={id || ''}
+      />
+
+      {/* API Documentation Modal */}
+      <APIDocumentationModal
+        isOpen={showAPIDocs}
+        onClose={() => setShowAPIDocs(false)}
+        tournamentId={id || ''}
+        tournamentName={state.currentTournament?.name || 'Tournament'}
+        apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94"
+      />
+
+      {/* Delete Duplicates Confirmation Modal */}
+      {showDeleteDuplicates && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <Trash2 className="h-6 w-6 text-red-600 mr-3" />
+              <h3 className="text-lg font-semibold text-gray-900">Delete Duplicate Players</h3>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-3">
+                This will permanently delete duplicate players from the tournament. Choose the criteria for identifying duplicates:
+              </p>
+              
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="duplicateCriteria"
+                    value="name"
+                    checked={deleteDuplicatesCriteria === 'name'}
+                    onChange={(e) => setDeleteDuplicatesCriteria(e.target.value as 'name' | 'uscf_id' | 'both')}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">By name (case-insensitive)</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="duplicateCriteria"
+                    value="uscf_id"
+                    checked={deleteDuplicatesCriteria === 'uscf_id'}
+                    onChange={(e) => setDeleteDuplicatesCriteria(e.target.value as 'name' | 'uscf_id' | 'both')}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">By USCF ID</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="duplicateCriteria"
+                    value="both"
+                    checked={deleteDuplicatesCriteria === 'both'}
+                    onChange={(e) => setDeleteDuplicatesCriteria(e.target.value as 'name' | 'uscf_id' | 'both')}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">By both name and USCF ID</span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Warning:</strong> This action cannot be undone. The oldest player (by creation date) will be kept, and all duplicates will be permanently deleted.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteDuplicates(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteDuplicates}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+              >
+                Delete Duplicates
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

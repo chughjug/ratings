@@ -1,0 +1,26 @@
+{
+  "config": {
+    "apiBaseUrl": "http://localhost:3001",
+    "username": "admin",
+    "password": "admin123",
+    "tournamentId": null,
+    "testType": "auth",
+    "verbose": true
+  },
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "success_rate": 0
+  },
+  "tests": [
+    {
+      "name": "User Login",
+      "passed": false,
+      "message": "Login error: ",
+      "details": null,
+      "timestamp": "2025-10-24T06:38:31.308Z"
+    }
+  ],
+  "timestamp": "2025-10-24T06:38:31.309Z"
+}

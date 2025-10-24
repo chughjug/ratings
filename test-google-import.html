@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Import API Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Google Import API Test</h1>
+        
+        <div class="note">
+            <strong>Note:</strong> This test page allows you to test the Google Import API endpoints. 
+            Most tests will fail with example data since we're using placeholder IDs. 
+            To test with real data, replace the IDs with actual Google Sheets or Forms IDs.
+        </div>
+
+        <!-- Basic Connectivity Test -->
+        <div class="test-section">
+            <h3>📡 Basic Connectivity Test</h3>
+            <p>Test if the Google Import API is accessible.</p>
+            <button onclick="testConnectivity()">Test Connectivity</button>
+            <div id="connectivity-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Google Sheets Tests -->
+        <div class="test-section">
+            <h3>📊 Google Sheets Tests</h3>
+            
+            <div class="form-group">
+                <label for="spreadsheet-id">Spreadsheet ID or URL:</label>
+                <input type="text" id="spreadsheet-id" value="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" placeholder="Enter Google Sheets ID or URL">
+            </div>
+            
+            <div class="form-group">
+                <label for="spreadsheet-range">Range (optional):</label>
+                <input type="text" id="spreadsheet-range" value="Sheet1!A1:Z1000" placeholder="Sheet1!A1:Z1000">
+            </div>
+            
+            <button onclick="testSheetsInfo()">Get Spreadsheet Info</button>
+            <button onclick="testSheetsPreview()">Preview Data</button>
+            <div id="sheets-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Google Forms Tests -->
+        <div class="test-section">
+            <h3>📝 Google Forms Tests</h3>
+            
+            <div class="form-group">
+                <label for="form-id">Form ID or URL:</label>
+                <input type="text" id="form-id" value="1FAIpQLSfExampleFormId" placeholder="Enter Google Forms ID or URL">
+            </div>
+            
+            <button onclick="testFormsInfo()">Get Form Info</button>
+            <button onclick="testFormsPreview()">Preview Responses</button>
+            <div id="forms-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Import Tests -->
+        <div class="test-section">
+            <h3>🚀 Import Tests</h3>
+            
+            <div class="form-group">
+                <label for="tournament-id">Tournament ID:</label>
+                <input type="text" id="tournament-id" value="test-tournament-123" placeholder="Enter tournament ID">
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="lookup-ratings" checked> Lookup USCF Ratings
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="auto-assign-sections" checked> Auto-assign Sections
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="use-smart-import" checked> Use Smart Import
+                </label>
+            </div>
+            
+            <button onclick="testSheetsImport()">Import from Sheets</button>
+            <button onclick="testFormsImport()">Import from Forms</button>
+            <div id="import-result" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Error Tests -->
+        <div class="test-section">
+            <h3>❌ Error Handling Tests</h3>
+            <p>Test various error conditions.</p>
+            
+            <button onclick="testInvalidApiKey()">Test Invalid API Key</button>
+            <button onclick="testMissingParameters()">Test Missing Parameters</button>
+            <button onclick="testInvalidTournament()">Test Invalid Tournament</button>
+            <div id="error-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api/google-import';
+        const API_KEY = 'demo-key-123';
+
+        function showResult(elementId, data, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${type}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result info';
+            element.innerHTML = '<div class="loading"></div> Testing...';
+        }
+
+        async function makeRequest(endpoint, method = 'GET', body = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                };
+                
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                const data = await response.json();
+                
+                return {
+                    success: data.success,
+                    data,
+                    status: response.status
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message,
+                    status: 0
+                };
+            }
+        }
+
+        async function testConnectivity() {
+            showLoading('connectivity-result');
+            const result = await makeRequest('/test');
+            showResult('connectivity-result', result, result.success ? 'success' : 'error');
+        }
+
+        async function testSheetsInfo() {
+            const spreadsheetId = document.getElementById('spreadsheet-id').value;
+            showLoading('sheets-result');
+            const result = await makeRequest(`/sheets/info?spreadsheet_id=${encodeURIComponent(spreadsheetId)}&api_key=${API_KEY}`);
+            showResult('sheets-result', result, result.success ? 'success' : 'error');
+        }
+
+        async function testSheetsPreview() {
+            const spreadsheetId = document.getElementById('spreadsheet-id').value;
+            const range = document.getElementById('spreadsheet-range').value;
+            showLoading('sheets-result');
+            const result = await makeRequest('/sheets/preview', 'POST', {
+                spreadsheet_id: spreadsheetId,
+                range: range,
+                api_key: API_KEY
+            });
+            showResult('sheets-result', result, result.success ? 'success' : 'error');
+        }
+
+        async function testFormsInfo() {
+            const formId = document.getElementById('form-id').value;
+            showLoading('forms-result');
+            const result = await makeRequest(`/forms/info?form_id=${encodeURIComponent(formId)}&api_key=${API_KEY}`);
+            showResult('forms-result', result, result.success ? 'success' : 'error');
+        }
+
+        async function testFormsPreview() {
+            const formId = document.getElementById('form-id').value;
+            showLoading('forms-result');
+            const result = await makeRequest('/forms/preview', 'POST', {
+                form_id: formId,
+                api_key: API_KEY
+            });
+            showResult('forms-result', result, result.success ? 'success' : 'error');
+        }
+
+        async function testSheetsImport() {
+            const spreadsheetId = document.getElementById('spreadsheet-id').value;
+            const tournamentId = document.getElementById('tournament-id').value;
+            const range = document.getElementById('spreadsheet-range').value;
+            const lookupRatings = document.getElementById('lookup-ratings').checked;
+            const autoAssignSections = document.getElementById('auto-assign-sections').checked;
+            const useSmartImport = document.getElementById('use-smart-import').checked;
+            
+            showLoading('import-result');
+            
+            const endpoint = useSmartImport ? '/smart/sheets' : '/sheets';
+            const result = await makeRequest(endpoint, 'POST', {
+                spreadsheet_id: spreadsheetId,
+                tournament_id: tournamentId,
+                range: range,
+                lookup_ratings: lookupRatings,
+                auto_assign_sections: autoAssignSections,
+                api_key: API_KEY
+            });
+            
+            showResult('import-result', result, result.success ? 'success' : 'error');
+        }
+
+        async function testFormsImport() {
+            const formId = document.getElementById('form-id').value;
+            const tournamentId = document.getElementById('tournament-id').value;
+            const lookupRatings = document.getElementById('lookup-ratings').checked;
+            const autoAssignSections = document.getElementById('auto-assign-sections').checked;
+            const useSmartImport = document.getElementById('use-smart-import').checked;
+            
+            showLoading('import-result');
+            
+            const endpoint = useSmartImport ? '/smart/forms' : '/forms';
+            const result = await makeRequest(endpoint, 'POST', {
+                form_id: formId,
+                tournament_id: tournamentId,
+                lookup_ratings: lookupRatings,
+                auto_assign_sections: autoAssignSections,
+                api_key: API_KEY
+            });
+            
+            showResult('import-result', result, result.success ? 'success' : 'error');
+        }
+
+        async function testInvalidApiKey() {
+            showLoading('error-result');
+            const result = await makeRequest('/sheets/preview', 'POST', {
+                spreadsheet_id: 'test',
+                api_key: 'invalid-key'
+            });
+            showResult('error-result', result, 'error');
+        }
+
+        async function testMissingParameters() {
+            showLoading('error-result');
+            const result = await makeRequest('/sheets/preview', 'POST', {
+                api_key: API_KEY
+            });
+            showResult('error-result', result, 'error');
+        }
+
+        async function testInvalidTournament() {
+            const spreadsheetId = document.getElementById('spreadsheet-id').value;
+            showLoading('error-result');
+            const result = await makeRequest('/smart/sheets', 'POST', {
+                spreadsheet_id: spreadsheetId,
+                tournament_id: 'invalid-tournament-id',
+                api_key: API_KEY
+            });
+            showResult('error-result', result, 'error');
+        }
+
+        // Auto-test connectivity on page load
+        window.addEventListener('load', () => {
+            testConnectivity();
+        });
+    </script>
+</body>
+</html>

@@ -17,7 +17,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { Pairing } from '../types';
-import { pairingApi } from '../services/api';
+import { pairingApi, tournamentApi } from '../services/api';
 
 interface RoundIndependentPairingSystemProps {
   tournament: any;
@@ -73,6 +73,7 @@ const RoundIndependentPairingSystem: React.FC<RoundIndependentPairingSystemProps
   const [tournamentPairings, setTournamentPairings] = useState<TournamentPairings | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPairingMethod, setSelectedPairingMethod] = useState<string>('fide_dutch');
 
   // Load all tournament pairings and round statuses
   const loadTournamentData = useCallback(async () => {
@@ -135,6 +136,20 @@ const RoundIndependentPairingSystem: React.FC<RoundIndependentPairingSystemProps
     setError(null);
     
     try {
+      // First, update the tournament settings with the selected pairing method
+      const currentSettings = tournament.settings || {};
+      const updatedSettings = {
+        ...currentSettings,
+        pairing_method: selectedPairingMethod as 'fide_dutch' | 'us_chess' | 'round_robin' | 'quad' | 'single_elimination'
+      };
+      
+      // Update tournament settings
+      await tournamentApi.update(tournament.id, {
+        ...tournament,
+        settings: updatedSettings
+      });
+      
+      // Now generate pairings with the updated settings
       const response = await pairingApi.generate(tournament.id, currentRound, clearExisting);
       if (response.data.success) {
         // Reload tournament data to get updated pairings
@@ -293,6 +308,34 @@ const RoundIndependentPairingSystem: React.FC<RoundIndependentPairingSystemProps
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* Pairing Method Selector */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h3 className="text-lg font-semibold text-gray-900">Pairing Settings</h3>
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="overview-pairing-method" className="text-sm font-medium text-gray-700">
+                    Method:
+                  </label>
+                  <select
+                    id="overview-pairing-method"
+                    value={selectedPairingMethod}
+                    onChange={(e) => setSelectedPairingMethod(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="fide_dutch">FIDE Dutch System</option>
+                    <option value="round_robin">Round Robin</option>
+                    <option value="quad">Quad System</option>
+                    <option value="single_elimination">Single Elimination</option>
+                  </select>
+                </div>
+              </div>
+              <div className="text-sm text-gray-500">
+                This setting will be used for new pairings
+              </div>
+            </div>
+          </div>
+
           {/* Round Status Overview */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Round Status Overview</h3>
@@ -418,16 +461,33 @@ const RoundIndependentPairingSystem: React.FC<RoundIndependentPairingSystemProps
                       {currentRoundStatus.percentage}% complete
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleGeneratePairings(false)}
-                      disabled={loading || currentRoundStatus.hasPairings}
-                      className="flex items-center space-x-2 px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
-                    >
-                      <Play className="h-4 w-4" />
-                      <span>Generate</span>
-                    </button>
-                    <button
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="pairing-method" className="text-sm font-medium text-gray-700">
+                        Pairing Method:
+                      </label>
+                      <select
+                        id="pairing-method"
+                        value={selectedPairingMethod}
+                        onChange={(e) => setSelectedPairingMethod(e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="fide_dutch">FIDE Dutch System</option>
+                        <option value="round_robin">Round Robin</option>
+                        <option value="quad">Quad System</option>
+                        <option value="single_elimination">Single Elimination</option>
+                      </select>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleGeneratePairings(false)}
+                        disabled={loading || currentRoundStatus.hasPairings}
+                        className="flex items-center space-x-2 px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                      >
+                        <Play className="h-4 w-4" />
+                        <span>Generate</span>
+                      </button>
+                      <button
                       onClick={() => handleGeneratePairings(true)}
                       disabled={loading}
                       className="flex items-center space-x-2 px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 disabled:opacity-50"
@@ -445,6 +505,7 @@ const RoundIndependentPairingSystem: React.FC<RoundIndependentPairingSystemProps
                     </button>
                   </div>
                 </div>
+              </div>
                 <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full transition-all duration-300 ${

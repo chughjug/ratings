@@ -90,6 +90,46 @@ export class TemplateService {
         usage_count: 0
       },
       {
+        id: 'quad-tournament',
+        name: 'Quad Tournament',
+        description: 'Quad system tournament - players grouped into quads of 4',
+        format: 'swiss',
+        settings: {
+          tie_break_criteria: ['buchholz', 'sonnebornBerger'],
+          pairing_type: 'standard',
+          pairing_method: 'quad',
+          bye_points: 0.5,
+          enable_analytics: true,
+          enable_dark_mode: true,
+          enable_keyboard_shortcuts: true,
+          enable_qr_codes: true
+        },
+        is_public: true,
+        created_by: 'system',
+        created_at: new Date().toISOString(),
+        usage_count: 0
+      },
+      {
+        id: 'round-robin-tournament',
+        name: 'Round Robin Tournament',
+        description: 'Round robin tournament - all players play each other once',
+        format: 'swiss',
+        settings: {
+          tie_break_criteria: ['buchholz', 'sonnebornBerger'],
+          pairing_type: 'standard',
+          pairing_method: 'round_robin',
+          bye_points: 0.5,
+          enable_analytics: true,
+          enable_dark_mode: true,
+          enable_keyboard_shortcuts: true,
+          enable_qr_codes: true
+        },
+        is_public: true,
+        created_by: 'system',
+        created_at: new Date().toISOString(),
+        usage_count: 0
+      },
+      {
         id: 'team-tournament',
         name: 'Team Swiss Tournament',
         description: 'Team tournament with 4 boards per team',

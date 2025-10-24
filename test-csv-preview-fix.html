@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Preview Fix Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .file-input {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        .result pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.9em;
+        }
+        .player-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .player-table th,
+        .player-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .player-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .error-count {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .success-count {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 CSV Preview Fix Test</h1>
+        
+        <div class="status info">
+            <strong>🧪 Live Testing Interface</strong><br>
+            Test the CSV preview functionality to verify it properly parses and displays actual data.
+        </div>
+
+        <div class="test-section">
+            <h3>📁 Test CSV File Upload</h3>
+            <p>Select a CSV file to test the preview functionality:</p>
+            <input type="file" id="csvFile" accept=".csv" class="file-input">
+            <br>
+            <button id="testPreview" class="test-button" disabled>Test Preview</button>
+            <button id="testImport" class="test-button" disabled>Test Import</button>
+            <button id="clearResults" class="test-button">Clear Results</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Results</h3>
+            <div id="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 What This Test Verifies</h3>
+            <ul>
+                <li>✅ CSV file upload works without requiring API key</li>
+                <li>✅ Preview shows actual parsed player data</li>
+                <li>✅ Player count is correctly displayed</li>
+                <li>✅ Parse errors are shown if any</li>
+                <li>✅ Validation errors are displayed</li>
+                <li>✅ Sample data table shows first 5 players</li>
+                <li>✅ Error handling works for invalid files</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const csvFileInput = document.getElementById('csvFile');
+        const testPreviewBtn = document.getElementById('testPreview');
+        const testImportBtn = document.getElementById('testImport');
+        const clearResultsBtn = document.getElementById('clearResults');
+        const resultsDiv = document.getElementById('results');
+
+        let currentFile = null;
+
+        // Enable/disable buttons based on file selection
+        csvFileInput.addEventListener('change', (e) => {
+            currentFile = e.target.files[0];
+            testPreviewBtn.disabled = !currentFile;
+            testImportBtn.disabled = !currentFile;
+        });
+
+        // Clear results
+        clearResultsBtn.addEventListener('click', () => {
+            resultsDiv.innerHTML = '';
+        });
+
+        // Test preview functionality
+        testPreviewBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            testPreviewBtn.disabled = true;
+            testPreviewBtn.textContent = 'Testing...';
+
+            try {
+                const formData = new FormData();
+                formData.append('csvFile', currentFile);
+                formData.append('tournament_id', '1');
+                formData.append('lookup_ratings', 'false');
+
+                const response = await fetch('http://localhost:5000/api/players/csv-upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayPreviewResults(data.data);
+                } else {
+                    displayError('Preview failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                displayError('Network error: ' + error.message);
+            } finally {
+                testPreviewBtn.disabled = false;
+                testPreviewBtn.textContent = 'Test Preview';
+            }
+        });
+
+        // Test import functionality
+        testImportBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            testImportBtn.disabled = true;
+            testImportBtn.textContent = 'Importing...';
+
+            try {
+                const formData = new FormData();
+                formData.append('csvFile', currentFile);
+                formData.append('tournament_id', '1');
+                formData.append('lookup_ratings', 'true');
+
+                const response = await fetch('http://localhost:5000/api/players/csv-upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayImportResults(data.data);
+                } else {
+                    displayError('Import failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                displayError('Network error: ' + error.message);
+            } finally {
+                testImportBtn.disabled = false;
+                testImportBtn.textContent = 'Test Import';
+            }
+        });
+
+        function displayPreviewResults(data) {
+            const players = data.players || [];
+            const errors = data.parseErrors || [];
+            const validationErrors = data.validationErrors || [];
+
+            let html = `
+                <div class="status success">
+                    <strong>✅ Preview Successful!</strong><br>
+                    File parsed successfully. Found <span class="success-count">${players.length}</span> players.
+                </div>
+            `;
+
+            // Preview Summary
+            html += `
+                <div class="result">
+                    <h4>📊 Preview Summary</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0;">
+                        <div>
+                            <strong>Total Players:</strong> <span class="success-count">${players.length}</span>
+                        </div>
+                        <div>
+                            <strong>Parse Errors:</strong> <span class="error-count">${errors.length}</span>
+                        </div>
+                        <div>
+                            <strong>Validation Errors:</strong> <span class="error-count">${validationErrors.length}</span>
+                        </div>
+                        <div>
+                            <strong>Source:</strong> CSV
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Sample Players Table
+            if (players.length > 0) {
+                html += `
+                    <div class="result">
+                        <h4>👥 Sample Players (first 5)</h4>
+                        <table class="player-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>USCF ID</th>
+                                    <th>Rating</th>
+                                    <th>Section</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                players.slice(0, 5).forEach(player => {
+                    html += `
+                        <tr>
+                            <td>${player.name || '-'}</td>
+                            <td>${player.uscf_id || '-'}</td>
+                            <td>${player.rating || '-'}</td>
+                            <td>${player.section || '-'}</td>
+                            <td>${player.email || '-'}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="status error">
+                        <strong>⚠️ No Players Found</strong><br>
+                        The file was processed but no valid player data was found.
+                    </div>
+                `;
+            }
+
+            // Errors
+            if (errors.length > 0) {
+                html += `
+                    <div class="result">
+                        <h4>❌ Parse Errors</h4>
+                        <ul>
+                `;
+                errors.forEach(error => {
+                    html += `<li>${error}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            if (validationErrors.length > 0) {
+                html += `
+                    <div class="result">
+                        <h4>⚠️ Validation Errors</h4>
+                        <ul>
+                `;
+                validationErrors.forEach(error => {
+                    html += `<li>${error}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function displayImportResults(data) {
+            const players = data.players || [];
+            const errors = data.parseErrors || [];
+            const validationErrors = data.validationErrors || [];
+
+            let html = `
+                <div class="status success">
+                    <strong>✅ Import Successful!</strong><br>
+                    Successfully imported <span class="success-count">${players.length}</span> players to the tournament.
+                </div>
+            `;
+
+            if (errors.length > 0 || validationErrors.length > 0) {
+                html += `
+                    <div class="status error">
+                        <strong>⚠️ Import completed with warnings</strong><br>
+                        ${errors.length} parse errors, ${validationErrors.length} validation errors
+                    </div>
+                `;
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function displayError(message) {
+            resultsDiv.innerHTML = `
+                <div class="status error">
+                    <strong>❌ Error</strong><br>
+                    ${message}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

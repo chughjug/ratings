@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Simple API wrapper script
+# Usage: ./api [environment] [command] [options]
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/api-config.json"
+API_SCRIPT="$SCRIPT_DIR/simple-api.js"
+
+# Default environment
+ENVIRONMENT="default"
+
+# Parse arguments
+if [ $# -gt 0 ]; then
+    # Check if first argument is an environment
+    if [ -f "$CONFIG_FILE" ]; then
+        ENV_EXISTS=$(jq -r "has(\"$1\")" "$CONFIG_FILE" 2>/dev/null)
+        if [ "$ENV_EXISTS" = "true" ]; then
+            ENVIRONMENT="$1"
+            shift
+        fi
+    fi
+fi
+
+# Load configuration
+if [ -f "$CONFIG_FILE" ]; then
+    # Extract configuration for the environment
+    API_URL=$(jq -r ".$ENVIRONMENT.apiBaseUrl" "$CONFIG_FILE")
+    USERNAME=$(jq -r ".$ENVIRONMENT.username" "$CONFIG_FILE")
+    PASSWORD=$(jq -r ".$ENVIRONMENT.password" "$CONFIG_FILE")
+    TOURNAMENT_ID=$(jq -r ".$ENVIRONMENT.tournamentId" "$CONFIG_FILE")
+    
+    # Build command
+    CMD="node $API_SCRIPT --url $API_URL --username $USERNAME --password $PASSWORD"
+    
+    if [ "$TOURNAMENT_ID" != "null" ] && [ -n "$TOURNAMENT_ID" ]; then
+        CMD="$CMD --tournament $TOURNAMENT_ID"
+    fi
+    
+    # Add remaining arguments
+    CMD="$CMD $@"
+    
+    echo "🚀 Running API command with $ENVIRONMENT environment..."
+    echo "   URL: $API_URL"
+    echo "   User: $USERNAME"
+    echo ""
+    
+    eval $CMD
+else
+    echo "❌ Configuration file not found: $CONFIG_FILE"
+    echo "   Run: node $API_SCRIPT --help for basic usage"
+    exit 1
+fi

@@ -1,0 +1,131 @@
+API Player Import Flow Diagram
+==============================
+
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Client App    │    │   API Server    │    │   Database      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │ 1. POST /api/players/ │                       │
+         │    register/:id       │                       │
+         ├──────────────────────►│                       │
+         │                       │                       │
+         │                       │ 2. Validate API Key   │
+         │                       │                       │
+         │                       │ 3. Validate Tournament│
+         │                       │    exists             │
+         │                       │                       │
+         │                       │ 4. Validate Player    │
+         │                       │    Data               │
+         │                       │                       │
+         │                       │ 5. Lookup Rating      │
+         │                       │    (if USCF ID)       │
+         │                       │                       │
+         │                       │ 6. Assign Section     │
+         │                       │    (if auto-assign)   │
+         │                       │                       │
+         │                       │ 7. Generate UUID      │
+         │                       │                       │
+         │                       │ 8. Insert Player      │
+         │                       ├──────────────────────►│
+         │                       │                       │
+         │                       │ 9. Update Section     │
+         │                       │    (if needed)        │
+         │                       ├──────────────────────►│
+         │                       │                       │
+         │ 10. Return Response   │                       │
+         │◄──────────────────────┤                       │
+         │                       │                       │
+
+Bulk Import Flow (api-import endpoint)
+======================================
+
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Client App    │    │   API Server    │    │   Database      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │ 1. POST /api/players/ │                       │
+         │    api-import/:id     │                       │
+         ├──────────────────────►│                       │
+         │                       │                       │
+         │                       │ 2. Validate API Key   │
+         │                       │                       │
+         │                       │ 3. Validate Tournament│
+         │                       │                       │
+         │                       │ 4. Validate Players   │
+         │                       │    Array              │
+         │                       │                       │
+         │                       │ 5. Process Each Player│
+         │                       │    ├─ Lookup Rating   │
+         │                       │    ├─ Assign Section  │
+         │                       │    └─ Generate UUID   │
+         │                       │                       │
+         │                       │ 6. Batch Insert       │
+         │                       │    Players            │
+         │                       ├──────────────────────►│
+         │                       │                       │
+         │                       │ 7. Update Sections    │
+         │                       │    (if needed)        │
+         │                       ├──────────────────────►│
+         │                       │                       │
+         │ 8. Return Results     │                       │
+         │◄──────────────────────┤                       │
+         │                       │                       │
+
+CSV Import Flow
+===============
+
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Client App    │    │   API Server    │    │   Database      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │ 1. POST /api/players/ │                       │
+         │    csv-upload         │                       │
+         ├──────────────────────►│                       │
+         │                       │                       │
+         │                       │ 2. Parse CSV File     │
+         │                       │                       │
+         │                       │ 3. Validate Data      │
+         │                       │                       │
+         │ 4. Return Preview     │                       │
+         │◄──────────────────────┤                       │
+         │                       │                       │
+         │ 5. POST /api/players/ │                       │
+         │    csv-import         │                       │
+         ├──────────────────────►│                       │
+         │                       │                       │
+         │                       │ 6. Process Players    │
+         │                       │    (same as bulk)     │
+         │                       │                       │
+         │                       │ 7. Insert to DB       │
+         │                       ├──────────────────────►│
+         │                       │                       │
+         │ 8. Return Results     │                       │
+         │◄──────────────────────┤                       │
+         │                       │                       │
+
+Key Components:
+===============
+
+1. Authentication Layer
+   ├─ API Key Validation
+   └─ Tournament Access Check
+
+2. Validation Layer
+   ├─ Required Fields Check
+   ├─ Data Type Validation
+   └─ Business Rules Validation
+
+3. Processing Layer
+   ├─ Rating Lookup Service
+   ├─ Section Assignment Logic
+   └─ UUID Generation
+
+4. Storage Layer
+   ├─ Player Data Insertion
+   ├─ Section Updates
+   └─ Transaction Management
+
+5. Response Layer
+   ├─ Success/Error Status
+   ├─ Player IDs
+   └─ Validation Results

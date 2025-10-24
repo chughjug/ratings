@@ -73,7 +73,7 @@ export interface TournamentSettings {
   rating_ceiling?: number;
   bye_points?: number;
   pairing_type?: 'standard' | 'accelerated';
-  pairing_method?: 'us_chess' | 'fide_dutch';
+  pairing_method?: 'us_chess' | 'fide_dutch' | 'round_robin' | 'quad' | 'single_elimination';
   equalization_limit?: number;
   alternation_limit?: number;
   use_full_color_history?: boolean;

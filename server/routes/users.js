@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const validator = require('validator');
+const crypto = require('crypto');
 const db = require('../database');
 const { 
   hashPassword, 
@@ -10,6 +11,19 @@ const {
 } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Helper function to generate API key
+function generateApiKey() {
+  const prefix = 'ctk_';
+  const randomBytes = crypto.randomBytes(32);
+  const key = randomBytes.toString('hex');
+  return prefix + key;
+}
+
+// Helper function to validate API key format
+function isValidApiKey(apiKey) {
+  return apiKey && apiKey.startsWith('ctk_') && apiKey.length === 67;
+}
 
 /**
  * Get all users (admin only)
@@ -100,6 +114,308 @@ router.get('/', authenticate, authorize(['admin']), async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to get users'
+    });
+  }
+});
+
+/**
+ * Generate API key for user
+ * POST /api/users/:id/api-key
+ */
+router.post('/:id/api-key', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name = 'Default API Key', description = '', permissions = 'read,write', rate_limit = 1000 } = req.body;
+    const userId = req.user.id;
+
+    // Check if user can manage this API key (own account or admin)
+    if (id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to manage this API key'
+      });
+    }
+
+    // Generate new API key
+    const apiKey = generateApiKey();
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1); // Expires in 1 year
+
+    // Store in user_api_keys table
+    const keyId = uuidv4();
+    await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO user_api_keys (id, user_id, api_key, name, description, permissions, rate_limit, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [keyId, id, apiKey, name, description, permissions, rate_limit, expiresAt.toISOString()],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Update user's main API key
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE users SET api_key = ?, api_key_created_at = CURRENT_TIMESTAMP, api_key_expires_at = ? WHERE id = ?',
+        [apiKey, expiresAt.toISOString(), id],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Log audit
+    logAudit('CREATE', 'user_api_keys', keyId, null, { action: 'api_key_generated', user_id: id }, req);
+
+    res.json({
+      success: true,
+      data: {
+        api_key: apiKey,
+        key_id: keyId,
+        name,
+        description,
+        permissions,
+        rate_limit,
+        expires_at: expiresAt.toISOString()
+      },
+      message: 'API key generated successfully'
+    });
+
+  } catch (error) {
+    console.error('Generate API key error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate API key'
+    });
+  }
+});
+
+/**
+ * Get user's API keys
+ * GET /api/users/:id/api-keys
+ */
+router.get('/:id/api-keys', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check if user can view this API key (own account or admin)
+    if (id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to view this API key'
+      });
+    }
+
+    const apiKeys = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT id, name, description, permissions, rate_limit, usage_count, last_used, 
+                created_at, expires_at, is_active
+         FROM user_api_keys 
+         WHERE user_id = ? 
+         ORDER BY created_at DESC`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      data: apiKeys
+    });
+
+  } catch (error) {
+    console.error('Get API keys error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get API keys'
+    });
+  }
+});
+
+/**
+ * Revoke API key
+ * DELETE /api/users/:id/api-keys/:keyId
+ */
+router.delete('/:id/api-keys/:keyId', authenticate, async (req, res) => {
+  try {
+    const { id, keyId } = req.params;
+    const userId = req.user.id;
+
+    // Check if user can manage this API key (own account or admin)
+    if (id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to manage this API key'
+      });
+    }
+
+    // Deactivate API key
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE user_api_keys SET is_active = 0 WHERE id = ? AND user_id = ?',
+        [keyId, id],
+        function(err) {
+          if (err) reject(err);
+          else if (this.changes === 0) {
+            reject(new Error('API key not found'));
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
+
+    // Log audit
+    logAudit('DELETE', 'user_api_keys', keyId, null, { action: 'api_key_revoked', user_id: id }, req);
+
+    res.json({
+      success: true,
+      message: 'API key revoked successfully'
+    });
+
+  } catch (error) {
+    console.error('Revoke API key error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to revoke API key'
+    });
+  }
+});
+
+/**
+ * Update API key
+ * PUT /api/users/:id/api-keys/:keyId
+ */
+router.put('/:id/api-keys/:keyId', authenticate, async (req, res) => {
+  try {
+    const { id, keyId } = req.params;
+    const { name, description, permissions, rate_limit } = req.body;
+    const userId = req.user.id;
+
+    // Check if user can manage this API key (own account or admin)
+    if (id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to manage this API key'
+      });
+    }
+
+    // Build update query
+    const updates = [];
+    const values = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
+    }
+    if (permissions !== undefined) {
+      updates.push('permissions = ?');
+      values.push(permissions);
+    }
+    if (rate_limit !== undefined) {
+      updates.push('rate_limit = ?');
+      values.push(rate_limit);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No fields to update'
+      });
+    }
+
+    values.push(keyId, id);
+
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE user_api_keys SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
+        values,
+        function(err) {
+          if (err) reject(err);
+          else if (this.changes === 0) {
+            reject(new Error('API key not found'));
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
+
+    // Log audit
+    logAudit('UPDATE', 'user_api_keys', keyId, null, { action: 'api_key_updated', user_id: id }, req);
+
+    res.json({
+      success: true,
+      message: 'API key updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Update API key error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update API key'
+    });
+  }
+});
+
+/**
+ * Get API key usage statistics
+ * GET /api/users/:id/api-keys/:keyId/stats
+ */
+router.get('/:id/api-keys/:keyId/stats', authenticate, async (req, res) => {
+  try {
+    const { id, keyId } = req.params;
+    const userId = req.user.id;
+
+    // Check if user can view this API key (own account or admin)
+    if (id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to view this API key'
+      });
+    }
+
+    const stats = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT usage_count, last_used, created_at, expires_at, is_active
+         FROM user_api_keys 
+         WHERE id = ? AND user_id = ?`,
+        [keyId, id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!stats) {
+      return res.status(404).json({
+        success: false,
+        error: 'API key not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: stats
+    });
+
+  } catch (error) {
+    console.error('Get API key stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get API key statistics'
     });
   }
 });
@@ -511,5 +827,6 @@ router.post('/:id/reset-password', authenticate, authorize(['admin']), async (re
     });
   }
 });
+
 
 module.exports = router;

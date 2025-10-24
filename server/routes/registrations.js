@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 const db = require('../database');
 const { searchUSChessPlayers } = require('../services/playerSearch');
 const { lookupAndUpdatePlayer } = require('../services/ratingLookup');
@@ -428,6 +429,47 @@ router.post('/:registrationId/reject', (req, res) => {
       });
     }
   );
+});
+
+// Serve registration form for a specific tournament
+router.get('/form/:tournamentId', (req, res) => {
+  const { tournamentId } = req.params;
+  
+  // Verify tournament exists
+  db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
+    if (err) {
+      console.error('Error fetching tournament:', err);
+      return res.status(500).send('Internal server error');
+    }
+    
+    if (!tournament) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Tournament Not Found</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .error { color: #e74c3c; }
+          </style>
+        </head>
+        <body>
+          <h1 class="error">Tournament Not Found</h1>
+          <p>The tournament you're looking for doesn't exist or has been removed.</p>
+        </body>
+        </html>
+      `);
+    }
+    
+    // Serve the registration form with tournament data
+    const registrationFormPath = path.join(__dirname, '../../registration-form-example.html');
+    res.sendFile(registrationFormPath, (err) => {
+      if (err) {
+        console.error('Error serving registration form:', err);
+        res.status(500).send('Error loading registration form');
+      }
+    });
+  });
 });
 
 module.exports = router;

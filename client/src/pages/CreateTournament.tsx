@@ -81,7 +81,7 @@ const CreateTournament: React.FC = () => {
         rating_ceiling: undefined as number | undefined,
       bye_points: 0.5,
       pairing_type: 'standard' as 'standard' | 'accelerated',
-      pairing_method: 'fide_dutch' as 'fide_dutch',
+      pairing_method: 'fide_dutch' as 'fide_dutch' | 'round_robin' | 'quad' | 'single_elimination',
       equalization_limit: 200,
       alternation_limit: 80,
       use_full_color_history: true,
@@ -743,14 +743,26 @@ const CreateTournament: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="settings.pairing_method" className="block text-sm font-medium text-gray-700 mb-2">
                 Pairing Method
               </label>
-              <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600">
-                FIDE Dutch System (Universal)
-              </div>
+              <select
+                id="settings.pairing_method"
+                name="settings.pairing_method"
+                value={formData.settings.pairing_method}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
+              >
+                <option value="fide_dutch">FIDE Dutch System</option>
+                <option value="round_robin">Round Robin</option>
+                <option value="quad">Quad System</option>
+                <option value="single_elimination">Single Elimination</option>
+              </select>
               <p className="text-xs text-gray-500 mt-1">
-                Algorithmic pairing system with aggressive color correction and systematic transpositions.
+                {formData.settings.pairing_method === 'fide_dutch' && 'Algorithmic pairing system with aggressive color correction and systematic transpositions.'}
+                {formData.settings.pairing_method === 'round_robin' && 'All players play each other exactly once. Best for small tournaments.'}
+                {formData.settings.pairing_method === 'quad' && 'Players grouped into quads of 4, round-robin within each quad. Good for 8-32 players.'}
+                {formData.settings.pairing_method === 'single_elimination' && 'Knockout tournament with bracket system. Fast completion with clear winner.'}
               </p>
             </div>
 

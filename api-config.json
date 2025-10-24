@@ -1,0 +1,20 @@
+{
+  "default": {
+    "apiBaseUrl": "http://localhost:3001",
+    "username": "admin",
+    "password": "admin123",
+    "tournamentId": null
+  },
+  "production": {
+    "apiBaseUrl": "https://your-production-api.com",
+    "username": "admin",
+    "password": "your-production-password",
+    "tournamentId": null
+  },
+  "staging": {
+    "apiBaseUrl": "https://staging-api.example.com",
+    "username": "admin",
+    "password": "staging-password",
+    "tournamentId": null
+  }
+}

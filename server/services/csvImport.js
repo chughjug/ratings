@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { lookupAndUpdatePlayer } = require('./ratingLookup');
 const { getUSCFInfo } = require('./ratingLookup');
+const { searchUSChessPlayersSubSecond } = require('./playerSearch');
 const { Worker } = require('worker_threads');
 const { Transform } = require('stream');
 
@@ -241,6 +242,198 @@ async function processWorkerBatch(worker, players) {
 }
 
 /**
+ * Attempt to find USCF ID and rating for any player by name
+ * @param {string} playerName - Player's name
+ * @param {string} playerId - Database player ID
+ * @returns {Promise<Object>} USCF lookup result
+ */
+async function findUSCFInfoByName(playerName, playerId) {
+  try {
+    console.log(`Searching for USCF info for: ${playerName}`);
+    
+    // Search for the player by name
+    const searchResults = await searchUSChessPlayersSubSecond(playerName, 5);
+    
+    if (!searchResults || searchResults.length === 0) {
+      console.log(`No USCF search results found for: ${playerName}`);
+      return {
+        id: playerId,
+        name: playerName,
+        uscf_id: null,
+        success: false,
+        rating: null,
+        expirationDate: null,
+        isActive: false,
+        error: 'No USCF player found with this name',
+        fromCache: false,
+        searchAttempted: true
+      };
+    }
+    
+    // Try to find the best match (exact name match preferred)
+    let bestMatch = null;
+    const nameLower = playerName.toLowerCase().trim();
+    
+    // First try exact match
+    for (const result of searchResults) {
+      if (result.name && result.name.toLowerCase().trim() === nameLower) {
+        bestMatch = result;
+        break;
+      }
+    }
+    
+    // If no exact match, take the first result
+    if (!bestMatch) {
+      bestMatch = searchResults[0];
+    }
+    
+    if (!bestMatch.uscf_id) {
+      console.log(`No USCF ID found in search results for: ${playerName}`);
+      return {
+        id: playerId,
+        name: playerName,
+        uscf_id: null,
+        success: false,
+        rating: null,
+        expirationDate: null,
+        isActive: false,
+        error: 'No USCF ID found in search results',
+        fromCache: false,
+        searchAttempted: true
+      };
+    }
+    
+    console.log(`Found potential USCF match for ${playerName}: ${bestMatch.name} (${bestMatch.uscf_id})`);
+    
+    // Now look up the rating for the found USCF ID
+    const ratingResult = await getUSCFInfo(bestMatch.uscf_id);
+    
+    return {
+      id: playerId,
+      name: playerName,
+      uscf_id: bestMatch.uscf_id,
+      success: !ratingResult.error,
+      rating: ratingResult.rating,
+      expirationDate: ratingResult.expirationDate,
+      isActive: ratingResult.isActive,
+      error: ratingResult.error,
+      fromCache: false,
+      searchAttempted: true,
+      matchedName: bestMatch.name
+    };
+    
+  } catch (error) {
+    console.error(`Error finding USCF info for ${playerName}:`, error.message);
+    return {
+      id: playerId,
+      name: playerName,
+      uscf_id: null,
+      success: false,
+      rating: null,
+      expirationDate: null,
+      isActive: false,
+      error: error.message,
+      fromCache: false,
+      searchAttempted: true
+    };
+  }
+}
+
+/**
+ * Attempt USCF lookup for ALL players by name (new enhanced method)
+ * @param {Array} allPlayers - Array of all players to process
+ * @returns {Promise<Array>} Array of rating lookup results
+ */
+async function lookupAllPlayersByName(allPlayers) {
+  console.log(`Starting enhanced USCF lookup for ALL ${allPlayers.length} players by name...`);
+  
+  const results = [];
+  const BATCH_SIZE = 3; // Smaller batch size for name searches (more API intensive)
+  
+  for (let i = 0; i < allPlayers.length; i += BATCH_SIZE) {
+    const batch = allPlayers.slice(i, i + BATCH_SIZE);
+    
+    // Process batch in parallel
+    const batchPromises = batch.map(async (player) => {
+      try {
+        // First check if player already has a USCF ID - if so, use direct lookup
+        if (player.uscf_id && player.uscf_id.trim() !== '') {
+          console.log(`Player ${player.name} already has USCF ID: ${player.uscf_id}, using direct lookup`);
+          
+          // Check cache first
+          const cacheKey = player.uscf_id;
+          const cached = ratingCache.get(cacheKey);
+          if (cached) {
+            console.log(`Cache hit for USCF ID: ${player.uscf_id}`);
+            return {
+              id: player.id,
+              name: player.name,
+              uscf_id: player.uscf_id,
+              success: true,
+              rating: cached.rating,
+              expirationDate: cached.expirationDate,
+              isActive: cached.isActive,
+              error: null,
+              fromCache: true,
+              searchAttempted: false
+            };
+          }
+          
+          // Look up rating for existing USCF ID
+          const result = await getUSCFInfo(player.uscf_id);
+          
+          // Cache the result
+          ratingCache.set(cacheKey, result);
+          
+          return {
+            id: player.id,
+            name: player.name,
+            uscf_id: player.uscf_id,
+            success: !result.error,
+            rating: result.rating,
+            expirationDate: result.expirationDate,
+            isActive: result.isActive,
+            error: result.error,
+            fromCache: false,
+            searchAttempted: false
+          };
+        } else {
+          // Player has no USCF ID, attempt to find one by name
+          console.log(`Player ${player.name} has no USCF ID, searching by name...`);
+          return await findUSCFInfoByName(player.name, player.id);
+        }
+      } catch (error) {
+        console.error(`Error processing player ${player.name}:`, error.message);
+        return {
+          id: player.id,
+          name: player.name,
+          uscf_id: null,
+          success: false,
+          rating: null,
+          expirationDate: null,
+          isActive: false,
+          error: error.message,
+          fromCache: false,
+          searchAttempted: true
+        };
+      }
+    });
+    
+    // Wait for batch to complete
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults);
+    
+    // Small delay between batches to be respectful to the API
+    if (i + BATCH_SIZE < allPlayers.length) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+  
+  console.log(`Enhanced USCF lookup completed. Processed ${results.length} players.`);
+  return results;
+}
+
+/**
  * Fast parallel rating lookup for multiple players (original method)
  * @param {Array} playersWithUSCF - Array of players with USCF IDs
  * @returns {Promise<Array>} Array of rating lookup results
@@ -340,10 +533,17 @@ async function importPlayersBatch(db, tournamentId, players, ratingResults) {
     ratingMap.set(result.id, result);
   });
   
-  // Prepare batch insert statement
+  // Prepare batch insert statement with all supported fields
   const stmt = db.prepare(`
-    INSERT INTO players (id, tournament_id, name, uscf_id, fide_id, rating, section, status, expiration_date, intentional_bye_rounds, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO players (
+      id, tournament_id, name, uscf_id, fide_id, rating, section, status, 
+      created_at, expiration_date, intentional_bye_rounds, notes, email, 
+      phone, team_id, team_name, school, grade, state, city, parent_name, 
+      parent_email, parent_phone, emergency_contact, emergency_phone, 
+      tshirt_size, dietary_restrictions, special_needs, source, 
+      uscf_regular_rating_date, uscf_name
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const playerIds = [];
@@ -367,8 +567,9 @@ async function importPlayersBatch(db, tournamentId, players, ratingResults) {
           
           // Process bye rounds
           let byeRounds = null;
-          if (player.bye_rounds && player.bye_rounds.trim() !== '') {
-            const rounds = player.bye_rounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+          const byeRoundsField = player.bye_rounds || player.intentional_bye_rounds;
+          if (byeRoundsField && byeRoundsField.trim() !== '') {
+            const rounds = byeRoundsField.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
             byeRounds = rounds.length > 0 ? JSON.stringify(rounds) : null;
           }
           
@@ -381,9 +582,29 @@ async function importPlayersBatch(db, tournamentId, players, ratingResults) {
             finalRating,
             player.section || null,
             finalStatus,
+            player.created_at || new Date().toISOString(),
             expirationDate,
             byeRounds,
-            player.notes || null
+            player.notes || null,
+            player.email || null,
+            player.phone || null,
+            null, // team_id
+            null, // team_name
+            player.school || null,
+            player.grade || null,
+            player.state || null,
+            player.city || null,
+            player.parent_name || null,
+            player.parent_email || null,
+            player.parent_phone || null,
+            player.emergency_contact || null,
+            player.emergency_phone || null,
+            player.tshirt_size || null,
+            player.dietary_restrictions || null,
+            player.special_needs || null,
+            player.source || 'api',
+            player.uscf_regular_rating_date || null,
+            player.uscf_name || null
           ]);
           
         } catch (error) {
@@ -570,31 +791,28 @@ async function importPlayersFromCSV(db, tournamentId, players, lookupRatings = t
   console.log(`Players:`, JSON.stringify(players, null, 2));
   
   try {
-    // Prepare players with IDs for rating lookup
-    const playersWithUSCF = [];
+    // Prepare players with IDs for enhanced rating lookup
     const playersWithIds = players.map(player => {
       const id = require('uuid').v4();
-      
-      // Track players with USCF IDs for rating lookup
-      if (lookupRatings && player.uscf_id && player.uscf_id.trim() !== '') {
-        playersWithUSCF.push({ id, name: player.name, uscf_id: player.uscf_id });
-      }
-      
       return { ...player, id };
     });
     
     let ratingLookupResults = [];
     
-  // Ultra-fast rating lookup if requested
-  if (lookupRatings && playersWithUSCF.length > 0) {
-    console.log(`Looking up ratings for ${playersWithUSCF.length} players...`);
-    try {
-      ratingLookupResults = await lookupRatingsUltraFast(playersWithUSCF);
-    } catch (error) {
-      console.warn('Ultra-fast lookup failed, falling back to parallel lookup:', error.message);
-      ratingLookupResults = await lookupRatingsInParallel(playersWithUSCF);
+    // Enhanced USCF lookup for ALL players if requested
+    if (lookupRatings) {
+      console.log(`Starting enhanced USCF lookup for ALL ${playersWithIds.length} players...`);
+      try {
+        ratingLookupResults = await lookupAllPlayersByName(playersWithIds);
+      } catch (error) {
+        console.warn('Enhanced lookup failed, falling back to original method:', error.message);
+        // Fallback to original method for players with existing USCF IDs
+        const playersWithUSCF = playersWithIds.filter(p => p.uscf_id && p.uscf_id.trim() !== '');
+        if (playersWithUSCF.length > 0) {
+          ratingLookupResults = await lookupRatingsInParallel(playersWithUSCF);
+        }
+      }
     }
-  }
     
     // Import players in bulk with streaming
     const result = await importPlayersBulkStream(db, tournamentId, playersWithIds, ratingLookupResults);
@@ -629,8 +847,9 @@ async function importPlayersBulkStream(db, tournamentId, players, ratingResults)
     
     // Process bye rounds
     let byeRounds = null;
-    if (player.bye_rounds && player.bye_rounds.trim() !== '') {
-      const rounds = player.bye_rounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+    const byeRoundsField = player.bye_rounds || player.intentional_bye_rounds;
+    if (byeRoundsField && byeRoundsField.trim() !== '') {
+      const rounds = byeRoundsField.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
       byeRounds = rounds.length > 0 ? JSON.stringify(rounds) : null;
     }
     
@@ -643,16 +862,43 @@ async function importPlayersBulkStream(db, tournamentId, players, ratingResults)
       finalRating,
       player.section || null,
       finalStatus,
+      player.created_at || new Date().toISOString(),
       expirationDate,
       byeRounds,
-      player.notes || null
+      player.notes || null,
+      player.email || null,
+      player.phone || null,
+      null, // team_id
+      null, // team_name
+      player.school || null,
+      player.grade || null,
+      player.state || null,
+      player.city || null,
+      player.parent_name || null,
+      player.parent_email || null,
+      player.parent_phone || null,
+      player.emergency_contact || null,
+      player.emergency_phone || null,
+      player.tshirt_size || null,
+      player.dietary_restrictions || null,
+      player.special_needs || null,
+      player.source || 'api',
+      player.uscf_regular_rating_date || null,
+      player.uscf_name || null
     ];
   });
   
   // Single bulk insert with prepared statement
   const stmt = db.prepare(`
-    INSERT INTO players (id, tournament_id, name, uscf_id, fide_id, rating, section, status, expiration_date, intentional_bye_rounds, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO players (
+      id, tournament_id, name, uscf_id, fide_id, rating, section, status, 
+      created_at, expiration_date, intentional_bye_rounds, notes, email, 
+      phone, team_id, team_name, school, grade, state, city, parent_name, 
+      parent_email, parent_phone, emergency_contact, emergency_phone, 
+      tshirt_size, dietary_restrictions, special_needs, source, 
+      uscf_regular_rating_date, uscf_name
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   // Execute all inserts in a single transaction
@@ -733,8 +979,15 @@ async function importPlayersFromCSVFast(db, tournamentId, players, lookupRatings
  */
 async function importPlayersFromCSVOriginal(db, tournamentId, players, lookupRatings = true) {
   const stmt = db.prepare(`
-    INSERT INTO players (id, tournament_id, name, uscf_id, fide_id, rating, section, status, expiration_date, intentional_bye_rounds, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO players (
+      id, tournament_id, name, uscf_id, fide_id, rating, section, status, 
+      created_at, expiration_date, intentional_bye_rounds, notes, email, 
+      phone, team_id, team_name, school, grade, state, city, parent_name, 
+      parent_email, parent_phone, emergency_contact, emergency_phone, 
+      tshirt_size, dietary_restrictions, special_needs, source, 
+      uscf_regular_rating_date, uscf_name
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const playerIds = [];
@@ -749,8 +1002,9 @@ async function importPlayersFromCSVOriginal(db, tournamentId, players, lookupRat
       
       // Process bye rounds - convert comma-separated string to array format
       let byeRounds = null;
-      if (player.bye_rounds && player.bye_rounds.trim() !== '') {
-        const rounds = player.bye_rounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+      const byeRoundsField = player.bye_rounds || player.intentional_bye_rounds;
+      if (byeRoundsField && byeRoundsField.trim() !== '') {
+        const rounds = byeRoundsField.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
         byeRounds = rounds.length > 0 ? JSON.stringify(rounds) : null;
       }
       
@@ -763,9 +1017,29 @@ async function importPlayersFromCSVOriginal(db, tournamentId, players, lookupRat
         player.rating || null,
         player.section || null,
         'active', // Always set imported players as active
+        player.created_at || new Date().toISOString(),
         player.expiration_date || null,
         byeRounds,
-        player.notes || null
+        player.notes || null,
+        player.email || null,
+        player.phone || null,
+        null, // team_id
+        null, // team_name
+        player.school || null,
+        player.grade || null,
+        player.state || null,
+        player.city || null,
+        player.parent_name || null,
+        player.parent_email || null,
+        player.parent_phone || null,
+        player.emergency_contact || null,
+        player.emergency_phone || null,
+        player.tshirt_size || null,
+        player.dietary_restrictions || null,
+        player.special_needs || null,
+        player.source || 'api',
+        player.uscf_regular_rating_date || null,
+        player.uscf_name || null
       ]);
       
       // Track players with USCF IDs for rating lookup

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tournament, Player } from '../types';
-import { pairingApi } from '../services/api';
+import { pairingApi, tournamentApi } from '../services/api';
 
 interface ConcisePairingManagerProps {
   tournament: Tournament;
@@ -61,6 +61,7 @@ const ConcisePairingManager: React.FC<ConcisePairingManagerProps> = ({
   const [pairings, setPairings] = useState<SectionPairing[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPairingMethod, setSelectedPairingMethod] = useState<string>('fide_dutch');
   const [showCustomBoard, setShowCustomBoard] = useState(false);
   const [customBoardPlayers, setCustomBoardPlayers] = useState<{white: Player | null, black: Player | null}>({white: null, black: null});
   const [playerScores, setPlayerScores] = useState<Map<string, PlayerScore>>(new Map());
@@ -135,6 +136,19 @@ const ConcisePairingManager: React.FC<ConcisePairingManagerProps> = ({
     try {
       setIsGenerating(true);
       setError(null);
+
+      // First, update the tournament settings with the selected pairing method
+      const currentSettings = tournament.settings || {};
+      const updatedSettings = {
+        ...currentSettings,
+        pairing_method: selectedPairingMethod as 'fide_dutch' | 'us_chess' | 'round_robin' | 'quad' | 'single_elimination'
+      };
+      
+      // Update tournament settings
+      await tournamentApi.update(tournament.id, {
+        ...tournament,
+        settings: updatedSettings
+      });
 
       // First try to clear existing pairings for this section and round
       try {
@@ -475,6 +489,23 @@ const ConcisePairingManager: React.FC<ConcisePairingManagerProps> = ({
             >
               →
             </button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <label htmlFor="pairing-method" className="text-xs font-medium text-gray-600">
+              Method:
+            </label>
+            <select
+              id="pairing-method"
+              value={selectedPairingMethod}
+              onChange={(e) => setSelectedPairingMethod(e.target.value)}
+              className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="fide_dutch">FIDE Dutch</option>
+              <option value="round_robin">Round Robin</option>
+              <option value="quad">Quad</option>
+              <option value="single_elimination">Elimination</option>
+            </select>
           </div>
           
           <button

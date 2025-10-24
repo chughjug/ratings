@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Tournament API Testing Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .left-panel {
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .right-panel {
+            padding: 30px;
+            background: white;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-success { background: #27ae60; }
+        .status-error { background: #e74c3c; }
+        .status-warning { background: #f39c12; }
+        .status-info { background: #3498db; }
+
+        .log-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+
+        .log-timestamp {
+            color: #95a5a6;
+            margin-right: 10px;
+        }
+
+        .log-level {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .log-info { color: #3498db; }
+        .log-success { color: #27ae60; }
+        .log-warning { color: #f39c12; }
+        .log-error { color: #e74c3c; }
+
+        .api-key-display {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .api-key-display h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .api-key-value {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 4px;
+            word-break: break-all;
+            margin-bottom: 10px;
+        }
+
+        .copy-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+
+        .test-results {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .test-result {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+
+        .test-result.success {
+            background: #d4edda;
+            border-left-color: #27ae60;
+            color: #155724;
+        }
+
+        .test-result.error {
+            background: #f8d7da;
+            border-left-color: #e74c3c;
+            color: #721c24;
+        }
+
+        .test-result.warning {
+            background: #fff3cd;
+            border-left-color: #f39c12;
+            color: #856404;
+        }
+
+        .player-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .player-item:last-child {
+            border-bottom: none;
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .player-details {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .player-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .left-panel {
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Chess Tournament API Testing Suite</h1>
+            <p>Comprehensive testing tool for import/export capabilities and API key management</p>
+        </div>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <h2 class="section-title">🔧 Configuration</h2>
+                
+                <div class="form-group">
+                    <label for="apiBaseUrl">API Base URL:</label>
+                    <input type="url" id="apiBaseUrl" value="http://localhost:3001" placeholder="https://your-domain.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="tournamentId">Tournament ID:</label>
+                    <input type="text" id="tournamentId" placeholder="Enter tournament ID">
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" placeholder="Your username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" placeholder="Your password">
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-secondary" onclick="login()">Login & Get API Key</button>
+                    <button class="btn" onclick="generateApiKey()">Generate New API Key</button>
+                </div>
+
+                <div id="apiKeyDisplay" class="api-key-display" style="display: none;">
+                    <h4>Your API Key:</h4>
+                    <div class="api-key-value" id="apiKeyValue"></div>
+                    <button class="copy-btn" onclick="copyApiKey()">Copy</button>
+                </div>
+
+                <h2 class="section-title">👤 Test Player Registration</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="playerName">Player Name:</label>
+                        <input type="text" id="playerName" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="playerUscfId">USCF ID:</label>
+                        <input type="text" id="playerUscfId" placeholder="12345678">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="playerRating">Rating:</label>
+                        <input type="number" id="playerRating" placeholder="1800" min="0" max="3000">
+                    </div>
+                    <div class="form-group">
+                        <label for="playerSection">Section:</label>
+                        <select id="playerSection">
+                            <option value="">Auto-assign</option>
+                            <option value="Open">Open</option>
+                            <option value="Reserve">Reserve</option>
+                            <option value="U1600">Under 1600</option>
+                            <option value="U1400">Under 1400</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="playerSchool">School:</label>
+                        <input type="text" id="playerSchool" placeholder="Chess Academy">
+                    </div>
+                    <div class="form-group">
+                        <label for="playerEmail">Email:</label>
+                        <input type="email" id="playerEmail" placeholder="player@example.com">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn" onclick="registerPlayer()">Register Player</button>
+                    <button class="btn btn-secondary" onclick="testBulkImport()">Test Bulk Import</button>
+                </div>
+
+                <h2 class="section-title">📊 Test Actions</h2>
+                
+                <div class="form-group">
+                    <button class="btn btn-secondary" onclick="testConnection()">Test Connection</button>
+                    <button class="btn btn-secondary" onclick="getTournamentInfo()">Get Tournament Info</button>
+                    <button class="btn btn-secondary" onclick="getPlayers()">Get Players</button>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn" onclick="runFullTest()">Run Full Test Suite</button>
+                    <button class="btn btn-danger" onclick="clearLogs()">Clear Logs</button>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <h2 class="section-title">📋 Test Results</h2>
+                
+                <div id="testResults" class="test-results">
+                    <p>Test results will appear here...</p>
+                </div>
+
+                <h2 class="section-title">👥 Registered Players</h2>
+                
+                <div id="playerList" class="player-list">
+                    <p>No players loaded yet. Click "Get Players" to load tournament players.</p>
+                </div>
+
+                <h2 class="section-title">📝 Activity Log</h2>
+                
+                <div id="logContainer" class="log-container">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[00:00:00]</span>
+                        <span class="log-level log-info">INFO</span>
+                        <span>Testing suite initialized. Ready to begin testing.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentApiKey = null;
+        let currentUser = null;
+        let testResults = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Testing suite initialized. Ready to begin testing.', 'info');
+            
+            // Auto-populate tournament ID from URL if available
+            const urlParams = new URLSearchParams(window.location.search);
+            const tournamentId = urlParams.get('tournament');
+            if (tournamentId) {
+                document.getElementById('tournamentId').value = tournamentId;
+            }
+        });
+
+        // Logging function
+        function log(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            const levelClass = `log-${level}`;
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level ${levelClass}">${level.toUpperCase()}</span>
+                <span>${message}</span>
+            `;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Add test result
+        function addTestResult(title, message, type = 'info') {
+            const testResults = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `
+                <strong>${title}</strong><br>
+                ${message}
+            `;
+            testResults.appendChild(resultDiv);
+            testResults.scrollTop = testResults.scrollHeight;
+        }
+
+        // Login and get API key
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+
+            if (!username || !password) {
+                addTestResult('Login Failed', 'Username and password are required', 'error');
+                return;
+            }
+
+            try {
+                log('Attempting to login...', 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentUser = result.data.user;
+                    log(`Login successful for user: ${currentUser.username}`, 'success');
+                    
+                    // Get or generate API key
+                    await getOrGenerateApiKey();
+                } else {
+                    addTestResult('Login Failed', result.error || 'Login failed', 'error');
+                    log(`Login failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addTestResult('Login Error', error.message, 'error');
+                log(`Login error: ${error.message}`, 'error');
+            }
+        }
+
+        // Get or generate API key
+        async function getOrGenerateApiKey() {
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            
+            try {
+                // First, try to get existing API keys
+                const response = await fetch(`${apiBaseUrl}/api/users/${currentUser.id}/api-keys`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentUser.token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.data.length > 0) {
+                    // Use the first active API key
+                    const activeKey = result.data.find(key => key.is_active);
+                    if (activeKey) {
+                        currentApiKey = activeKey.api_key;
+                        showApiKey(activeKey.api_key);
+                        log(`Using existing API key: ${activeKey.name}`, 'success');
+                        return;
+                    }
+                }
+
+                // Generate new API key
+                await generateApiKey();
+            } catch (error) {
+                log(`Error getting API keys: ${error.message}`, 'error');
+                await generateApiKey();
+            }
+        }
+
+        // Generate new API key
+        async function generateApiKey() {
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            
+            try {
+                log('Generating new API key...', 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/users/${currentUser.id}/api-key`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
+                    body: JSON.stringify({
+                        name: 'Test API Key',
+                        description: 'Generated by testing suite',
+                        permissions: 'read,write',
+                        rate_limit: 1000
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentApiKey = result.data.api_key;
+                    showApiKey(result.data.api_key);
+                    addTestResult('API Key Generated', `New API key created: ${result.data.name}`, 'success');
+                    log(`API key generated successfully`, 'success');
+                } else {
+                    addTestResult('API Key Generation Failed', result.error, 'error');
+                    log(`API key generation failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addTestResult('API Key Generation Error', error.message, 'error');
+                log(`API key generation error: ${error.message}`, 'error');
+            }
+        }
+
+        // Show API key
+        function showApiKey(apiKey) {
+            document.getElementById('apiKeyValue').textContent = apiKey;
+            document.getElementById('apiKeyDisplay').style.display = 'block';
+        }
+
+        // Copy API key
+        function copyApiKey() {
+            const apiKey = document.getElementById('apiKeyValue').textContent;
+            navigator.clipboard.writeText(apiKey).then(() => {
+                log('API key copied to clipboard', 'success');
+            });
+        }
+
+        // Test connection
+        async function testConnection() {
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            
+            try {
+                log('Testing API connection...', 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/players/test`);
+                const result = await response.json();
+
+                if (result.success) {
+                    addTestResult('Connection Test', 'API connection successful', 'success');
+                    log('Connection test passed', 'success');
+                } else {
+                    addTestResult('Connection Test', 'API connection failed', 'error');
+                    log('Connection test failed', 'error');
+                }
+            } catch (error) {
+                addTestResult('Connection Test', `Connection error: ${error.message}`, 'error');
+                log(`Connection test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Get tournament info
+        async function getTournamentInfo() {
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            const tournamentId = document.getElementById('tournamentId').value;
+
+            if (!tournamentId) {
+                addTestResult('Tournament Info', 'Tournament ID is required', 'error');
+                return;
+            }
+
+            try {
+                log(`Getting tournament info for: ${tournamentId}`, 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/tournaments/${tournamentId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    addTestResult('Tournament Info', `Tournament: ${result.data.name} (${result.data.format})`, 'success');
+                    log(`Tournament info retrieved: ${result.data.name}`, 'success');
+                } else {
+                    addTestResult('Tournament Info', result.error || 'Failed to get tournament info', 'error');
+                    log(`Tournament info failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addTestResult('Tournament Info', `Error: ${error.message}`, 'error');
+                log(`Tournament info error: ${error.message}`, 'error');
+            }
+        }
+
+        // Register single player
+        async function registerPlayer() {
+            if (!currentApiKey) {
+                addTestResult('Player Registration', 'Please login and generate an API key first', 'error');
+                return;
+            }
+
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            const tournamentId = document.getElementById('tournamentId').value;
+            const playerData = {
+                api_key: currentApiKey,
+                name: document.getElementById('playerName').value,
+                uscf_id: document.getElementById('playerUscfId').value,
+                rating: document.getElementById('playerRating').value,
+                section: document.getElementById('playerSection').value,
+                school: document.getElementById('playerSchool').value,
+                email: document.getElementById('playerEmail').value,
+                lookup_ratings: true,
+                auto_assign_sections: true,
+                source: 'testing_suite'
+            };
+
+            if (!playerData.name) {
+                addTestResult('Player Registration', 'Player name is required', 'error');
+                return;
+            }
+
+            try {
+                log(`Registering player: ${playerData.name}`, 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/players/register/${tournamentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(playerData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    addTestResult('Player Registration', `Player ${playerData.name} registered successfully`, 'success');
+                    log(`Player registered: ${playerData.name} (ID: ${result.data.player_id})`, 'success');
+                    
+                    // Clear form
+                    document.getElementById('playerName').value = '';
+                    document.getElementById('playerUscfId').value = '';
+                    document.getElementById('playerRating').value = '';
+                    document.getElementById('playerSection').value = '';
+                    document.getElementById('playerSchool').value = '';
+                    document.getElementById('playerEmail').value = '';
+                    
+                    // Refresh player list
+                    getPlayers();
+                } else {
+                    addTestResult('Player Registration', result.error || 'Registration failed', 'error');
+                    log(`Player registration failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addTestResult('Player Registration', `Error: ${error.message}`, 'error');
+                log(`Player registration error: ${error.message}`, 'error');
+            }
+        }
+
+        // Test bulk import
+        async function testBulkImport() {
+            if (!currentApiKey) {
+                addTestResult('Bulk Import', 'Please login and generate an API key first', 'error');
+                return;
+            }
+
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            const tournamentId = document.getElementById('tournamentId').value;
+            
+            const testPlayers = [
+                {
+                    name: "Test Player 1",
+                    uscf_id: "11111111",
+                    rating: 1800,
+                    section: "Open",
+                    school: "Test Academy"
+                },
+                {
+                    name: "Test Player 2",
+                    uscf_id: "22222222",
+                    rating: 1600,
+                    section: "Reserve",
+                    school: "Test Academy"
+                },
+                {
+                    name: "Test Player 3",
+                    rating: 1400,
+                    section: "U1600",
+                    school: "Test Academy"
+                }
+            ];
+
+            try {
+                log(`Testing bulk import with ${testPlayers.length} players`, 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/players/api-import/${tournamentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        api_key: currentApiKey,
+                        players: testPlayers,
+                        lookup_ratings: true,
+                        auto_assign_sections: true,
+                        source: 'testing_suite'
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    addTestResult('Bulk Import', `Successfully imported ${result.data.imported_count} players`, 'success');
+                    log(`Bulk import successful: ${result.data.imported_count} players`, 'success');
+                    
+                    // Refresh player list
+                    getPlayers();
+                } else {
+                    addTestResult('Bulk Import', result.error || 'Bulk import failed', 'error');
+                    log(`Bulk import failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addTestResult('Bulk Import', `Error: ${error.message}`, 'error');
+                log(`Bulk import error: ${error.message}`, 'error');
+            }
+        }
+
+        // Get players
+        async function getPlayers() {
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            const tournamentId = document.getElementById('tournamentId').value;
+
+            if (!tournamentId) {
+                addTestResult('Get Players', 'Tournament ID is required', 'error');
+                return;
+            }
+
+            try {
+                log(`Getting players for tournament: ${tournamentId}`, 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/players/tournament/${tournamentId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    displayPlayers(result.data);
+                    addTestResult('Get Players', `Retrieved ${result.data.length} players`, 'success');
+                    log(`Retrieved ${result.data.length} players`, 'success');
+                } else {
+                    addTestResult('Get Players', result.error || 'Failed to get players', 'error');
+                    log(`Get players failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addTestResult('Get Players', `Error: ${error.message}`, 'error');
+                log(`Get players error: ${error.message}`, 'error');
+            }
+        }
+
+        // Display players
+        function displayPlayers(players) {
+            const playerList = document.getElementById('playerList');
+            
+            if (players.length === 0) {
+                playerList.innerHTML = '<p>No players found in this tournament.</p>';
+                return;
+            }
+
+            playerList.innerHTML = players.map(player => `
+                <div class="player-item">
+                    <div class="player-info">
+                        <div class="player-name">${player.name}</div>
+                        <div class="player-details">
+                            ${player.uscf_id ? `USCF: ${player.uscf_id}` : ''} 
+                            ${player.rating ? `Rating: ${player.rating}` : ''} 
+                            ${player.section ? `Section: ${player.section}` : ''}
+                            ${player.school ? `School: ${player.school}` : ''}
+                        </div>
+                    </div>
+                    <div class="player-actions">
+                        <button class="btn btn-small btn-danger" onclick="removePlayer('${player.id}')">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Remove player
+        async function removePlayer(playerId) {
+            const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+            
+            try {
+                log(`Removing player: ${playerId}`, 'info');
+                
+                const response = await fetch(`${apiBaseUrl}/api/players/${playerId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    addTestResult('Remove Player', 'Player removed successfully', 'success');
+                    log(`Player removed: ${playerId}`, 'success');
+                    
+                    // Refresh player list
+                    getPlayers();
+                } else {
+                    addTestResult('Remove Player', result.error || 'Failed to remove player', 'error');
+                    log(`Remove player failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addTestResult('Remove Player', `Error: ${error.message}`, 'error');
+                log(`Remove player error: ${error.message}`, 'error');
+            }
+        }
+
+        // Run full test suite
+        async function runFullTest() {
+            log('Starting full test suite...', 'info');
+            addTestResult('Full Test Suite', 'Starting comprehensive testing...', 'info');
+            
+            // Clear previous results
+            document.getElementById('testResults').innerHTML = '';
+            
+            try {
+                // Test 1: Connection
+                await testConnection();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Test 2: Login and API key
+                await login();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Test 3: Tournament info
+                await getTournamentInfo();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Test 4: Get players
+                await getPlayers();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Test 5: Register single player
+                document.getElementById('playerName').value = 'Full Test Player';
+                document.getElementById('playerUscfId').value = '99999999';
+                document.getElementById('playerRating').value = '1900';
+                document.getElementById('playerSchool').value = 'Test Academy';
+                document.getElementById('playerEmail').value = 'test@example.com';
+                await registerPlayer();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Test 6: Bulk import
+                await testBulkImport();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Test 7: Final player count
+                await getPlayers();
+                
+                addTestResult('Full Test Suite', 'All tests completed successfully!', 'success');
+                log('Full test suite completed', 'success');
+                
+            } catch (error) {
+                addTestResult('Full Test Suite', `Test suite failed: ${error.message}`, 'error');
+                log(`Full test suite error: ${error.message}`, 'error');
+            }
+        }
+
+        // Clear logs
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            document.getElementById('testResults').innerHTML = '<p>Test results will appear here...</p>';
+            log('Logs cleared', 'info');
+        }
+    </script>
+</body>
+</html>
+

@@ -604,6 +604,49 @@ db.serialize(() => {
       FOREIGN KEY (player_id) REFERENCES players (id)
     )
   `);
+
+  // Google Sheets sync configurations table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS google_sheets_sync (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      spreadsheet_id TEXT NOT NULL,
+      range TEXT DEFAULT 'Sheet1!A1:Z1000',
+      sheet_name TEXT DEFAULT 'Players',
+      api_key TEXT NOT NULL,
+      lookup_ratings BOOLEAN DEFAULT 1,
+      auto_assign_sections BOOLEAN DEFAULT 1,
+      use_smart_import BOOLEAN DEFAULT 1,
+      is_active BOOLEAN DEFAULT 0,
+      last_sync_at DATETIME,
+      last_sync_status TEXT,
+      last_sync_error TEXT,
+      sync_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
+
+  // Google Sheets sync logs table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS google_sheets_sync_logs (
+      id TEXT PRIMARY KEY,
+      sync_config_id TEXT NOT NULL,
+      tournament_id TEXT NOT NULL,
+      sync_started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      sync_completed_at DATETIME,
+      status TEXT NOT NULL CHECK (status IN ('running', 'success', 'error')),
+      players_imported INTEGER DEFAULT 0,
+      players_updated INTEGER DEFAULT 0,
+      errors_count INTEGER DEFAULT 0,
+      error_message TEXT,
+      sync_duration_ms INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sync_config_id) REFERENCES google_sheets_sync (id),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
 });
 
 module.exports = db;

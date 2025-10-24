@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Import Fix Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .status.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            color: #28a745;
+            font-weight: bold;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 File Import Fix Test</h1>
+        
+        <div class="status success">
+            <strong>✅ Fix Applied Successfully!</strong><br>
+            CSV and Excel file imports no longer require API keys. Only Google services and API imports require authentication.
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Changes Made</h3>
+            <ul class="feature-list">
+                <li>API key field only shows for Google Sheets, Google Forms, and API imports</li>
+                <li>CSV and Excel imports work without API key requirement</li>
+                <li>Preview button validation updated for file uploads</li>
+                <li>Import logic fixed to exclude API key for file uploads</li>
+                <li>Form validation updated to check appropriate fields per import type</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Import Types & API Key Requirements</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Import Type</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">API Key Required</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>CSV File</strong></td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">❌ No</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">Local file upload</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Excel File</strong></td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">❌ No</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">Local file upload</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Google Sheets</strong></td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">✅ Yes</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">External API access</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>Google Forms</strong></td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">✅ Yes</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">External API access</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>API Data</strong></td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">✅ Yes</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">API authentication</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Technical Implementation</h3>
+            <p><strong>Conditional API Key Field:</strong></p>
+            <div class="code-block">
+{/* API Key - Only show for Google services and API */}
+{(importType === 'sheets' || importType === 'forms' || importType === 'api') && (
+  &lt;div&gt;
+    &lt;label&gt;API Key&lt;/label&gt;
+    &lt;input value={apiKey} onChange={...} /&gt;
+  &lt;/div&gt;
+)}
+            </div>
+
+            <p><strong>Conditional API Key in Request:</strong></p>
+            <div class="code-block">
+// Add API key only for services that require it
+if (importType === 'sheets' || importType === 'forms' || importType === 'api') {
+  requestBody.api_key = apiKey;
+}
+            </div>
+
+            <p><strong>Updated Preview Button Validation:</strong></p>
+            <div class="code-block">
+disabled={loading || 
+  (importType === 'csv' && !file) ||
+  (importType === 'excel' && !file) ||
+  (importType === 'sheets' && !spreadsheetId) ||
+  (importType === 'forms' && !formId) ||
+  (importType === 'api' && !apiData)
+}
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>✅ Testing Checklist</h3>
+            <ul class="feature-list">
+                <li>CSV import works without API key field showing</li>
+                <li>Excel import works without API key field showing</li>
+                <li>Google Sheets import shows API key field</li>
+                <li>Google Forms import shows API key field</li>
+                <li>API import shows API key field</li>
+                <li>Preview button enables correctly for each import type</li>
+                <li>File uploads don't include API key in request body</li>
+                <li>Google services include API key in request body</li>
+            </ul>
+        </div>
+
+        <div class="status info">
+            <strong>🎉 Ready to Test!</strong><br>
+            The unified import system now correctly handles file uploads without requiring API keys. 
+            Users can import CSV and Excel files directly without any authentication setup.
+        </div>
+    </div>
+</body>
+</html>

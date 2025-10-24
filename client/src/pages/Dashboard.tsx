@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Users, Calendar, TrendingUp, Building2, User, Plus, Palette } from 'lucide-react';
+import { Trophy, Users, Calendar, TrendingUp, Building2, User, Palette } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { tournamentApi } from '../services/api';
+import NotificationButton from '../components/NotificationButton';
+import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // import TestAPI from '../TestAPI'; // Hidden
 
 const Dashboard: React.FC = () => {
@@ -70,6 +72,48 @@ const Dashboard: React.FC = () => {
   const activeTournaments = state.tournaments.filter(t => t.status === 'active');
   const recentTournaments = state.tournaments.slice(0, 5);
 
+  // Get all notifications across all tournaments
+  const getAllNotifications = () => {
+    const allNotifications: any[] = [];
+    
+    state.tournaments.forEach(tournament => {
+      // Get players for this tournament (this would need to be fetched)
+      const tournamentPlayers = state.players.filter(p => p.tournament_id === tournament.id);
+      
+      // Generate expiration warnings for this tournament
+      const warnings = tournamentPlayers
+        .filter(player => player.expiration_date)
+        .map(player => {
+          const now = new Date();
+          const expirationDate = new Date(player.expiration_date!);
+          const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysUntilExpiration < 0) {
+            return {
+              type: 'expired' as const,
+              player: player.name,
+              message: `${player.name}'s USCF ID has expired`
+            };
+          } else if (daysUntilExpiration <= 30) {
+            return {
+              type: 'expiring' as const,
+              player: player.name,
+              message: `${player.name}'s USCF ID expires in ${daysUntilExpiration} days`
+            };
+          }
+          return null;
+        })
+        .filter((warning): warning is { type: 'expired' | 'expiring'; player: string; message: string } => warning !== null);
+      
+      const notifications = getAllTournamentNotifications(tournament, tournamentPlayers, warnings);
+      allNotifications.push(...notifications);
+    });
+    
+    return allNotifications;
+  };
+
+  const allNotifications = getAllNotifications();
+
   return (
     <div className="space-y-8">
       <div>
@@ -102,8 +146,8 @@ const Dashboard: React.FC = () => {
         {/* <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              {networkStatus === 'connected' && <Wifi className="w-5 h-5 text-green-500" />}
-              {networkStatus === 'error' && <AlertCircle className="w-5 h-5 text-red-500" />}
+              {networkStatus === 'connected' && <div className="w-5 h-5 bg-green-500 rounded-full" />}
+              {networkStatus === 'error' && <div className="w-5 h-5 bg-red-500 rounded-full" />}
               {networkStatus === 'checking' && <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
               <span className="font-medium">
                 Network Status: 
@@ -143,6 +187,32 @@ const Dashboard: React.FC = () => {
           <TestAPI />
         </div> */}
       </div>
+
+      {/* Notification Button */}
+      {allNotifications.length > 0 && (
+        <div className="mb-8 flex justify-end">
+          <NotificationButton
+            notifications={allNotifications}
+            onDismiss={(notificationId) => {
+              console.log('Dismissed notification:', notificationId);
+            }}
+            onMarkAsRead={(notificationId) => {
+              console.log('Marked as read:', notificationId);
+            }}
+            onViewPlayer={(playerName) => {
+              // Find the tournament with this player and navigate to it
+              const tournamentWithPlayer = state.tournaments.find(tournament => {
+                const tournamentPlayers = state.players.filter(p => p.tournament_id === tournament.id);
+                return tournamentPlayers.some(p => p.name === playerName);
+              });
+              
+              if (tournamentWithPlayer) {
+                window.location.href = `/tournaments/${tournamentWithPlayer.id}`;
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

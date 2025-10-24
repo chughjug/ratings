@@ -1,348 +1,372 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useOrganization } from '../contexts/OrganizationContext';
-import { Organization } from '../types';
-import { Building2, Plus, Users, Settings, User } from 'lucide-react';
+import { userApi } from '../services/api';
+import { Key, Plus, Trash2, Edit, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
+
+interface ApiKey {
+  id: string;
+  name: string;
+  description: string;
+  permissions: string;
+  rate_limit: number;
+  usage_count: number;
+  last_used: string;
+  created_at: string;
+  expires_at: string;
+  is_active: boolean;
+}
 
 const UserProfile: React.FC = () => {
   const { user } = useAuth();
-  const { state, createOrganization, setCurrentOrganization } = useOrganization();
-  const [activeTab, setActiveTab] = useState<'profile' | 'organizations'>('profile');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createFormData, setCreateFormData] = useState({
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showNewKeyForm, setShowNewKeyForm] = useState(false);
+  const [showApiKey, setShowApiKey] = useState<{ [key: string]: boolean }>({});
+  const [newKeyData, setNewKeyData] = useState({
     name: '',
-    slug: '',
     description: '',
-    website: '',
-    contactEmail: '',
-    city: '',
-    state: '',
-    country: 'US'
+    permissions: 'read,write',
+    rate_limit: 1000
   });
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
 
-  const handleCreateOrganization = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (user) {
+      fetchApiKeys();
+    }
+  }, [user]);
+
+  const fetchApiKeys = async () => {
+    if (!user) return;
+    
+    setLoading(true);
     try {
-      const newOrg = await createOrganization(createFormData);
-      setCurrentOrganization(newOrg);
-      setShowCreateForm(false);
-      setCreateFormData({
-        name: '',
-        slug: '',
-        description: '',
-        website: '',
-        contactEmail: '',
-        city: '',
-        state: '',
-        country: 'US'
-      });
+      const response = await userApi.getApiKeys(user.id);
+      if (response.data.success) {
+        setApiKeys(response.data.data);
+      }
     } catch (error) {
-      console.error('Failed to create organization:', error);
+      console.error('Error fetching API keys:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSelectOrganization = (organization: Organization) => {
-    setCurrentOrganization(organization);
+  const generateApiKey = async () => {
+    if (!user) return;
+    
+    try {
+      const response = await userApi.generateApiKey(user.id, newKeyData);
+      if (response.data.success) {
+        setGeneratedKey(response.data.data.api_key);
+        setNewKeyData({
+          name: '',
+          description: '',
+          permissions: 'read,write',
+          rate_limit: 1000
+        });
+        setShowNewKeyForm(false);
+        fetchApiKeys();
+      }
+    } catch (error) {
+      console.error('Error generating API key:', error);
+    }
   };
 
+  const revokeApiKey = async (keyId: string) => {
+    if (!user) return;
+    
+    if (!window.confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await userApi.revokeApiKey(user.id, keyId);
+      if (response.data.success) {
+        fetchApiKeys();
+      }
+    } catch (error) {
+      console.error('Error revoking API key:', error);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      // You could add a toast notification here
+    });
+  };
+
+  const toggleApiKeyVisibility = (keyId: string) => {
+    setShowApiKey(prev => ({
+      ...prev,
+      [keyId]: !prev[keyId]
+    }));
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusColor = (isActive: boolean, expiresAt: string) => {
+    if (!isActive) return 'bg-red-100 text-red-800';
+    if (new Date(expiresAt) < new Date()) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
+  };
+
+  const getStatusText = (isActive: boolean, expiresAt: string) => {
+    if (!isActive) return 'Inactive';
+    if (new Date(expiresAt) < new Date()) return 'Expired';
+    return 'Active';
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Please log in</h1>
+          <p className="text-gray-600">You need to be logged in to view your profile.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
-        <p className="mt-2 text-gray-600">Manage your profile and organizations</p>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-8">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'profile'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <User className="h-4 w-4 inline mr-2" />
-            Profile
-          </button>
-          <button
-            onClick={() => setActiveTab('organizations')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'organizations'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <Building2 className="h-4 w-4 inline mr-2" />
-            Organizations
-          </button>
-        </nav>
-      </div>
-
-      {/* Profile Tab */}
-      {activeTab === 'profile' && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Information</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Username</label>
-              <div className="mt-1 text-sm text-gray-900">{user?.username || 'N/A'}</div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <div className="mt-1 text-sm text-gray-900">{user?.email || 'N/A'}</div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">First Name</label>
-              <div className="mt-1 text-sm text-gray-900">{user?.firstName || 'Not provided'}</div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Last Name</label>
-              <div className="mt-1 text-sm text-gray-900">{user?.lastName || 'Not provided'}</div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Role</label>
-              <div className="mt-1">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                  user?.role === 'admin' 
-                    ? 'bg-purple-100 text-purple-800'
-                    : user?.role === 'td'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {user?.role || 'user'}
-                </span>
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Member Since</label>
-              <div className="mt-1 text-sm text-gray-900">
-                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h1 className="text-2xl font-bold text-gray-900">User Profile</h1>
+            <p className="text-gray-600">Manage your account and API keys</p>
           </div>
-          
-          <div className="mt-6">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
-              Edit Profile
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Organizations Tab */}
-      {activeTab === 'organizations' && (
-        <div className="space-y-6">
-          {/* Current Organization */}
-          {state.currentOrganization && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between">
+          <div className="p-6">
+            {/* User Information */}
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {state.currentOrganization.name}
-                  </h2>
-                  <p className="text-gray-600">{state.currentOrganization.description}</p>
-                  <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
-                    <span>Role: {state.currentOrganization.role}</span>
-                    <span>Joined: {new Date(state.currentOrganization.joinedAt || '').toLocaleDateString()}</span>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700">Username</label>
+                  <p className="mt-1 text-sm text-gray-900">{user.username}</p>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setCurrentOrganization(null)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                  >
-                    Switch Organization
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <p className="mt-1 text-sm text-gray-900">{user.email}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Role</label>
+                  <p className="mt-1 text-sm text-gray-900 capitalize">{user.role}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Member Since</label>
+                  <p className="mt-1 text-sm text-gray-900">{formatDate(user.createdAt)}</p>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Organizations List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {state.organizations.map((organization) => (
-              <div
-                key={organization.id}
-                className={`bg-white rounded-lg shadow p-6 cursor-pointer transition-all duration-200 ${
-                  state.currentOrganization?.id === organization.id
-                    ? 'ring-2 ring-blue-500 bg-blue-50'
-                    : 'hover:shadow-lg'
-                }`}
-                onClick={() => handleSelectOrganization(organization)}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {organization.name}
-                  </h3>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    organization.role === 'owner'
-                      ? 'bg-purple-100 text-purple-800'
-                      : organization.role === 'admin'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {organization.role}
-                  </span>
-                </div>
-                
-                <p className="text-gray-600 text-sm mb-4">
-                  {organization.description || 'No description provided'}
-                </p>
-                
-                <div className="text-xs text-gray-500 space-y-1">
-                  <div>Slug: {organization.slug}</div>
-                  <div>Joined: {new Date(organization.joinedAt || '').toLocaleDateString()}</div>
-                  {organization.website && (
-                    <div>Website: {organization.website}</div>
-                  )}
-                </div>
+            {/* API Keys Section */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">API Keys</h2>
+                <button
+                  onClick={() => setShowNewKeyForm(true)}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Generate New Key</span>
+                </button>
               </div>
-            ))}
+
+              {/* New Key Form */}
+              {showNewKeyForm && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Generate New API Key</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                      <input
+                        type="text"
+                        value={newKeyData.name}
+                        onChange={(e) => setNewKeyData({ ...newKeyData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="My API Key"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Rate Limit</label>
+                      <input
+                        type="number"
+                        value={newKeyData.rate_limit}
+                        onChange={(e) => setNewKeyData({ ...newKeyData, rate_limit: parseInt(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="1"
+                        max="10000"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                      <input
+                        type="text"
+                        value={newKeyData.description}
+                        onChange={(e) => setNewKeyData({ ...newKeyData, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Description of this API key's purpose"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
+                      <select
+                        value={newKeyData.permissions}
+                        onChange={(e) => setNewKeyData({ ...newKeyData, permissions: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="read">Read Only</option>
+                        <option value="write">Write Only</option>
+                        <option value="read,write">Read & Write</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-2 mt-4">
+                    <button
+                      onClick={() => setShowNewKeyForm(false)}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={generateApiKey}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Generate Key
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Generated Key Display */}
+              {generatedKey && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <h3 className="text-md font-semibold text-green-900 mb-2">New API Key Generated</h3>
+                  <p className="text-sm text-green-800 mb-3">
+                    Please copy this API key now. You won't be able to see it again.
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <code className="flex-1 bg-green-100 px-3 py-2 rounded font-mono text-sm">
+                      {generatedKey}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(generatedKey)}
+                      className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setGeneratedKey(null)}
+                    className="mt-2 text-sm text-green-600 hover:text-green-800"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
+              {/* API Keys List */}
+              {loading ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                  <p className="mt-2 text-gray-600">Loading API keys...</p>
+                </div>
+              ) : apiKeys.length === 0 ? (
+                <div className="text-center py-8">
+                  <Key className="h-12 w-12 mx-auto text-gray-400" />
+                  <p className="mt-2 text-gray-600">No API keys found</p>
+                  <p className="text-sm text-gray-500">Generate your first API key to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {apiKeys.map((apiKey) => (
+                    <div key={apiKey.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h3 className="text-md font-semibold text-gray-900">{apiKey.name}</h3>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(apiKey.is_active, apiKey.expires_at)}`}>
+                              {getStatusText(apiKey.is_active, apiKey.expires_at)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{apiKey.description}</p>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
+                            <div>
+                              <span className="font-medium">Permissions:</span> {apiKey.permissions}
+                            </div>
+                            <div>
+                              <span className="font-medium">Rate Limit:</span> {apiKey.rate_limit}/hour
+                            </div>
+                            <div>
+                              <span className="font-medium">Usage:</span> {apiKey.usage_count} requests
+                            </div>
+                            <div>
+                              <span className="font-medium">Created:</span> {formatDate(apiKey.created_at)}
+                            </div>
+                          </div>
+                          {apiKey.last_used && (
+                            <div className="text-sm text-gray-500 mt-1">
+                              <span className="font-medium">Last Used:</span> {formatDate(apiKey.last_used)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button
+                            onClick={() => toggleApiKeyVisibility(apiKey.id)}
+                            className="p-2 text-gray-400 hover:text-gray-600"
+                            title="Toggle API key visibility"
+                          >
+                            {showApiKey[apiKey.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                          <button
+                            onClick={() => copyToClipboard(apiKey.name)}
+                            className="p-2 text-gray-400 hover:text-gray-600"
+                            title="Copy API key name"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => revokeApiKey(apiKey.id)}
+                            className="p-2 text-red-400 hover:text-red-600"
+                            title="Revoke API key"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      {showApiKey[apiKey.id] && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center space-x-2">
+                            <code className="flex-1 bg-gray-100 px-3 py-2 rounded font-mono text-sm">
+                              {apiKey.name}
+                            </code>
+                            <button
+                              onClick={() => copyToClipboard(apiKey.name)}
+                              className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Create Organization Button */}
-          {!showCreateForm && (
-            <div className="text-center">
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4 inline mr-2" />
-                Create New Organization
-              </button>
-            </div>
-          )}
-
-          {/* Create Organization Form */}
-          {showCreateForm && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Organization</h3>
-              
-              <form onSubmit={handleCreateOrganization} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                      Organization Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      required
-                      value={createFormData.name}
-                      onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="slug" className="block text-sm font-medium text-gray-700">
-                      URL Slug *
-                    </label>
-                    <input
-                      type="text"
-                      id="slug"
-                      required
-                      value={createFormData.slug}
-                      onChange={(e) => setCreateFormData({ ...createFormData, slug: e.target.value })}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="my-chess-club"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                      Description
-                    </label>
-                    <textarea
-                      id="description"
-                      rows={3}
-                      value={createFormData.description}
-                      onChange={(e) => setCreateFormData({ ...createFormData, description: e.target.value })}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="website" className="block text-sm font-medium text-gray-700">
-                      Website
-                    </label>
-                    <input
-                      type="url"
-                      id="website"
-                      value={createFormData.website}
-                      onChange={(e) => setCreateFormData({ ...createFormData, website: e.target.value })}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700">
-                      Contact Email
-                    </label>
-                    <input
-                      type="email"
-                      id="contactEmail"
-                      value={createFormData.contactEmail}
-                      onChange={(e) => setCreateFormData({ ...createFormData, contactEmail: e.target.value })}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      value={createFormData.city}
-                      onChange={(e) => setCreateFormData({ ...createFormData, city: e.target.value })}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="state" className="block text-sm font-medium text-gray-700">
-                      State
-                    </label>
-                    <input
-                      type="text"
-                      id="state"
-                      value={createFormData.state}
-                      onChange={(e) => setCreateFormData({ ...createFormData, state: e.target.value })}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateForm(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
-                  >
-                    Create Organization
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

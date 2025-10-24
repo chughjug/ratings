@@ -24,6 +24,7 @@ type TournamentAction =
   | { type: 'ADD_PLAYER'; payload: Player }
   | { type: 'UPDATE_PLAYER'; payload: Player }
   | { type: 'REMOVE_PLAYER'; payload: string }
+  | { type: 'REFRESH_TOURNAMENT'; payload: string }
   | { type: 'CLEAR_CACHE' };
 
 const initialState: TournamentState = {
@@ -78,6 +79,10 @@ function tournamentReducer(state: TournamentState, action: TournamentAction): To
         ...state,
         players: state.players.filter(p => p.id !== action.payload)
       };
+    case 'REFRESH_TOURNAMENT':
+      // This action triggers a refresh - the actual refresh logic should be handled
+      // by the component that dispatches this action, not the reducer
+      return state;
     case 'CLEAR_CACHE':
       return {
         ...state,

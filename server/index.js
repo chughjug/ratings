@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const db = require('./database');
 require('dotenv').config();
 
 // Increase max listeners to prevent memory leak warning
@@ -44,7 +45,10 @@ const limiter = rateLimit({
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again later.'
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  trustProxy: true
 });
 app.use('/api/', limiter);
 
@@ -55,21 +59,78 @@ const authLimiter = rateLimit({
   message: {
     success: false,
     error: 'Too many authentication attempts, please try again later.'
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  trustProxy: true
 });
 
-// Middleware
+// Middleware - Enhanced CORS for Heroku deployment
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : true
-    : [
-        'http://localhost:3000', 
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In production, allow the Heroku app domain and any subdomains
+    if (process.env.NODE_ENV === 'production') {
+      const allowedOrigins = [
+        process.env.CORS_ORIGIN,
+        `https://${process.env.HEROKU_APP_NAME}.herokuapp.com`,
+        `https://${process.env.HEROKU_APP_NAME}.herokuapp.com/`,
+        'https://*.herokuapp.com',
+        // Add common production domains
+        'https://chess-tournament-director.herokuapp.com',
+        'https://chess-tournament-director.herokuapp.com/'
+      ].filter(Boolean);
+      
+      // Check if origin matches any allowed pattern
+      const isAllowed = allowedOrigins.some(allowed => {
+        if (allowed.includes('*')) {
+          const pattern = allowed.replace('*', '.*');
+          return new RegExp(pattern).test(origin);
+        }
+        return origin === allowed;
+      });
+      
+      if (isAllowed) {
+        return callback(null, true);
+      }
+    }
+    
+    // In development, allow localhost origins
+    if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+      const allowedDevOrigins = [
+        'http://localhost:3000',
         'http://localhost:5000',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5000'
-      ],
+      ];
+      
+      if (allowedDevOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+    }
+    
+    // For all other cases, allow the request (permissive for Heroku)
+    return callback(null, true);
+  },
   credentials: true,
-  optionsSuccessStatus: 200 // For legacy browser support
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin', 
+    'Cache-Control', 
+    'Pragma', 
+    'Expires',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+  maxAge: 86400 // 24 hours
 }));
 
 // Add request timeout handling
@@ -87,6 +148,26 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../client/build')));
 
+// Serve documentation files
+app.use('/docs', express.static(path.join(__dirname, './public/docs')));
+
+// Documentation route that serves markdown files as plain text
+app.get('/api/docs/:filename', (req, res) => {
+  const { filename } = req.params;
+  // Sanitize filename to prevent directory traversal
+  const sanitizedFilename = filename.replace(/\.\./g, '').replace(/\//g, '');
+  const filePath = path.join(__dirname, './public/docs', `${sanitizedFilename}.md`);
+  
+  res.sendFile(filePath, { headers: { 'Content-Type': 'text/markdown; charset=utf-8' } }, (err) => {
+    if (err) {
+      res.status(404).json({
+        success: false,
+        error: `Documentation file not found: ${filename}`
+      });
+    }
+  });
+});
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -102,6 +183,7 @@ const analyticsRoutes = require('./routes/analytics');
 const registrationRoutes = require('./routes/registrations');
 const enhancedFeaturesRoutes = require('./routes/enhancedFeatures');
 const pairingEditorRoutes = require('./routes/pairingEditor');
+const googleImportRoutes = require('./routes/googleImport');
 
 // Use routes
 console.log('Setting up routes...');
@@ -109,6 +191,47 @@ console.log('Setting up routes...');
 // Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
 app.use('/api/registrations', registrationRoutes);
+
+// Registration form route
+app.get('/register/:tournamentId', (req, res) => {
+  const { tournamentId } = req.params;
+  
+  // Verify tournament exists
+  db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
+    if (err) {
+      console.error('Error fetching tournament:', err);
+      return res.status(500).send('Internal server error');
+    }
+    
+    if (!tournament) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Tournament Not Found</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .error { color: #e74c3c; }
+          </style>
+        </head>
+        <body>
+          <h1 class="error">Tournament Not Found</h1>
+          <p>The tournament you're looking for doesn't exist or has been removed.</p>
+        </body>
+        </html>
+      `);
+    }
+    
+    // Serve the registration form with tournament data
+    const registrationFormPath = path.join(__dirname, '../registration-form-example.html');
+    res.sendFile(registrationFormPath, (err) => {
+      if (err) {
+        console.error('Error serving registration form:', err);
+        res.status(500).send('Error loading registration form');
+      }
+    });
+  });
+});
 
 // All routes are now public (authentication disabled)
 app.use('/api/users', userRoutes);
@@ -123,6 +246,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/enhanced', enhancedFeaturesRoutes);
 app.use('/api/pairing-editor', pairingEditorRoutes);
+app.use('/api/google-import', googleImportRoutes);
 
 console.log('Routes set up successfully');
 
@@ -174,7 +298,6 @@ app.use((req, res) => {
 
 // Background maintenance to ensure DBF files are always ready
 const { exportTournamentDBF } = require('./services/dbfExport');
-const db = require('./database');
 const fs = require('fs').promises;
 
 async function ensureDBFFilesReady() {
@@ -224,7 +347,45 @@ async function ensureDBFFilesReady() {
 ensureDBFFilesReady();
 setInterval(ensureDBFFilesReady, 5 * 60 * 1000); // 5 minutes
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('DBF file maintenance enabled - files will be automatically generated when missing');
+// Enhanced server startup with better error handling
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 CORS Origin: ${process.env.CORS_ORIGIN || 'not set'}`);
+  console.log(`📊 DBF file maintenance enabled - files will be automatically generated when missing`);
+  
+  // Log server info for debugging
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌐 Production server ready at: https://${process.env.HEROKU_APP_NAME || 'your-app'}.herokuapp.com`);
+  } else {
+    console.log(`🔧 Development server ready at: http://localhost:${PORT}`);
+  }
+});
+
+// Enhanced error handling for server
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+    process.exit(1);
+  } else {
+    console.error('❌ Server error:', error);
+    process.exit(1);
+  }
+});
+
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
 });

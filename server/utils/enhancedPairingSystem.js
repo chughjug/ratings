@@ -53,6 +53,27 @@ class EnhancedPairingSystem {
     console.log(`[EnhancedPairingSystem] Generating pairings for tournament ${tournamentId}, round ${round}`);
     
     try {
+      // Get tournament settings to determine pairing system
+      const tournament = await new Promise((resolve, reject) => {
+        db.get('SELECT settings FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+      let tournamentSettings = {};
+      if (tournament && tournament.settings) {
+        try {
+          tournamentSettings = JSON.parse(tournament.settings);
+        } catch (parseError) {
+          console.warn('Could not parse tournament settings, using defaults:', parseError.message);
+        }
+      }
+
+      // Determine pairing system from tournament settings
+      const pairingMethod = tournamentSettings.pairing_method || 'fide_dutch';
+      console.log(`[EnhancedPairingSystem] Using pairing method: ${pairingMethod}`);
+
       // Get all players grouped by section
       const playersBySection = await new Promise((resolve, reject) => {
         db.all(
@@ -104,7 +125,7 @@ class EnhancedPairingSystem {
             );
           });
 
-          // Calculate points for each player from results
+          // Calculate points and color history for each player from results
           const playersWithPoints = await Promise.all(players.map(async (player) => {
             try {
               const results = await new Promise((resolve, reject) => {
@@ -119,14 +140,19 @@ class EnhancedPairingSystem {
                       THEN 0.5
                       ELSE 0
                     END as points,
-                    pair.color
+                    CASE 
+                      WHEN pair.white_player_id = ? THEN 'W'
+                      WHEN pair.black_player_id = ? THEN 'B'
+                      ELSE NULL
+                    END as player_color,
+                    pair.round
                    FROM pairings pair
                    WHERE (pair.white_player_id = ? OR pair.black_player_id = ?) 
                      AND pair.tournament_id = ? 
                      AND pair.round < ?
                      AND pair.result IS NOT NULL
                    ORDER BY pair.round`,
-                  [player.id, player.id, player.id, player.id, player.id, player.id, tournamentId, round],
+                  [player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, tournamentId, round],
                   (err, rows) => {
                     if (err) reject(err);
                     else resolve(rows);
@@ -137,35 +163,39 @@ class EnhancedPairingSystem {
               // Calculate total points
               const totalPoints = results.reduce((sum, result) => sum + (result.points || 0), 0);
               
-              // Calculate color balance
-              let balance = 0;
-              results.forEach(result => {
-                balance += result.color === 'white' ? 1 : -1;
-              });
+              // Build color history array (like Swiss system implementation)
+              const colorHistory = results.map(result => result.player_color === 'W' ? 1 : -1);
+              
+              // Calculate color balance (positive = more white, negative = more black)
+              const colorBalance = colorHistory.reduce((sum, color) => sum + color, 0);
 
               return {
                 ...player,
                 points: totalPoints,
-                colorBalance: balance
+                colorBalance: colorBalance,
+                colorHistory: colorHistory
               };
             } catch (error) {
               console.warn(`[EnhancedPairingSystem] Could not get results for player ${player.id}:`, error.message);
               return {
                 ...player,
                 points: 0,
-                colorBalance: 0
+                colorBalance: 0,
+                colorHistory: []
               };
             }
           }));
 
+          // Build proper color history object for Swiss system compatibility
           const sectionColorHistory = {};
           playersWithPoints.forEach(player => {
-            sectionColorHistory[player.id] = player.colorBalance;
+            sectionColorHistory[player.id] = player.colorHistory;
           });
 
           // Create enhanced pairing system for this section
           const sectionSystem = new EnhancedPairingSystem(playersWithPoints, {
             ...options,
+            pairingSystem: pairingMethod,
             previousPairings: sectionPreviousPairings,
             colorHistory: sectionColorHistory,
             section: sectionName,
@@ -407,8 +437,6 @@ class EnhancedPairingSystem {
    */
   generatePairings() {
     switch (this.options.pairingSystem) {
-      case 'swiss_standard':
-        return this.generateSwissStandardPairings();
       case 'fide_dutch':
         return this.generateFideDutchPairings();
       case 'accelerated_swiss':
@@ -417,14 +445,17 @@ class EnhancedPairingSystem {
         return this.generateRoundRobinPairings();
       case 'single_elimination':
         return this.generateSingleEliminationPairings();
+      case 'quad':
+        return this.generateQuadPairings();
       default:
-        return this.generateSwissStandardPairings();
+        return this.generateFideDutchPairings();
     }
   }
 
   /**
    * Standard Swiss System Pairing
    * Based on FIDE C.04.1 and USCF Rule 28
+   * Implements proper Swiss system with color balance and repeat avoidance
    */
   generateSwissStandardPairings() {
     if (this.players.length < 2) return [];
@@ -458,8 +489,8 @@ class EnhancedPairingSystem {
         }
       }
       
-      // Pair remaining players in group
-      this.pairGroup(group, pairings, used);
+      // Use Swiss system pairing for the group
+      this.pairGroupSwiss(group, pairings, used);
     }
     
     return pairings;
@@ -468,6 +499,7 @@ class EnhancedPairingSystem {
   /**
    * FIDE Dutch System Pairing
    * Algorithmic with aggressive color correction
+   * Uses Swiss system pairing with enhanced color balance rules
    */
   generateFideDutchPairings() {
     if (this.players.length < 2) return [];
@@ -501,12 +533,147 @@ class EnhancedPairingSystem {
         used.add(byePlayer.id);
       }
       
-      // Use proper Swiss system pairing within score group
-      const groupPairings = this.generateSwissPairingsForGroup(group, used);
-      pairings.push(...groupPairings);
+      // Use Swiss system pairing with Dutch color assignment
+      this.pairGroupSwissDutch(group, pairings, used);
     }
     
     return pairings;
+  }
+
+  /**
+   * Pair players using Swiss-Dutch system with Dutch color assignment
+   * Implements proper Swiss-Dutch pairing: top half vs bottom half within score group
+   */
+  pairGroupSwissDutch(group, pairings, used) {
+    const sortedGroup = [...group].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    
+    // Swiss-Dutch system: divide group into top half and bottom half
+    const half = Math.floor(sortedGroup.length / 2);
+    const topHalf = sortedGroup.slice(0, half);
+    const bottomHalf = sortedGroup.slice(half);
+    
+    // Pair top half against bottom half
+    for (let i = 0; i < topHalf.length; i++) {
+      const topPlayer = topHalf[i];
+      const bottomPlayer = bottomHalf[i];
+      
+      if (!used.has(topPlayer.id) && !used.has(bottomPlayer.id)) {
+        // Check if these players can be paired (haven't played before)
+        if (!this.hasPlayedBefore(topPlayer.id, bottomPlayer.id)) {
+          const whitePlayer = this.assignColorsDutch(topPlayer, bottomPlayer);
+          const blackPlayer = whitePlayer.id === topPlayer.id ? bottomPlayer : topPlayer;
+          
+          pairings.push({
+            white_player_id: whitePlayer.id,
+            black_player_id: blackPlayer.id,
+            is_bye: false,
+            section: this.section,
+            board: pairings.length + 1
+          });
+          
+          used.add(topPlayer.id);
+          used.add(bottomPlayer.id);
+        } else {
+          // Players have played before, need to find alternative pairing
+          this.findAlternativePairingDutch(topPlayer, bottomPlayer, group, pairings, used);
+        }
+      }
+    }
+  }
+
+  /**
+   * Find alternative pairing for Dutch system when players have already played
+   */
+  findAlternativePairingDutch(topPlayer, bottomPlayer, group, pairings, used) {
+    const sortedGroup = [...group].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    const half = Math.floor(sortedGroup.length / 2);
+    const topHalf = sortedGroup.slice(0, half);
+    const bottomHalf = sortedGroup.slice(half);
+    
+    // Try to find alternative pairing within the same halves
+    // First try to swap within top half
+    for (let i = 0; i < topHalf.length; i++) {
+      const alternativeTop = topHalf[i];
+      if (alternativeTop.id !== topPlayer.id && 
+          !used.has(alternativeTop.id) &&
+          !this.hasPlayedBefore(alternativeTop.id, bottomPlayer.id)) {
+        
+        const whitePlayer = this.assignColorsDutch(alternativeTop, bottomPlayer);
+        const blackPlayer = whitePlayer.id === alternativeTop.id ? bottomPlayer : alternativeTop;
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        
+        used.add(alternativeTop.id);
+        used.add(bottomPlayer.id);
+        return;
+      }
+    }
+    
+    // Try to swap within bottom half
+    for (let i = 0; i < bottomHalf.length; i++) {
+      const alternativeBottom = bottomHalf[i];
+      if (alternativeBottom.id !== bottomPlayer.id && 
+          !used.has(alternativeBottom.id) &&
+          !this.hasPlayedBefore(topPlayer.id, alternativeBottom.id)) {
+        
+        const whitePlayer = this.assignColorsDutch(topPlayer, alternativeBottom);
+        const blackPlayer = whitePlayer.id === topPlayer.id ? alternativeBottom : topPlayer;
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        
+        used.add(topPlayer.id);
+        used.add(alternativeBottom.id);
+        return;
+      }
+    }
+    
+    // If no alternative found within halves, try cross-pairing
+    for (let i = 0; i < group.length; i++) {
+      const alternativePlayer = group[i];
+      if (alternativePlayer.id !== topPlayer.id && 
+          alternativePlayer.id !== bottomPlayer.id && 
+          !used.has(alternativePlayer.id) &&
+          !this.hasPlayedBefore(topPlayer.id, alternativePlayer.id)) {
+        
+        const whitePlayer = this.assignColorsDutch(topPlayer, alternativePlayer);
+        const blackPlayer = whitePlayer.id === topPlayer.id ? alternativePlayer : topPlayer;
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        
+        used.add(topPlayer.id);
+        used.add(alternativePlayer.id);
+        return;
+      }
+    }
+    
+    // If no alternative found, create a bye for topPlayer
+    pairings.push({
+      white_player_id: topPlayer.id,
+      black_player_id: null,
+      is_bye: true,
+      section: this.section,
+      board: pairings.length + 1
+    });
+    
+    used.add(topPlayer.id);
   }
 
   /**
@@ -646,6 +813,144 @@ class EnhancedPairingSystem {
       }
     }
     
+    return pairings;
+  }
+
+  /**
+   * Quad Pairing System
+   * Players are grouped into quads (groups of 4) and play round-robin within each quad
+   */
+  generateQuadPairings() {
+    if (this.players.length < 4) {
+      // If less than 4 players, use round-robin
+      return this.generateRoundRobinPairings();
+    }
+
+    const pairings = [];
+    const sortedPlayers = this.sortPlayersByStandings();
+    
+    // Group players into quads
+    const quads = [];
+    for (let i = 0; i < sortedPlayers.length; i += 4) {
+      const quad = sortedPlayers.slice(i, i + 4);
+      quads.push(quad);
+    }
+
+    // Handle odd number of players in last quad
+    const lastQuad = quads[quads.length - 1];
+    if (lastQuad.length < 4 && lastQuad.length > 1) {
+      // Move players from last quad to previous quads if possible
+      if (quads.length > 1) {
+        const previousQuad = quads[quads.length - 2];
+        if (previousQuad.length === 4 && lastQuad.length === 2) {
+          // Move one player from previous quad to last quad
+          const playerToMove = previousQuad.pop();
+          lastQuad.push(playerToMove);
+        }
+      }
+    }
+
+    // Generate pairings for each quad
+    quads.forEach((quad, quadIndex) => {
+      if (quad.length < 2) {
+        // Single player gets bye
+        pairings.push({
+          white_player_id: quad[0].id,
+          black_player_id: null,
+          is_bye: true,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        return;
+      }
+
+      if (quad.length === 2) {
+        // Two players play each other
+        const whitePlayer = this.assignColorsQuad(quad[0], quad[1]);
+        const blackPlayer = whitePlayer.id === quad[0].id ? quad[1] : quad[0];
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        return;
+      }
+
+      if (quad.length === 3) {
+        // Three players - one gets bye, other two play
+        const byePlayer = quad[2]; // Lowest rated player gets bye
+        const whitePlayer = this.assignColorsQuad(quad[0], quad[1]);
+        const blackPlayer = whitePlayer.id === quad[0].id ? quad[1] : quad[0];
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        
+        pairings.push({
+          white_player_id: byePlayer.id,
+          black_player_id: null,
+          is_bye: true,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        return;
+      }
+
+      // Four players - generate round-robin within quad
+      const quadPairings = this.generateQuadRoundRobin(quad, quadIndex);
+      pairings.push(...quadPairings);
+    });
+
+    return pairings;
+  }
+
+  /**
+   * Generate round-robin pairings within a quad
+   */
+  generateQuadRoundRobin(quad, quadIndex) {
+    const pairings = [];
+    const players = [...quad];
+    
+    // For 4 players, we need 3 rounds of round-robin
+    // Round 1: 1v4, 2v3
+    // Round 2: 1v3, 2v4  
+    // Round 3: 1v2, 3v4
+    
+    const roundPairings = [
+      [[0, 3], [1, 2]], // Round 1
+      [[0, 2], [1, 3]], // Round 2
+      [[0, 1], [2, 3]]  // Round 3
+    ];
+
+    // Get the current round within the quad
+    const currentRoundInQuad = ((this.round - 1) % 3) + 1;
+    const roundPairing = roundPairings[currentRoundInQuad - 1];
+
+    roundPairing.forEach(([i, j]) => {
+      const player1 = players[i];
+      const player2 = players[j];
+      
+      if (player1 && player2) {
+        const whitePlayer = this.assignColorsQuad(player1, player2);
+        const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+      }
+    });
+
     return pairings;
   }
 
@@ -889,12 +1194,13 @@ class EnhancedPairingSystem {
   /**
    * Generate Swiss system pairings for a score group
    * Implements proper Swiss system rules with color balance, repeat avoidance, and team avoidance
+   * Based on FIDE Swiss system rules and the reference implementation
    */
   generateSwissPairingsForGroup(group, used) {
     const pairings = [];
     const sortedGroup = [...group].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     
-    // For Round 1, use a more sophisticated pairing approach
+    // For Round 1, use proper Swiss system Round 1 pairing
     if (this.round === 1) {
       return this.generateRound1Pairings(sortedGroup);
     }
@@ -902,30 +1208,95 @@ class EnhancedPairingSystem {
     // For subsequent rounds, use proper Swiss system pairing with all rules
     const availablePlayers = sortedGroup.filter(player => !used.has(player.id));
     
-    while (availablePlayers.length >= 2) {
-      const currentPlayer = availablePlayers.shift();
-      let bestOpponent = null;
-      let bestScore = -Infinity;
-      let bestOpponentIndex = -1;
+    // Group players by score within this group
+    const scoreGroups = this.groupPlayersByScore(availablePlayers);
+    const sortedScores = Object.keys(scoreGroups).sort((a, b) => parseFloat(b) - parseFloat(a));
+    
+    // Process each score group within the main group
+    for (const score of sortedScores) {
+      const scoreGroup = scoreGroups[score];
       
-      // Find the best opponent following Swiss system rules
-      for (let i = 0; i < availablePlayers.length; i++) {
-        const opponent = availablePlayers[i];
-        
-        // Calculate pairing score based on Swiss system criteria
-        const score = this.calculateSwissPairingScore(currentPlayer, opponent);
-        
-        if (score > bestScore) {
-          bestScore = score;
-          bestOpponent = opponent;
-          bestOpponentIndex = i;
+      // Handle odd number of players in score group
+      if (scoreGroup.length % 2 === 1) {
+        const floater = this.selectFloater(scoreGroup, scoreGroups, sortedScores);
+        if (floater) {
+          scoreGroup.splice(scoreGroup.indexOf(floater), 1);
+          // Add floater to next lower score group
+          const nextScore = this.getNextLowerScore(score, sortedScores);
+          if (nextScore !== null) {
+            if (!scoreGroups[nextScore]) scoreGroups[nextScore] = [];
+            scoreGroups[nextScore].push(floater);
+          }
         }
       }
       
-      if (bestOpponent) {
-        // Create the pairing
-        const whitePlayer = this.assignColorsDutch(currentPlayer, bestOpponent);
-        const blackPlayer = whitePlayer.id === currentPlayer.id ? bestOpponent : currentPlayer;
+      // Pair remaining players in score group using Swiss system rules
+      this.pairGroupSwiss(scoreGroup, pairings, used);
+    }
+    
+    return pairings;
+  }
+
+  /**
+   * Pair players within a score group using Swiss-Dutch system rules
+   * Implements proper Swiss-Dutch pairing: top half vs bottom half within score group
+   */
+  pairGroupSwiss(group, pairings, used) {
+    const sortedGroup = [...group].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    
+    // Swiss-Dutch system: divide group into top half and bottom half
+    const half = Math.floor(sortedGroup.length / 2);
+    const topHalf = sortedGroup.slice(0, half);
+    const bottomHalf = sortedGroup.slice(half);
+    
+    // Pair top half against bottom half
+    for (let i = 0; i < topHalf.length; i++) {
+      const topPlayer = topHalf[i];
+      const bottomPlayer = bottomHalf[i];
+      
+      if (!used.has(topPlayer.id) && !used.has(bottomPlayer.id)) {
+        // Check if these players can be paired (haven't played before)
+        if (!this.hasPlayedBefore(topPlayer.id, bottomPlayer.id)) {
+          const whitePlayer = this.assignColorsSwiss(topPlayer, bottomPlayer);
+          const blackPlayer = whitePlayer.id === topPlayer.id ? bottomPlayer : topPlayer;
+          
+          pairings.push({
+            white_player_id: whitePlayer.id,
+            black_player_id: blackPlayer.id,
+            is_bye: false,
+            section: this.section,
+            board: pairings.length + 1
+          });
+          
+          used.add(topPlayer.id);
+          used.add(bottomPlayer.id);
+        } else {
+          // Players have played before, need to find alternative pairing
+          this.findAlternativePairingSwiss(topPlayer, bottomPlayer, group, pairings, used);
+        }
+      }
+    }
+  }
+
+  /**
+   * Find alternative pairing for Swiss system when players have already played
+   */
+  findAlternativePairingSwiss(topPlayer, bottomPlayer, group, pairings, used) {
+    const sortedGroup = [...group].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    const half = Math.floor(sortedGroup.length / 2);
+    const topHalf = sortedGroup.slice(0, half);
+    const bottomHalf = sortedGroup.slice(half);
+    
+    // Try to find alternative pairing within the same halves
+    // First try to swap within top half
+    for (let i = 0; i < topHalf.length; i++) {
+      const alternativeTop = topHalf[i];
+      if (alternativeTop.id !== topPlayer.id && 
+          !used.has(alternativeTop.id) &&
+          !this.hasPlayedBefore(alternativeTop.id, bottomPlayer.id)) {
+        
+        const whitePlayer = this.assignColorsSwiss(alternativeTop, bottomPlayer);
+        const blackPlayer = whitePlayer.id === alternativeTop.id ? bottomPlayer : alternativeTop;
         
         pairings.push({
           white_player_id: whitePlayer.id,
@@ -935,20 +1306,71 @@ class EnhancedPairingSystem {
           board: pairings.length + 1
         });
         
-        // Mark both players as used
-        used.add(currentPlayer.id);
-        used.add(bestOpponent.id);
-        
-        // Remove opponent from available players
-        availablePlayers.splice(bestOpponentIndex, 1);
-      } else {
-        // No valid opponent found, this shouldn't happen in a proper Swiss system
-        console.warn(`[EnhancedPairingSystem] No valid opponent found for player ${currentPlayer.name}`);
-        break;
+        used.add(alternativeTop.id);
+        used.add(bottomPlayer.id);
+        return;
       }
     }
     
-    return pairings;
+    // Try to swap within bottom half
+    for (let i = 0; i < bottomHalf.length; i++) {
+      const alternativeBottom = bottomHalf[i];
+      if (alternativeBottom.id !== bottomPlayer.id && 
+          !used.has(alternativeBottom.id) &&
+          !this.hasPlayedBefore(topPlayer.id, alternativeBottom.id)) {
+        
+        const whitePlayer = this.assignColorsSwiss(topPlayer, alternativeBottom);
+        const blackPlayer = whitePlayer.id === topPlayer.id ? alternativeBottom : topPlayer;
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        
+        used.add(topPlayer.id);
+        used.add(alternativeBottom.id);
+        return;
+      }
+    }
+    
+    // If no alternative found within halves, try cross-pairing
+    for (let i = 0; i < group.length; i++) {
+      const alternativePlayer = group[i];
+      if (alternativePlayer.id !== topPlayer.id && 
+          alternativePlayer.id !== bottomPlayer.id && 
+          !used.has(alternativePlayer.id) &&
+          !this.hasPlayedBefore(topPlayer.id, alternativePlayer.id)) {
+        
+        const whitePlayer = this.assignColorsSwiss(topPlayer, alternativePlayer);
+        const blackPlayer = whitePlayer.id === topPlayer.id ? alternativePlayer : topPlayer;
+        
+        pairings.push({
+          white_player_id: whitePlayer.id,
+          black_player_id: blackPlayer.id,
+          is_bye: false,
+          section: this.section,
+          board: pairings.length + 1
+        });
+        
+        used.add(topPlayer.id);
+        used.add(alternativePlayer.id);
+        return;
+      }
+    }
+    
+    // If no alternative found, create a bye for topPlayer
+    pairings.push({
+      white_player_id: topPlayer.id,
+      black_player_id: null,
+      is_bye: true,
+      section: this.section,
+      board: pairings.length + 1
+    });
+    
+    used.add(topPlayer.id);
   }
 
   /**
@@ -1346,6 +1768,40 @@ class EnhancedPairingSystem {
   }
 
   /**
+   * Assign colors for Swiss system
+   * Implements Swiss system color assignment rules based on FIDE standards
+   */
+  assignColorsSwiss(player1, player2) {
+    const player1Pref = this.getColorPreferences(player1.id);
+    const player2Pref = this.getColorPreferences(player2.id);
+    
+    // Rule 1: Player with more black pieces should get white (highest priority)
+    if (player1Pref < player2Pref) {
+      return player1; // player1 gets white
+    } else if (player1Pref > player2Pref) {
+      return player2; // player2 gets white
+    }
+    
+    // Rule 2: Avoid same color three times in a row
+    const lastColors1 = this.getLastTwoColors(player1.id);
+    const lastColors2 = this.getLastTwoColors(player2.id);
+    
+    if (lastColors1 === 'WW') return player2; // player1 had WW, give white to player2
+    if (lastColors2 === 'WW') return player1; // player2 had WW, give white to player1
+    if (lastColors1 === 'BB') return player1; // player1 had BB, give white to player1
+    if (lastColors2 === 'BB') return player2; // player2 had BB, give white to player2
+    
+    // Rule 3: Higher rated player gets due color (if significantly different)
+    const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
+    if (ratingDiff >= 50) {
+      return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
+    }
+    
+    // Rule 4: Final tiebreaker - consistent ordering
+    return player1.id < player2.id ? player1 : player2;
+  }
+
+  /**
    * Assign colors for Dutch system
    * Implements comprehensive color assignment rules
    */
@@ -1396,6 +1852,14 @@ class EnhancedPairingSystem {
   }
 
   /**
+   * Assign colors for quad system
+   */
+  assignColorsQuad(player1, player2) {
+    // Higher rated player gets white
+    return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
+  }
+
+  /**
    * Get last two colors played by a player
    */
   getLastTwoColors(playerId) {
@@ -1408,12 +1872,28 @@ class EnhancedPairingSystem {
 
   /**
    * Get color balance for a player
+   * Returns positive value for more white pieces, negative for more black pieces
    */
   getColorBalance(playerId) {
     const history = this.colorHistory[playerId] || [];
     if (!Array.isArray(history)) return 0;
     
     return history.reduce((sum, color) => sum + color, 0);
+  }
+
+  /**
+   * Get color preferences for a player (Swiss system style)
+   * Returns positive for white preference, negative for black preference
+   */
+  getColorPreferences(playerId) {
+    const history = this.colorHistory[playerId] || [];
+    if (!Array.isArray(history)) return 0;
+    
+    let preference = 0;
+    history.forEach(color => {
+      preference += color === 1 ? 1 : -1; // 1 for white, -1 for black
+    });
+    return preference;
   }
 
   /**
@@ -1516,13 +1996,6 @@ function createPairingSystem(players, options = {}) {
 function getAvailablePairingSystems() {
   return [
     {
-      id: 'swiss_standard',
-      name: 'Swiss System (Standard)',
-      description: 'Standard Swiss system pairing with score groups and color balancing',
-      suitableFor: 'Most tournaments',
-      features: ['Score groups', 'Color balancing', 'Repeat avoidance']
-    },
-    {
       id: 'fide_dutch',
       name: 'FIDE Dutch System',
       description: 'Algorithmic Swiss system with aggressive color correction',
@@ -1549,6 +2022,13 @@ function getAvailablePairingSystems() {
       description: 'Knockout tournament with bracket system',
       suitableFor: 'Quick tournaments',
       features: ['Fast completion', 'Clear winner', 'Bracket system']
+    },
+    {
+      id: 'quad',
+      name: 'Quad System',
+      description: 'Players grouped into quads of 4, round-robin within each quad',
+      suitableFor: 'Small to medium tournaments (8-32 players)',
+      features: ['Balanced competition', 'Multiple mini-tournaments', 'Fair pairings']
     }
   ];
 }
