@@ -283,12 +283,27 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
             if (nameParts.length >= 2) {
               const firstName = nameParts[0];
               const lastName = nameParts[nameParts.length - 1];
-              name = `${firstName} ${lastName}`;
+              
+              // Format names properly (Title Case)
+              const formatName = (name) => {
+                return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+              };
+              
+              name = `${formatName(firstName)} ${formatName(lastName)}`;
             } else {
-              name = nameParts.join(' ');
+              // Format the entire name if we can't split it
+              const formatName = (name) => {
+                return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+              };
+              name = formatName(nameParts.join(' '));
             }
           } else {
-            name = await nameElement.evaluate(el => el.textContent.trim());
+            const rawName = await nameElement.evaluate(el => el.textContent.trim());
+            // Format the entire name
+            const formatName = (name) => {
+              return name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+            };
+            name = formatName(rawName);
           }
         }
         
