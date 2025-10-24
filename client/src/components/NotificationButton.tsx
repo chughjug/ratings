@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Bell, X, AlertTriangle, Clock, CheckCircle, Filter, Search, Users, Calendar, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, X, AlertTriangle, Clock, CheckCircle, Filter, Search, Users, Calendar, Shield, ChevronDown, ChevronUp, ToggleRight, Mail } from 'lucide-react';
 
 interface NotificationItem {
   id: string;
@@ -21,6 +21,9 @@ interface NotificationButtonProps {
   onMarkAsRead?: (notificationId: string) => void;
   onViewPlayer?: (playerName: string) => void;
   className?: string;
+  webhookEnabled?: boolean;
+  onWebhookToggle?: (enabled: boolean) => void;
+  webhookUrl?: string;
 }
 
 const NotificationButton: React.FC<NotificationButtonProps> = ({
@@ -28,7 +31,10 @@ const NotificationButton: React.FC<NotificationButtonProps> = ({
   onDismiss,
   onMarkAsRead,
   onViewPlayer,
-  className = ''
+  className = '',
+  webhookEnabled,
+  onWebhookToggle,
+  webhookUrl
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'expired' | 'expiring' | 'warning' | 'info' | 'success'>('all');
@@ -391,32 +397,95 @@ const NotificationButton: React.FC<NotificationButtonProps> = ({
             </div>
 
             {/* Modal Footer */}
-            {filteredNotifications.length > 0 && (
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    Showing {filteredNotifications.length} of {notifications.length} notifications
-                  </p>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setDismissedNotifications(new Set())}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                    >
-                      Clear All
-                    </button>
-                    <button
-                      onClick={() => {
-                        const allIds = notifications.map(n => n.id);
-                        setDismissedNotifications(new Set(allIds));
-                      }}
-                      className="text-sm text-red-600 hover:text-red-800 font-medium transition-colors"
-                    >
-                      Dismiss All
-                    </button>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+              {/* Notification List Footer */}
+              {filteredNotifications.length > 0 && (
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      Showing {filteredNotifications.length} of {notifications.length} notifications
+                    </p>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setDismissedNotifications(new Set())}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                      >
+                        Clear All
+                      </button>
+                      <button
+                        onClick={() => {
+                          const allIds = notifications.map(n => n.id);
+                          setDismissedNotifications(new Set(allIds));
+                        }}
+                        className="text-sm text-red-600 hover:text-red-800 font-medium transition-colors"
+                      >
+                        Dismiss All
+                      </button>
+                    </div>
                   </div>
                 </div>
+              )}
+              
+              {/* Webhook Settings Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center space-x-2">
+                  <Mail className="h-4 w-4" />
+                  <span>Pairing Notifications</span>
+                </h3>
+                
+                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">Email Pairing Notifications</p>
+                      <p className="text-xs text-gray-600 mt-1">Enable manual email sending on the pairing generation page</p>
+                    </div>
+                    
+                    <button
+                      onClick={() => onWebhookToggle?.(!webhookEnabled)}
+                      className={`ml-4 inline-flex items-center px-3 py-2 rounded-lg font-medium transition-colors ${
+                        webhookEnabled
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      <ToggleRight className="h-4 w-4 mr-2" />
+                      {webhookEnabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                  </div>
+                  
+                  {webhookEnabled && webhookUrl && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <p className="text-xs text-gray-500 mb-1">Webhook Endpoint:</p>
+                      <div className="bg-gray-50 p-2 rounded text-xs text-gray-700 break-all font-mono border border-gray-200">
+                        {webhookUrl}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {webhookEnabled && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <div className="flex items-start space-x-2 bg-blue-50 border border-blue-200 rounded p-2">
+                        <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-blue-700">
+                          <strong>Enabled:</strong> A "Send Emails" button will appear on the pairing generation page. Use it to send personalized emails to players.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!webhookEnabled && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <div className="flex items-start space-x-2 bg-gray-50 border border-gray-200 rounded p-2">
+                        <AlertTriangle className="h-4 w-4 text-gray-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-gray-700">
+                          <strong>Disabled:</strong> No email sending capability. Enable to add a "Send Emails" button to the pairing page.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}

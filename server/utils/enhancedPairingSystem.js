@@ -125,8 +125,32 @@ class EnhancedPairingSystem {
             );
           });
 
+          // Check for players with registered byes for this round
+          const registeredByePlayers = [];
+          const pairedPlayers = [];
+          
+          players.forEach(player => {
+            try {
+              if (player.intentional_bye_rounds) {
+                const byeRounds = JSON.parse(player.intentional_bye_rounds);
+                if (Array.isArray(byeRounds) && byeRounds.includes(round)) {
+                  // This player has a registered bye for this round
+                  registeredByePlayers.push(player.id);
+                  console.log(`[EnhancedPairingSystem] Player ${player.name} has registered bye for round ${round}`);
+                } else {
+                  pairedPlayers.push(player);
+                }
+              } else {
+                pairedPlayers.push(player);
+              }
+            } catch (parseError) {
+              console.warn(`[EnhancedPairingSystem] Could not parse intentional_bye_rounds for player ${player.id}:`, parseError.message);
+              pairedPlayers.push(player);
+            }
+          });
+
           // Calculate points and color history for each player from results
-          const playersWithPoints = await Promise.all(players.map(async (player) => {
+          const playersWithPoints = await Promise.all(pairedPlayers.map(async (player) => {
             try {
               const results = await new Promise((resolve, reject) => {
                 db.all(
@@ -214,14 +238,32 @@ class EnhancedPairingSystem {
             pairing.tournament_id = tournamentId;
           });
 
+          // Add unpaired pairings for players with registered byes
+          registeredByePlayers.forEach(playerId => {
+            const currentBoardNumber = sectionPairings.length + 1;
+            sectionPairings.push({
+              id: require('uuid').v4(),
+              white_player_id: playerId,
+              black_player_id: null,
+              is_bye: true,
+              bye_type: 'unpaired',  // Full point bye for registered bye
+              section: sectionName,
+              round: round,
+              tournament_id: tournamentId,
+              board: currentBoardNumber
+            });
+            console.log(`[EnhancedPairingSystem] Created unpaired pairing for registered bye player ${playerId}`);
+          });
+
           allPairings.push(...sectionPairings);
           sectionResults[sectionName] = {
             success: true,
             pairingsCount: sectionPairings.length,
-            playersCount: players.length
+            playersCount: players.length,
+            registeredByeCount: registeredByePlayers.length
           };
 
-          console.log(`[EnhancedPairingSystem] Section "${sectionName}": Generated ${sectionPairings.length} pairings`);
+          console.log(`[EnhancedPairingSystem] Section "${sectionName}": Generated ${sectionPairings.length} pairings (including ${registeredByePlayers.length} registered byes)`);
         } catch (error) {
           console.error(`[EnhancedPairingSystem] Error in section "${sectionName}":`, error.message);
           sectionResults[sectionName] = {
@@ -524,6 +566,7 @@ class EnhancedPairingSystem {
           white_player_id: byePlayer.id,
           black_player_id: null,
           is_bye: true,
+          bye_type: 'bye',
           section: this.section,
           board: pairings.length + 1
         });
@@ -669,6 +712,7 @@ class EnhancedPairingSystem {
       white_player_id: topPlayer.id,
       black_player_id: null,
       is_bye: true,
+      bye_type: 'bye',
       section: this.section,
       board: pairings.length + 1
     });
@@ -740,6 +784,7 @@ class EnhancedPairingSystem {
               white_player_id: player1.id,
               black_player_id: null,
               is_bye: true,
+              bye_type: 'bye',
               section: this.section,
               board: i + 1
             });
@@ -807,6 +852,7 @@ class EnhancedPairingSystem {
           white_player_id: player1.id,
           black_player_id: null,
           is_bye: true,
+          bye_type: 'bye',
           section: this.section,
           board: i + 1
         });
@@ -858,6 +904,7 @@ class EnhancedPairingSystem {
           white_player_id: quad[0].id,
           black_player_id: null,
           is_bye: true,
+          bye_type: 'bye',
           section: this.section,
           board: pairings.length + 1
         });
@@ -897,6 +944,7 @@ class EnhancedPairingSystem {
           white_player_id: byePlayer.id,
           black_player_id: null,
           is_bye: true,
+          bye_type: 'bye',
           section: this.section,
           board: pairings.length + 1
         });
@@ -1366,6 +1414,7 @@ class EnhancedPairingSystem {
       white_player_id: topPlayer.id,
       black_player_id: null,
       is_bye: true,
+      bye_type: 'bye',
       section: this.section,
       board: pairings.length + 1
     });
@@ -1408,6 +1457,7 @@ class EnhancedPairingSystem {
         white_player_id: byePlayer.id,
         black_player_id: null,
         is_bye: true,
+        bye_type: 'bye',
         section: this.section,
         board: half + 1
       });

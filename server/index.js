@@ -34,8 +34,12 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000", "ws://localhost:*", "http:", "https:"],
+      frameSrc: ["'self'", "https:"],
+      fontSrc: ["'self'", "data:", "https:"],
     },
   },
+  crossOriginEmbedderPolicy: false,
 }));
 
 // Rate limiting - more generous for development

@@ -13,7 +13,7 @@ const getApiBaseUrl = () => {
     return '/api';
   }
   
-  // In development, use full URL to localhost:5000
+  // In development, use full URL to localhost:5000 (backend server port)
   return 'http://localhost:5000/api';
 };
 
@@ -300,6 +300,26 @@ export const pairingApi = {
   
   generateForSection: (tournamentId: string, round: number, sectionName: string) => 
     api.post('/pairings/generate/section', { tournamentId, round, sectionName }),
+  
+  generateQuad: (tournamentId: string) =>
+    api.post<{
+      success: boolean;
+      message?: string;
+      error?: string;
+      data?: {
+        totalRounds: number;
+        roundsData: Array<{
+          round: number;
+          quadCount: number;
+          totalGames: number;
+          totalByes: number;
+          pairingsCount: number;
+        }>;
+        totalGamesAllRounds: number;
+        totalByesAllRounds: number;
+        message: string;
+      };
+    }>('/pairings/generate/quad', { tournamentId }),
   
   // Section-specific pairing methods
   generateSectionPairings: (tournamentId: string, round: number, sectionName: string) => 

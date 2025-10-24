@@ -27,6 +27,7 @@ import TeamStandings from '../components/TeamStandings';
 import APIDocumentationModal from '../components/APIDocumentationModal';
 import APIStatusIndicator from '../components/APIStatusIndicator';
 import NotificationButton from '../components/NotificationButton';
+import SendPairingEmailsButton from '../components/SendPairingEmailsButton';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -41,6 +42,7 @@ const TournamentDetail: React.FC = () => {
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState<string>('');
   const [useAdvancedPairingView, setUseAdvancedPairingView] = useState(false);
+  const [emailsEnabled, setEmailsEnabled] = useState(false);
 
   // Get current round for a specific section
   const getCurrentRoundForSection = (sectionName: string) => {
@@ -409,24 +411,13 @@ const TournamentDetail: React.FC = () => {
       setIsLoading(true);
       
       // Use the main pairing system which handles all sections properly
-      const response = await fetch('/api/pairings/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tournamentId: id,
-          round: currentRound
-        }),
-      });
+      const response = await pairingApi.generate(id, currentRound);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate pairings');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to generate pairings');
       }
 
-      const data = await response.json();
-      console.log(`✅ Enhanced pairings generated successfully for ${sectionName} section:`, data);
+      console.log(`✅ Enhanced pairings generated successfully for ${sectionName} section:`, response.data);
       
       // Refresh pairings to show the new ones
       await fetchPairings(currentRound);
@@ -479,6 +470,47 @@ const TournamentDetail: React.FC = () => {
     } catch (error) {
       console.error(`Failed to reset pairings for ${sectionName}:`, error);
       alert(`Failed to reset pairings for ${sectionName}. Please try again.`);
+    }
+  };
+
+  const generateQuadPairings = async () => {
+    if (!id || isLoading) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await pairingApi.generateQuad(id);
+      
+      console.log('API Response:', response.data);
+      
+      // Check if request was successful
+      if (!response.data?.success) {
+        const errorMsg = (response.data as any)?.error || (response.data as any)?.message || 'Failed to generate quad pairings';
+        throw new Error(errorMsg);
+      }
+
+      console.log('✅ Quad pairings generated successfully for all rounds:', response.data);
+      
+      // Defensive check for roundsData
+      const roundsData = response.data.data?.roundsData;
+      if (!roundsData || !Array.isArray(roundsData)) {
+        throw new Error('Invalid response: roundsData is missing or not an array');
+      }
+      
+      const roundsInfo = roundsData
+        .map((r: any) => `Round ${r.round}: ${r.quadCount} quads, ${r.totalGames} games, ${r.totalByes} byes`)
+        .join('\n');
+      
+      alert(`✅ Quad Tournament Sections Reassigned!\n\n${roundsInfo}\n\nTotal: ${response.data.data?.totalGamesAllRounds} games across all ${response.data.data?.totalRounds} rounds`);
+      
+      // Refresh pairings to show the new ones
+      await fetchPairings(currentRound);
+      await fetchTournament();
+      
+    } catch (error: any) {
+      console.error('❌ Failed to generate quad pairings:', error);
+      alert(`Failed to generate quad pairings: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -540,7 +572,7 @@ const TournamentDetail: React.FC = () => {
   // Get available sections for filtering
   const getAvailableSections = () => {
     if (!tournament) return [];
-    return getSectionOptions(tournament, state.players);
+    return getSectionOptions(tournament, state.players, false, state.pairings);
   };
 
   const updateTournamentSettings = async (settings: any) => {
@@ -955,6 +987,11 @@ const TournamentDetail: React.FC = () => {
                 return notifications.length > 0 ? (
                   <NotificationButton
                     notifications={notifications}
+                    webhookEnabled={emailsEnabled}
+                    onWebhookToggle={(enabled) => {
+                      setEmailsEnabled(enabled);
+                    }}
+                    webhookUrl="https://script.google.com/macros/s/AKfycbyLjx_xfOs6XNlDmAZHJKobn1MMSgOeRBHJOAS0qNK7HyQEuMm9EdRIxt5f5P6sej-a/exec"
                     onDismiss={(notificationId) => {
                       console.log('Dismissed notification:', notificationId);
                     }}
@@ -1393,7 +1430,7 @@ const TournamentDetail: React.FC = () => {
               </button>
 
               {/* Team-specific tabs - only show if relevant */}
-              {tournament && ['team-swiss', 'team-round-robin'].includes(tournament.format) && (
+              {tournament && (
                 <>
                   <button
                     onClick={() => {
@@ -1412,7 +1449,8 @@ const TournamentDetail: React.FC = () => {
                     </div>
                   </button>
                   
-                  <button
+                  {/* Team Pairings - Hidden */}
+                  {/* <button
                     onClick={() => setActiveTab('team-pairings')}
                     className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
                       activeTab === 'team-pairings'
@@ -1424,7 +1462,7 @@ const TournamentDetail: React.FC = () => {
                       <Trophy className="h-4 w-4" />
                       <span>Team Pairings</span>
                     </div>
-                  </button>
+                  </button> */}
                 </>
               )}
 
@@ -1502,6 +1540,16 @@ const TournamentDetail: React.FC = () => {
                         <Trash2 className="h-4 w-4" />
                         <span>Delete Duplicates</span>
                       </button>
+                      {tournament && tournament.format === 'quad' && (
+                        <button
+                          onClick={generateQuadPairings}
+                          disabled={isLoading}
+                          className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
+                        >
+                          <span>🎯</span>
+                          <span>{isLoading ? 'Generating...' : 'Generate Quads'}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="text-sm text-gray-600 mt-2">
@@ -1948,6 +1996,22 @@ const TournamentDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+
+              {/* Send Pairing Emails Button */}
+              <SendPairingEmailsButton
+                tournamentId={id!}
+                round={currentRound}
+                pairingsCount={state.pairings?.length || 0}
+                webhookUrl="https://script.google.com/macros/s/AKfycbyLjx_xfOs6XNlDmAZHJKobn1MMSgOeRBHJOAS0qNK7HyQEuMm9EdRIxt5f5P6sej-a/exec"
+                isEnabled={emailsEnabled}
+                onSuccess={() => {
+                  alert('Emails sent successfully to all players!');
+                }}
+                onError={(error) => {
+                  alert(`Failed to send emails: ${error}`);
+                }}
+              />
 
               {/* Pairing System */}
               {useAdvancedPairingView ? (

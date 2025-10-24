@@ -46,7 +46,7 @@ const NetworkDebugger: React.FC = () => {
         index === 2 ? { ...test, status: 'pending', message: 'Testing CORS...' } : test
       ));
       
-      const corsResponse = await fetch('http://localhost:5000/api/tournaments', {
+      const corsResponse = await fetch('http://localhost:3000/api/tournaments', {
         method: 'GET',
         headers: {
           'Origin': 'http://localhost:3000',
@@ -184,7 +184,7 @@ const NetworkDebugger: React.FC = () => {
 
       <div className="mt-4 pt-3 border-t border-gray-200">
         <div className="text-xs text-gray-500">
-          <div>API Base URL: {process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}</div>
+          <div>API Base URL: {process.env.REACT_APP_API_URL || 'http://localhost:3000/api'}</div>
           <div>Current URL: {window.location.href}</div>
           <div>Timestamp: {new Date().toLocaleString()}</div>
         </div>

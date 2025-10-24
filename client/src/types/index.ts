@@ -2,7 +2,7 @@ export interface Tournament {
   id: string;
   organization_id?: string;
   name: string;
-  format: 'swiss' | 'round-robin' | 'knockout' | 'team-swiss' | 'team-round-robin' | 'individual-team-swiss' | 'blitz' | 'rapid' | 'simultaneous' | 'multi-day';
+  format: 'swiss' | 'round-robin' | 'knockout' | 'team-swiss' | 'team-round-robin' | 'individual-team-swiss' | 'blitz' | 'rapid' | 'simultaneous' | 'multi-day' | 'quad';
   rounds: number;
   time_control?: string;
   start_date?: string;
@@ -117,6 +117,15 @@ export interface TournamentSettings {
     seeding_method: 'rating' | 'random' | 'manual';
     consolation_bracket: boolean;
     third_place_playoff: boolean;
+  };
+  // Quad tournament settings
+  quad_settings?: {
+    group_size: number; // Always 4 for quad
+    pairing_type: 'round_robin' | 'swiss'; // How to pair within each quad
+    group_assignment: 'rating' | 'random' | 'custom'; // How to assign players to groups
+    min_players_per_group?: number;
+    allow_byes_in_groups?: boolean;
+    cross_group_pairings?: boolean; // Allow pairings across groups in later rounds
   };
   // Export and reporting settings
   export_settings?: {

@@ -20,6 +20,7 @@ interface PublicDisplayData {
   teamStandings?: any[];
   prizes?: any[];
   analytics?: any;
+  activePlayersList?: any[];
 }
 
 interface DisplayOptions {
@@ -34,7 +35,7 @@ const PublicTournamentDisplay: React.FC = () => {
   const [data, setData] = useState<PublicDisplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'pairings' | 'standings' | 'teams' | 'prizes' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'pairings' | 'standings' | 'teams' | 'prizes' | 'analytics' | 'preregistered'>('overview');
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [allRoundsData, setAllRoundsData] = useState<{ [round: number]: any[] }>({});
@@ -873,6 +874,19 @@ const PublicTournamentDisplay: React.FC = () => {
                 </button>
               )}
               
+              {data?.activePlayersList && data.activePlayersList.length > 0 && (
+                <button
+                  onClick={() => setActiveTab('preregistered')}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                    activeTab === 'preregistered'
+                      ? 'bg-gray-100 text-black'
+                      : 'text-gray-600 hover:text-black hover:bg-gray-50'
+                  }`}
+                >
+                  Players ({data.activePlayersList.length})
+                </button>
+              )}
+              
               {data?.analytics && (
                 <button
                   onClick={() => setActiveTab('analytics')}
@@ -1461,6 +1475,104 @@ const PublicTournamentDisplay: React.FC = () => {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'preregistered' && data?.activePlayersList && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-black">Tournament Players</h2>
+                  <div className="text-sm text-gray-500">
+                    {data.activePlayersList.length} players
+                  </div>
+                </div>
+                
+                {data.activePlayersList.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No active players</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {/* Group players by section */}
+                    {(Array.from(
+                      data.activePlayersList.reduce((acc, player) => {
+                        const section = player.section || 'Unassigned';
+                        if (!acc.has(section)) {
+                          acc.set(section, []);
+                        }
+                        acc.get(section)!.push(player);
+                        return acc;
+                      }, new Map<string, any[]>())
+                    ) as [string, any[]][])
+                      .sort(([sectionA], [sectionB]) => sectionA.localeCompare(sectionB))
+                      .map(([section, players]: [string, any[]]) => (
+                        <div key={section} className="border border-gray-200 rounded-lg overflow-hidden">
+                          {/* Section Header */}
+                          <div className="bg-gradient-to-r from-gray-700 to-gray-600 px-6 py-3">
+                            <h3 className="text-lg font-semibold text-white">
+                              {section} ({players.length} players)
+                            </h3>
+                          </div>
+                          
+                          {/* Section Players Table */}
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USCF ID</th>
+                                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {players.map((player) => (
+                                  <tr key={player.id} className="hover:bg-blue-50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                      {player.uscf_id && player.uscf_id !== '0' ? (
+                                        <a
+                                          href={`https://www.uschess.org/msa/MbrDtlMain.php?${player.uscf_id}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                                          title="View USCF Profile"
+                                        >
+                                          {player.name}
+                                        </a>
+                                      ) : (
+                                        <span className="text-gray-900">{player.name}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                      {player.uscf_id && player.uscf_id !== '0' ? (
+                                        <a
+                                          href={`https://www.uschess.org/msa/MbrDtlMain.php?${player.uscf_id}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 hover:text-blue-800 hover:underline font-mono"
+                                        >
+                                          {player.uscf_id}
+                                        </a>
+                                      ) : (
+                                        '-'
+                                      )}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-900 font-medium">
+                                      {player.rating || '-'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                      {new Date(player.created_at).toLocaleDateString()}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 )}
               </div>

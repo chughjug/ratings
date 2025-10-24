@@ -9,12 +9,27 @@ import NotificationButton from '../components/NotificationButton';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // import TestAPI from '../TestAPI'; // Hidden
 
+interface TeamStanding {
+  team_name: string;
+  team_id: string;
+  score: number;
+  rank?: number;
+}
+
+interface TournamentTeamStandings {
+  tournamentId: string;
+  tournamentName: string;
+  standings: TeamStanding[];
+}
+
 const Dashboard: React.FC = () => {
   const { state, dispatch } = useTournament();
   const { user } = useAuth();
   const { state: orgState } = useOrganization();
   const [networkStatus, setNetworkStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [lastError, setLastError] = useState<string | null>(null);
+  const [teamStandingsData, setTeamStandingsData] = useState<TournamentTeamStandings[]>([]);
+  const [loadingTeamStandings, setLoadingTeamStandings] = useState(false);
 
   useEffect(() => {
     const fetchTournaments = async () => {
@@ -46,6 +61,57 @@ const Dashboard: React.FC = () => {
 
     fetchTournaments();
   }, [dispatch]);
+
+  // Fetch team standings for tournaments with team-based formats
+  useEffect(() => {
+    const fetchTeamStandings = async () => {
+      const teamTournaments = state.tournaments.filter(t => 
+        t.format && (t.format.includes('team') || t.format === 'individual-team-swiss')
+      );
+
+      if (teamTournaments.length === 0) {
+        setTeamStandingsData([]);
+        return;
+      }
+
+      setLoadingTeamStandings(true);
+      try {
+        const standings = await Promise.all(
+          teamTournaments.map(async (tournament) => {
+            try {
+              const response = await fetch(
+                `/api/teams/tournament/${tournament.id}/standings?scoring_method=all_players&top_n=4`
+              );
+              
+              if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.standings) {
+                  return {
+                    tournamentId: tournament.id,
+                    tournamentName: tournament.name,
+                    standings: data.standings.slice(0, 3) // Show top 3 teams
+                  };
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching team standings for tournament ${tournament.id}:`, error);
+            }
+            return null;
+          })
+        );
+
+        setTeamStandingsData(standings.filter((s): s is TournamentTeamStandings => s !== null));
+      } catch (error) {
+        console.error('Error fetching team standings:', error);
+      } finally {
+        setLoadingTeamStandings(false);
+      }
+    };
+
+    if (state.tournaments.length > 0) {
+      fetchTeamStandings();
+    }
+  }, [state.tournaments]);
 
   const testNetworkConnection = async () => {
     setNetworkStatus('checking');
@@ -373,6 +439,79 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Team Standings Section */}
+      {teamStandingsData.length > 0 && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <Trophy className="h-6 w-6 text-yellow-500 mr-2" />
+              Team Standings
+            </h2>
+            <Link
+              to="/tournaments"
+              className="text-chess-board hover:text-chess-dark font-medium text-sm"
+            >
+              View all
+            </Link>
+          </div>
+
+          {loadingTeamStandings ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-chess-board mx-auto"></div>
+              <p className="mt-2 text-gray-600">Loading team standings...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {teamStandingsData.map((tourData) => (
+                <div key={tourData.tournamentId} className="border-t pt-6 first:border-t-0 first:pt-0">
+                  <Link
+                    to={`/tournaments/${tourData.tournamentId}`}
+                    className="text-lg font-semibold text-gray-900 hover:text-chess-board transition-colors"
+                  >
+                    {tourData.tournamentName}
+                  </Link>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Rank</th>
+                          <th className="text-left py-2 px-2 font-semibold text-gray-700">Team</th>
+                          <th className="text-right py-2 px-2 font-semibold text-gray-700">Score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tourData.standings.map((team, index) => (
+                          <tr key={team.team_id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-2 px-2">
+                              <div className="flex items-center">
+                                {index === 0 && <Trophy className="h-4 w-4 text-yellow-500 mr-2" />}
+                                {index === 1 && <Trophy className="h-4 w-4 text-gray-400 mr-2" />}
+                                {index === 2 && <Trophy className="h-4 w-4 text-amber-600 mr-2" />}
+                                {index > 2 && <span className="text-gray-500 font-medium mr-2">{index + 1}</span>}
+                              </div>
+                            </td>
+                            <td className="py-2 px-2 font-medium text-gray-900">{team.team_name}</td>
+                            <td className="py-2 px-2 text-right font-semibold text-gray-900">
+                              {typeof team.score === 'number' ? team.score.toFixed(1) : team.score}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Link
+                    to={`/tournaments/${tourData.tournamentId}`}
+                    className="inline-block mt-3 text-chess-board hover:text-chess-dark font-medium text-sm"
+                  >
+                    View full standings →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Recent Tournaments */}
       <div className="bg-white p-6 rounded-lg shadow">

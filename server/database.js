@@ -233,6 +233,14 @@ db.serialize(() => {
     // Ignore error if column already exists
   });
 
+  // Add bye_type column to pairings table if it doesn't exist (for existing databases)
+  // bye_type can be: 'bye' (1/2 point), 'unpaired' (1 full point), or null (normal game)
+  db.run(`
+    ALTER TABLE pairings ADD COLUMN bye_type TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
   // Results table
   db.run(`
     CREATE TABLE IF NOT EXISTS results (

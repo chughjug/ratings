@@ -45,7 +45,7 @@ const CreateTournament: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    format: 'swiss' as 'swiss' | 'round-robin' | 'knockout' | 'team-swiss' | 'team-round-robin' | 'individual-team-swiss' | 'blitz' | 'rapid' | 'simultaneous' | 'multi-day',
+    format: 'swiss' as 'swiss' | 'round-robin' | 'knockout' | 'team-swiss' | 'team-round-robin' | 'individual-team-swiss' | 'blitz' | 'rapid' | 'simultaneous' | 'multi-day' | 'quad',
     rounds: 5,
     time_control: '',
     start_date: '',
@@ -388,6 +388,7 @@ const CreateTournament: React.FC = () => {
                 <option value="team-swiss">Team Swiss</option>
                 <option value="team-round-robin">Team Round Robin</option>
                 <option value="individual-team-swiss">Individual Swiss with Team Scoring</option>
+                <option value="quad">Quad System</option>
               </select>
             </div>
 

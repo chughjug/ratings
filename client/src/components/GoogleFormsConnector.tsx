@@ -49,7 +49,7 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
 }) => {
   const [config, setConfig] = useState<FormsConfig>({
     formId: '',
-    apiBaseUrl: 'http://localhost:5000',
+    apiBaseUrl: 'http://localhost:3000',
     apiKey: 'demo-key-123',
     checkInterval: 5,
     sendConfirmationEmails: true,
@@ -277,7 +277,7 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
                   type="text"
                   value={config.apiBaseUrl}
                   onChange={(e) => setConfig({ ...config, apiBaseUrl: e.target.value })}
-                  placeholder="http://localhost:5000"
+                  placeholder="http://localhost:3000"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

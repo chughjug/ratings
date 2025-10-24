@@ -1,12 +1,13 @@
 import { Tournament, Player } from '../types';
 
 /**
- * Get available sections from tournament data
+ * Get available sections from tournament data and pairings
  * @param tournament - The tournament object
  * @param players - Array of players (required)
+ * @param pairings - Array of pairings (optional, used for quad tournaments)
  * @returns Array of unique section names
  */
-export const getAvailableSections = (tournament: Tournament, players: Player[]): string[] => {
+export const getAvailableSections = (tournament: Tournament, players: Player[], pairings?: any[]): string[] => {
   const sections = new Set<string>();
   
   // Get sections from tournament settings
@@ -25,6 +26,15 @@ export const getAvailableSections = (tournament: Tournament, players: Player[]):
     }
   });
   
+  // Get sections from pairings (needed for quad tournaments)
+  if (pairings && Array.isArray(pairings)) {
+    pairings.forEach((pairing: any) => {
+      if (pairing.section && pairing.section.trim() !== '') {
+        sections.add(pairing.section);
+      }
+    });
+  }
+  
   return Array.from(sections).sort();
 };
 
@@ -33,10 +43,11 @@ export const getAvailableSections = (tournament: Tournament, players: Player[]):
  * @param tournament - The tournament object
  * @param players - Array of players (required)
  * @param includeAll - Whether to include an "All Sections" option (default: false)
+ * @param pairings - Array of pairings (optional, used for quad tournaments)
  * @returns Array of section names for dropdown options
  */
-export const getSectionOptions = (tournament: Tournament, players: Player[], includeAll: boolean = false): string[] => {
-  const sections = getAvailableSections(tournament, players);
+export const getSectionOptions = (tournament: Tournament, players: Player[], includeAll: boolean = false, pairings?: any[]): string[] => {
+  const sections = getAvailableSections(tournament, players, pairings);
   
   if (includeAll) {
     return ['All Sections', ...sections];

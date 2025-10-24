@@ -699,13 +699,29 @@ router.get('/:id/public', async (req, res) => {
     // Get current round number
     const currentRound = pairings.length > 0 ? pairings[0].round : 1;
 
+    // Get active players list
+    const activePlayersList = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT id, name, rating, section, uscf_id, status, created_at
+         FROM players
+         WHERE tournament_id = ? AND status = 'active'
+         ORDER BY section, rating DESC NULLS LAST, name`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
     res.json({
       success: true,
       data: {
         tournament,
         pairings,
         standings: sortedStandings,
-        currentRound
+        currentRound,
+        activePlayersList
       }
     });
 

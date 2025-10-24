@@ -3,6 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../database');
 const { EnhancedPairingSystem } = require('../utils/enhancedPairingSystem');
 const { calculateTournamentTiebreakers, getDefaultTiebreakerOrder } = require('../utils/tiebreakers');
+const QuadPairingSystem = require('../utils/quadPairingSystem');
+const axios = require('axios');
 const router = express.Router();
 
 // ============================================================================
@@ -982,6 +984,100 @@ router.post('/regenerate', async (req, res) => {
 });
 
 /**
+ * Send webhook notification for pairings (internal utility)
+ */
+async function sendPairingNotificationWebhook(tournamentId, round, pairings, tournament) {
+  try {
+    const webhookUrl = process.env.PAIRING_NOTIFICATION_WEBHOOK;
+    
+    if (!webhookUrl) {
+      console.warn('No PAIRING_NOTIFICATION_WEBHOOK configured');
+      return;
+    }
+
+    // Get player emails from database
+    const pairingsWithEmails = await Promise.all(pairings.map(async (p) => {
+      let whiteEmail = null;
+      let blackEmail = null;
+
+      // Get white player email
+      if (p.white_player_id) {
+        whiteEmail = await new Promise((resolve) => {
+          db.get('SELECT email FROM players WHERE id = ?', [p.white_player_id], (err, row) => {
+            resolve(row?.email || null);
+          });
+        });
+      }
+
+      // Get black player email
+      if (p.black_player_id) {
+        blackEmail = await new Promise((resolve) => {
+          db.get('SELECT email FROM players WHERE id = ?', [p.black_player_id], (err, row) => {
+            resolve(row?.email || null);
+          });
+        });
+      }
+
+      return {
+        board: p.board,
+        white: {
+          id: p.white_player_id,
+          name: p.white_name || 'TBD',
+          rating: p.white_rating || 0,
+          email: whiteEmail
+        },
+        black: {
+          id: p.black_player_id,
+          name: p.black_name || 'TBD',
+          rating: p.black_rating || 0,
+          email: blackEmail
+        },
+        section: p.section || 'Open'
+      };
+    }));
+
+    const payload = {
+      event: 'pairings_generated',
+      tournament: {
+        id: tournamentId,
+        name: tournament?.name || 'Unknown Tournament',
+        format: tournament?.format || 'swiss',
+        rounds: tournament?.rounds || 1
+      },
+      round: round,
+      pairingsCount: pairingsWithEmails?.length || 0,
+      timestamp: new Date().toISOString(),
+      pairings: pairingsWithEmails || []
+    };
+
+    const response = await axios.post(webhookUrl, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000
+    });
+
+    if (response.status >= 200 && response.status < 300) {
+      console.log('Pairing notification webhook sent successfully');
+    } else {
+      console.error(`Webhook notification failed with status ${response.status}`);
+    }
+  } catch (error) {
+    // Log specific network error types for debugging
+    if (error.code === 'ECONNREFUSED') {
+      console.error('Webhook notification failed: Connection refused. Make sure the webhook URL is correct and the service is running.');
+    } else if (error.code === 'ENOTFOUND') {
+      console.error('Webhook notification failed: Could not resolve webhook URL hostname.');
+    } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+      console.error('Webhook notification failed: Request timeout.');
+    } else {
+      console.error('Error sending pairing notification webhook:', error.message);
+    }
+    // Don't throw - webhook failure shouldn't block pairing generation
+  }
+}
+
+/**
  * Generate pairings for a specific section
  */
 router.post('/generate/section', async (req, res) => {
@@ -1098,6 +1194,9 @@ router.post('/generate/section', async (req, res) => {
       validateRoundSeparation: false, // Allow section independence
       section: sectionName
     });
+
+    // Send webhook notification for pairings generated
+    await sendPairingNotificationWebhook(tournamentId, currentRound, generatedPairings, tournament);
 
     res.json({ 
       success: true,
@@ -2042,41 +2141,150 @@ router.put('/:id/result', async (req, res) => {
     });
 
     // Save results to results table for both players (only if they exist)
-    if (pairing.white_player_id) {
-      await new Promise((resolve, reject) => {
-        const resultId = uuidv4();
-        db.run(
-          `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [resultId, pairing.tournament_id, pairing.white_player_id, pairing.round, 
-           pairing.black_player_id, 'white', result, whitePoints, id],
-          function(err) {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
-    }
+    // Handle bye and unpaired differently from normal games
+    if (pairing.black_player_id === null) {
+      // This is a bye or unpaired pairing
+      const byePoints = calculateByePoints(pairing.bye_type);
+      
+      // Only the white player gets points for a bye
+      if (pairing.white_player_id) {
+        await new Promise((resolve, reject) => {
+          const resultId = uuidv4();
+          db.run(
+            `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [resultId, pairing.tournament_id, pairing.white_player_id, pairing.round, 
+             null, 'white', `bye_${pairing.bye_type || 'bye'}`, byePoints, id],
+            function(err) {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+      }
+    } else {
+      // Normal game between two players
+      if (pairing.white_player_id) {
+        await new Promise((resolve, reject) => {
+          const resultId = uuidv4();
+          db.run(
+            `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [resultId, pairing.tournament_id, pairing.white_player_id, pairing.round, 
+             pairing.black_player_id, 'white', result, whitePoints, id],
+            function(err) {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+      }
 
-    if (pairing.black_player_id) {
-      await new Promise((resolve, reject) => {
-        const resultId = uuidv4();
-        db.run(
-          `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [resultId, pairing.tournament_id, pairing.black_player_id, pairing.round, 
-           pairing.white_player_id, 'black', result, blackPoints, id],
-          function(err) {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
-      });
+      if (pairing.black_player_id) {
+        await new Promise((resolve, reject) => {
+          const resultId = uuidv4();
+          db.run(
+            `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [resultId, pairing.tournament_id, pairing.black_player_id, pairing.round, 
+             pairing.white_player_id, 'black', result, blackPoints, id],
+            function(err) {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+      }
     }
 
     res.json({ message: 'Result updated successfully' });
   } catch (error) {
     console.error('Error updating result:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Record bye result for a pairing (1/2 point bye or full point unpaired)
+ */
+router.post('/:id/bye-result', async (req, res) => {
+  const { id } = req.params;
+  const { byeType } = req.body; // 'bye' for 1/2 pt, 'unpaired' for 1 pt
+
+  const validByeTypes = ['bye', 'unpaired'];
+  if (!validByeTypes.includes(byeType)) {
+    res.status(400).json({ error: 'Invalid bye type. Must be "bye" (1/2 pt) or "unpaired" (1 pt)' });
+    return;
+  }
+
+  try {
+    // Get pairing details
+    const pairing = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM pairings WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!pairing) {
+      res.status(404).json({ error: 'Pairing not found' });
+      return;
+    }
+
+    if (pairing.black_player_id !== null) {
+      res.status(400).json({ error: 'This pairing is not a bye (both players are assigned)' });
+      return;
+    }
+
+    // Update pairing with bye_type
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE pairings SET bye_type = ?, result = ? WHERE id = ?',
+        [byeType, `bye_${byeType}`, id],
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Calculate bye points
+    const byePoints = calculateByePoints(byeType);
+
+    // Delete any existing results for this pairing
+    await new Promise((resolve, reject) => {
+      db.run(
+        `DELETE FROM results WHERE tournament_id = ? AND round = ? AND player_id = ?`,
+        [pairing.tournament_id, pairing.round, pairing.white_player_id],
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Record bye result for the white player
+    await new Promise((resolve, reject) => {
+      const resultId = uuidv4();
+      db.run(
+        `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [resultId, pairing.tournament_id, pairing.white_player_id, pairing.round, 
+         null, 'white', `bye_${byeType}`, byePoints, id],
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({ 
+      message: `Bye result recorded successfully (${byeType}: ${byePoints} point${byePoints !== 1 ? 's' : ''})`,
+      byeType: byeType,
+      points: byePoints
+    });
+  } catch (error) {
+    console.error('Error recording bye result:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -2158,6 +2366,207 @@ router.post('/tournament/:tournamentId/round/:round/complete', async (req, res) 
   } catch (error) {
     console.error('Error completing round:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Generate quad tournament pairings
+ * Divides players into groups of 4 by rating and generates round-robin pairings
+ */
+router.post('/generate/quad', async (req, res) => {
+  const { tournamentId } = req.body;
+
+  try {
+    if (!tournamentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'tournamentId is required'
+      });
+    }
+
+    // Get tournament info
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    // Clear ALL existing pairings for this tournament
+    await new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM pairings WHERE tournament_id = ?',
+        [tournamentId],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Generate pairings for ALL rounds
+    const allResults = [];
+    let totalGamesAllRounds = 0;
+    let totalByesAllRounds = 0;
+
+    console.log(`🎯 Starting quad generation for tournament ${tournamentId} with ${tournament.rounds} rounds`);
+
+    for (let round = 1; round <= tournament.rounds; round++) {
+      // Generate quad pairings for this round
+      let result;
+      try {
+        result = await QuadPairingSystem.generateTournamentQuadPairings(
+          tournamentId,
+          round,
+          db,
+          {
+            groupSize: 4,
+            pairingType: 'round_robin'
+          }
+        );
+      } catch (quadError) {
+        console.error(`Error in QuadPairingSystem for round ${round}:`, quadError);
+        throw new Error(`Failed to generate quads for round ${round}: ${quadError.message}`);
+      }
+
+      if (!result || !result.pairings || result.pairings.length === 0) {
+        throw new Error(`No pairings generated for round ${round}`);
+      }
+
+      console.log(`✅ Round ${round}: Generated ${result.pairings.length} pairings, ${result.quadCount} quads`);
+
+      // Store pairings for this round
+      let storedCount = 0;
+      
+      for (const pairing of result.pairings) {
+        try {
+          await new Promise((resolve, reject) => {
+            db.run(
+              `INSERT INTO pairings 
+               (id, tournament_id, round, board, white_player_id, black_player_id, result, section, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+              [
+                uuidv4(),
+                tournamentId,
+                round,
+                storedCount + 1,
+                pairing.white_player_id,
+                pairing.black_player_id || null,
+                null,
+                pairing.quadId,  // Store quad ID as section for proper grouping
+              ],
+              (err) => {
+                if (err) {
+                  console.error('Error inserting pairing:', err);
+                  reject(err);
+                } else {
+                  storedCount++;
+                  resolve();
+                }
+              }
+            );
+          });
+        } catch (pairingError) {
+          console.error(`Error storing pairing for round ${round}:`, pairingError);
+        }
+      }
+
+      if (storedCount === 0) {
+        throw new Error(`Failed to store pairings for round ${round}`);
+      }
+
+      console.log(`✅ Round ${round}: Stored ${storedCount} pairings`);
+
+      totalGamesAllRounds += result.totalGames;
+      totalByesAllRounds += result.totalByes;
+      allResults.push({
+        round,
+        quadCount: result.quadCount,
+        totalGames: result.totalGames,
+        totalByes: result.totalByes,
+        pairingsCount: storedCount
+      });
+    }
+
+    console.log(`✅ All rounds complete. Total games: ${totalGamesAllRounds}, Total byes: ${totalByesAllRounds}`);
+
+    res.json({
+      success: true,
+      message: `Quad pairings generated for all ${tournament.rounds} rounds`,
+      data: {
+        tournamentId,
+        totalRounds: tournament.rounds,
+        roundsData: allResults,
+        totalGamesAllRounds,
+        totalByesAllRounds,
+        message: `Successfully created ${allResults.length} rounds with sections reassigned`
+      }
+    });
+
+  } catch (error) {
+    console.error('Error generating quad pairings:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Unknown error generating quad pairings'
+    });
+  }
+});
+
+/**
+ * Get quad assignments for a tournament
+ */
+router.get('/quad/:tournamentId/assignments', async (req, res) => {
+  const { tournamentId } = req.params;
+
+  try {
+    // Get all active players
+    const players = await new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM players WHERE tournament_id = ? AND status = "active" ORDER BY rating DESC',
+        [tournamentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    if (players.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No active players found'
+      });
+    }
+
+    // Generate quad assignments
+    const system = new QuadPairingSystem(players, { groupSize: 4 });
+    const quads = system.getQuadAssignments();
+
+    res.json({
+      success: true,
+      data: {
+        tournamentId,
+        quads,
+        quadCount: quads.length,
+        totalPlayers: players.length,
+        avgPlayersPerQuad: Math.round(players.length / quads.length * 100) / 100
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting quad assignments:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
