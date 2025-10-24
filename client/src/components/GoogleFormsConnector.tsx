@@ -69,11 +69,17 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
   const [copied, setCopied] = useState(false);
   const [setupStep, setSetupStep] = useState<'intro' | 'configure' | 'test' | 'complete'>('intro');
   const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [fullScriptCode, setFullScriptCode] = useState<string>('');
 
   // Load saved configuration
   useEffect(() => {
+    const loadFullScript = async () => {
+      const code = await getAppsScriptCode();
+      setFullScriptCode(code);
+    };
     if (isOpen) {
       loadConfiguration();
+      loadFullScript();
     }
   }, [isOpen]);
 
@@ -153,8 +159,30 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
     }
   };
 
-  const getAppsScriptCode = () => {
-    return `const FORMS_CONFIG = {
+  const getAppsScriptCode = async () => {
+    try {
+      // Try to fetch the complete google-apps-script.js file from the server
+      const response = await fetch('/google-apps-script.js');
+      if (response.ok) {
+        const scriptContent = await response.text();
+        return scriptContent;
+      }
+    } catch (err) {
+      console.warn('Could not fetch complete script file, returning configuration template:', err);
+    }
+    
+    // Fallback: return configuration template
+    return `// ============================================================================
+// GOOGLE APPS SCRIPT - COMPLETE CONFIGURATION TEMPLATE
+// ============================================================================
+// 
+// This is a template. For the COMPLETE 1200+ line script, please:
+// 1. Use the "Copy Complete Script" button below to get the full version
+// 2. Or visit: https://github.com/your-repo/google-apps-script.js
+//
+// ============================================================================
+
+const FORMS_CONFIG = {
   ENABLE_FORM_IMPORT: true,
   FORM_ID: '${config.formId}',
   API_BASE_URL: '${config.apiBaseUrl}',
@@ -164,158 +192,7 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
   SEND_CONFIRMATION_EMAILS: ${config.sendConfirmationEmails},
   AUTO_ASSIGN_SECTIONS: ${config.autoAssignSections},
   LOOKUP_RATINGS: ${config.lookupRatings}
-};
-
-const FIELD_MAPPING = {
-  name: { keywords: ['name', 'player', 'full name'], excludeKeywords: ['parent', 'guardian', 'emergency'], required: true },
-  uscf_id: { keywords: ['uscf', 'uscf id', 'member id'], excludeKeywords: [] },
-  fide_id: { keywords: ['fide', 'fide id'], excludeKeywords: [] },
-  rating: { keywords: ['rating', 'elo', 'chess rating'], excludeKeywords: [] },
-  section: { keywords: ['section', 'division', 'category'], excludeKeywords: [] },
-  email: { keywords: ['email'], excludeKeywords: ['parent', 'guardian'] },
-  phone: { keywords: ['phone', 'telephone'], excludeKeywords: ['parent', 'guardian', 'emergency'] },
-  school: { keywords: ['school', 'institution'], excludeKeywords: ['parent'] },
-  grade: { keywords: ['grade', 'year', 'level'], excludeKeywords: ['parent'] },
-  city: { keywords: ['city', 'town'], excludeKeywords: [] },
-  state: { keywords: ['state', 'province'], excludeKeywords: [] },
-  team_name: { keywords: ['team', 'club'], excludeKeywords: [] },
-  parent_name: { keywords: ['parent name', 'parent', 'guardian'], excludeKeywords: ['email', 'phone'] },
-  parent_email: { keywords: ['parent email', 'guardian email'], excludeKeywords: [] },
-  parent_phone: { keywords: ['parent phone', 'guardian phone'], excludeKeywords: [] },
-  emergency_contact: { keywords: ['emergency', 'emergency contact'], excludeKeywords: ['phone', 'number'] },
-  emergency_phone: { keywords: ['emergency phone', 'emergency number'], excludeKeywords: [] },
-  notes: { keywords: ['notes', 'comments', 'additional'], excludeKeywords: [] }
-};
-
-function safeAlert(msg) { try { SpreadsheetApp.getUi().alert(msg); } catch (e) { console.log('Alert: ' + msg); } }
-function calculateFieldScore(q, f) {
-  const c = FIELD_MAPPING[f]; if (!c) return 0;
-  const ql = q.toLowerCase().trim(); let s = 0;
-  for (const e of c.excludeKeywords) if (ql.includes(e.toLowerCase())) return 0;
-  for (const k of c.keywords) {
-    const kl = k.toLowerCase();
-    if (ql === kl) s += 100; else if (ql.startsWith(kl)) s += 50; else if (ql.endsWith(kl)) s += 50; else if (ql.includes(kl)) s += 30;
-  }
-  return s;
-}
-function findBestFieldMatch(q) {
-  let bf = null, bs = 0;
-  for (const f in FIELD_MAPPING) { const s = calculateFieldScore(q, f); if (s > bs) { bs = s; bf = f; } }
-  return bs >= 20 ? { field: bf, score: bs } : null;
-}
-function convertFormResponseToPlayer(ir) {
-  const p = {};
-  ir.forEach((itemResponse) => {
-    const q = itemResponse.getItem().getTitle();
-    const a = itemResponse.getResponse();
-    if (!a || !a.trim()) return;
-    const m = findBestFieldMatch(q);
-    if (m) {
-      const f = m.field;
-      const av = a.toString().trim();
-      switch (f) {
-        case 'rating':
-          const r = parseFloat(av);
-          if (!isNaN(r) && r > 0) p.rating = r;
-          break;
-        case 'name':
-        case 'parent_name':
-        case 'emergency_contact':
-          p[f] = av.toLowerCase().replace(/\\b\\w/g, l => l.toUpperCase()).trim();
-          break;
-        case 'email':
-        case 'parent_email':
-          if (av.includes('@')) p[f] = av.toLowerCase().trim();
-          break;
-        case 'phone':
-        case 'parent_phone':
-        case 'emergency_phone':
-          p[f] = av.replace(/\\D/g, '');
-          break;
-        default:
-          p[f] = av;
-      }
-    }
-  });
-  return p;
-}
-function syncPlayersToAPI(players) {
-  const payload = {
-    api_key: FORMS_CONFIG.API_KEY,
-    players: players,
-    lookup_ratings: FORMS_CONFIG.LOOKUP_RATINGS,
-    auto_assign_sections: FORMS_CONFIG.AUTO_ASSIGN_SECTIONS,
-    source: 'google_sheets'
-  };
-  const baseURL = FORMS_CONFIG.API_BASE_URL.replace(/\\/$/, '');
-  const endpoint = \`\${baseURL}/api/players/api-import/\${FORMS_CONFIG.TOURNAMENT_ID}\`;
-  try {
-    const response = UrlFetchApp.fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true,
-      timeout: 30000
-    });
-    const status = response.getResponseCode();
-    const content = response.getContentText();
-    if (content.trim().startsWith('<')) throw new Error('API error');
-    if (status !== 200 && status !== 201) throw new Error(\`API status \${status}\`);
-    let result;
-    try { result = JSON.parse(content); } catch (e) { throw new Error('Parse error'); }
-    if (!result.success) throw new Error(result.error || 'API failed');
-    return result.data;
-  } catch (error) {
-    console.error(\`API error: \${error}\`);
-    throw error;
-  }
-}
-function checkFormResponses() {
-  if (!FORMS_CONFIG.ENABLE_FORM_IMPORT) return;
-  try {
-    const form = FormApp.openById(FORMS_CONFIG.FORM_ID);
-    const responses = form.getResponses();
-    if (responses.length === 0) return;
-    const lastImportTime = getLastFormImportTime();
-    const newResponses = responses.filter(r => !lastImportTime || r.getTimestamp() > lastImportTime);
-    if (newResponses.length === 0) return;
-    const players = newResponses.map(r => convertFormResponseToPlayer(r.getItemResponses())).filter(p => p && p.name);
-    if (players.length === 0) return;
-    syncPlayersToAPI(players);
-    setLastFormImportTime(new Date());
-    players.forEach(player => { if (player.email && FORMS_CONFIG.SEND_CONFIRMATION_EMAILS) sendConfirmationEmail(player.email, player.name); });
-  } catch (error) { console.error(\`Error: \${error}\`); }
-}
-function getLastFormImportTime() {
-  const props = PropertiesService.getScriptProperties();
-  const time = props.getProperty('lastFormImportTime');
-  return time ? new Date(time) : null;
-}
-function setLastFormImportTime(time) {
-  PropertiesService.getScriptProperties().setProperty('lastFormImportTime', time.toISOString());
-}
-function sendConfirmationEmail(email, name) {
-  try {
-    GmailApp.sendEmail(email, \`Registration: \${FORMS_CONFIG.TOURNAMENT_ID}\`, \`Dear \${name}, your registration received. Thank you!\`);
-  } catch (e) {}
-}
-function setupFormImport() {
-  if (!FORMS_CONFIG.ENABLE_FORM_IMPORT) return;
-  const triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(t => { if (['checkFormResponses', 'onFormSubmit'].includes(t.getHandlerFunction())) ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('checkFormResponses').timeBased().everyMinutes(FORMS_CONFIG.CHECK_INTERVAL).create();
-}
-function onOpen(e) {
-  try {
-    if (FORMS_CONFIG.ENABLE_FORM_IMPORT) {
-      SpreadsheetApp.getUi().createMenu('Google Forms Import')
-        .addItem('Setup Form Import', 'setupFormImport')
-        .addItem('Check Responses Now', 'checkFormResponses')
-        .addToUi();
-    }
-  } catch (e) {}
-}
-function setup() { setupFormImport(); }`;
+};`;
   };
 
   const copyToClipboard = (text: string) => {
@@ -324,11 +201,28 @@ function setup() { setupFormImport(); }`;
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Build the complete code to copy (FORMS_CONFIG + full script)
+  const getCompleteCopyCode = () => {
+    const formsConfig = `const FORMS_CONFIG = {
+  ENABLE_FORM_IMPORT: true,
+  FORM_ID: '${config.formId}',
+  API_BASE_URL: '${config.apiBaseUrl}',
+  API_KEY: '${config.apiKey}',
+  TOURNAMENT_ID: '${tournamentId}',
+  CHECK_INTERVAL: ${config.checkInterval},
+  SEND_CONFIRMATION_EMAILS: ${config.sendConfirmationEmails},
+  AUTO_ASSIGN_SECTIONS: ${config.autoAssignSections},
+  LOOKUP_RATINGS: ${config.lookupRatings}
+};\n\n`;
+    
+    return formsConfig + fullScriptCode;
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -347,35 +241,53 @@ function setup() { setupFormImport(); }`;
         </div>
 
         <div className="p-6">
-          {/* Simple Intro */}
+          {/* Info Section */}
           <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-blue-900 font-semibold mb-2">Google Apps Script Configuration</p>
+            <p className="text-blue-900 font-semibold mb-2">Google Apps Script Setup</p>
             <p className="text-sm text-blue-800">
-              Copy the configuration code below and paste it into your Google Apps Script to set up automatic form imports.
+              Copy the complete code below (including your tournament-specific configuration) and paste it into your Google Apps Script editor.
             </p>
           </div>
 
-          {/* Apps Script Code - Main Feature */}
-          <div className="border-2 border-blue-600 rounded-lg p-6 bg-gradient-to-br from-gray-50 to-gray-100">
+          {/* Tournament-Specific Configuration Preview */}
+          <div className="border-2 border-amber-500 rounded-lg p-4 bg-amber-50 mb-6">
+            <p className="font-semibold text-amber-900 mb-3">⚙️ Your Tournament Configuration:</p>
+            <div className="bg-gray-900 text-amber-400 p-4 rounded-lg font-mono text-sm overflow-x-auto border border-gray-700">
+              <pre>{`const FORMS_CONFIG = {
+  ENABLE_FORM_IMPORT: true,
+  FORM_ID: '${config.formId}',
+  API_BASE_URL: '${config.apiBaseUrl}',
+  API_KEY: '${config.apiKey}',
+  TOURNAMENT_ID: '${tournamentId}',
+  CHECK_INTERVAL: ${config.checkInterval},
+  SEND_CONFIRMATION_EMAILS: ${config.sendConfirmationEmails},
+  AUTO_ASSIGN_SECTIONS: ${config.autoAssignSections},
+  LOOKUP_RATINGS: ${config.lookupRatings}
+};`}</pre>
+            </div>
+          </div>
+
+          {/* Complete Script Code */}
+          <div className="border-2 border-blue-600 rounded-lg p-6 bg-gradient-to-br from-gray-50 to-gray-100 mb-6">
             <div className="mb-4">
               <p className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                <Code size={20} /> Configuration Code
+                <Code size={20} /> Complete Google Apps Script ({fullScriptCode.split('\n').length} lines)
               </p>
               <p className="text-sm text-gray-600">
-                Copy and paste into your Google Apps Script:
+                The full 1200+ line script with all functions:
               </p>
             </div>
 
-            <div className="bg-gray-900 text-green-400 p-6 rounded-lg font-mono text-sm overflow-x-auto mb-6 border border-gray-700">
-              <pre className="whitespace-pre-wrap break-words">{getAppsScriptCode()}</pre>
+            <div className="bg-gray-900 text-green-400 p-6 rounded-lg font-mono text-sm overflow-x-auto mb-6 border border-gray-700 max-h-96 overflow-y-auto">
+              <pre className="whitespace-pre-wrap break-words">{fullScriptCode}</pre>
             </div>
 
             <button
-              onClick={() => copyToClipboard(getAppsScriptCode())}
+              onClick={() => copyToClipboard(getCompleteCopyCode())}
               className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition transform hover:scale-105 active:scale-95"
             >
               <Copy size={20} />
-              <span className="text-lg">{copied ? '✓ Copied to Clipboard!' : 'Copy Code'}</span>
+              <span className="text-lg">{copied ? '✓ Copied Complete Code!' : 'Copy Complete Code (1200+ lines)'}</span>
             </button>
           </div>
 
@@ -386,10 +298,10 @@ function setup() { setupFormImport(); }`;
               <li>Open your Google Sheet</li>
               <li>Click <code className="bg-amber-100 px-1 rounded">Extensions → Apps Script</code></li>
               <li>Delete all existing code</li>
-              <li>Paste the code above</li>
+              <li>Paste the COMPLETE code you just copied (includes your tournament config)</li>
               <li>Save <code className="bg-amber-100 px-1 rounded">Ctrl+S</code> or <code className="bg-amber-100 px-1 rounded">Cmd+S</code></li>
-              <li>Run: <code className="bg-amber-100 px-1 rounded">setup()</code> function</li>
-              <li>Done! Forms will auto-import</li>
+              <li>Run the <code className="bg-amber-100 px-1 rounded">setup()</code> function in the console</li>
+              <li>Done! Forms will auto-import every 5 minutes</li>
             </ol>
           </div>
 
@@ -398,7 +310,7 @@ function setup() { setupFormImport(); }`;
             <p className="font-semibold text-blue-900 mb-3">📚 Documentation & Help</p>
             <div className="space-y-2">
               <a
-                href="/docs/GOOGLE_FORMS_QUICK_START.md"
+                href="/docs/GOOGLE_FORMS_SETUP_QUICK_START.md"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
@@ -406,20 +318,20 @@ function setup() { setupFormImport(); }`;
                 <ExternalLink size={16} /> Quick Start Guide (5 minutes)
               </a>
               <a
-                href="/docs/GOOGLE_FORMS_EXTENSION_SETUP.md"
+                href="/docs/GOOGLE_FORMS_DYNAMIC_CONFIG.md"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
               >
-                <ExternalLink size={16} /> Detailed Setup Guide
+                <ExternalLink size={16} /> Complete Configuration Guide
               </a>
               <a
-                href="/docs/GOOGLE_FORMS_TROUBLESHOOTING.md"
+                href="/docs/DEPLOYMENT_GUIDE.md"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
               >
-                <ExternalLink size={16} /> Troubleshooting Guide
+                <ExternalLink size={16} /> Deployment Instructions
               </a>
             </div>
           </div>

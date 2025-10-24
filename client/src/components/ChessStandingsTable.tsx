@@ -56,6 +56,10 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   tournamentId
 }) => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  
+  // Use tournamentId from props, fallback to URL params
+  const actualTournamentId = tournamentId || id;
   // Format round result for display
   const formatRoundResult = (roundResult: RoundResult | undefined, round: number) => {
     if (!roundResult) {
@@ -215,7 +219,7 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
                       <button
-                        onClick={() => navigate(`/tournaments/${tournamentId}/player/${player.id}`)}
+                        onClick={() => navigate(`/tournaments/${actualTournamentId}/player/${player.id}`)}
                         className="underline hover:text-blue-600"
                       >
                         {formatPlayerName(player)}

@@ -32,6 +32,7 @@ function App() {
                 <Route path="/public/tournaments" element={<PublicTournamentList />} />
                 <Route path="/public/tournaments/:id" element={<PublicTournamentDisplay />} />
                 <Route path="/public/tournaments/:tournamentId/player/:playerId" element={<PlayerPerformance />} />
+                <Route path="/tournaments/:tournamentId/player/:playerId" element={<PlayerPerformance />} />
                 <Route path="/public/organizations" element={<OrganizationSearch />} />
                 <Route path="/public/organizations/:slug" element={<PublicOrganizationPage />} />
                 <Route path="/public/organizations/:slug/tournaments/:tournamentId" element={<PublicOrganizationTournament />} />
@@ -90,19 +91,6 @@ function App() {
                         } 
                       />
                       <Route 
-                        path="/tournaments/:id" 
-                        element={
-                          <ProtectedRoute>
-                            <>
-                              <Navbar />
-                              <main className="container mx-auto px-4 py-8">
-                                <TournamentDetail />
-                              </main>
-                            </>
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route 
                         path="/tournaments/:tournamentId/pairings/:sectionName" 
                         element={
                           <ProtectedRoute>
@@ -116,13 +104,13 @@ function App() {
                         } 
                       />
                       <Route 
-                        path="/tournaments/:tournamentId/player/:playerId" 
+                        path="/tournaments/:id" 
                         element={
                           <ProtectedRoute>
                             <>
                               <Navbar />
                               <main className="container mx-auto px-4 py-8">
-                                <PlayerPerformance />
+                                <TournamentDetail />
                               </main>
                             </>
                           </ProtectedRoute>
