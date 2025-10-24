@@ -194,7 +194,9 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
         '--disable-web-resources',
         '--window-size=1920,1080',
         '--single-process', // Important for Heroku
-        '--no-zygote' // Important for Heroku
+        '--no-zygote', // Important for Heroku
+        '--memory-pressure-off',
+        '--max_old_space_size=4096'
       ]
     });
     

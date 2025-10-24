@@ -275,31 +275,15 @@ const TournamentDetail: React.FC = () => {
       isGeneratingRef.current = true;
       setIsLoading(true);
       
-      // Use enhanced pairing system with FIDE Dutch as default
-      const response = await fetch('/api/enhanced/pairings/generate', {
+      // Use the main pairing system which handles all sections properly
+      const response = await fetch('/api/pairings/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           tournamentId: id,
-          round: currentRound,
-          options: {
-            pairingSystem: 'fide_dutch',
-            tiebreakerOrder: ['buchholz', 'sonneborn_berger', 'direct_encounter'],
-            accelerationSettings: {
-              enabled: false,
-              type: 'standard',
-              rounds: 2,
-              threshold: null
-            },
-            colorBalanceRules: 'fide',
-            byeSettings: {
-              fullPointBye: true,
-              avoidUnratedDropping: true
-            },
-            section: sectionName
-          }
+          round: currentRound
         }),
       });
 
