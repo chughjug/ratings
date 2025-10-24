@@ -1367,13 +1367,19 @@ async function getPlayerDetails(uscfId) {
 // Initialize preloading on module load - DISABLED to prevent network overload
 // preloadCommonSearches().catch(console.error);
 
+// Import the Puppeteer-based version as the main search method
+const { searchUSChessPlayers: searchUSChessPlayersPuppeteer, getPlayerDetails: getPlayerDetailsPuppeteer } = require('./playerSearchNoSelenium');
+
 module.exports = {
-  searchUSChessPlayers: searchUSChessPlayersSubSecond, // Use sub-second search by default
-  searchUSChessPlayersSubSecond: searchUSChessPlayersSubSecond, // Sub-second version
-  searchUSChessPlayersUltraFast: searchUSChessPlayersUltraFast, // Ultra-fast version
-  searchUSChessPlayersFast: searchUSChessPlayersFast, // Fast version
+  searchUSChessPlayers: searchUSChessPlayersPuppeteer, // Use Puppeteer search by default (real data)
+  searchUSChessPlayersPuppeteer: searchUSChessPlayersPuppeteer, // Puppeteer version (primary)
+  searchUSChessPlayersNoSelenium: searchUSChessPlayersPuppeteer, // Alias for Puppeteer version
+  searchUSChessPlayersSubSecond: searchUSChessPlayersSubSecond, // Sub-second version with Selenium
+  searchUSChessPlayersUltraFast: searchUSChessPlayersUltraFast, // Ultra-fast version with Selenium
+  searchUSChessPlayersFast: searchUSChessPlayersFast, // Fast version with Selenium
   searchUSChessPlayersOriginal: searchUSChessPlayers, // Original version as backup
-  getPlayerDetails,
+  getPlayerDetails: getPlayerDetailsPuppeteer, // Use Puppeteer version by default
+  getPlayerDetailsSelenium: getPlayerDetails, // Selenium version as backup
   preloadCommonSearches // Export for manual preloading
 };
 

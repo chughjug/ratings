@@ -1,0 +1,37 @@
+{
+  "name": "Chess Tournament Director",
+  "description": "A comprehensive chess tournament director pairing system with real US Chess player search",
+  "repository": "https://github.com/your-username/chess-tournament-director",
+  "logo": "https://raw.githubusercontent.com/your-username/chess-tournament-director/main/client/public/paircraft-logo.png",
+  "keywords": ["chess", "tournament", "pairing", "swiss-system", "uscf"],
+  "stack": "heroku-22",
+  "buildpacks": [
+    {
+      "url": "https://github.com/jontewks/puppeteer-heroku-buildpack"
+    },
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-nodejs"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Node.js environment",
+      "value": "production"
+    },
+    "NPM_CONFIG_PRODUCTION": {
+      "description": "NPM production flag",
+      "value": "false"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini"
+    }
+  ]
+}
