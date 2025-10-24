@@ -312,41 +312,57 @@ class EnhancedPairingSystem {
    */
   static async storePairings(tournamentId, round, pairings, db) {
     return new Promise((resolve, reject) => {
-      const stmt = db.prepare(`
-        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
+      // Use transaction to ensure data integrity
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
 
-      let completed = 0;
-      let errorOccurred = false;
+        const stmt = db.prepare(`
+          INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
 
-      pairings.forEach((pairing, index) => {
-        if (errorOccurred) return;
+        let completed = 0;
+        let errorOccurred = false;
 
-        const pairingData = [
-          pairing.id || require('uuid').v4(),
-          tournamentId,
-          round,
-          pairing.board,
-          pairing.white_player_id,
-          pairing.black_player_id,
-          pairing.section
-        ];
+        pairings.forEach((pairing, index) => {
+          if (errorOccurred) return;
 
-        stmt.run(pairingData, function(err) {
-          if (err && !errorOccurred) {
-            errorOccurred = true;
-            reject(err);
-            return;
-          }
+          const pairingData = [
+            pairing.id || require('uuid').v4(),
+            tournamentId,
+            round,
+            pairing.board,
+            pairing.white_player_id,
+            pairing.black_player_id,
+            pairing.section
+          ];
 
-          completed++;
-          if (completed === pairings.length) {
-            stmt.finalize((err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          }
+          stmt.run(pairingData, function(err) {
+            if (err && !errorOccurred) {
+              errorOccurred = true;
+              db.run('ROLLBACK');
+              reject(err);
+              return;
+            }
+
+            completed++;
+            if (completed === pairings.length) {
+              stmt.finalize((err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  reject(err);
+                } else {
+                  db.run('COMMIT', (commitErr) => {
+                    if (commitErr) {
+                      reject(commitErr);
+                    } else {
+                      resolve();
+                    }
+                  });
+                }
+              });
+            }
+          });
         });
       });
     });

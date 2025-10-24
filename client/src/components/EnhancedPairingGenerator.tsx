@@ -61,20 +61,14 @@ const EnhancedPairingGenerator: React.FC<EnhancedPairingGeneratorProps> = ({
     setGenerating(true);
     
     try {
-      const response = await fetch('/api/enhanced/pairings/generate', {
+      const response = await fetch('/api/pairings/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           tournamentId,
-          round: roundNumber,
-          pairingSystem,
-          tiebreakerOrder,
-          accelerationSettings,
-          colorBalanceRules,
-          byeSettings,
-          section
+          round: roundNumber
         }),
       });
 

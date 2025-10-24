@@ -19,8 +19,6 @@ tests/
 *.test.js
 *.spec.js
 client/node_modules
-client/build/static/media
-client/public
 server/backups
 server/exports
 uploads
