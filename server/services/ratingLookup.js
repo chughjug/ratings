@@ -31,19 +31,23 @@ async function getUSCFInfo(playerId) {
       // Look for player name, rating and expiration date using improved parsing logic
       $('tr').each((i, tr) => {
         const $tr = $(tr);
-        const firstTd = $tr.find('td').first().text().trim();
+        const firstTd = $tr.find('td').first();
+        const firstTdText = firstTd.text().trim();
         
         // Look for USCF ID and Name at the beginning of the page (format: "14970943: AARUSH CHUGH")
-        // This appears in the first row of actual content
-        if (!name && firstTd.includes(':') && firstTd.includes(playerId)) {
+        // This appears in the first row of actual content, extract just the first line
+        if (!name && firstTdText.includes(':') && firstTdText.includes(playerId)) {
+          // Take only the first line to avoid capturing subsequent content
+          const firstLine = firstTdText.split('\n')[0].trim();
+          
           // Extract name from "ID: NAME" format
           // The format is "14970943: AARUSH CHUGH"
-          const nameMatch = firstTd.match(new RegExp(`${playerId}\\s*:\\s*(.+?)$`));
+          const nameMatch = firstLine.match(new RegExp(`${playerId}\\s*:\\s*(.+?)$`));
           if (nameMatch) {
             name = nameMatch[1].trim();
           } else {
             // Fallback: if there's colon-separated content, take what's after the ID
-            const parts = firstTd.split(':');
+            const parts = firstLine.split(':');
             if (parts.length > 1) {
               name = parts.slice(1).join(':').trim();
             }
@@ -51,7 +55,7 @@ async function getUSCFInfo(playerId) {
         }
         
         // Look for Regular Rating
-        if (firstTd.includes('Regular Rating')) {
+        if (firstTdText.includes('Regular Rating')) {
           const secondTd = $tr.find('td').eq(1);
           const fullText = secondTd.text().trim();
           
@@ -83,7 +87,7 @@ async function getUSCFInfo(playerId) {
         }
         
         // Look for Expiration Date
-        if (firstTd.includes('Expiration Dt.')) {
+        if (firstTdText.includes('Expiration Dt.')) {
           const secondTd = $tr.find('td').eq(1);
           const boldText = secondTd.find('b').text().trim();
           
