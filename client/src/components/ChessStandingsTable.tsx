@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 interface RoundResult {
   result: string;
@@ -42,6 +44,7 @@ interface ChessStandingsTableProps {
   selectedSection?: string;
   showTiebreakers?: boolean;
   showPrizes?: boolean;
+  tournamentId?: string;
 }
 
 const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
@@ -49,8 +52,10 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   tournament,
   selectedSection = 'all',
   showTiebreakers = true,
-  showPrizes = true
+  showPrizes = true,
+  tournamentId
 }) => {
+  const navigate = useNavigate();
   // Format round result for display
   const formatRoundResult = (roundResult: RoundResult | undefined, round: number) => {
     if (!roundResult) {
@@ -209,7 +214,12 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                       {player.rank}.
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
-                      {formatPlayerName(player)}
+                      <button
+                        onClick={() => navigate(`/tournaments/${tournamentId}/player/${player.id}`)}
+                        className="underline hover:text-blue-600"
+                      >
+                        {formatPlayerName(player)}
+                      </button>
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200">
                       {player.uscf_id || ''}

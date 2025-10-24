@@ -2164,6 +2164,7 @@ const TournamentDetail: React.FC = () => {
                               selectedSection={sectionName}
                               showTiebreakers={showTiebreakers}
                               showPrizes={true}
+                              tournamentId={id}
                             />
                           </div>
                         </div>

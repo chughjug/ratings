@@ -170,6 +170,8 @@ export const tournamentApi = {
     api.get<{success: boolean, data: any[], error?: string}>(`/teams/tournament/${id}/round/${round}/results?t=${Date.now()}`),
   getTeamMatchResults: (id: string, round: number) => 
     api.get<{success: boolean, results: any[], error?: string}>(`/teams/tournament/${id}/round/${round}/match-results?t=${Date.now()}`),
+  getPlayerPerformance: (tournamentId: string, playerId: string) =>
+    api.get<{success: boolean, tournament: any, player: any, roundPerformance: any[], positionHistory: any[], standings: any[], statistics: any, error?: string}>(`/tournaments/${tournamentId}/player/${playerId}/performance?t=${Date.now()}`),
 };
 
 // Player API

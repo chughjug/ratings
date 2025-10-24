@@ -502,69 +502,193 @@ function onInstall() {
 // This section enables automatic form response collection and import
 
 /**
- * FORMS CONFIGURATION - UPDATE THESE VALUES FOR GOOGLE FORMS
+ * FORMS CONFIGURATION - NOW DYNAMICALLY POPULATED
+ * This configuration will be populated at runtime from the API
+ * based on tournament-specific settings
  */
-const FORMS_CONFIG = {
+let FORMS_CONFIG = {
+  // Default values - will be overridden by fetchFormsConfig()
   ENABLE_FORM_IMPORT: true,
-  FORM_ID: '15fTL-FenfGKK3s_6IMcu6FeeYFONIyJUD9s0eWSqCS4',
-  API_BASE_URL: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/',
-  API_KEY: 'demo-key-123',
-  TOURNAMENT_ID: '399a6188-406c-45ea-b078-ae37a0fdd509',
+  FORM_ID: '',
+  API_BASE_URL: 'http://localhost:3000',  // Will be overridden
+  API_KEY: 'demo-key-123',  // Can be set via environment or API
+  TOURNAMENT_ID: '',  // MUST be configured
   CHECK_INTERVAL: 5,
   SEND_CONFIRMATION_EMAILS: true,
   AUTO_ASSIGN_SECTIONS: true,
-  LOOKUP_RATINGS: true
+  LOOKUP_RATINGS: true,
+  
+  // Indicates if configuration has been loaded from API
+  _initialized: false
 };
 
 /**
- * Setup form import triggers
- * Run this function to set up automatic form response collection
+ * Fetch dynamic Google Forms configuration from the server
+ * This retrieves tournament-specific settings and the correct domain
+ * 
+ * @param {string} tournamentId - The tournament ID to fetch config for
+ * @param {string} apiBaseUrl - The API base URL (can be localhost or production domain)
+ * @returns {Promise<boolean>} - True if config was successfully loaded
  */
-function setupFormImport() {
-  if (!FORMS_CONFIG.ENABLE_FORM_IMPORT) {
-    console.log('Form import is disabled. Set ENABLE_FORM_IMPORT to true to enable.');
-    return;
-  }
-  
-  if (!FORMS_CONFIG.FORM_ID || FORMS_CONFIG.FORM_ID === 'your-form-id-here') {
-    const errorMsg = 'Error: Please set your FORM_ID in FORMS_CONFIG before setting up form import.';
-    console.error(errorMsg);
-    try {
-      SpreadsheetApp.getUi().alert(errorMsg);
-    } catch (e) {
-      console.log('UI not available - check console for errors');
-    }
-    return;
-  }
-  
-  // Remove existing form import triggers
-  const triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'onFormSubmit' || 
-        trigger.getHandlerFunction() === 'checkFormResponses') {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
-  
-  // Create new triggers
-  // Note: onFormSubmit cannot be set up as a trigger via ScriptApp.newTrigger()
-  // Instead, we rely on the periodic time-based trigger to check for new responses
-  // The onFormSubmit function remains available if called directly
-  
-  // Periodic trigger (backup/batch processing)
-  ScriptApp.newTrigger('checkFormResponses')
-    .timeBased()
-    .everyMinutes(FORMS_CONFIG.CHECK_INTERVAL)
-    .create();
-  
-  console.log('Form import triggers set up successfully!');
-  const successMsg = '✅ Form import configured! New form responses will be checked every ' + FORMS_CONFIG.CHECK_INTERVAL + ' minutes and automatically imported.';
-  console.log(successMsg);
-  
+async function fetchFormsConfig(tournamentId, apiBaseUrl = 'http://localhost:3000') {
   try {
-    SpreadsheetApp.getUi().alert(successMsg);
-  } catch (e) {
-    console.log('UI not available - setup completed successfully (check console)');
+    console.log(`Fetching Google Forms configuration for tournament: ${tournamentId}`);
+    
+    // Ensure URL doesn't have trailing slash
+    const baseUrl = apiBaseUrl.replace(/\/$/, '');
+    const endpoint = `${baseUrl}/api/registration/${tournamentId}/forms-config`;
+    
+    console.log(`Calling: ${endpoint}`);
+    
+    const response = UrlFetchApp.fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true,
+      timeout: 10000
+    });
+    
+    const status = response.getResponseCode();
+    const content = response.getContentText();
+    
+    console.log(`Configuration fetch response: ${status}`);
+    
+    if (status !== 200) {
+      console.error(`Failed to fetch config: HTTP ${status}`);
+      console.error(`Response: ${content.substring(0, 500)}`);
+      
+      // Fallback to locally configured values if API fetch fails
+      console.warn('⚠️ Could not fetch configuration from API. Using defaults.');
+      FORMS_CONFIG._initialized = false;
+      return false;
+    }
+    
+    // Parse response
+    let result;
+    try {
+      result = JSON.parse(content);
+    } catch (e) {
+      console.error('Failed to parse config response as JSON:', e);
+      return false;
+    }
+    
+    if (!result.success || !result.data) {
+      console.error('API returned invalid configuration response');
+      return false;
+    }
+    
+    // Update FORMS_CONFIG with API response
+    const configData = result.data;
+    FORMS_CONFIG.ENABLE_FORM_IMPORT = configData.ENABLE_FORM_IMPORT;
+    FORMS_CONFIG.FORM_ID = configData.FORM_ID;
+    FORMS_CONFIG.API_BASE_URL = configData.API_BASE_URL;  // IMPORTANT: Use server's response URL
+    FORMS_CONFIG.API_KEY = configData.API_KEY;
+    FORMS_CONFIG.TOURNAMENT_ID = configData.TOURNAMENT_ID;
+    FORMS_CONFIG.CHECK_INTERVAL = configData.CHECK_INTERVAL;
+    FORMS_CONFIG.SEND_CONFIRMATION_EMAILS = configData.SEND_CONFIRMATION_EMAILS;
+    FORMS_CONFIG.AUTO_ASSIGN_SECTIONS = configData.AUTO_ASSIGN_SECTIONS;
+    FORMS_CONFIG.LOOKUP_RATINGS = configData.LOOKUP_RATINGS;
+    FORMS_CONFIG._initialized = true;
+    
+    console.log('✅ Google Forms configuration successfully loaded from API');
+    console.log(`   API Base URL: ${FORMS_CONFIG.API_BASE_URL}`);
+    console.log(`   Tournament ID: ${FORMS_CONFIG.TOURNAMENT_ID}`);
+    console.log(`   Form Import: ${FORMS_CONFIG.ENABLE_FORM_IMPORT ? 'Enabled' : 'Disabled'}`);
+    
+    return true;
+    
+  } catch (error) {
+    console.error('Error fetching forms configuration:', error.toString());
+    FORMS_CONFIG._initialized = false;
+    return false;
+  }
+}
+
+/**
+ * Setup form import triggers with dynamic configuration
+ * Run this function to set up automatic form response collection
+ * 
+ * @param {string} tournamentId - Tournament ID to configure
+ * @param {string} apiBaseUrl - API base URL (defaults to localhost)
+ */
+function setupFormImport(tournamentId = '', apiBaseUrl = 'http://localhost:3000') {
+  try {
+    // Allow overriding tournament ID if passed as parameter
+    if (tournamentId) {
+      FORMS_CONFIG.TOURNAMENT_ID = tournamentId;
+    }
+    
+    // Allow overriding API base URL if passed as parameter
+    if (apiBaseUrl && apiBaseUrl !== 'http://localhost:3000') {
+      FORMS_CONFIG.API_BASE_URL = apiBaseUrl;
+    }
+    
+    // First, fetch the configuration from API
+    const configLoaded = fetchFormsConfig(FORMS_CONFIG.TOURNAMENT_ID, FORMS_CONFIG.API_BASE_URL);
+    
+    if (!configLoaded && !FORMS_CONFIG.TOURNAMENT_ID) {
+      const errorMsg = 'Error: Please set your TOURNAMENT_ID in FORMS_CONFIG before setting up form import.';
+      console.error(errorMsg);
+      try {
+        SpreadsheetApp.getUi().alert(errorMsg + '\n\nYou can call setupFormImport("your-tournament-id", "your-api-url")');
+      } catch (e) {
+        console.log('UI not available - check console for errors');
+      }
+      return;
+    }
+    
+    if (!FORMS_CONFIG.ENABLE_FORM_IMPORT) {
+      console.log('Form import is disabled in tournament settings.');
+      return;
+    }
+    
+    if (!FORMS_CONFIG.FORM_ID) {
+      const errorMsg = 'Error: Please set your FORM_ID in the tournament settings before setting up form import.';
+      console.error(errorMsg);
+      try {
+        SpreadsheetApp.getUi().alert(errorMsg);
+      } catch (e) {
+        console.log('UI not available - check console for errors');
+      }
+      return;
+    }
+    
+    // Remove existing form import triggers
+    const triggers = ScriptApp.getProjectTriggers();
+    triggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'onFormSubmit' || 
+          trigger.getHandlerFunction() === 'checkFormResponses') {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+    
+    // Create new triggers
+    // Periodic trigger (backup/batch processing)
+    ScriptApp.newTrigger('checkFormResponses')
+      .timeBased()
+      .everyMinutes(FORMS_CONFIG.CHECK_INTERVAL)
+      .create();
+    
+    console.log('Form import triggers set up successfully!');
+    const successMsg = '✅ Form import configured! New form responses will be checked every ' + 
+                       FORMS_CONFIG.CHECK_INTERVAL + ' minutes and automatically imported.\n\n' +
+                       'API Base URL: ' + FORMS_CONFIG.API_BASE_URL + '\n' +
+                       'Tournament: ' + FORMS_CONFIG.TOURNAMENT_ID;
+    console.log(successMsg);
+    
+    try {
+      SpreadsheetApp.getUi().alert(successMsg);
+    } catch (e) {
+      console.log('UI not available - setup completed successfully (check console)');
+    }
+  } catch (error) {
+    console.error('Error setting up form import:', error.toString());
+    try {
+      SpreadsheetApp.getUi().alert('Error setting up form import: ' + error.toString());
+    } catch (e) {
+      console.log('UI not available');
+    }
   }
 }
 
@@ -1120,13 +1244,28 @@ function onOpen(e) {
     createMenu();
     
     // Add form import menu items if applicable
-    if (FORMS_CONFIG.ENABLE_FORM_IMPORT) {
+    if (FORMS_CONFIG.ENABLE_FORM_IMPORT || !FORMS_CONFIG._initialized) {
       addFormImportMenu();
     }
     
     console.log('✅ Google Apps Script initialized');
-    console.log(`✓ Tournament: ${FORMS_CONFIG.TOURNAMENT_ID}`);
-    console.log(`✓ Form Import: ${FORMS_CONFIG.ENABLE_FORM_IMPORT ? 'Enabled' : 'Disabled'}`);
+    
+    // If tournament ID is configured but config not yet loaded from API, load it now
+    if (FORMS_CONFIG.TOURNAMENT_ID && !FORMS_CONFIG._initialized) {
+      console.log('Loading Google Forms configuration from API...');
+      const loaded = fetchFormsConfig(FORMS_CONFIG.TOURNAMENT_ID, FORMS_CONFIG.API_BASE_URL);
+      if (loaded) {
+        console.log(`✓ Tournament: ${FORMS_CONFIG.TOURNAMENT_ID}`);
+        console.log(`✓ API Base URL: ${FORMS_CONFIG.API_BASE_URL}`);
+        console.log(`✓ Form Import: ${FORMS_CONFIG.ENABLE_FORM_IMPORT ? 'Enabled' : 'Disabled'}`);
+      } else {
+        console.warn('⚠️ Could not load config from API');
+      }
+    } else if (FORMS_CONFIG._initialized) {
+      console.log(`✓ Tournament: ${FORMS_CONFIG.TOURNAMENT_ID}`);
+      console.log(`✓ API Base URL: ${FORMS_CONFIG.API_BASE_URL}`);
+      console.log(`✓ Form Import: ${FORMS_CONFIG.ENABLE_FORM_IMPORT ? 'Enabled' : 'Disabled'}`);
+    }
     
   } catch (error) {
     console.error('Error in onOpen:', error);
@@ -1136,4 +1275,25 @@ function onOpen(e) {
 /**
  * Setup function - run this to configure everything
  */
+
+// ============================================================================
+// FILE COMPLETE
+// ============================================================================
+// 
+// Total lines: 1279 (Complete Google Apps Script)
+// 
+// To use this script:
+// 1. Open your Google Sheet
+// 2. Go to Extensions > Apps Script  
+// 3. Copy this entire file (all 1279 lines)
+// 4. Paste into Google Apps Script editor
+// 5. Click Save
+// 6. Run setup() function
+// 7. Call setupFormImport('tournament-id', 'https://your-api-domain.com')
+//
+// For dynamic configuration support and full documentation, see:
+// - GOOGLE_FORMS_DYNAMIC_CONFIG.md
+// - GOOGLE_FORMS_SETUP_QUICK_START.md
+//
+// ============================================================================
 

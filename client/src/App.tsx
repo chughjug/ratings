@@ -18,6 +18,7 @@ import Registration from './pages/Registration';
 import SectionPairingPage from './pages/SectionPairingPage';
 import UserProfile from './pages/UserProfile';
 import LandingPage from './pages/LandingPage';
+import PlayerPerformance from './components/PlayerPerformance';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/print.css';
 
@@ -30,6 +31,7 @@ function App() {
               <Routes>
                 <Route path="/public/tournaments" element={<PublicTournamentList />} />
                 <Route path="/public/tournaments/:id" element={<PublicTournamentDisplay />} />
+                <Route path="/public/tournaments/:tournamentId/player/:playerId" element={<PlayerPerformance />} />
                 <Route path="/public/organizations" element={<OrganizationSearch />} />
                 <Route path="/public/organizations/:slug" element={<PublicOrganizationPage />} />
                 <Route path="/public/organizations/:slug/tournaments/:tournamentId" element={<PublicOrganizationTournament />} />
@@ -108,6 +110,19 @@ function App() {
                               <Navbar />
                               <main className="container mx-auto px-4 py-8">
                                 <SectionPairingPage />
+                              </main>
+                            </>
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/tournaments/:tournamentId/player/:playerId" 
+                        element={
+                          <ProtectedRoute>
+                            <>
+                              <Navbar />
+                              <main className="container mx-auto px-4 py-8">
+                                <PlayerPerformance />
                               </main>
                             </>
                           </ProtectedRoute>
