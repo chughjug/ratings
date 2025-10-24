@@ -1245,3 +1245,5 @@ router.post('/api-import/:tournamentId', async (req, res) => {
     });
   }
 });
+
+module.exports = router;
