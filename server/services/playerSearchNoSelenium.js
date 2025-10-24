@@ -67,34 +67,16 @@ function generateMockPlayers(searchTerm, maxResults) {
   const mockPlayers = [];
   const states = ['CA', 'NY', 'TX', 'FL', 'IL', 'PA', 'OH', 'GA', 'NC', 'MI'];
   
-  // Generate 1-3 mock players based on search term
-  const numResults = Math.min(Math.max(1, Math.floor(Math.random() * 3) + 1), maxResults);
+  // First names that commonly pair with search terms
+  const firstNames = ['John', 'James', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Maria', 'Mary', 'Patricia', 'Jennifer', 'Susan', 'Jessica', 'Lisa', 'Sarah', 'Karen', 'Nancy'];
   
-  for (let i = 0; i < numResults; i++) {
-    const playerName = searchTerm.trim();
-    
-    mockPlayers.push({
-      name: playerName,
-      memberId: `${Math.floor(Math.random() * 90000000) + 10000000}`,
-      state: states[Math.floor(Math.random() * states.length)],
-      ratings: {
-        regular: Math.floor(Math.random() * 1000) + 1200,
-        quick: Math.floor(Math.random() * 1000) + 1200,
-        blitz: Math.floor(Math.random() * 1000) + 1200,
-        online_regular: null,
-        online_quick: null,
-        online_blitz: null
-      },
-      uscf_id: `${Math.floor(Math.random() * 90000000) + 10000000}`,
-      rating: Math.floor(Math.random() * 1000) + 1200,
-      email: `${playerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-      phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
-      isMockData: true
-    });
-  }
+  // Last names for varied results
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
   
-  console.log(`Generated ${mockPlayers.length} mock players for search term: ${searchTerm}`);
-  return mockPlayers;
+  // Only generate 0 mock players when real search fails (don't return fake results)
+  // This prevents returning inaccurate players
+  console.log(`Search for "${searchTerm}" returned no real results - returning empty array instead of mock data`);
+  return [];
 }
 
 /**
@@ -122,31 +104,104 @@ async function searchUSChessPlayers(searchTerm, maxResults = 10) {
     const players = await searchWithPuppeteer(searchTerm, maxResults);
     
     if (players && players.length > 0) {
+      // Filter and sort results by relevance to search term
+      const filteredPlayers = filterSearchResults(players, searchTerm, maxResults);
+      
       // Cache the results
-      searchCache.set(cacheKey, players);
-      console.log(`Puppeteer search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${players.length} players`);
-      return players;
+      searchCache.set(cacheKey, filteredPlayers);
+      console.log(`Puppeteer search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${filteredPlayers.length} relevant players`);
+      return filteredPlayers;
     }
 
     // 3. Fallback to HTTP search
     const httpPlayers = await searchViaMultipleEndpoints(searchTerm, maxResults);
     if (httpPlayers && httpPlayers.length > 0) {
-      searchCache.set(cacheKey, httpPlayers);
-      console.log(`HTTP search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${httpPlayers.length} players`);
-      return httpPlayers;
+      const filteredPlayers = filterSearchResults(httpPlayers, searchTerm, maxResults);
+      searchCache.set(cacheKey, filteredPlayers);
+      console.log(`HTTP search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${filteredPlayers.length} relevant players`);
+      return filteredPlayers;
     }
 
-    // 4. All methods failed - return mock data
-    console.log(`All search methods failed for: ${searchTerm}, returning mock data`);
-    const mockPlayers = generateMockPlayers(searchTerm, maxResults);
-    searchCache.set(cacheKey, mockPlayers);
-    return mockPlayers;
+    // 4. All methods failed - return empty array (no mock data)
+    console.log(`All search methods failed for: ${searchTerm}, returning empty results`);
+    const emptyResults = [];
+    searchCache.set(cacheKey, emptyResults);
+    return emptyResults;
     
   } catch (error) {
     console.error('Search failed:', error);
-    // Return mock data as final fallback
-    return generateMockPlayers(searchTerm, maxResults);
+    // Return empty array as final fallback
+    return [];
   }
+}
+
+/**
+ * Filter and rank search results by relevance to the search term
+ * @param {Array} players - Raw player results from search
+ * @param {string} searchTerm - Original search term
+ * @param {number} maxResults - Maximum results to return
+ * @returns {Array} Filtered and sorted players
+ */
+function filterSearchResults(players, searchTerm, maxResults) {
+  if (!Array.isArray(players) || players.length === 0) {
+    return [];
+  }
+  
+  const searchLower = searchTerm.toLowerCase().trim();
+  
+  // Score each player based on name relevance
+  const scoredPlayers = players.map(player => {
+    let relevanceScore = 0;
+    const nameLower = player.name ? player.name.toLowerCase() : '';
+    
+    // Exact match gets highest score
+    if (nameLower === searchLower) {
+      relevanceScore = 1000;
+    }
+    // Starts with search term
+    else if (nameLower.startsWith(searchLower)) {
+      relevanceScore = 100;
+    }
+    // Contains complete search term as a word
+    else if (nameLower.includes(` ${searchLower}`) || nameLower.includes(`${searchLower} `)) {
+      relevanceScore = 75;
+    }
+    // Starts with first word of search term
+    else if (searchLower.includes(' ')) {
+      const firstWord = searchLower.split(' ')[0];
+      if (nameLower.startsWith(firstWord)) {
+        relevanceScore = 50;
+      } else if (nameLower.includes(` ${firstWord}`)) {
+        relevanceScore = 30;
+      }
+    }
+    // Contains search term (substring)
+    else if (nameLower.includes(searchLower)) {
+      relevanceScore = 20;
+    }
+    // Last word match
+    else if (searchLower.includes(' ')) {
+      const lastWord = searchLower.split(' ').pop();
+      if (nameLower.endsWith(lastWord) || nameLower.includes(` ${lastWord}`)) {
+        relevanceScore = 25;
+      }
+    }
+    
+    return { ...player, relevanceScore };
+  });
+  
+  // Sort by relevance score (highest first), then by name alphabetically
+  const sorted = scoredPlayers
+    .filter(p => p.relevanceScore > 0) // Only keep relevant results
+    .sort((a, b) => {
+      if (b.relevanceScore !== a.relevanceScore) {
+        return b.relevanceScore - a.relevanceScore;
+      }
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  
+  // Remove the relevanceScore before returning
+  return sorted.slice(0, maxResults).map(({ relevanceScore, ...player }) => player);
 }
 
 /**

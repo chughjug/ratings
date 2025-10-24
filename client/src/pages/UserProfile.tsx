@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
-import { Key, Plus, Trash2, Edit, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { useOrganization } from '../contexts/OrganizationContext';
+import { Key, Plus, Trash2, Edit, Copy, Eye, EyeOff, RefreshCw, Building2 } from 'lucide-react';
 
 interface ApiKey {
   id: string;
@@ -18,10 +19,19 @@ interface ApiKey {
 
 const UserProfile: React.FC = () => {
   const { user } = useAuth();
+  const { state: orgState, createOrganization: createOrgFromContext, setCurrentOrganization } = useOrganization();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [showNewKeyForm, setShowNewKeyForm] = useState(false);
   const [showApiKey, setShowApiKey] = useState<{ [key: string]: boolean }>({});
+  const [showOrgForm, setShowOrgForm] = useState(false);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [orgFormData, setOrgFormData] = useState({
+    name: '',
+    description: '',
+    website: '',
+    contactEmail: ''
+  });
   const [newKeyData, setNewKeyData] = useState({
     name: '',
     description: '',
@@ -103,6 +113,35 @@ const UserProfile: React.FC = () => {
     }));
   };
 
+  const createOrganization = async () => {
+    if (!orgFormData.name.trim()) {
+      alert('Organization name is required');
+      return;
+    }
+
+    setOrgLoading(true);
+    try {
+      const newOrg = await createOrgFromContext(orgFormData);
+      alert('Organization created successfully!');
+      setOrgFormData({
+        name: '',
+        description: '',
+        website: '',
+        contactEmail: ''
+      });
+      setShowOrgForm(false);
+      // Optionally set it as current organization
+      if (newOrg) {
+        setCurrentOrganization(newOrg);
+      }
+    } catch (error) {
+      console.error('Error creating organization:', error);
+      alert('Error creating organization. Please try again.');
+    } finally {
+      setOrgLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -167,6 +206,127 @@ const UserProfile: React.FC = () => {
                   <p className="mt-1 text-sm text-gray-900">{formatDate(user.createdAt)}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Organizations Section */}
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Organizations</h2>
+                <button
+                  onClick={() => setShowOrgForm(!showOrgForm)}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create Organization</span>
+                </button>
+              </div>
+
+              {/* Create Organization Form */}
+              {showOrgForm && (
+                <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
+                  <h3 className="text-md font-semibold text-gray-900 mb-4">Create New Organization</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Organization Name *</label>
+                      <input
+                        type="text"
+                        value={orgFormData.name}
+                        onChange={(e) => setOrgFormData({ ...orgFormData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="My Chess Club"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                      <textarea
+                        value={orgFormData.description}
+                        onChange={(e) => setOrgFormData({ ...orgFormData, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Tell us about your organization..."
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
+                      <input
+                        type="url"
+                        value={orgFormData.website}
+                        onChange={(e) => setOrgFormData({ ...orgFormData, website: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Contact Email</label>
+                      <input
+                        type="email"
+                        value={orgFormData.contactEmail}
+                        onChange={(e) => setOrgFormData({ ...orgFormData, contactEmail: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="contact@example.com"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-2 mt-4">
+                    <button
+                      onClick={() => {
+                        setShowOrgForm(false);
+                        setOrgFormData({ name: '', description: '', website: '', contactEmail: '' });
+                      }}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                      disabled={orgLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={createOrganization}
+                      disabled={orgLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                    >
+                      {orgLoading ? 'Creating...' : 'Create Organization'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Organizations List */}
+              {orgState.organizations && orgState.organizations.length > 0 ? (
+                <div className="space-y-4">
+                  {orgState.organizations.map((org) => (
+                    <div key={org.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <Building2 className="h-6 w-6 text-blue-600 mt-1" />
+                        <div className="flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">{org.name}</h3>
+                          {org.description && <p className="text-sm text-gray-600 mt-1">{org.description}</p>}
+                          <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                            {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{org.website}</a>}
+                            {org.contactEmail && <span>{org.contactEmail}</span>}
+                          </div>
+                          <div className="mt-2">
+                            <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                              org.role === 'owner'
+                                ? 'bg-purple-100 text-purple-800'
+                                : org.role === 'admin'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {org.role ? org.role.charAt(0).toUpperCase() + org.role.slice(1) : 'Member'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 border border-gray-200 rounded-lg">
+                  <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                  <p className="text-gray-600">No organizations yet</p>
+                  <p className="text-sm text-gray-500">Create your first organization to manage tournaments</p>
+                </div>
+              )}
             </div>
 
             {/* API Keys Section */}
