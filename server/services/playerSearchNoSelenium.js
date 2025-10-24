@@ -1,6 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 // Enhanced cache with LRU eviction
 class LRUCache {
@@ -159,8 +159,22 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
     console.log(`Using Puppeteer to search for: ${searchTerm}`);
     
     // Launch browser with Heroku-optimized settings
+    let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    
+    // If no executable path is set, try to find Chrome
+    if (!executablePath) {
+      if (process.platform === 'darwin') {
+        // macOS - use the Chrome we installed earlier
+        executablePath = '/Users/aarushchugh/ratings/.cache/puppeteer/chrome/mac_arm-141.0.7390.122/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
+      } else {
+        // Linux (Heroku) - use system Chrome
+        executablePath = '/usr/bin/google-chrome-stable';
+      }
+    }
+    
     browser = await puppeteer.launch({
       headless: true,
+      executablePath: executablePath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
