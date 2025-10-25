@@ -9,7 +9,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Pairing } from '../types';
-import { pairingApi } from '../services/api';
+import { pairingApi, tournamentApi, playerApi } from '../services/api';
 
 interface SectionPairingPageProps {
   tournament?: any;

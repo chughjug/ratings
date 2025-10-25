@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lichess OAuth Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8 bg-gray-100">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-3xl font-bold mb-6 text-center">Lichess OAuth Integration Demo</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- OAuth Flow -->
+            <div class="bg-blue-50 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4 text-blue-800">Step 1: OAuth Authentication</h2>
+                <p class="text-gray-700 mb-4">Click the button below to authenticate with Lichess using OAuth2 PKCE:</p>
+                <button id="authBtn" class="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700 w-full">
+                    Connect to Lichess
+                </button>
+                <div id="authStatus" class="mt-4 p-3 bg-gray-100 rounded text-sm font-mono"></div>
+            </div>
+
+            <!-- Game Creation -->
+            <div class="bg-green-50 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4 text-green-800">Step 2: Create Lichess Game</h2>
+                <p class="text-gray-700 mb-4">After authentication, create a real Lichess challenge:</p>
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="whitePlayer" placeholder="White Player Lichess Username" 
+                           class="w-full px-3 py-2 border rounded" value="the_pawndestroyer">
+                    <input type="text" id="blackPlayer" placeholder="Black Player Lichess Username" 
+                           class="w-full px-3 py-2 border rounded" value="Kokosnuss11">
+                    <select id="timeControl" class="w-full px-3 py-2 border rounded">
+                        <option value="G/45+15">45 minutes + 15 seconds</option>
+                        <option value="G/30+0">30 minutes</option>
+                        <option value="G/15+10">15 minutes + 10 seconds</option>
+                    </select>
+                </div>
+                <button id="createGameBtn" class="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 w-full" disabled>
+                    Create Lichess Challenge
+                </button>
+                <div id="gameStatus" class="mt-4 p-3 bg-gray-100 rounded text-sm font-mono"></div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="mt-8 p-6 bg-gray-50 rounded-lg" style="display: none;">
+            <h3 class="text-lg font-semibold mb-4">Results</h3>
+            <div id="resultsContent" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <script>
+        let accessToken = null;
+        let userProfile = null;
+
+        // OAuth Authentication
+        document.getElementById('authBtn').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('authStatus');
+            statusDiv.textContent = 'Initiating OAuth flow...';
+
+            try {
+                // Get authorization URL
+                const authResponse = await fetch('https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api/lichess/auth');
+                const authData = await authResponse.json();
+
+                if (authData.success) {
+                    statusDiv.textContent = 'Redirecting to Lichess...';
+                    
+                    // Open Lichess OAuth in a popup window
+                    const popup = window.open(
+                        authData.authUrl,
+                        'lichess-oauth',
+                        'width=600,height=700,scrollbars=yes,resizable=yes'
+                    );
+
+                    // Listen for the popup to close or receive message
+                    const checkClosed = setInterval(() => {
+                        if (popup.closed) {
+                            clearInterval(checkClosed);
+                            statusDiv.textContent = 'OAuth popup closed. Please try again.';
+                        }
+                    }, 1000);
+
+                    // Listen for OAuth completion message
+                    window.addEventListener('message', async (event) => {
+                        if (event.origin !== window.location.origin) return;
+                        
+                        if (event.data.type === 'LICHESS_OAUTH_SUCCESS') {
+                            clearInterval(checkClosed);
+                            popup.close();
+                            
+                            accessToken = event.data.accessToken;
+                            userProfile = event.data.user;
+                            
+                            statusDiv.innerHTML = `
+                                <div class="text-green-600">
+                                    ✅ OAuth successful!<br>
+                                    User: ${userProfile.username}<br>
+                                    Access Token: ${accessToken.substring(0, 20)}...
+                                </div>
+                            `;
+                            
+                            document.getElementById('createGameBtn').disabled = false;
+                            document.getElementById('createGameBtn').textContent = 'Create Lichess Challenge';
+                        }
+                    });
+
+                } else {
+                    statusDiv.textContent = `OAuth failed: ${authData.error}`;
+                }
+
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+            }
+        });
+
+        // Create Lichess Game
+        document.getElementById('createGameBtn').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('gameStatus');
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            statusDiv.textContent = 'Creating Lichess challenge...';
+
+            try {
+                const whitePlayer = document.getElementById('whitePlayer').value;
+                const blackPlayer = document.getElementById('blackPlayer').value;
+                const timeControl = document.getElementById('timeControl').value;
+
+                const gameResponse = await fetch('https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api/lichess/create-game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        pairingId: 'demo-pairing-123',
+                        whitePlayer: whitePlayer,
+                        blackPlayer: blackPlayer,
+                        timeControl: timeControl,
+                        accessToken: accessToken
+                    })
+                });
+
+                const gameData = await gameResponse.json();
+
+                if (gameData.success) {
+                    statusDiv.innerHTML = `
+                        <div class="text-green-600">
+                            ✅ Challenge created successfully!<br>
+                            Game ID: ${gameData.game.id}<br>
+                            Status: ${gameData.game.status}
+                        </div>
+                    `;
+
+                    // Show results
+                    resultsDiv.style.display = 'block';
+                    resultsContent.innerHTML = `
+                        <div class="bg-white p-4 rounded border">
+                            <h4 class="font-semibold mb-2">Lichess Challenge Created</h4>
+                            <p><strong>White:</strong> ${gameData.game.white}</p>
+                            <p><strong>Black:</strong> ${gameData.game.black}</p>
+                            <p><strong>Time Control:</strong> ${gameData.game.timeControl}</p>
+                            <p><strong>Status:</strong> ${gameData.game.status}</p>
+                            <p><strong>Instructions:</strong> ${gameData.game.instructions}</p>
+                            <div class="mt-4 space-x-2">
+                                <a href="${gameData.game.url}" target="_blank" 
+                                   class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                    Open Game on Lichess
+                                </a>
+                                <a href="${gameData.game.challengeUrl}" target="_blank" 
+                                   class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                    View Challenge
+                                </a>
+                            </div>
+                        </div>
+                    `;
+
+                } else {
+                    statusDiv.textContent = `Game creation failed: ${gameData.error}`;
+                }
+
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
