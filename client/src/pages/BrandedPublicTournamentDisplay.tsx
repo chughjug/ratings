@@ -501,7 +501,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   selectedSection={selectedSection}
                   showTiebreakers={true}
                   showPrizes={true}
-                  tournamentId={tournamentId}
+                  tournamentId={id}
                 />
               </div>
             </div>
@@ -530,7 +530,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   selectedSection={selectedSection}
                   showTiebreakers={true}
                   showPrizes={true}
-                  tournamentId={tournamentId}
+                  tournamentId={id}
                 />
               </div>
             </div>
