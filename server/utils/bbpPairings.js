@@ -928,6 +928,216 @@ class BbpPairings {
     
     return score;
   }
+
+  /**
+   * Generate Dutch system pairings
+   * Main entry point for Dutch pairing algorithm
+   */
+  generateDutchPairings(players, tournament) {
+    if (players.length < 2) return [];
+
+    const sortedPlayers = this.sortPlayersByStandings(players);
+    const scoreGroups = this.groupPlayersByScore(sortedPlayers);
+    const pairings = [];
+
+    for (const [score, group] of scoreGroups) {
+      if (group.length === 0) continue;
+
+      if (group.length % 2 === 1) {
+        const byePlayer = this.selectByePlayer(group);
+        if (byePlayer) {
+          pairings.push({
+            white_player_id: byePlayer.id,
+            black_player_id: null,
+            is_bye: true,
+            bye_type: 'unpaired',
+            section: tournament.section,
+            round: tournament.round
+          });
+          const byeIndex = group.findIndex(p => p.id === byePlayer.id);
+          if (byeIndex !== -1) {
+            group.splice(byeIndex, 1);
+          }
+        }
+      }
+
+      if (tournament.round === 1) {
+        // Round 1: Top half vs bottom half
+        const halfLength = Math.floor(group.length / 2);
+        for (let i = 0; i < halfLength; i++) {
+          const player1 = group[i];
+          const player2 = group[i + halfLength];
+          const whitePlayer = this.assignColorsSwiss(player1, player2, tournament);
+          const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
+          pairings.push({
+            white_player_id: whitePlayer.id,
+            black_player_id: blackPlayer.id,
+            is_bye: false,
+            section: tournament.section,
+            round: tournament.round
+          });
+        }
+      } else {
+        // Subsequent rounds: Swiss system pairing
+        const pairedPlayers = new Set();
+        const sortedGroup = [...group].sort((a, b) => {
+          const ratingA = a.rating || 0;
+          const ratingB = b.rating || 0;
+          if (ratingA !== ratingB) {
+            return ratingB - ratingA;
+          }
+          return (a.name || '').localeCompare(b.name || '');
+        });
+
+        for (let i = 0; i < sortedGroup.length; i++) {
+          if (pairedPlayers.has(sortedGroup[i].id)) continue;
+
+          let bestOpponent = null;
+          let bestScore = -1;
+
+          for (let j = i + 1; j < sortedGroup.length; j++) {
+            if (pairedPlayers.has(sortedGroup[j].id)) continue;
+            const hasPlayedBefore = this.hasPlayedBefore(sortedGroup[i], sortedGroup[j], tournament);
+            if (hasPlayedBefore) continue;
+            const pairingScore = this.calculateSwissPairingScore(sortedGroup[i], sortedGroup[j], tournament);
+            if (bestOpponent === null || pairingScore < bestScore) {
+              bestOpponent = sortedGroup[j];
+              bestScore = pairingScore;
+            }
+          }
+
+          if (bestOpponent === null) {
+            for (let j = i + 1; j < sortedGroup.length; j++) {
+              if (!pairedPlayers.has(sortedGroup[j].id)) {
+                bestOpponent = sortedGroup[j];
+                break;
+              }
+            }
+          }
+
+          if (bestOpponent) {
+            const whitePlayer = this.assignColorsSwiss(sortedGroup[i], bestOpponent, tournament);
+            const blackPlayer = whitePlayer.id === sortedGroup[i].id ? bestOpponent : sortedGroup[i];
+            pairings.push({
+              white_player_id: whitePlayer.id,
+              black_player_id: blackPlayer.id,
+              is_bye: false,
+              section: tournament.section,
+              round: tournament.round
+            });
+            pairedPlayers.add(sortedGroup[i].id);
+            pairedPlayers.add(bestOpponent.id);
+          }
+        }
+      }
+    }
+    return pairings;
+  }
+
+  /**
+   * Generate Burstein system pairings
+   * Main entry point for Burstein pairing algorithm
+   */
+  generateBursteinPairings(players, tournament) {
+    if (players.length < 2) return [];
+
+    const sortedPlayers = this.sortPlayersByStandings(players);
+    const scoreGroups = this.groupPlayersByScore(sortedPlayers);
+    const pairings = [];
+
+    for (const [score, group] of scoreGroups) {
+      if (group.length === 0) continue;
+
+      if (group.length % 2 === 1) {
+        const byePlayer = this.selectByePlayer(group);
+        if (byePlayer) {
+          pairings.push({
+            white_player_id: byePlayer.id,
+            black_player_id: null,
+            is_bye: true,
+            bye_type: 'unpaired',
+            section: tournament.section,
+            round: tournament.round
+          });
+          const byeIndex = group.findIndex(p => p.id === byePlayer.id);
+          if (byeIndex !== -1) {
+            group.splice(byeIndex, 1);
+          }
+        }
+      }
+
+      if (tournament.round === 1) {
+        // Round 1: Top half vs bottom half
+        const halfLength = Math.floor(group.length / 2);
+        for (let i = 0; i < halfLength; i++) {
+          const player1 = group[i];
+          const player2 = group[i + halfLength];
+          const whitePlayer = this.assignColorsSwiss(player1, player2, tournament);
+          const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
+          pairings.push({
+            white_player_id: whitePlayer.id,
+            black_player_id: blackPlayer.id,
+            is_bye: false,
+            section: tournament.section,
+            round: tournament.round
+          });
+        }
+      } else {
+        // Subsequent rounds: Burstein system pairing
+        const pairedPlayers = new Set();
+        const sortedGroup = [...group].sort((a, b) => {
+          const ratingA = a.rating || 0;
+          const ratingB = b.rating || 0;
+          if (ratingA !== ratingB) {
+            return ratingB - ratingA;
+          }
+          return (a.name || '').localeCompare(b.name || '');
+        });
+
+        for (let i = 0; i < sortedGroup.length; i++) {
+          if (pairedPlayers.has(sortedGroup[i].id)) continue;
+
+          let bestOpponent = null;
+          let bestScore = -1;
+
+          for (let j = i + 1; j < sortedGroup.length; j++) {
+            if (pairedPlayers.has(sortedGroup[j].id)) continue;
+            const hasPlayedBefore = this.hasPlayedBefore(sortedGroup[i], sortedGroup[j], tournament);
+            if (hasPlayedBefore) continue;
+            const pairingScore = this.calculateSwissPairingScore(sortedGroup[i], sortedGroup[j], tournament);
+            if (bestOpponent === null || pairingScore < bestScore) {
+              bestOpponent = sortedGroup[j];
+              bestScore = pairingScore;
+            }
+          }
+
+          if (bestOpponent === null) {
+            for (let j = i + 1; j < sortedGroup.length; j++) {
+              if (!pairedPlayers.has(sortedGroup[j].id)) {
+                bestOpponent = sortedGroup[j];
+                break;
+              }
+            }
+          }
+
+          if (bestOpponent) {
+            const whitePlayer = this.assignColorsSwiss(sortedGroup[i], bestOpponent, tournament);
+            const blackPlayer = whitePlayer.id === sortedGroup[i].id ? bestOpponent : sortedGroup[i];
+            pairings.push({
+              white_player_id: whitePlayer.id,
+              black_player_id: blackPlayer.id,
+              is_bye: false,
+              section: tournament.section,
+              round: tournament.round
+            });
+            pairedPlayers.add(sortedGroup[i].id);
+            pairedPlayers.add(bestOpponent.id);
+          }
+        }
+      }
+    }
+    return pairings;
+  }
 }
 
 module.exports = { BBPPairings: BbpPairings };
