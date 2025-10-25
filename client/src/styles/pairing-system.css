@@ -1,0 +1,398 @@
+/* Swiss System Chess Tournament Pairing Styles */
+/* Based on bbpPairings-master CSS */
+
+h1 {
+	padding-top: 1em;
+}
+
+#content {
+    margin: 0 15px;
+}
+
+.tournament-info th {
+	padding-right: 3em;
+}
+
+.players-list td {
+	padding-right: 2em;
+}
+
+.players-list .fide_id, .players-list .rating {
+	text-align: right;
+}
+
+.players-list .name {
+	min-width: 20em;
+	font-weight: bold;
+}
+
+.games-list .name {
+	font-weight: bold;
+}
+
+/* Standings Table Styles */
+.standings-table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 20px 0;
+}
+
+.standings-table th,
+.standings-table td {
+	border: 1px solid #ddd;
+	padding: 8px;
+	text-align: left;
+}
+
+.standings-table th {
+	background-color: #f2f2f2;
+	font-weight: bold;
+	text-align: center;
+}
+
+.standings-table .score {
+	text-align: center;
+	font-size: 1.2em;
+	font-weight: bold;
+	min-width: 40px;
+}
+
+.player {
+	font-weight: bold;
+}
+
+.opponent {
+	font-size: 0.9em;
+	text-align: center;
+	font-weight: bold;
+}
+
+.color {
+	font-size: 0.8em;
+	text-align: center;
+	color: #666;
+	font-style: italic;
+}
+
+.player-color-W {
+	background-color: #f8f8f8;
+	border-left: 3px solid #333;
+}
+
+.player-color-B {
+	background-color: #e8e8e8;
+	border-left: 3px solid #666;
+}
+
+.standings-table tr:nth-child(even) {
+	background-color: #f9f9f9;
+}
+
+.standings-table tr:hover {
+	background-color: #f5f5f5;
+}
+
+/* Pairing Table Styles */
+.pairing-table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 20px 0;
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.pairing-table th,
+.pairing-table td {
+	border: 1px solid #ddd;
+	padding: 12px 8px;
+	text-align: left;
+	vertical-align: middle;
+}
+
+.pairing-table th {
+	background-color: #2c3e50;
+	color: white;
+	font-weight: bold;
+	text-align: center;
+	font-size: 14px;
+}
+
+.pairing-table tr:nth-child(even) {
+	background-color: #f9f9f9;
+}
+
+.pairing-table tr:hover {
+	background-color: #f5f5f5;
+}
+
+/* Board Number */
+.board-number {
+	text-align: center;
+	font-weight: bold;
+	font-size: 16px;
+	color: #2c3e50;
+	min-width: 60px;
+}
+
+/* Player Info Styles */
+.player-info {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 8px;
+	border-radius: 4px;
+	transition: background-color 0.2s;
+}
+
+.player-info:hover {
+	background-color: #e8f4f8;
+}
+
+.player-name {
+	font-weight: bold;
+	font-size: 14px;
+	color: #2c3e50;
+	margin-bottom: 4px;
+}
+
+.player-details {
+	font-size: 12px;
+	color: #666;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.player-rating {
+	font-weight: 600;
+	color: #e74c3c;
+}
+
+.player-uscf-id {
+	color: #7f8c8d;
+	font-family: monospace;
+}
+
+/* Color Indicators */
+.white-player {
+	background-color: #f8f9fa;
+	border-left: 4px solid #2c3e50;
+}
+
+.black-player {
+	background-color: #e9ecef;
+	border-left: 4px solid #6c757d;
+}
+
+/* Result Select */
+.result-select {
+	padding: 6px 8px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-size: 14px;
+	background-color: white;
+	min-width: 120px;
+}
+
+.result-select:focus {
+	outline: none;
+	border-color: #3498db;
+	box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Status Indicators */
+.status-info {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.status-completed {
+	background: #d4edda;
+	color: #155724;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.status-pending {
+	background: #fff3cd;
+	color: #856404;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+/* Action Buttons */
+.pairing-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.btn {
+	padding: 6px 12px;
+	border: none;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.btn-sm {
+	padding: 4px 8px;
+	font-size: 11px;
+}
+
+.btn-outline {
+	background-color: transparent;
+	border: 1px solid #6c757d;
+	color: #6c757d;
+}
+
+.btn-outline:hover {
+	background-color: #6c757d;
+	color: white;
+}
+
+.btn-danger {
+	background-color: #dc3545;
+	color: white;
+}
+
+.btn-danger:hover {
+	background-color: #c82333;
+}
+
+/* Lichess Integration */
+.lichess-info {
+	font-size: 11px;
+	color: #6c757d;
+	text-align: center;
+	font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.pairing-table {
+		font-size: 12px;
+	}
+	
+	.pairing-table th,
+	.pairing-table td {
+		padding: 8px 4px;
+	}
+	
+	.player-name {
+		font-size: 12px;
+	}
+	
+	.player-details {
+		font-size: 10px;
+	}
+	
+	.board-number {
+		font-size: 14px;
+	}
+}
+
+/* Tournament Header */
+.tournament-header {
+	background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+	color: white;
+	padding: 20px;
+	border-radius: 8px;
+	margin-bottom: 20px;
+}
+
+.tournament-title {
+	font-size: 24px;
+	font-weight: bold;
+	margin-bottom: 8px;
+}
+
+.tournament-subtitle {
+	font-size: 16px;
+	opacity: 0.9;
+}
+
+/* Section Cards */
+.section-card {
+	background: white;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	padding: 16px;
+	margin-bottom: 16px;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	transition: box-shadow 0.2s;
+}
+
+.section-card:hover {
+	box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.section-title {
+	font-size: 18px;
+	font-weight: bold;
+	color: #2c3e50;
+	margin-bottom: 8px;
+}
+
+.section-stats {
+	display: flex;
+	gap: 16px;
+	font-size: 14px;
+	color: #666;
+}
+
+/* Generate Button */
+.generate-btn {
+	background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+	color: white;
+	border: none;
+	padding: 10px 20px;
+	border-radius: 6px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s;
+	box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}
+
+.generate-btn:hover {
+	background: linear-gradient(135deg, #2980b9 0%, #1f618d 100%);
+	box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
+	transform: translateY(-1px);
+}
+
+.generate-btn:active {
+	transform: translateY(0);
+	box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}
+
+/* Loading States */
+.loading {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.loading::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 20px;
+	height: 20px;
+	margin: -10px 0 0 -10px;
+	border: 2px solid #f3f3f3;
+	border-top: 2px solid #3498db;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}

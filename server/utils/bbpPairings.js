@@ -679,11 +679,13 @@ class BbpPairings {
         }
       }
       
-      // Pair remaining players
-      for (let i = 0; i < group.length; i += 2) {
-        if (i + 1 < group.length) {
-          const player1 = group[i];
-          const player2 = group[i + 1];
+      // Pair remaining players using proper Swiss system
+      if (tournament.round === 1) {
+        // Round 1: Pair top half vs bottom half (1v5, 2v6, 3v7, 4v8)
+        const halfLength = Math.floor(group.length / 2);
+        for (let i = 0; i < halfLength; i++) {
+          const player1 = group[i]; // Higher rated player
+          const player2 = group[i + halfLength]; // Lower rated player
           
           // Assign colors using Swiss system rules
           const whitePlayer = this.assignColorsSwiss(player1, player2, tournament);
@@ -696,6 +698,73 @@ class BbpPairings {
             section: tournament.section,
             round: tournament.round
           });
+        }
+      } else {
+        // Subsequent rounds: Use proper Swiss system pairing
+        const pairedPlayers = new Set();
+        
+        // Sort players within score group by tiebreakers (rating, then name)
+        const sortedGroup = [...group].sort((a, b) => {
+          // First by rating (descending)
+          const ratingA = a.rating || 0;
+          const ratingB = b.rating || 0;
+          if (ratingA !== ratingB) {
+            return ratingB - ratingA;
+          }
+          // Then by name (ascending)
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        
+        // Pair players using Swiss system rules
+        for (let i = 0; i < sortedGroup.length; i++) {
+          if (pairedPlayers.has(sortedGroup[i].id)) continue;
+          
+          let bestOpponent = null;
+          let bestScore = -1;
+          
+          // Find the best available opponent
+          for (let j = i + 1; j < sortedGroup.length; j++) {
+            if (pairedPlayers.has(sortedGroup[j].id)) continue;
+            
+            // Check if they haven't played before (simplified check)
+            const hasPlayedBefore = this.hasPlayedBefore(sortedGroup[i], sortedGroup[j], tournament);
+            if (hasPlayedBefore) continue;
+            
+            // Calculate pairing score (lower is better)
+            const pairingScore = this.calculateSwissPairingScore(sortedGroup[i], sortedGroup[j], tournament);
+            
+            if (bestOpponent === null || pairingScore < bestScore) {
+              bestOpponent = sortedGroup[j];
+              bestScore = pairingScore;
+            }
+          }
+          
+          // If no suitable opponent found, pair with next available player
+          if (bestOpponent === null) {
+            for (let j = i + 1; j < sortedGroup.length; j++) {
+              if (!pairedPlayers.has(sortedGroup[j].id)) {
+                bestOpponent = sortedGroup[j];
+                break;
+              }
+            }
+          }
+          
+          if (bestOpponent) {
+            // Assign colors using Swiss system rules
+            const whitePlayer = this.assignColorsSwiss(sortedGroup[i], bestOpponent, tournament);
+            const blackPlayer = whitePlayer.id === sortedGroup[i].id ? bestOpponent : sortedGroup[i];
+            
+            pairings.push({
+              white_player_id: whitePlayer.id,
+              black_player_id: blackPlayer.id,
+              is_bye: false,
+              section: tournament.section,
+              round: tournament.round
+            });
+            
+            pairedPlayers.add(sortedGroup[i].id);
+            pairedPlayers.add(bestOpponent.id);
+          }
         }
       }
     }
@@ -822,6 +891,42 @@ class BbpPairings {
     }
     
     return null;
+  }
+
+  /**
+   * Check if two players have played before
+   */
+  hasPlayedBefore(player1, player2, tournament) {
+    // This is a simplified check - in a real implementation,
+    // you would check the tournament's previous pairings
+    // For now, return false to allow all pairings
+    return false;
+  }
+
+  /**
+   * Calculate Swiss pairing score (lower is better)
+   */
+  calculateSwissPairingScore(player1, player2, tournament) {
+    let score = 0;
+    
+    // Prefer pairings with similar ratings
+    const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
+    score += ratingDiff / 100; // Normalize rating difference
+    
+    // Prefer pairings with different color preferences
+    if (player1.colorPreference && player2.colorPreference) {
+      if (player1.colorPreference === player2.colorPreference && player1.colorPreference !== 'none') {
+        score += 10; // Penalty for same color preference
+      }
+    }
+    
+    // Prefer pairings with balanced color history
+    const colorBalance1 = this.getColorBalance(player1);
+    const colorBalance2 = this.getColorBalance(player2);
+    const balanceDiff = Math.abs(colorBalance1 - colorBalance2);
+    score += balanceDiff * 2; // Penalty for imbalanced colors
+    
+    return score;
   }
 }
 

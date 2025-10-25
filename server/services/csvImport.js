@@ -861,6 +861,7 @@ async function importPlayersBulkStream(db, tournamentId, players, ratingResults)
       player.name,
       player.uscf_id || null,
       player.fide_id || null,
+      player.lichess_username || null,
       finalRating,
       player.section || null,
       finalStatus,
@@ -893,14 +894,14 @@ async function importPlayersBulkStream(db, tournamentId, players, ratingResults)
   // Single bulk insert with prepared statement
   const stmt = db.prepare(`
     INSERT INTO players (
-      id, tournament_id, name, uscf_id, fide_id, rating, section, status, 
+      id, tournament_id, name, uscf_id, fide_id, lichess_username, rating, section, status, 
       created_at, expiration_date, intentional_bye_rounds, notes, email, 
       phone, team_id, team_name, school, grade, state, city, parent_name, 
       parent_email, parent_phone, emergency_contact, emergency_phone, 
       tshirt_size, dietary_restrictions, special_needs, source, 
       uscf_regular_rating_date, uscf_name
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   // Execute all inserts in a single transaction
@@ -982,14 +983,14 @@ async function importPlayersFromCSVFast(db, tournamentId, players, lookupRatings
 async function importPlayersFromCSVOriginal(db, tournamentId, players, lookupRatings = true) {
   const stmt = db.prepare(`
     INSERT INTO players (
-      id, tournament_id, name, uscf_id, fide_id, rating, section, status, 
+      id, tournament_id, name, uscf_id, fide_id, lichess_username, rating, section, status, 
       created_at, expiration_date, intentional_bye_rounds, notes, email, 
       phone, team_id, team_name, school, grade, state, city, parent_name, 
       parent_email, parent_phone, emergency_contact, emergency_phone, 
       tshirt_size, dietary_restrictions, special_needs, source, 
       uscf_regular_rating_date, uscf_name
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const playerIds = [];
@@ -1016,6 +1017,7 @@ async function importPlayersFromCSVOriginal(db, tournamentId, players, lookupRat
         player.name,
         player.uscf_id || null,
         player.fide_id || null,
+        player.lichess_username || null,
         player.rating || null,
         player.section || null,
         'active', // Always set imported players as active

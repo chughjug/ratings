@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tournament, Player } from '../types';
 import { pairingApi } from '../services/api';
+import '../styles/pairing-system.css';
 
 interface DraggablePairingManagerProps {
   tournament: Tournament;
@@ -552,7 +553,7 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
 
       {pairings.length > 0 ? (
         <div className="pairings-table">
-          <table>
+          <table className="pairing-table">
             <thead>
               <tr>
                 <th>Board</th>
@@ -567,8 +568,8 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
               {pairings.map((pairing) => (
                 <tr key={pairing.id} className={pairing.isCustom ? 'custom-pairing' : ''}>
                   <td>
-                    <div className="board-info">
-                      <span className="board-number">{pairing.board}</span>
+                    <div className="board-number">
+                      {pairing.board}
                       {pairing.isCustom && <span className="custom-badge">Custom</span>}
                     </div>
                   </td>
@@ -579,7 +580,7 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
                   >
                     {pairing.white_player_id ? (
                       <div
-                        className="player-info draggable-player"
+                        className="player-info white-player draggable-player"
                         draggable
                         onDragStart={(e) => handleDragStart(e, {
                           id: pairing.white_player_id,
@@ -592,7 +593,8 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
                       >
                         <div className="player-name">{pairing.white_name}</div>
                         <div className="player-details">
-                          {pairing.white_rating} ({pairing.white_uscf_id})
+                          <span className="player-rating">{pairing.white_rating}</span>
+                          <span className="player-uscf-id">({pairing.white_uscf_id})</span>
                         </div>
                       </div>
                     ) : (
@@ -608,7 +610,7 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
                   >
                     {pairing.black_player_id ? (
                       <div
-                        className="player-info draggable-player"
+                        className="player-info black-player draggable-player"
                         draggable
                         onDragStart={(e) => handleDragStart(e, {
                           id: pairing.black_player_id,
@@ -621,7 +623,8 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
                       >
                         <div className="player-name">{pairing.black_name}</div>
                         <div className="player-details">
-                          {pairing.black_rating} ({pairing.black_uscf_id})
+                          <span className="player-rating">{pairing.black_rating}</span>
+                          <span className="player-uscf-id">({pairing.black_uscf_id})</span>
                         </div>
                       </div>
                     ) : (

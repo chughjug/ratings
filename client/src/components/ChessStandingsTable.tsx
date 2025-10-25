@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
+import '../styles/pairing-system.css';
 
 interface RoundResult {
   result: string;
@@ -168,56 +169,36 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
           
           {/* Standings Table */}
           <div className="overflow-x-auto mb-6">
-            <table className="min-w-full divide-y divide-gray-200 chess-standings-table">
-        <thead className="bg-gray-50">
+            <table className="standings-table">
+        <thead>
           <tr>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-              No.
-            </th>
-            <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-              Player's Name
-            </th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-              USCF
-            </th>
-            <th className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-              Rating
-            </th>
-            <th className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-              Pts
-            </th>
+            <th>No.</th>
+            <th>Player's Name</th>
+            <th>USCF</th>
+            <th>Rating</th>
+            <th className="score">Pts</th>
             {roundColumns.map(round => (
-              <th key={round} className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                Rnd{round}
-              </th>
+              <th key={round}>Rnd{round}</th>
             ))}
             {showTiebreakers && (
               <>
-                <th className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                  BH
-                </th>
-                <th className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                  SB
-                </th>
-                <th className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                  Perf
-                </th>
+                <th>BH</th>
+                <th>SB</th>
+                <th>Perf</th>
               </>
             )}
             {showPrizes && (
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Prize
-              </th>
+              <th>Prize</th>
             )}
           </tr>
         </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {sectionStandings.map((player) => (
-                  <tr key={player.id} className="hover:bg-gray-50 transition-colors duration-200">
-                    <td className="px-2 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
+                  <tr key={player.id}>
+                    <td>
                       {player.rank}.
                     </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
+                    <td className="player">
                       <button
                         onClick={() => navigate(`/tournaments/${actualTournamentId}/player/${player.id}`)}
                         className="underline hover:text-blue-600"
@@ -225,35 +206,35 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                         {formatPlayerName(player)}
                       </button>
                     </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200">
+                    <td>
                       {player.uscf_id || ''}
                     </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200">
+                    <td>
                       {formatRating(player.rating)}
                     </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-sm font-bold text-gray-900 border-r border-gray-200 text-center">
+                    <td className="score">
                       {formatPoints(player.total_points)}
                     </td>
                     {roundColumns.map(round => (
-                      <td key={round} className="px-2 py-3 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200 text-center">
+                      <td key={round} className="opponent">
                         {formatRoundResult(player.roundResults[round], round)}
                       </td>
                     ))}
                     {showTiebreakers && (
                       <>
-                        <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200 text-center">
+                        <td>
                           {formatTiebreaker(player.tiebreakers.buchholz)}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200 text-center">
+                        <td>
                           {formatTiebreaker(player.tiebreakers.sonnebornBerger)}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200 text-center">
+                        <td>
                           {formatTiebreaker(player.tiebreakers.performanceRating)}
                         </td>
                       </>
                     )}
                     {showPrizes && (
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td>
                         {player.prize || ''}
                       </td>
                     )}

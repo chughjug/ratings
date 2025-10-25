@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, X, FileText, Download, Building2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, X, FileText, Download, Building2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { tournamentApi } from '../services/api';
 import { Section, TournamentTemplate } from '../types';
 import { templateService } from '../services/templateService';
+import USCFComplianceForm from '../components/USCFComplianceForm';
 
 const CreateTournament: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ const CreateTournament: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showOrgSelector, setShowOrgSelector] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showUSCFForm, setShowUSCFForm] = useState(false);
 
   // Load templates on component mount
   useEffect(() => {
@@ -54,21 +57,107 @@ const CreateTournament: React.FC = () => {
     organization_id: '',
     is_public: false,
     public_url: '',
-    // US Chess specific fields
+    
+    // USCF Compliance Fields - Required for DBF Export
+    // Location Information
     city: '',
     state: '',
+    zipcode: '',
     location: '',
+    venue_name: '',
+    venue_address: '',
+    venue_city: '',
+    venue_state: '',
+    venue_zipcode: '',
+    
+    // Tournament Director Information
     chief_td_name: '',
     chief_td_uscf_id: '',
+    chief_td_email: '',
+    chief_td_phone: '',
+    assistant_td_name: '',
+    assistant_td_uscf_id: '',
+    
+    // USCF Administrative Fields
+    affiliate_id: 'A6000220', // Default affiliate ID
+    uscf_tournament_id: '',
+    uscf_section_ids: '',
+    
+    // Tournament Classification
+    scholastic_tournament: false,
+    fide_rated: false,
+    uscf_rated: true,
+    send_crosstable: true,
+    
+    // Rating System Configuration
+    rating_system: 'regular' as 'regular' | 'quick' | 'blitz',
+    k_factor: 'regular' as 'regular' | 'scholastic' | 'provisional',
+    pairing_system: 'swiss' as 'swiss' | 'round_robin',
+    tournament_type: 'swiss' as 'swiss' | 'round_robin',
+    
+    // Scoring Configuration
+    bye_points: 0.5,
+    forfeit_points: 0.0,
+    half_point_bye_points: 0.5,
+    full_point_bye_points: 1.0,
+    pairing_allocated_bye_points: 1.0,
+    
+    // Rating Thresholds
+    provisional_rating_threshold: 20,
+    minimum_games_for_rating: 4,
+    
+    // Player Statistics
+    expected_players: undefined as number | undefined,
+    total_players: 0,
+    rated_players: 0,
+    unrated_players: 0,
+    foreign_players: 0,
+    provisional_players: 0,
+    withdrawn_players: 0,
+    forfeit_players: 0,
+    bye_players: 0,
+    half_point_bye_players: 0,
+    full_point_bye_players: 0,
+    pairing_allocated_bye_players: 0,
+    
+    // Tournament Management
+    allow_registration: true,
+    website: '',
+    entry_fee_amount: undefined as number | undefined,
+    prize_fund_amount: undefined as number | undefined,
+    time_control_description: '',
+    
+    // USCF Export Status
+    rating_submission_status: 'not_submitted' as 'not_submitted' | 'submitted' | 'accepted' | 'rejected',
+    rating_submission_date: '',
+    rating_submission_notes: '',
+    uscf_rating_report_generated: false,
+    uscf_rating_report_date: '',
+    uscf_rating_report_notes: '',
+    
+    // Compliance and Validation
+    compliance_notes: '',
+    regulatory_notes: '',
+    audit_trail: '',
+    validation_status: 'pending' as 'pending' | 'validated' | 'failed',
+    validation_notes: '',
+    validation_date: '',
+    validation_by: '',
+    
+    // System Fields
+    created_by: '',
+    last_modified_by: '',
+    last_modified_date: '',
+    version: '1.0',
+    compliance_version: 'uscf_2024',
+    export_format_version: 'dbf_iv',
+    data_integrity_hash: '',
+    
+    // Legacy fields for backward compatibility
     chief_arbiter_name: '',
     chief_arbiter_fide_id: '',
     chief_organizer_name: '',
     chief_organizer_fide_id: '',
-    expected_players: undefined as number | undefined,
-    website: '',
-    fide_rated: false,
-    uscf_rated: true,
-    allow_registration: true,
       settings: {
         tie_break_criteria: ['buchholz', 'sonnebornBerger'] as ('buchholz' | 'sonnebornBerger' | 'performanceRating' | 'modifiedBuchholz' | 'cumulative' | 'koya' | 'directEncounter' | 'avgOpponentRating')[],
         sections: [{
@@ -183,8 +272,57 @@ const CreateTournament: React.FC = () => {
     }));
   };
 
+  // USCF Compliance Validation
+  const validateUSCFCompliance = () => {
+    const newErrors: Record<string, string> = {};
+    
+    // Required fields for USCF compliance
+    if (!formData.city?.trim()) {
+      newErrors.city = 'City is required for USCF compliance';
+    }
+    
+    if (!formData.state?.trim()) {
+      newErrors.state = 'State is required for USCF compliance';
+    }
+    
+    if (!formData.zipcode?.trim()) {
+      newErrors.zipcode = 'ZIP code is required for USCF compliance';
+    }
+    
+    if (!formData.chief_td_name?.trim()) {
+      newErrors.chief_td_name = 'Chief TD name is required for USCF compliance';
+    }
+    
+    if (!formData.chief_td_uscf_id?.trim()) {
+      newErrors.chief_td_uscf_id = 'Chief TD USCF ID is required for USCF compliance';
+    }
+    
+    if (!formData.affiliate_id?.trim()) {
+      newErrors.affiliate_id = 'Affiliate ID is required for USCF compliance';
+    }
+    
+    // Validate USCF ID format (8 characters, alphanumeric)
+    if (formData.chief_td_uscf_id && !/^[A-Z0-9]{8}$/.test(formData.chief_td_uscf_id)) {
+      newErrors.chief_td_uscf_id = 'USCF ID must be 8 alphanumeric characters';
+    }
+    
+    // Validate ZIP code format
+    if (formData.zipcode && !/^\d{5}(-\d{4})?$/.test(formData.zipcode)) {
+      newErrors.zipcode = 'ZIP code must be in format 12345 or 12345-6789';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate USCF compliance if USCF rated
+    if (formData.uscf_rated && !validateUSCFCompliance()) {
+      setShowUSCFForm(true);
+      return;
+    }
     
     // Validate that at least one section has a name
     const hasValidSection = formData.settings.sections.some(section => section.name.trim() !== '');
@@ -691,6 +829,43 @@ const CreateTournament: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* USCF Compliance Form */}
+        {formData.uscf_rated && (
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">USCF Compliance</h2>
+              <div className="flex items-center space-x-2">
+                {Object.keys(errors).length === 0 ? (
+                  <div className="flex items-center text-green-600">
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    <span className="text-sm">Compliant</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center text-red-600">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    <span className="text-sm">{Object.keys(errors).length} issues</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowUSCFForm(!showUSCFForm)}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  {showUSCFForm ? 'Hide Details' : 'Show Details'}
+                </button>
+              </div>
+            </div>
+            
+            {showUSCFForm && (
+              <USCFComplianceForm
+                formData={formData}
+                setFormData={setFormData}
+                errors={errors}
+              />
+            )}
+          </div>
+        )}
 
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Tournament Settings</h2>
