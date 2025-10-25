@@ -128,6 +128,8 @@ const TournamentDetail: React.FC = () => {
   const [showPWAStatus, setShowPWAStatus] = useState(false);
   const [showAnalyticsDashboard, setShowAnalyticsDashboard] = useState(false);
   const [showChessIntegration, setShowChessIntegration] = useState(false);
+  const [showSectionManager, setShowSectionManager] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
   
   // Sorting state - default to section sorting as requested
   const [sortField, setSortField] = useState<string>('section');
@@ -599,7 +601,7 @@ const TournamentDetail: React.FC = () => {
       if (!state.currentTournament) {
         throw new Error('No tournament data available');
       }
-      
+
       // Include all required fields for the update
       const updateData = {
         ...state.currentTournament,
@@ -612,6 +614,44 @@ const TournamentDetail: React.FC = () => {
     } catch (error) {
       console.error('Failed to update tournament settings:', error);
       throw error;
+    }
+  };
+
+  const addSection = async () => {
+    if (!newSectionName.trim()) {
+      alert('Please enter a section name');
+      return;
+    }
+
+    try {
+      const currentSettings = tournament?.settings || {};
+      const currentSections = currentSettings.sections || [];
+      
+      // Check if section already exists
+      if (currentSections.some((s: any) => s.name === newSectionName.trim())) {
+        alert('A section with this name already exists');
+        return;
+      }
+
+      const newSection = {
+        name: newSectionName.trim(),
+        description: '',
+        min_rating: 0,
+        max_rating: 3000
+      };
+
+      const updatedSettings = {
+        ...currentSettings,
+        sections: [...currentSections, newSection]
+      };
+
+      await updateTournamentSettings(updatedSettings);
+      setNewSectionName('');
+      setShowSectionManager(false);
+      alert(`Section "${newSectionName}" added successfully!`);
+    } catch (error) {
+      console.error('Failed to add section:', error);
+      alert('Failed to add section. Please try again.');
     }
   };
 
@@ -1095,6 +1135,14 @@ const TournamentDetail: React.FC = () => {
                       >
                         <RefreshCw className="h-4 w-4 mr-3" />
                         Refresh Data
+                      </button>
+                      
+                      <button
+                        onClick={() => setShowSectionManager(true)}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <Settings className="h-4 w-4 mr-3" />
+                        Manage Sections
                       </button>
                       
                       <button
@@ -2748,6 +2796,72 @@ const TournamentDetail: React.FC = () => {
         onClose={() => setShowChessIntegration(false)}
         tournamentId={id || ''}
       />
+
+      {/* Section Manager Modal */}
+      {showSectionManager && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Manage Sections</h3>
+              <button
+                onClick={() => setShowSectionManager(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Current Sections</h4>
+                <div className="space-y-2">
+                  {tournament?.settings?.sections && tournament.settings.sections.length > 0 ? (
+                    tournament.settings.sections.map((section: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <span className="text-sm text-gray-900">{section.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {state.players.filter(p => p.section === section.name).length} players
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No sections defined</p>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Add New Section</h4>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={newSectionName}
+                    onChange={(e) => setNewSectionName(e.target.value)}
+                    placeholder="Enter section name (e.g., Open, U1800, U1200)"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onKeyPress={(e) => e.key === 'Enter' && addSection()}
+                  />
+                  <button
+                    onClick={addSection}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowSectionManager(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
