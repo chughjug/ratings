@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { TournamentProvider } from './contexts/TournamentContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
+import { BrandingProvider } from './contexts/BrandingContext';
 import Navbar from './components/Navbar';
 import PWAStatus from './components/PWAStatus';
 import pwaService from './services/pwaService';
@@ -12,11 +13,13 @@ import TournamentDetail from './pages/TournamentDetail';
 import TournamentManager from './components/TournamentManager';
 import CreateTournament from './pages/CreateTournament';
 import PublicTournamentDisplay from './pages/PublicTournamentDisplay';
+import BrandedPublicTournamentDisplay from './pages/BrandedPublicTournamentDisplay';
 import PublicTournamentList from './pages/PublicTournamentList';
 import PublicOrganizationPage from './pages/PublicOrganizationPage';
 import PublicOrganizationTournament from './pages/PublicOrganizationTournament';
 import OrganizationSearch from './pages/OrganizationSearch';
 import OrganizationSettings from './pages/OrganizationSettings';
+import OrganizationBrandingSettings from './pages/OrganizationBrandingSettings';
 import Registration from './pages/Registration';
 import SectionPairingPage from './pages/SectionPairingPage';
 import UserProfile from './pages/UserProfile';
@@ -25,6 +28,7 @@ import PlayerPerformance from './components/PlayerPerformance';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/print.css';
 import './styles/pairing-system.css';
+import './styles/branding.css';
 
 function App() {
   useEffect(() => {

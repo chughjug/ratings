@@ -1985,6 +1985,19 @@ const TournamentDetail: React.FC = () => {
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   <button
+                                    onClick={() => handleSort('points')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>Score</span>
+                                    {sortField === 'points' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
                                     onClick={() => handleSort('uscf_id')}
                                     className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
                                   >
@@ -2069,6 +2082,9 @@ const TournamentDetail: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {player.rating || 'Unrated'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {player.points !== undefined ? player.points.toFixed(1) : '0.0'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {player.uscf_id || '-'}

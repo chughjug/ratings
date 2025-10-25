@@ -1,0 +1,437 @@
+/* Branding Theme System */
+:root {
+  /* Default theme variables */
+  --brand-primary: #3b82f6;
+  --brand-secondary: #64748b;
+  --brand-background: #ffffff;
+  --brand-text: #1f2937;
+  --brand-accent: #f59e0b;
+  --brand-border: #e5e7eb;
+  --brand-hover: #f3f4f6;
+  --brand-shadow: rgba(0, 0, 0, 0.1);
+  --brand-radius: 0.5rem;
+  --brand-spacing: 1rem;
+  --brand-gradient: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  
+  /* Typography */
+  --brand-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --brand-font-size-base: 1rem;
+  --brand-font-size-sm: 0.875rem;
+  --brand-font-size-lg: 1.125rem;
+  --brand-font-size-xl: 1.25rem;
+  --brand-font-size-2xl: 1.5rem;
+  --brand-font-size-3xl: 1.875rem;
+  --brand-font-weight-normal: 400;
+  --brand-font-weight-medium: 500;
+  --brand-font-weight-semibold: 600;
+  --brand-font-weight-bold: 700;
+  
+  /* Spacing scale */
+  --brand-space-1: 0.25rem;
+  --brand-space-2: 0.5rem;
+  --brand-space-3: 0.75rem;
+  --brand-space-4: 1rem;
+  --brand-space-5: 1.25rem;
+  --brand-space-6: 1.5rem;
+  --brand-space-8: 2rem;
+  --brand-space-10: 2.5rem;
+  --brand-space-12: 3rem;
+  --brand-space-16: 4rem;
+  --brand-space-20: 5rem;
+  --brand-space-24: 6rem;
+  
+  /* Border radius scale */
+  --brand-radius-sm: 0.25rem;
+  --brand-radius-md: 0.375rem;
+  --brand-radius-lg: 0.5rem;
+  --brand-radius-xl: 0.75rem;
+  --brand-radius-2xl: 1rem;
+  --brand-radius-full: 9999px;
+  
+  /* Shadow scale */
+  --brand-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --brand-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --brand-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --brand-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --brand-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* Animation */
+  --brand-transition: all 0.2s ease-in-out;
+  --brand-transition-fast: all 0.1s ease-in-out;
+  --brand-transition-slow: all 0.3s ease-in-out;
+}
+
+/* Brand utility classes */
+.brand-primary { color: var(--brand-primary); }
+.brand-secondary { color: var(--brand-secondary); }
+.brand-background { background-color: var(--brand-background); }
+.brand-text { color: var(--brand-text); }
+.brand-accent { color: var(--brand-accent); }
+.brand-border { border-color: var(--brand-border); }
+.brand-hover:hover { background-color: var(--brand-hover); }
+.brand-shadow { box-shadow: var(--brand-shadow-md); }
+.brand-radius { border-radius: var(--brand-radius); }
+.brand-gradient { background: var(--brand-gradient); }
+
+/* Button styles */
+.btn-brand {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: white;
+  border-radius: var(--brand-radius);
+  padding: var(--brand-space-2) var(--brand-space-4);
+  font-weight: var(--brand-font-weight-medium);
+  transition: var(--brand-transition);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.btn-brand:hover {
+  background-color: color-mix(in srgb, var(--brand-primary) 85%, black);
+  border-color: color-mix(in srgb, var(--brand-primary) 85%, black);
+  transform: translateY(-1px);
+  box-shadow: var(--brand-shadow-lg);
+}
+
+.btn-brand:active {
+  transform: translateY(0);
+  box-shadow: var(--brand-shadow-sm);
+}
+
+.btn-brand-outline {
+  background-color: transparent;
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+.btn-brand-outline:hover {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+.btn-brand-ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--brand-primary);
+}
+
+.btn-brand-ghost:hover {
+  background-color: var(--brand-hover);
+}
+
+/* Card styles */
+.card-brand {
+  background-color: var(--brand-background);
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius);
+  box-shadow: var(--brand-shadow-sm);
+  padding: var(--brand-space-6);
+  transition: var(--brand-transition);
+}
+
+.card-brand:hover {
+  box-shadow: var(--brand-shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-brand-elevated {
+  box-shadow: var(--brand-shadow-lg);
+}
+
+.card-brand-minimal {
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+/* Input styles */
+.input-brand {
+  background-color: var(--brand-background);
+  border: 1px solid var(--brand-border);
+  border-radius: var(--brand-radius);
+  padding: var(--brand-space-2) var(--brand-space-3);
+  color: var(--brand-text);
+  font-family: var(--brand-font-family);
+  transition: var(--brand-transition);
+}
+
+.input-brand:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 20%, transparent);
+}
+
+.input-brand::placeholder {
+  color: var(--brand-secondary);
+}
+
+/* Badge styles */
+.badge-brand {
+  background-color: var(--brand-primary);
+  color: white;
+  border-radius: var(--brand-radius-full);
+  padding: var(--brand-space-1) var(--brand-space-2);
+  font-size: var(--brand-font-size-sm);
+  font-weight: var(--brand-font-weight-medium);
+  display: inline-flex;
+  align-items: center;
+}
+
+.badge-brand-secondary {
+  background-color: var(--brand-secondary);
+}
+
+.badge-brand-accent {
+  background-color: var(--brand-accent);
+}
+
+/* Header styles */
+.header-brand {
+  background-color: var(--brand-background);
+  border-bottom: 1px solid var(--brand-border);
+  padding: var(--brand-space-4) 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  background-color: color-mix(in srgb, var(--brand-background) 95%, transparent);
+}
+
+.header-brand-minimal {
+  border-bottom: none;
+  background-color: transparent;
+}
+
+.header-brand-hero {
+  background: var(--brand-gradient);
+  color: white;
+  padding: var(--brand-space-16) 0;
+  text-align: center;
+}
+
+/* Navigation styles */
+.nav-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--brand-space-4);
+}
+
+.nav-brand-links {
+  display: flex;
+  align-items: center;
+  gap: var(--brand-space-6);
+}
+
+.nav-brand-link {
+  color: var(--brand-text);
+  text-decoration: none;
+  font-weight: var(--brand-font-weight-medium);
+  transition: var(--brand-transition);
+  padding: var(--brand-space-2) var(--brand-space-3);
+  border-radius: var(--brand-radius);
+}
+
+.nav-brand-link:hover {
+  color: var(--brand-primary);
+  background-color: var(--brand-hover);
+}
+
+.nav-brand-link.active {
+  color: var(--brand-primary);
+  background-color: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+}
+
+/* Logo styles */
+.logo-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--brand-space-2);
+  text-decoration: none;
+  color: var(--brand-text);
+  font-weight: var(--brand-font-weight-bold);
+  font-size: var(--brand-font-size-xl);
+}
+
+.logo-brand img {
+  height: 2rem;
+  width: auto;
+}
+
+.logo-brand-small img {
+  height: 1.5rem;
+}
+
+.logo-brand-large img {
+  height: 3rem;
+}
+
+/* Footer styles */
+.footer-brand {
+  background-color: var(--brand-background);
+  border-top: 1px solid var(--brand-border);
+  padding: var(--brand-space-8) 0;
+  margin-top: var(--brand-space-16);
+}
+
+.footer-brand-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--brand-space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--brand-space-8);
+}
+
+.footer-brand-section h3 {
+  color: var(--brand-text);
+  font-weight: var(--brand-font-weight-semibold);
+  margin-bottom: var(--brand-space-4);
+}
+
+.footer-brand-section p,
+.footer-brand-section a {
+  color: var(--brand-secondary);
+  text-decoration: none;
+  line-height: 1.6;
+}
+
+.footer-brand-section a:hover {
+  color: var(--brand-primary);
+}
+
+/* Social links */
+.social-brand {
+  display: flex;
+  gap: var(--brand-space-3);
+}
+
+.social-brand a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: var(--brand-hover);
+  color: var(--brand-secondary);
+  border-radius: var(--brand-radius);
+  transition: var(--brand-transition);
+}
+
+.social-brand a:hover {
+  background-color: var(--brand-primary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .nav-brand {
+    flex-direction: column;
+    gap: var(--brand-space-4);
+  }
+  
+  .nav-brand-links {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .footer-brand-content {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  
+  .social-brand {
+    justify-content: center;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-background: #1f2937;
+    --brand-text: #f9fafb;
+    --brand-border: #374151;
+    --brand-hover: #374151;
+    --brand-secondary: #9ca3af;
+  }
+}
+
+/* Embed mode styles */
+.embed-mode {
+  border: none;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+.embed-mode .header-brand {
+  position: relative;
+  top: 0;
+}
+
+.embed-mode .footer-brand {
+  margin-top: 0;
+}
+
+/* Animation classes */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Print styles */
+@media print {
+  .header-brand,
+  .footer-brand,
+  .btn-brand,
+  .social-brand {
+    display: none;
+  }
+  
+  .card-brand {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+}
