@@ -1,20 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Trophy, Play, RotateCcw, CheckCircle } from 'lucide-react';
 import { tournamentApi, pairingApi, playerApi } from '../services/api';
+import { Player } from '../types';
 import PairingSystem from './PairingSystem';
-
-interface Player {
-  id: string;
-  name: string;
-  rating: number;
-  uscf_id: string;
-  points: number;
-  colorPreference: string;
-  absoluteColorPreference: boolean;
-  strongColorPreference: boolean;
-  colorImbalance: number;
-  matches: any[];
-}
 
 interface Section {
   name: string;
@@ -47,30 +35,31 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
       const tournamentResponse = await tournamentApi.getById(tournamentId);
       const tournament = tournamentResponse.data.data;
       
-      // Load sections
+      // Load sections - use default section for now
+      const defaultSections = ['CHAMPIONSHIP 2DAY'];
       const sectionsData = await Promise.all(
-        (tournament.settings?.sections || []).map(async (section: any) => {
+        defaultSections.map(async (sectionName: string) => {
           try {
             // Load players for this section
             const playersResponse = await playerApi.getByTournament(tournamentId);
-            const players = playersResponse.data || [];
+            const players = playersResponse.data.data || [];
             
             // Load current round pairings
-            const currentRound = await getCurrentRound(tournamentId, section.name);
-            const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, section.name);
+            const currentRound = await getCurrentRound(tournamentId, sectionName);
+            const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
             const pairings = pairingsResponse.data || [];
             
             return {
-              name: section.name,
+              name: sectionName,
               players,
               pairings,
               currentRound,
               isComplete: false // TODO: Determine if section is complete
             };
           } catch (err) {
-            console.error(`Failed to load section ${section.name}:`, err);
+            console.error(`Failed to load section ${sectionName}:`, err);
             return {
-              name: section.name,
+              name: sectionName,
               players: [],
               pairings: [],
               currentRound: 1,

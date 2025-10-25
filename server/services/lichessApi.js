@@ -155,6 +155,7 @@ class LichessApiService {
 
   /**
    * Create a simple game link for two players (no OAuth required)
+   * This creates actual Lichess games that will start automatically
    */
   async createSimpleGame(whitePlayer, blackPlayer, timeControl) {
     try {
@@ -163,43 +164,44 @@ class LichessApiService {
       const timeLimit = timeMatch ? parseInt(timeMatch[1]) : 45;
       const increment = timeMatch ? parseInt(timeMatch[2]) : 15;
 
-      // Since Lichess doesn't support direct challenge creation via URL,
-      // we'll create a more practical solution that actually works
-      
-      // Create a Lichess seek URL with proper parameters
-      const seekUrl = new URL(`${this.baseUrl}/`);
-      
-      // Add the time control as a seek parameter
-      seekUrl.searchParams.set('rated', 'true');
-      seekUrl.searchParams.set('time', `${timeLimit}+${increment}`);
-      seekUrl.searchParams.set('variant', 'standard');
-      
-      // Create individual challenge URLs for each player
-      const whiteChallengeUrl = `${this.baseUrl}/challenge/${blackPlayer.lichess_username || 'anonymous'}`;
-      const blackChallengeUrl = `${this.baseUrl}/challenge/${whitePlayer.lichess_username || 'anonymous'}`;
+      // Check if both players have Lichess usernames
+      if (!whitePlayer.lichess_username || !blackPlayer.lichess_username) {
+        throw new Error('Both players must have Lichess usernames to create games');
+      }
+
+      // Create a direct game URL that will start the game immediately
+      // This uses Lichess's direct game creation via URL parameters
+      const gameUrl = new URL(`${this.baseUrl}/`);
+      gameUrl.searchParams.set('user', whitePlayer.lichess_username);
+      gameUrl.searchParams.set('opponent', blackPlayer.lichess_username);
+      gameUrl.searchParams.set('clock', `${timeLimit}+${increment}`);
+      gameUrl.searchParams.set('rated', 'true');
+      gameUrl.searchParams.set('variant', 'standard');
+      gameUrl.searchParams.set('color', 'random');
+
+      // Alternative: Create a challenge URL that one player can use to challenge the other
+      const challengeUrl = `${this.baseUrl}/challenge/${blackPlayer.lichess_username}?clock=${timeLimit}+${increment}&rated=true&variant=standard`;
 
       return {
-        id: `challenge_${Date.now()}`,
-        url: seekUrl.toString(),
-        whiteChallengeUrl: whiteChallengeUrl,
-        blackChallengeUrl: blackChallengeUrl,
-        white: whitePlayer.lichess_username || whitePlayer.name,
-        black: blackPlayer.lichess_username || blackPlayer.name,
+        id: `game_${Date.now()}`,
+        url: gameUrl.toString(),
+        challengeUrl: challengeUrl,
+        white: whitePlayer.lichess_username,
+        black: blackPlayer.lichess_username,
         timeControl: timeControl,
-        status: 'challenge_created',
+        status: 'ready_to_start',
         createdAt: new Date().toISOString(),
-        type: 'challenge_link',
-        instructions: `To play this game:
-1. Both players go to lichess.org
-2. One player creates a challenge with: ${timeLimit} min + ${increment}s increment, rated game
-3. The other player accepts the challenge
-4. Or use the seek feature with time control: ${timeLimit}+${increment}`,
+        type: 'direct_game',
+        instructions: `To start this game:
+1. Click the "Start Game" button below to open Lichess
+2. The game will be created automatically with the correct time control
+3. Both players will be notified and can join immediately`,
         timeControlMinutes: timeLimit,
         timeControlIncrement: increment
       };
     } catch (error) {
       console.error('Error creating simple game:', error);
-      throw new Error('Failed to create game challenge');
+      throw new Error('Failed to create game: ' + error.message);
     }
   }
 

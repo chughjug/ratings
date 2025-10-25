@@ -2985,7 +2985,7 @@ const TournamentDetail: React.FC = () => {
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Current Sections</h4>
                 <div className="space-y-2">
                   {tournament?.settings?.sections && tournament.settings.sections.length > 0 ? (
-                    tournament.settings.sections.map((section: any, index: number) => (
+                    (tournament.settings?.sections || []).map((section: any, index: number) => (
                       <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                         <span className="text-sm text-gray-900">{section.name}</span>
                         <span className="text-xs text-gray-500">
