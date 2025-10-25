@@ -61,26 +61,35 @@ class LichessApiService {
    */
   async exchangeCodeForToken(code, codeVerifier) {
     try {
-      // For now, let's use a simple approach - return a mock token
-      // In a real implementation, you would need to implement the actual OAuth flow
-      // or use Lichess's personal access token system
-      
       console.log('OAuth code received:', code);
       console.log('Code verifier:', codeVerifier);
       
-      // Mock response for testing
-      return {
-        access_token: 'mock_access_token_' + Date.now(),
-        token_type: 'Bearer',
-        expires_in: 3600,
-        scope: 'preference:read preference:write email:read'
-      };
-      
-      // TODO: Implement actual OAuth token exchange with Lichess
-      // This would require the correct Lichess OAuth endpoints and flow
+      const response = await fetch(`${this.baseUrl}/api/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: this.redirectUri,
+          client_id: this.clientId,
+          code_verifier: codeVerifier
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Token exchange failed:', response.status, errorText);
+        throw new Error(`Token exchange failed: ${response.status} ${errorText}`);
+      }
+
+      const tokenData = await response.json();
+      console.log('Token exchange successful:', tokenData);
+      return tokenData;
     } catch (error) {
-      console.error('Error exchanging code for token:', error.response?.data || error.message);
-      throw new Error('Failed to obtain access token');
+      console.error('Error exchanging code for token:', error);
+      throw new Error('Failed to obtain access token: ' + error.message);
     }
   }
 
@@ -89,29 +98,26 @@ class LichessApiService {
    */
   async getUserProfile(accessToken) {
     try {
-      // For now, return a mock user profile
-      // In a real implementation, you would call the Lichess API
-      
       console.log('Getting user profile with token:', accessToken);
       
-      // Mock user profile for testing
-      return {
-        id: 'mock_user_' + Date.now(),
-        username: 'TestUser',
-        title: 'GM',
-        rating: 2500,
-        online: true
-      };
-      
-      // TODO: Implement actual Lichess API call
-      // const response = await axios.get(`${this.baseUrl}/api/account`, {
-      //   headers: {
-      //     'Authorization': `Bearer ${accessToken}`
-      //   }
-      // });
+      const response = await fetch(`${this.baseUrl}/api/account`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to get user profile:', response.status, errorText);
+        throw new Error(`Failed to get user profile: ${response.status} ${errorText}`);
+      }
+
+      const userProfile = await response.json();
+      console.log('User profile retrieved:', userProfile);
+      return userProfile;
     } catch (error) {
-      console.error('Error getting user profile:', error.response?.data || error.message);
-      throw new Error('Failed to get user profile');
+      console.error('Error getting user profile:', error);
+      throw new Error('Failed to get user profile: ' + error.message);
     }
   }
 
@@ -150,6 +156,70 @@ class LichessApiService {
     } catch (error) {
       console.error('Error creating challenge:', error.response?.data || error.message);
       throw new Error('Failed to create challenge');
+    }
+  }
+
+  /**
+   * Create a Lichess challenge using OAuth token
+   */
+  async createChallengeWithToken(accessToken, whitePlayer, blackPlayer, timeControl) {
+    try {
+      // Parse time control (e.g., "G/45+15" -> 45 minutes, 15 increment)
+      const timeMatch = timeControl.match(/G\/(\d+)\+(\d+)/);
+      const timeLimit = timeMatch ? parseInt(timeMatch[1]) : 45;
+      const increment = timeMatch ? parseInt(timeMatch[2]) : 15;
+
+      // Check if both players have Lichess usernames
+      if (!whitePlayer.lichess_username || !blackPlayer.lichess_username) {
+        throw new Error('Both players must have Lichess usernames to create games');
+      }
+
+      const challengeData = {
+        rated: true,
+        clock: {
+          limit: timeLimit * 60, // Convert minutes to seconds
+          increment: increment
+        },
+        color: 'white',
+        variant: 'standard',
+        users: [whitePlayer.lichess_username, blackPlayer.lichess_username]
+      };
+
+      const response = await fetch(`${this.baseUrl}/api/challenge/${blackPlayer.lichess_username}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(challengeData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to create challenge:', response.status, errorText);
+        throw new Error(`Failed to create challenge: ${response.status} ${errorText}`);
+      }
+
+      const challenge = await response.json();
+      console.log('Challenge created:', challenge);
+
+      return {
+        id: challenge.id || `challenge_${Date.now()}`,
+        url: `${this.baseUrl}/${challenge.id}`,
+        challengeUrl: `${this.baseUrl}/${challenge.id}`,
+        white: whitePlayer.lichess_username,
+        black: blackPlayer.lichess_username,
+        timeControl: timeControl,
+        status: 'challenge_created',
+        createdAt: new Date().toISOString(),
+        type: 'lichess_challenge',
+        instructions: `Challenge created! The game will start when ${blackPlayer.lichess_username} accepts the challenge.`,
+        timeControlMinutes: timeLimit,
+        timeControlIncrement: increment
+      };
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+      throw new Error('Failed to create challenge: ' + error.message);
     }
   }
 

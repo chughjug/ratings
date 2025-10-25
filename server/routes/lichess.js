@@ -133,13 +133,33 @@ router.post('/tournament/create', async (req, res) => {
  */
 router.post('/create-game', async (req, res) => {
   try {
-    const { pairingId, whitePlayer, blackPlayer, timeControl } = req.body;
+    const { pairingId, whitePlayer, blackPlayer, timeControl, accessToken } = req.body;
     
     if (!pairingId || !whitePlayer || !blackPlayer) {
       return res.status(400).json({
         success: false,
         error: 'Pairing ID and player usernames are required'
       });
+    }
+
+    // If we have an access token, try to create a real Lichess challenge
+    if (accessToken) {
+      try {
+        const game = await lichessApi.createChallengeWithToken(
+          accessToken,
+          { lichess_username: whitePlayer, name: whitePlayer },
+          { lichess_username: blackPlayer, name: blackPlayer },
+          timeControl || 'G/45+15'
+        );
+        
+        return res.json({
+          success: true,
+          game: game
+        });
+      } catch (tokenError) {
+        console.log('OAuth challenge failed, falling back to simple game:', tokenError.message);
+        // Fall through to simple game creation
+      }
     }
 
     // Create a simple game challenge (no OAuth required)
