@@ -146,7 +146,7 @@ router.post('/create-game', async (req, res) => {
     const game = await lichessApi.createSimpleGame(
       { lichess_username: whitePlayer, name: whitePlayer },
       { lichess_username: blackPlayer, name: blackPlayer },
-      timeControl || 'G/30+0'
+      timeControl || 'G/45+15'
     );
     
     res.json({

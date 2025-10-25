@@ -930,6 +930,70 @@ class BbpPairings {
   }
 
   /**
+   * Check if two color preferences are compatible
+   */
+  colorPreferencesAreCompatible(pref1, pref2) {
+    if (!pref1 || !pref2 || pref1 === 'none' || pref2 === 'none') {
+      return true; // At least one is neutral
+    }
+    return pref1 !== pref2; // Different preferences are compatible
+  }
+
+  /**
+   * Choose neutral color preference between two players
+   */
+  choosePlayerNeutralColor(player1, player2) {
+    console.log(`[DEBUG] choosePlayerNeutralColor: Player1 pref: ${player1.colorPreference}, Player2 pref: ${player2.colorPreference}`);
+    console.log(`[DEBUG] Player1 absolute: ${player1.absoluteColorPreference}, strong: ${player1.strongColorPreference}`);
+    console.log(`[DEBUG] Player2 absolute: ${player2.absoluteColorPreference}, strong: ${player2.strongColorPreference}`);
+    
+    // Check if both players have compatible color preferences
+    if (this.colorPreferencesAreCompatible(player1.colorPreference, player2.colorPreference)) {
+      console.log(`[DEBUG] Color preferences are compatible`);
+      if (player1.colorPreference && player1.colorPreference !== 'none') {
+        // Player1 has a preference, so give them their preferred color
+        // This means the white player gets the opposite color
+        const result = player1.colorPreference === 'white' ? 'white' : 'black';
+        console.log(`[DEBUG] Player1 has preference ${player1.colorPreference}, returning ${result} for white player`);
+        return result;
+      } else if (player2.colorPreference && player2.colorPreference !== 'none') {
+        // Player2 has a preference, so give them their preferred color
+        // This means the white player gets the opposite color
+        const result = player2.colorPreference === 'white' ? 'white' : 'black';
+        console.log(`[DEBUG] Player2 has preference ${player2.colorPreference}, returning ${result} for white player`);
+        return result;
+      } else {
+        console.log(`[DEBUG] No clear preference, returning null`);
+        return null; // No clear preference
+      }
+    }
+    
+    // Handle absolute color preferences
+    if (player1.absoluteColorPreference && player2.absoluteColorPreference) {
+      if (player1.colorPreference === player2.colorPreference) {
+        console.log(`[DEBUG] Both have same absolute preference, returning null`);
+        return null; // Incompatible
+      }
+      console.log(`[DEBUG] Returning player1 absolute preference: ${player1.colorPreference}`);
+      return player1.colorPreference;
+    }
+    
+    // Handle strong color preferences
+    if (player1.strongColorPreference && !player2.strongColorPreference) {
+      console.log(`[DEBUG] Player1 has strong preference: ${player1.colorPreference}`);
+      return player1.colorPreference;
+    }
+    if (player2.strongColorPreference && !player1.strongColorPreference) {
+      const result = player2.colorPreference === 'white' ? 'black' : 'white';
+      console.log(`[DEBUG] Player2 has strong preference, returning opposite: ${result}`);
+      return result;
+    }
+    
+    console.log(`[DEBUG] No clear preference, returning null`);
+    return null; // No clear preference
+  }
+
+  /**
    * Assign colors for Swiss system pairing
    * Based on bbpPairings color assignment algorithm
    */
@@ -937,101 +1001,79 @@ class BbpPairings {
     const player1Colors = this.getLastTwoColors(player1, tournament.colorHistory);
     const player2Colors = this.getLastTwoColors(player2, tournament.colorHistory);
     
-    console.log(`[DEBUG] assignColorsSwiss: ${player1.name} (${player1.rating}) vs ${player2.name} (${player2.rating})`);
-    console.log(`[DEBUG] Player1 colors: ${player1Colors}, Player2 colors: ${player2Colors}`);
-    
     // PRIORITY 1: Avoid immediate color repeats (WW or BB)
     if (player1Colors === 'WW' && player2Colors !== 'WW') {
-      console.log(`[DEBUG] Priority 1: Player1 has WW, giving white to player2`);
       return player2; // Give white to player2
     }
     if (player2Colors === 'WW' && player1Colors !== 'WW') {
-      console.log(`[DEBUG] Priority 1: Player2 has WW, giving white to player1`);
       return player1; // Give white to player1
     }
     if (player1Colors === 'BB' && player2Colors !== 'BB') {
-      console.log(`[DEBUG] Priority 1: Player1 has BB, giving white to player1`);
       return player1; // Give white to player1
     }
     if (player2Colors === 'BB' && player1Colors !== 'BB') {
-      console.log(`[DEBUG] Priority 1: Player2 has BB, giving white to player2`);
       return player2; // Give white to player2
     }
     
-    // PRIORITY 2: Check for neutral color preference
-    const neutralColor = this.choosePlayerNeutralColor(player1, player2);
-    if (neutralColor !== null) {
-      console.log(`[DEBUG] Priority 2: Neutral color preference: ${neutralColor}`);
-      return neutralColor === 'white' ? player1 : player2;
+    // PRIORITY 2: Check for neutral color preference (skip for Round 1)
+    if (tournament.round > 1) {
+      const neutralColor = this.choosePlayerNeutralColor(player1, player2);
+      if (neutralColor !== null) {
+        return neutralColor === 'white' ? player1 : player2;
+      }
     }
     
     // PRIORITY 3: Handle absolute color preferences
     if (player1.absoluteColorPreference && player1.colorPreference === 'white') {
-      console.log(`[DEBUG] Priority 3: Player1 has absolute white preference`);
       return player1;
     }
     if (player1.absoluteColorPreference && player1.colorPreference === 'black') {
-      console.log(`[DEBUG] Priority 3: Player1 has absolute black preference, giving white to player2`);
       return player2;
     }
     if (player2.absoluteColorPreference && player2.colorPreference === 'white') {
-      console.log(`[DEBUG] Priority 3: Player2 has absolute white preference`);
       return player2;
     }
     if (player2.absoluteColorPreference && player2.colorPreference === 'black') {
-      console.log(`[DEBUG] Priority 3: Player2 has absolute black preference, giving white to player1`);
       return player1;
     }
     
     // PRIORITY 4: Handle strong color preferences
     if (player1.strongColorPreference && !player2.strongColorPreference) {
-      console.log(`[DEBUG] Priority 4: Player1 has strong preference: ${player1.colorPreference}`);
       return player1.colorPreference === 'white' ? player1 : player2;
     }
     if (player2.strongColorPreference && !player1.strongColorPreference) {
-      console.log(`[DEBUG] Priority 4: Player2 has strong preference: ${player2.colorPreference}`);
       return player2.colorPreference === 'white' ? player2 : player1;
     }
     
     // PRIORITY 5: Balance colors based on current imbalance
     const imbalance1 = this.getColorBalance(player1);
     const imbalance2 = this.getColorBalance(player2);
-    console.log(`[DEBUG] Priority 5: Player1 imbalance: ${imbalance1}, Player2 imbalance: ${imbalance2}`);
     
     if (imbalance1 > imbalance2) {
-      console.log(`[DEBUG] Priority 5: Player1 has higher imbalance, giving white to player2`);
       return player2; // Give white to player2
     } else if (imbalance2 > imbalance1) {
-      console.log(`[DEBUG] Priority 5: Player2 has higher imbalance, giving white to player1`);
       return player1; // Give white to player1
     }
     
     // PRIORITY 6: If both players have same imbalance, alternate based on last color
     const lastColor1 = player1Colors.slice(-1);
     const lastColor2 = player2Colors.slice(-1);
-    console.log(`[DEBUG] Priority 6: Last colors - Player1: ${lastColor1}, Player2: ${lastColor2}`);
     
     if (lastColor1 === 'W' && lastColor2 !== 'W') {
-      console.log(`[DEBUG] Priority 6: Player1 last was W, giving white to player2`);
       return player2; // Give white to player2
     }
     if (lastColor2 === 'W' && lastColor1 !== 'W') {
-      console.log(`[DEBUG] Priority 6: Player2 last was W, giving white to player1`);
       return player1; // Give white to player1
     }
     if (lastColor1 === 'B' && lastColor2 !== 'B') {
-      console.log(`[DEBUG] Priority 6: Player1 last was B, giving white to player1`);
       return player1; // Give white to player1
     }
     if (lastColor2 === 'B' && lastColor1 !== 'B') {
-      console.log(`[DEBUG] Priority 6: Player2 last was B, giving white to player2`);
       return player2; // Give white to player2
     }
     
     // PRIORITY 7: Final fallback: give white to higher rated player
-    const higherRated = (player1.rating || 0) >= (player2.rating || 0) ? player1 : player2;
-    console.log(`[DEBUG] Priority 7: Final fallback - higher rated player: ${higherRated.name} (${higherRated.rating})`);
-    return higherRated;
+    return (player1.rating || 0) >= (player2.rating || 0) ? player1 : player2;
   }
 
   /**
@@ -1120,9 +1162,11 @@ class BbpPairings {
         // Round 1: Top half vs bottom half
         const halfLength = Math.floor(group.length / 2);
         for (let i = 0; i < halfLength; i++) {
-          const player1 = group[i];
-          const player2 = group[i + halfLength];
-          const whitePlayer = this.assignColorsSwiss(player1, player2, tournament);
+          const player1 = group[i]; // Higher rated player (top half)
+          const player2 = group[i + halfLength]; // Lower rated player (bottom half)
+          
+          // Alternate colors between boards: Board 1 = higher rated white, Board 2 = lower rated white, etc.
+          const whitePlayer = i % 2 === 0 ? player1 : player2;
           const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
           pairings.push({
             white_player_id: whitePlayer.id,

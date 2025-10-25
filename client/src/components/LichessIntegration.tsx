@@ -56,7 +56,7 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
   const [playerMappings, setPlayerMappings] = useState<Record<string, string>>({});
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'completed' | 'error'>('idle');
 
-  // Parse time control (e.g., "G/30+0", "G/60+5")
+  // Parse time control (e.g., "G/45+15", "G/60+5")
   const parseTimeControl = (timeControl: string) => {
     const match = timeControl.match(/G\/(\d+)\+(\d+)/);
     if (match) {

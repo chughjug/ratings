@@ -504,7 +504,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                         name: pairing.black_name,
                         lichess_username: pairing.black_lichess_username
                       }}
-                      timeControl="G/30+0"
+                      timeControl="G/45+15"
                       onGameCreated={(gameData) => {
                         console.log('Lichess game created:', gameData);
                         // You could update the pairing with game data here

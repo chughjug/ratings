@@ -2941,7 +2941,7 @@ const TournamentDetail: React.FC = () => {
           <LichessIntegration
             tournamentId={id || ''}
             tournamentName={state.currentTournament.name}
-            timeControl={state.currentTournament.time_control || 'G/30+0'}
+            timeControl={state.currentTournament.time_control || 'G/45+15'}
             rounds={state.currentTournament.rounds}
             players={state.players || []}
             onGamesCreated={(games) => {

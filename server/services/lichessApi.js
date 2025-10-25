@@ -158,10 +158,10 @@ class LichessApiService {
    */
   async createSimpleGame(whitePlayer, blackPlayer, timeControl) {
     try {
-      // Parse time control (e.g., "G/30+0" -> 30 minutes, 0 increment)
+      // Parse time control (e.g., "G/45+15" -> 45 minutes, 15 increment)
       const timeMatch = timeControl.match(/G\/(\d+)\+(\d+)/);
-      const timeLimit = timeMatch ? parseInt(timeMatch[1]) : 30;
-      const increment = timeMatch ? parseInt(timeMatch[2]) : 0;
+      const timeLimit = timeMatch ? parseInt(timeMatch[1]) : 45;
+      const increment = timeMatch ? parseInt(timeMatch[2]) : 15;
 
       // Create a Lichess challenge URL
       const challengeUrl = new URL(`${this.baseUrl}/challenge`);
