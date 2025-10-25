@@ -44,7 +44,7 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
       setError(null);
       
       // Load tournament details
-      const tournamentResponse = await tournamentApi.getTournament(tournamentId);
+      const tournamentResponse = await tournamentApi.getById(tournamentId);
       const tournament = tournamentResponse.data;
       
       // Load sections

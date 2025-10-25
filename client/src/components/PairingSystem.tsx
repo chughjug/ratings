@@ -93,8 +93,24 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
       setError(null);
       
       const response = await pairingApi.generate(tournamentId, round, false);
-      setPairings(response.data || []);
-      onPairingsGenerated(response.data || []);
+      const pairings = (response.data.pairings || []).map(pairing => ({
+        ...pairing,
+        white_name: pairing.white_name || '',
+        black_name: pairing.black_name || '',
+        white_rating: pairing.white_rating || 0,
+        black_rating: pairing.black_rating || 0,
+        white_uscf_id: pairing.white_uscf_id || '',
+        black_uscf_id: pairing.black_uscf_id || '',
+        white_lichess_username: pairing.white_lichess_username || '',
+        black_lichess_username: pairing.black_lichess_username || '',
+        result: pairing.result || '',
+        section: pairing.section || '',
+        white_id: pairing.white_id || '',
+        black_id: pairing.black_id || '',
+        is_bye: pairing.is_bye ?? false
+      }));
+      setPairings(pairings);
+      onPairingsGenerated(pairings);
     } catch (err: any) {
       console.error('Failed to generate pairings:', err);
       setError(err.response?.data?.message || 'Failed to generate pairings');
@@ -124,7 +140,7 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
       setLoading(true);
       setError(null);
       
-      await pairingApi.completeRound(tournamentId, section, round);
+      await pairingApi.completeRound(tournamentId, round, section);
       await loadPairings();
     } catch (err: any) {
       console.error('Failed to complete round:', err);
