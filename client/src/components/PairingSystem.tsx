@@ -70,7 +70,11 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
         white_uscf_id: pairing.white_uscf_id || '',
         black_uscf_id: pairing.black_uscf_id || '',
         white_lichess_username: pairing.white_lichess_username || '',
-        black_lichess_username: pairing.black_lichess_username || ''
+        black_lichess_username: pairing.black_lichess_username || '',
+        result: pairing.result || '',
+        section: pairing.section || '',
+        white_id: pairing.white_id || '',
+        black_id: pairing.black_id || ''
       }));
       setPairings(pairings);
       onPairingsGenerated(pairings);
