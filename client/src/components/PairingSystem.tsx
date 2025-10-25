@@ -61,8 +61,13 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
     try {
       setLoading(true);
       const response = await pairingApi.getByRound(tournamentId, round, section);
-      setPairings(response.data || []);
-      onPairingsGenerated(response.data || []);
+      const pairings = (response.data || []).map(pairing => ({
+        ...pairing,
+        white_name: pairing.white_name || '',
+        black_name: pairing.black_name || ''
+      }));
+      setPairings(pairings);
+      onPairingsGenerated(pairings);
     } catch (err) {
       console.error('Failed to load pairings:', err);
       setError('Failed to load pairings');
