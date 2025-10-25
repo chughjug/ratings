@@ -379,6 +379,259 @@ class BbpPairings {
     }
     return score;
   }
+
+  /**
+   * Generate Dutch system pairings
+   * Based on bbpPairings Dutch algorithm
+   */
+  generateDutchPairings(players, tournament) {
+    if (players.length < 2) return [];
+
+    // Sort players by standings
+    const sortedPlayers = this.sortPlayersByStandings(players, tournament);
+    
+    // Group by score
+    const scoreGroups = this.groupPlayersByScore(sortedPlayers, tournament);
+    
+    const pairings = [];
+    const used = new Set();
+    
+    // Process each score group
+    const sortedScores = Object.keys(scoreGroups).sort((a, b) => parseFloat(b) - parseFloat(a));
+    
+    for (const score of sortedScores) {
+      const group = scoreGroups[score];
+      
+      // Handle odd number of players
+      if (group.length % 2 === 1) {
+        const byePlayer = this.selectByePlayer(group);
+        if (byePlayer) {
+          pairings.push({
+            white_player_id: byePlayer.id,
+            black_player_id: null,
+            is_bye: true,
+            section: tournament.section || 'Open',
+            board: pairings.length + 1
+          });
+          used.add(byePlayer.id);
+        }
+      }
+      
+      // Pair remaining players
+      const remainingPlayers = group.filter(p => !used.has(p.id));
+      for (let i = 0; i < remainingPlayers.length; i += 2) {
+        if (i + 1 < remainingPlayers.length) {
+          const player1 = remainingPlayers[i];
+          const player2 = remainingPlayers[i + 1];
+          
+          // Assign colors based on bbpPairings algorithm
+          const whitePlayer = this.assignColorsSwiss(player1, player2);
+          const blackPlayer = whitePlayer === player1 ? player2 : player1;
+          
+          pairings.push({
+            white_player_id: whitePlayer.id,
+            black_player_id: blackPlayer.id,
+            is_bye: false,
+            section: tournament.section || 'Open',
+            board: pairings.length + 1
+          });
+          
+          used.add(player1.id);
+          used.add(player2.id);
+        }
+      }
+    }
+    
+    return pairings;
+  }
+
+  /**
+   * Generate Burstein system pairings
+   * Based on bbpPairings Burstein algorithm
+   */
+  generateBursteinPairings(players, tournament) {
+    if (players.length < 2) return [];
+
+    // Sort players by standings
+    const sortedPlayers = this.sortPlayersByStandings(players, tournament);
+    
+    // Group by score
+    const scoreGroups = this.groupPlayersByScore(sortedPlayers, tournament);
+    
+    const pairings = [];
+    const used = new Set();
+    
+    // Process each score group
+    const sortedScores = Object.keys(scoreGroups).sort((a, b) => parseFloat(b) - parseFloat(a));
+    
+    for (const score of sortedScores) {
+      const group = scoreGroups[score];
+      
+      // Handle odd number of players
+      if (group.length % 2 === 1) {
+        const byePlayer = this.selectByePlayer(group);
+        if (byePlayer) {
+          pairings.push({
+            white_player_id: byePlayer.id,
+            black_player_id: null,
+            is_bye: true,
+            section: tournament.section || 'Open',
+            board: pairings.length + 1
+          });
+          used.add(byePlayer.id);
+        }
+      }
+      
+      // Pair remaining players
+      const remainingPlayers = group.filter(p => !used.has(p.id));
+      for (let i = 0; i < remainingPlayers.length; i += 2) {
+        if (i + 1 < remainingPlayers.length) {
+          const player1 = remainingPlayers[i];
+          const player2 = remainingPlayers[i + 1];
+          
+          // Assign colors based on bbpPairings algorithm
+          const whitePlayer = this.assignColorsSwiss(player1, player2);
+          const blackPlayer = whitePlayer === player1 ? player2 : player1;
+          
+          pairings.push({
+            white_player_id: whitePlayer.id,
+            black_player_id: blackPlayer.id,
+            is_bye: false,
+            section: tournament.section || 'Open',
+            board: pairings.length + 1
+          });
+          
+          used.add(player1.id);
+          used.add(player2.id);
+        }
+      }
+    }
+    
+    return pairings;
+  }
+
+  /**
+   * Sort players by standings
+   * Based on bbpPairings sortPlayersByStandings function
+   */
+  sortPlayersByStandings(players, tournament) {
+    return [...players].sort((a, b) => {
+      // First by points
+      const scoreA = this.getPlayerScore(a, tournament);
+      const scoreB = this.getPlayerScore(b, tournament);
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      
+      // Then by rating
+      const ratingA = a.rating || 0;
+      const ratingB = b.rating || 0;
+      if (ratingA !== ratingB) {
+        return ratingB - ratingA;
+      }
+      
+      // Finally by name
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  /**
+   * Assign colors for Swiss system
+   * Based on bbpPairings assignColorsSwiss function
+   */
+  assignColorsSwiss(player1, player2) {
+    // Get color history for both players
+    const player1Colors = this.getLastTwoColors(player1);
+    const player2Colors = this.getLastTwoColors(player2);
+    
+    // PRIORITY 1: Avoid immediate color repeats (WW or BB)
+    if (player1Colors === 'WW' && player2Colors !== 'WW') {
+      return player2; // Give white to player2
+    }
+    if (player2Colors === 'WW' && player1Colors !== 'WW') {
+      return player1; // Give white to player1
+    }
+    if (player1Colors === 'BB' && player2Colors !== 'BB') {
+      return player1; // Give white to player1
+    }
+    if (player2Colors === 'BB' && player1Colors !== 'BB') {
+      return player2; // Give white to player2
+    }
+    
+    // PRIORITY 2: Check for neutral color preference
+    const neutralColor = this.choosePlayerNeutralColor(player1, player2);
+    if (neutralColor !== null) {
+      return neutralColor === 'white' ? player1 : player2;
+    }
+    
+    // PRIORITY 3: Handle absolute color preferences
+    if (player1.absoluteColorPreference && player2.absoluteColorPreference) {
+      if (player1.colorImbalance > player2.colorImbalance) {
+        return player1.colorPreference === 'white' ? player1 : player2;
+      } else if (player2.colorImbalance > player1.colorImbalance) {
+        return player2.colorPreference === 'white' ? player2 : player1;
+      }
+    }
+    
+    // PRIORITY 4: Handle strong color preferences
+    if (player1.strongColorPreference && !player2.strongColorPreference) {
+      return player1.colorPreference === 'white' ? player1 : player2;
+    }
+    if (player2.strongColorPreference && !player1.strongColorPreference) {
+      return player2.colorPreference === 'white' ? player2 : player1;
+    }
+    
+    // PRIORITY 5: Balance colors based on current imbalance
+    const imbalance1 = this.getColorBalance(player1);
+    const imbalance2 = this.getColorBalance(player2);
+    
+    // If one player has more white games, give black to them
+    if (imbalance1 > imbalance2) {
+      return player2; // Give white to player2
+    } else if (imbalance2 > imbalance1) {
+      return player1; // Give white to player1
+    }
+    
+    // PRIORITY 6: If both players have same imbalance, alternate based on last color
+    const lastColor1 = player1Colors.slice(-1);
+    const lastColor2 = player2Colors.slice(-1);
+    
+    if (lastColor1 === 'W' && lastColor2 !== 'W') {
+      return player2; // Give white to player2
+    }
+    if (lastColor2 === 'W' && lastColor1 !== 'W') {
+      return player1; // Give white to player1
+    }
+    if (lastColor1 === 'B' && lastColor2 !== 'B') {
+      return player1; // Give white to player1
+    }
+    if (lastColor2 === 'B' && lastColor1 !== 'B') {
+      return player2; // Give white to player2
+    }
+    
+    // PRIORITY 7: Final fallback: give white to higher rated player
+    return (player1.rating || 0) >= (player2.rating || 0) ? player1 : player2;
+  }
+
+  /**
+   * Get color balance for a player
+   */
+  getColorBalance(player) {
+    let whiteCount = 0;
+    let blackCount = 0;
+    
+    for (const match of player.matches || []) {
+      if (match.gameWasPlayed) {
+        if (match.color === 'white') {
+          whiteCount++;
+        } else if (match.color === 'black') {
+          blackCount++;
+        }
+      }
+    }
+    
+    return whiteCount - blackCount;
+  }
 }
 
 module.exports = { BBPPairings: BbpPairings };

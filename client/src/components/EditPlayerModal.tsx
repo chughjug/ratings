@@ -31,6 +31,7 @@ interface Player {
   notes?: string;
   expiration_date?: string;
   intentional_bye_rounds?: number[];
+  lichess_username?: string;
 }
 
 interface EditPlayerModalProps {
@@ -72,7 +73,8 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
     special_needs: '',
     notes: '',
     status: 'active' as 'active' | 'withdrawn' | 'bye' | 'inactive',
-    intentional_bye_rounds: [] as number[]
+    intentional_bye_rounds: [] as number[],
+    lichess_username: ''
   });
 
   // Update form data when player changes
@@ -101,7 +103,8 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
         special_needs: player.special_needs || '',
         notes: player.notes || '',
         status: player.status || 'active',
-        intentional_bye_rounds: player.intentional_bye_rounds || []
+        intentional_bye_rounds: player.intentional_bye_rounds || [],
+        lichess_username: player.lichess_username || ''
       });
     }
   }, [player]);
@@ -125,6 +128,7 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
         name: formData.name,
         uscf_id: formData.uscf_id || undefined,
         fide_id: formData.fide_id || undefined,
+        lichess_username: formData.lichess_username || undefined,
         rating: formData.rating ? parseInt(formData.rating) : undefined,
         section: formData.section || undefined,
         team_name: formData.team_name || undefined,
@@ -278,6 +282,21 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
                   placeholder="Enter FIDE ID"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="lichess_username" className="block text-sm font-medium text-gray-700 mb-2">
+                  Lichess Username
+                </label>
+                <input
+                  type="text"
+                  id="lichess_username"
+                  name="lichess_username"
+                  value={formData.lichess_username}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
+                  placeholder="Enter Lichess username (e.g., magnuscarlsen)"
                 />
               </div>
 

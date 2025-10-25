@@ -19,6 +19,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, tourna
     name: '',
     uscf_id: '',
     fide_id: '',
+    lichess_username: '',
     rating: '',
     section: '',
     team_name: '',
@@ -43,6 +44,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, tourna
         name: formData.name,
         uscf_id: formData.uscf_id || undefined,
         fide_id: formData.fide_id || undefined,
+        lichess_username: formData.lichess_username || undefined,
         rating: formData.rating ? parseInt(formData.rating) : undefined,
         section: formData.section || undefined,
         team_name: formData.team_name || undefined,
@@ -62,6 +64,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, tourna
         name: '',
         uscf_id: '',
         fide_id: '',
+        lichess_username: '',
         rating: '',
         section: '',
         team_name: '',
@@ -83,6 +86,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, tourna
       name: '',
       uscf_id: '',
       fide_id: '',
+      lichess_username: '',
       rating: '',
       section: '',
       team_name: '',
@@ -189,6 +193,21 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, tourna
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
               placeholder="Enter FIDE ID (optional)"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lichess_username" className="block text-sm font-medium text-gray-700 mb-2">
+              Lichess Username
+            </label>
+            <input
+              type="text"
+              id="lichess_username"
+              name="lichess_username"
+              value={formData.lichess_username}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
+              placeholder="Enter Lichess username (e.g., magnuscarlsen)"
             />
           </div>
 
