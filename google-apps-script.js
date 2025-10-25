@@ -510,7 +510,7 @@ let FORMS_CONFIG = {
   // Default values - will be overridden by fetchFormsConfig()
   ENABLE_FORM_IMPORT: true,
   FORM_ID: '',
-  API_BASE_URL: 'http://localhost:3000',  // Will be overridden
+  API_BASE_URL: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com',  // Production URL
   API_KEY: 'demo-key-123',  // Can be set via environment or API
   TOURNAMENT_ID: '',  // MUST be configured
   CHECK_INTERVAL: 5,
@@ -527,10 +527,10 @@ let FORMS_CONFIG = {
  * This retrieves tournament-specific settings and the correct domain
  * 
  * @param {string} tournamentId - The tournament ID to fetch config for
- * @param {string} apiBaseUrl - The API base URL (can be localhost or production domain)
+ * @param {string} apiBaseUrl - The API base URL (defaults to production domain)
  * @returns {Promise<boolean>} - True if config was successfully loaded
  */
-async function fetchFormsConfig(tournamentId, apiBaseUrl = 'http://localhost:3000') {
+async function fetchFormsConfig(tournamentId, apiBaseUrl = 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com') {
   try {
     console.log(`Fetching Google Forms configuration for tournament: ${tournamentId}`);
     
@@ -610,9 +610,9 @@ async function fetchFormsConfig(tournamentId, apiBaseUrl = 'http://localhost:300
  * Run this function to set up automatic form response collection
  * 
  * @param {string} tournamentId - Tournament ID to configure
- * @param {string} apiBaseUrl - API base URL (defaults to localhost)
+ * @param {string} apiBaseUrl - API base URL (defaults to production)
  */
-function setupFormImport(tournamentId = '', apiBaseUrl = 'http://localhost:3000') {
+function setupFormImport(tournamentId = '', apiBaseUrl = 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com') {
   try {
     // Allow overriding tournament ID if passed as parameter
     if (tournamentId) {
@@ -620,7 +620,7 @@ function setupFormImport(tournamentId = '', apiBaseUrl = 'http://localhost:3000'
     }
     
     // Allow overriding API base URL if passed as parameter
-    if (apiBaseUrl && apiBaseUrl !== 'http://localhost:3000') {
+    if (apiBaseUrl && apiBaseUrl !== 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com') {
       FORMS_CONFIG.API_BASE_URL = apiBaseUrl;
     }
     
