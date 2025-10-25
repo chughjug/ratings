@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lichess Component Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .api-test {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Lichess Integration Test</h1>
+        
+        <div class="test-section">
+            <h3>1. API Endpoint Test</h3>
+            <p>Testing if the Lichess API endpoints are working:</p>
+            <button class="button" onclick="testAPI()">Test API</button>
+            <div id="apiResult" class="api-test"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Component Integration Test</h3>
+            <p>Testing if the LichessIntegration component is properly included:</p>
+            <button class="button" onclick="testComponent()">Test Component</button>
+            <div id="componentResult" class="api-test"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Tournament Page Test</h3>
+            <p>Testing if the component appears on tournament pages:</p>
+            <button class="button" onclick="testTournamentPage()">Test Tournament Page</button>
+            <div id="tournamentResult" class="api-test"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Debug Information</h3>
+            <p>Current environment and configuration:</p>
+            <div id="debugInfo" class="api-test"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = 'Testing API...';
+            
+            try {
+                const response = await fetch('/api/lichess/auth');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ API Working!<br>
+                            Auth URL: ${data.authUrl}<br>
+                            State: ${data.state}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ API Error: ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Network Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testComponent() {
+            const resultDiv = document.getElementById('componentResult');
+            resultDiv.innerHTML = 'Testing component...';
+            
+            try {
+                // Check if the component file exists
+                const response = await fetch('/client/src/components/LichessIntegration.tsx');
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Component file exists and is accessible
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ Component file not found (${response.status})
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error checking component: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function testTournamentPage() {
+            const resultDiv = document.getElementById('tournamentResult');
+            resultDiv.innerHTML = 'Testing tournament page...';
+            
+            try {
+                // Test if we can access a tournament page
+                const response = await fetch('/api/tournaments');
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const tournamentId = data[0].id;
+                    resultDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Tournament API working<br>
+                            Found ${data.length} tournaments<br>
+                            <a href="/tournaments/${tournamentId}" target="_blank">Test Tournament Page</a>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ No tournaments found
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Error accessing tournaments: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML = `
+                Current URL: ${window.location.href}<br>
+                User Agent: ${navigator.userAgent}<br>
+                Timestamp: ${new Date().toISOString()}<br>
+                Local Storage: ${localStorage.getItem('lichess_access_token') ? 'Has Lichess token' : 'No Lichess token'}
+            `;
+        }
+
+        // Run tests on page load
+        window.addEventListener('load', () => {
+            updateDebugInfo();
+            testAPI();
+        });
+    </script>
+</body>
+</html>

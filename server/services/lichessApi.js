@@ -11,7 +11,7 @@ class LichessApiService {
     const isProduction = process.env.NODE_ENV === 'production';
     this.redirectUri = process.env.LICHESS_REDIRECT_URI || 
       (isProduction 
-        ? 'https://chess-tournament-director.herokuapp.com/api/lichess/callback'
+        ? 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api/lichess/callback'
         : 'http://localhost:3000/api/lichess/callback'
       );
     

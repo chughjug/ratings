@@ -2757,10 +2757,171 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
       });
     }
 
-    // For now, just return success - actual pairing generation would go here
-    res.json({
-      message: `Round ${nextRound} generated for section "${sectionName}".`
+    // Check if current round is complete before generating next round
+    const currentRoundStatus = await pairingStorage.getSectionStatus(tournamentId, currentRound, sectionName);
+    
+    if (!currentRoundStatus.isComplete) {
+      return res.status(400).json({
+        error: `Cannot generate Round ${nextRound}. Round ${currentRound} is not complete for section "${sectionName}". ${currentRoundStatus.pendingPairings} game${currentRoundStatus.pendingPairings !== 1 ? 's' : ''} still need${currentRoundStatus.pendingPairings === 1 ? 's' : ''} results.`
+      });
+    }
+
+    // Check if next round already has pairings
+    const nextRoundPairings = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT COUNT(*) as count FROM pairings WHERE tournament_id = ? AND round = ? AND section = ?',
+        [tournamentId, nextRound, sectionName],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
     });
+
+    if (nextRoundPairings > 0) {
+      return res.status(400).json({
+        error: `Round ${nextRound} already has ${nextRoundPairings} pairings for section "${sectionName}".`
+      });
+    }
+
+    // Generate pairings for the next round using the section generation endpoint
+    const generateResponse = await new Promise((resolve, reject) => {
+      const req = {
+        body: {
+          tournamentId,
+          round: nextRound,
+          sectionName
+        }
+      };
+      
+      // Call the section generation logic directly
+      const sectionGeneration = async () => {
+        try {
+          // Get players for the specific section
+          const players = await new Promise((resolve, reject) => {
+            db.all(
+              'SELECT * FROM players WHERE tournament_id = ? AND status = "active" AND section = ? ORDER BY rating DESC',
+              [tournamentId, sectionName],
+              (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+              }
+            );
+          });
+
+          if (players.length === 0) {
+            throw new Error(`No active players found for section "${sectionName}"`);
+          }
+
+          // Get previous pairings for Swiss system (filtered by section)
+          const previousPairings = await pairingStorage.getPreviousPairings(tournamentId, nextRound, sectionName);
+
+          // Get color history for this section
+          const sectionColorHistory = {};
+          for (const player of players) {
+            try {
+              const results = await new Promise((resolve, reject) => {
+                db.all(
+                  'SELECT color FROM results WHERE player_id = ? ORDER BY round',
+                  [player.id],
+                  (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                  }
+                );
+              });
+
+              let balance = 0;
+              results.forEach(result => {
+                balance += result.color === 'white' ? 1 : -1;
+              });
+              sectionColorHistory[player.id] = balance;
+            } catch (error) {
+              console.warn(`Could not get color history for player ${player.id}:`, error.message);
+              sectionColorHistory[player.id] = 0;
+            }
+          }
+
+          // Create enhanced pairing system for this section only
+          const sectionSystem = new EnhancedPairingSystem(players, {
+            previousPairings,
+            colorHistory: sectionColorHistory,
+            section: sectionName,
+            tournamentId,
+            db,
+            round: nextRound
+          });
+
+          // Generate pairings for this section only
+          const generatedPairings = sectionSystem.generatePairings();
+          
+          // Assign board numbers and section info
+          generatedPairings.forEach((pairing, index) => {
+            pairing.board = index + 1;
+            pairing.section = sectionName;
+            pairing.round = nextRound;
+            pairing.tournament_id = tournamentId;
+          });
+
+          // Store pairings using the robust storage system
+          const storeResult = await pairingStorage.storePairings(tournamentId, nextRound, generatedPairings, {
+            clearExisting: false,
+            validateBeforeStore: true,
+            validateRoundSeparation: false, // Allow section independence
+            section: sectionName
+          });
+
+          // Automatically record bye results for players with byes
+          for (const pairing of generatedPairings) {
+            if (pairing.is_bye && pairing.white_player_id && !pairing.black_player_id) {
+              try {
+                // Calculate bye points
+                const byePoints = calculateByePoints(pairing.bye_type);
+                
+                // Record bye result for the white player
+                await new Promise((resolve, reject) => {
+                  const resultId = uuidv4();
+                  db.run(
+                    `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [resultId, tournamentId, pairing.white_player_id, nextRound, 
+                     null, 'white', `bye_${pairing.bye_type || 'bye'}`, byePoints, pairing.id],
+                    function(err) {
+                      if (err) reject(err);
+                      else resolve();
+                    }
+                  );
+                });
+                
+                console.log(`[NextRoundGeneration] Automatically recorded bye result for player ${pairing.white_player_id}: ${byePoints} points`);
+              } catch (error) {
+                console.error(`[NextRoundGeneration] Error recording bye result for player ${pairing.white_player_id}:`, error.message);
+              }
+            }
+          }
+
+          resolve({
+            success: true,
+            message: `Round ${nextRound} pairings generated and stored successfully for section "${sectionName}"`,
+            pairings: generatedPairings,
+            sectionResults: {
+              [sectionName]: {
+                success: true,
+                pairingsCount: generatedPairings.length,
+                playersCount: players.length
+              }
+            },
+            ...storeResult
+          });
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      sectionGeneration().then(resolve).catch(reject);
+    });
+
+    res.json(generateResponse);
 
   } catch (error) {
     console.error('Error generating next round:', error);

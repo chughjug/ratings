@@ -50,7 +50,7 @@ LICHESS_REDIRECT_URI=http://localhost:3000/api/lichess/callback
 - `LICHESS_CLIENT_ID`: `chess-tournament-director`
 - `LICHESS_REDIRECT_URI`: 
   - Development: `http://localhost:3000/api/lichess/callback`
-  - Production: `https://chess-tournament-director.herokuapp.com/api/lichess/callback`
+  - Production: `https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api/lichess/callback`
 
 ### 3. Database Migration
 

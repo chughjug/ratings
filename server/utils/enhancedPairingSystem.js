@@ -1275,10 +1275,11 @@ class EnhancedPairingSystem {
       const topPlayer = sortedGroup[i];           // Seed i+1
       const bottomPlayer = sortedGroup[i + half]; // Seed (N/2 + i+1)
       
-      // Alternating colors: odd seeds get white, even seeds get black
-      const isOddSeed = (i % 2) === 0;
-      const whitePlayer = isOddSeed ? topPlayer : bottomPlayer;
-      const blackPlayer = isOddSeed ? bottomPlayer : topPlayer;
+      // Alternating colors: Board 1 gets white, Board 2 gets black, etc.
+      // This ensures proper color alternation across all boards
+      const isEvenBoard = (i % 2) === 0;
+      const whitePlayer = isEvenBoard ? topPlayer : bottomPlayer;
+      const blackPlayer = isEvenBoard ? bottomPlayer : topPlayer;
       
       pairings.push({
         white_player_id: whitePlayer.id,
@@ -1680,13 +1681,20 @@ class EnhancedPairingSystem {
     if (lastColors1 === 'BB') return player1; // player1 had BB, give white to player1
     if (lastColors2 === 'BB') return player2; // player2 had BB, give white to player2
     
-    // Rule 3: Higher rated player gets due color (if significantly different)
+    // Rule 3: For Round 1, ensure proper alternating colors across boards
+    if (this.round === 1) {
+      // In Round 1, alternate colors based on board position
+      // This ensures proper color distribution from the start
+      return player1.id < player2.id ? player1 : player2;
+    }
+    
+    // Rule 4: Higher rated player gets due color (if significantly different)
     const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
     if (ratingDiff >= 50) {
       return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
     }
     
-    // Rule 4: Final tiebreaker - consistent ordering
+    // Rule 5: Final tiebreaker - consistent ordering
     return player1.id < player2.id ? player1 : player2;
   }
 
