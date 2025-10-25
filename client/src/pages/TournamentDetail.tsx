@@ -35,7 +35,6 @@ import PaymentManager from '../components/PaymentManager';
 import PWAStatus from '../components/PWAStatus';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
-import CentralizedTournamentView from '../components/CentralizedTournamentView';
 import LichessIntegration from '../components/LichessIntegration';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
@@ -1688,14 +1687,29 @@ const TournamentDetail: React.FC = () => {
 
           <div className="p-6">
               {activeTab === 'overview' && (
-                <CentralizedTournamentView 
-                  tournamentId={id || ''} 
-                  onSectionSelect={(sectionName) => {
-                    setSelectedSection(sectionName);
-                    // Switch to pairings tab when section is selected
-                    setActiveTab('pairings');
-                  }}
-                />
+                <div className="space-y-6">
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Overview</h3>
+                    <p className="text-gray-600">Welcome to the tournament management system. Use the tabs above to navigate between different sections.</p>
+                  </div>
+                  
+                  {/* Lichess Integration - Always visible in overview tab */}
+                  {state.currentTournament && (
+                    <div className="mt-6">
+                      <LichessIntegration
+                        tournamentId={id || ''}
+                        tournamentName={state.currentTournament.name}
+                        timeControl={state.currentTournament.time_control || 'G/45+15'}
+                        rounds={state.currentTournament.rounds}
+                        players={state.players || []}
+                        onGamesCreated={(games) => {
+                          console.log('Lichess games created:', games);
+                          // Refresh pairings or show success message
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
 
               {activeTab === 'players' && (
