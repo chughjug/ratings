@@ -20,6 +20,7 @@ import PublicOrganizationTournament from './pages/PublicOrganizationTournament';
 import OrganizationSearch from './pages/OrganizationSearch';
 import OrganizationSettings from './pages/OrganizationSettings';
 import OrganizationBrandingSettings from './pages/OrganizationBrandingSettings';
+import EmbedDemo from './pages/EmbedDemo';
 import Registration from './pages/Registration';
 import SectionPairingPage from './pages/SectionPairingPage';
 import UserProfile from './pages/UserProfile';
@@ -47,12 +48,14 @@ function App() {
             </div>
               <Routes>
                 <Route path="/public/tournaments" element={<PublicTournamentList />} />
-                <Route path="/public/tournaments/:id" element={<PublicTournamentDisplay />} />
+                <Route path="/public/tournaments/:id" element={<BrandedPublicTournamentDisplay />} />
+                <Route path="/public/tournament/:id" element={<BrandedPublicTournamentDisplay />} />
                 <Route path="/public/tournaments/:tournamentId/player/:playerId" element={<PlayerPerformance />} />
                 <Route path="/tournaments/:tournamentId/player/:playerId" element={<PlayerPerformance />} />
                 <Route path="/public/organizations" element={<OrganizationSearch />} />
                 <Route path="/public/organizations/:slug" element={<PublicOrganizationPage />} />
                 <Route path="/public/organizations/:slug/tournaments/:tournamentId" element={<PublicOrganizationTournament />} />
+                <Route path="/embed-demo" element={<EmbedDemo />} />
                 <Route path="/register/:tournamentId" element={<Registration />} />
                 <Route path="/*" element={
                   <OrganizationProvider>
@@ -151,6 +154,16 @@ function App() {
                         element={
                           <ProtectedRoute>
                             <OrganizationSettings />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/organizations/:id/branding" 
+                        element={
+                          <ProtectedRoute>
+                            <BrandingProvider>
+                              <OrganizationBrandingSettings />
+                            </BrandingProvider>
                           </ProtectedRoute>
                         } 
                       />

@@ -11,9 +11,9 @@ import {
   Instagram, 
   Youtube, 
   Linkedin,
-  Discord,
-  Twitch,
-  Tiktok
+  MessageCircle,
+  Video,
+  Music
 } from 'lucide-react';
 
 interface BrandedFooterProps {
