@@ -57,7 +57,7 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
             
             // Load current round pairings
             const currentRound = await getCurrentRound(tournamentId, sectionName);
-            const pairingsResponse = await pairingApi.getPairings(tournamentId, sectionName, currentRound);
+            const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
             const pairings = pairingsResponse.data || [];
             
             return {
