@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Trophy, Play, RotateCcw, CheckCircle } from 'lucide-react';
-import { tournamentApi, pairingApi, playerApi } from '../services/api';
+import { Settings, Users, Trophy, Play } from 'lucide-react';
+// API imports removed to avoid build issues
 import { Player } from '../types';
 import PairingSystem from './PairingSystem';
 
@@ -31,9 +31,8 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
       setLoading(true);
       setError(null);
       
-      // Load tournament details
-      const tournamentResponse = await tournamentApi.getById(tournamentId);
-      const tournament = tournamentResponse.data.data;
+      // Load tournament details - using mock data for now
+      // const tournament = { name: 'Test Tournament', id: tournamentId };
       
       // Load sections - use default section for now
       const defaultSections = ['CHAMPIONSHIP 2DAY'];
@@ -77,11 +76,7 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
     }
   };
 
-  const getCurrentRound = async (tournamentId: string, section: string): Promise<number> => {
-    // For now, just return 1 as default
-    // TODO: Implement proper current round detection
-    return 1;
-  };
+  // getCurrentRound function removed to avoid API issues
 
   const handlePairingsGenerated = (sectionName: string, pairings: any[]) => {
     setSections(prev => prev.map(section => 
@@ -114,6 +109,10 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
       </div>
     );
   }
+
+  console.log('TournamentManager rendering with tournamentId:', tournamentId);
+  console.log('Sections:', sections);
+  console.log('Selected section:', selectedSection);
 
   return (
     <div className="tournament-manager">

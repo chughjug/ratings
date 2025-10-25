@@ -137,7 +137,7 @@ const LichessGameCreator: React.FC<LichessGameCreatorProps> = ({
                   className="flex items-center space-x-1 text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  <span>Start Game</span>
+                  <span>Play with Friend</span>
                 </button>
                 {gameData.seekUrl && (
                   <button

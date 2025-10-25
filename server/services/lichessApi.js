@@ -169,26 +169,24 @@ class LichessApiService {
         throw new Error('Both players must have Lichess usernames to create games');
       }
 
-      // Create a direct game URL that will start the game immediately
-      // This uses Lichess's seek feature which is the simplest for players
-      const gameUrl = new URL(`${this.baseUrl}/`);
-      gameUrl.searchParams.set('user', whitePlayer.lichess_username);
-      gameUrl.searchParams.set('opponent', blackPlayer.lichess_username);
-      gameUrl.searchParams.set('clock', `${timeLimit}+${increment}`);
-      gameUrl.searchParams.set('rated', 'true');
-      gameUrl.searchParams.set('variant', 'standard');
-      gameUrl.searchParams.set('color', 'random');
-
-      // Create a seek URL that both players can use to find each other
+      // Create proper Lichess challenge URLs
+      // Lichess uses specific URL formats for challenges
+      const challengeUrl = `${this.baseUrl}/challenge/${blackPlayer.lichess_username}`;
+      
+      // Create a seek URL for finding games with the same time control
       const seekUrl = `${this.baseUrl}/?clock=${timeLimit}+${increment}&rated=true&variant=standard`;
       
+      // Create a "Play with a Friend" URL (most reliable method)
+      const playWithFriendUrl = `${this.baseUrl}/?friend=${blackPlayer.lichess_username}&clock=${timeLimit}+${increment}&rated=true&variant=standard`;
+      
       // Create individual challenge URLs for each player
-      const whiteChallengeUrl = `${this.baseUrl}/challenge/${blackPlayer.lichess_username}?clock=${timeLimit}+${increment}&rated=true&variant=standard`;
-      const blackChallengeUrl = `${this.baseUrl}/challenge/${whitePlayer.lichess_username}?clock=${timeLimit}+${increment}&rated=true&variant=standard`;
+      const whiteChallengeUrl = `${this.baseUrl}/challenge/${blackPlayer.lichess_username}`;
+      const blackChallengeUrl = `${this.baseUrl}/challenge/${whitePlayer.lichess_username}`;
 
       return {
         id: `game_${Date.now()}`,
-        url: gameUrl.toString(),
+        url: playWithFriendUrl,
+        challengeUrl: challengeUrl,
         seekUrl: seekUrl,
         whiteChallengeUrl: whiteChallengeUrl,
         blackChallengeUrl: blackChallengeUrl,
@@ -199,10 +197,10 @@ class LichessApiService {
         createdAt: new Date().toISOString(),
         type: 'direct_game',
         instructions: `To start this game:
-1. Click "Start Game" to open Lichess with pre-configured settings
-2. OR use "Seek Game" to find a game with the same time control
+1. Click "Play with Friend" to open Lichess with pre-configured settings
+2. OR use "Seek Game" to find a game with the same time control  
 3. OR use "Challenge" to directly challenge your opponent
-4. Both players will be notified and can join immediately`,
+4. Make sure both players are online on Lichess for challenges to work`,
         timeControlMinutes: timeLimit,
         timeControlIncrement: increment
       };

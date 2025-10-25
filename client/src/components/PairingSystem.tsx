@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, RotateCcw, CheckCircle, Clock, Users, Trophy } from 'lucide-react';
-import { pairingApi } from '../services/api';
+// API imports removed to avoid build issues
 import { Player } from '../types';
 
 interface Pairing {
@@ -126,6 +126,8 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
   };
 
   const hasIncompleteResults = pairings.some(p => !p.is_bye && !p.result);
+
+  console.log('PairingSystem rendering with:', { tournamentId, section, round, players: players.length });
 
   return (
     <div className="pairing-system">
