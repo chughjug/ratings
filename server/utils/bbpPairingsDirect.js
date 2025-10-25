@@ -105,27 +105,11 @@ class BBPPairingsDirect {
    * Choose player color - main color assignment function
    * From dutch.cpp lines 554-582
    */
-  choosePlayerColor(player, opponent, tournament) {
-    const result = this.choosePlayerNeutralColor(player, opponent);
-    
-    if (result !== this.COLOR_NONE) {
-      return result;
-    } else {
-      // Fallback logic based on rank and initial color
-      const playerRank = player.rankIndex || 0;
-      const opponentRank = opponent.rankIndex || 0;
-      const initialColor = tournament.initialColor || this.COLOR_WHITE;
-      
-      if (player.colorPreference === this.COLOR_NONE) {
-        // Use rank-based alternation
-        return (opponentRank & 1) ? initialColor : this.invert(initialColor);
-      } else {
-        // Use color preferences
-        return this.acceleratedScoreRankCompare(player, opponent, tournament) 
-          ? this.invert(opponent.colorPreference)
-          : player.colorPreference;
-      }
-    }
+  choosePlayerColor(player1, player2, tournament) {
+    // Simple alternating color assignment based on player order
+    // Higher rated player gets white on odd boards, black on even boards
+    const boardNumber = tournament.boardNumber || 1;
+    return (boardNumber % 2 === 1) ? this.COLOR_WHITE : this.COLOR_BLACK;
   }
 
   /**
@@ -184,6 +168,8 @@ class BBPPairingsDirect {
    * Simplified version of the full Dutch algorithm
    */
   generateSwissPairings(players, tournament) {
+    console.log(`[BBPPairingsDirect] generateSwissPairings called with ${players.length} players for round ${tournament.round}`);
+    
     // Sort players by score, then rating
     const sortedPlayers = players.sort((a, b) => {
       const scoreA = a.points || 0;
@@ -191,6 +177,8 @@ class BBPPairingsDirect {
       if (scoreA !== scoreB) return scoreB - scoreA;
       return (b.rating || 0) - (a.rating || 0);
     });
+    
+    console.log(`[BBPPairingsDirect] Sorted players:`, sortedPlayers.map(p => ({ id: p.id, name: p.name, points: p.points, rating: p.rating })));
     
     const pairings = [];
     const used = new Set();
@@ -219,7 +207,8 @@ class BBPPairingsDirect {
         const player2 = sortedPlayers[bestOpponent];
         
         // Use the color assignment algorithm
-        const whiteColor = this.choosePlayerColor(player1, player2, tournament);
+        const tournamentWithBoard = { ...tournament, boardNumber: pairings.length + 1 };
+        const whiteColor = this.choosePlayerColor(player1, player2, tournamentWithBoard);
         const whitePlayer = whiteColor === this.COLOR_WHITE ? player1 : player2;
         const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
         
@@ -236,6 +225,7 @@ class BBPPairingsDirect {
       }
     }
     
+    console.log(`[BBPPairingsDirect] Generated ${pairings.length} Swiss pairings`);
     return pairings;
   }
 
@@ -243,15 +233,15 @@ class BBPPairingsDirect {
    * Check if two players can be paired
    */
   canBePaired(player1, player2, tournament) {
-    // Check if they've played before
-    for (const match of player1.matches || []) {
-      if (match.opponent === player2.id && match.gameWasPlayed) {
-        return false;
-      }
+    // For now, allow all pairings (we'll implement proper opponent checking later)
+    // This is a simplified version that just ensures players aren't paired with themselves
+    if (player1.id === player2.id) {
+      return false;
     }
     
-    // Check color preferences compatibility
-    return this.colorPreferencesAreCompatible(player1.colorPreference, player2.colorPreference);
+    // TODO: Implement proper opponent checking using database queries
+    // For now, return true to allow all valid pairings
+    return true;
   }
 
   /**
@@ -264,10 +254,9 @@ class BBPPairingsDirect {
     const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
     score += 1000 - ratingDiff; // Higher score for smaller difference
     
-    // Prefer compatible color preferences
-    if (this.colorPreferencesAreCompatible(player1.colorPreference, player2.colorPreference)) {
-      score += 100;
-    }
+    // Prefer similar scores
+    const scoreDiff = Math.abs((player1.points || 0) - (player2.points || 0));
+    score += 500 - scoreDiff; // Higher score for similar scores
     
     return score;
   }
