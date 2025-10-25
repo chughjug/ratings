@@ -217,7 +217,7 @@ const FORMS_CONFIG = {
   };
 
   const generateCompleteScript = () => {
-    const script = `/**
+    const script: string = `/**
  * Google Apps Script for Real-time Chess Tournament Registration
  * 
  * This script runs DIRECTLY in Google Forms and automatically syncs player data
@@ -774,6 +774,7 @@ function setup() {
     
     setGeneratedScript(script);
     setShowScriptGenerator(true);
+    return script;
   };
 
   // Build the complete code to copy (FORMS_CONFIG + full script)
