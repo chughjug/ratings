@@ -41,10 +41,10 @@ const BrandedFooter: React.FC<BrandedFooterProps> = ({
   } = state;
 
   const orgName = organizationName || branding.headerText || 'Chess Tournament';
-  const orgEmail = contactEmail || branding.contactEmail;
-  const orgPhone = contactPhone || branding.contactPhone;
-  const orgAddress = address || branding.address;
-  const orgWebsite = website || branding.website;
+  const orgEmail = contactEmail || '';
+  const orgPhone = contactPhone || '';
+  const orgAddress = address || '';
+  const orgWebsite = website || '';
 
   const socialLinks = [
     { name: 'Facebook', url: social.facebook, icon: Facebook },
@@ -52,9 +52,9 @@ const BrandedFooter: React.FC<BrandedFooterProps> = ({
     { name: 'Instagram', url: social.instagram, icon: Instagram },
     { name: 'YouTube', url: social.youtube, icon: Youtube },
     { name: 'LinkedIn', url: social.linkedin, icon: Linkedin },
-    { name: 'Discord', url: social.discord, icon: Discord },
-    { name: 'Twitch', url: social.twitch, icon: Twitch },
-    { name: 'TikTok', url: social.tiktok, icon: Tiktok },
+    { name: 'Discord', url: social.discord, icon: MessageCircle },
+    { name: 'Twitch', url: social.twitch, icon: Video },
+    { name: 'TikTok', url: social.tiktok, icon: Music },
   ].filter(link => link.url);
 
   const currentYear = new Date().getFullYear();
