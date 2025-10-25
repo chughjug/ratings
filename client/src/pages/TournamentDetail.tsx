@@ -564,11 +564,14 @@ const TournamentDetail: React.FC = () => {
       const response = await pairingApi.updateResult(pairingId, result);
       console.log('✅ TournamentDetail: Result update response:', response);
       
-      // Refresh pairings and standings after updating result
-      console.log('🔄 TournamentDetail: Refreshing pairings and standings...');
-      await fetchPairings(currentRound);
+      // Update local state without full page refresh
+      const updatedPairings = state.pairings.map((p: any) => 
+        p.id === pairingId ? { ...p, result } : p
+      );
+      dispatch({ type: 'SET_PAIRINGS', payload: updatedPairings });
+      
+      // Only refresh standings to show updated scores
       await fetchStandings();
-      console.log('✅ TournamentDetail: Pairings and standings refreshed');
     } catch (error) {
       console.error('❌ TournamentDetail: Failed to update result:', error);
       alert(`Failed to update result: ${error}`);

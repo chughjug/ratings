@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings } from 'lucide-react';
 import { pairingApi } from '../services/api';
 
@@ -23,6 +23,62 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [sectionStatus, setSectionStatus] = useState<any>(null);
   const [isCompletingRound, setIsCompletingRound] = useState(false);
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
+  const selectedPairingRef = useRef<string | null>(null);
+  const resultSelectRefs = useRef<{ [key: string]: HTMLSelectElement | null }>({});
+
+  // Keyboard shortcuts handler
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Only handle if we're not typing in an input/textarea
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      e.target instanceof HTMLSelectElement
+    ) {
+      return;
+    }
+
+    // Find the first incomplete pairing
+    const incompletePairings = pairings.filter(p => !p.result);
+    if (incompletePairings.length === 0) return;
+
+    const targetPairing = selectedPairingRef.current 
+      ? incompletePairings.find(p => p.id === selectedPairingRef.current)
+      : incompletePairings[0];
+
+    if (!targetPairing) return;
+
+    let result: string | null = null;
+    
+    if (e.key === 'w' || e.key === 'W') {
+      result = '1-0';
+    } else if (e.key === 'l' || e.key === 'L') {
+      result = '0-1';
+    } else if (e.key === 'd' || e.key === 'D') {
+      result = '1/2-1/2';
+    }
+
+    if (result) {
+      e.preventDefault();
+      updatePairingResult(targetPairing.id, result);
+      
+      // Move to next incomplete pairing
+      const currentIndex = incompletePairings.findIndex(p => p.id === targetPairing.id);
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < incompletePairings.length) {
+        selectedPairingRef.current = incompletePairings[nextIndex].id;
+      } else {
+        selectedPairingRef.current = null;
+      }
+    }
+  }, [pairings]);
+
+  // Add keyboard event listener
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   // Fetch section data
   const fetchSectionData = useCallback(async () => {
@@ -58,11 +114,19 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       const response = await pairingApi.updateResult(pairingId, result);
       console.log('✅ SectionPairingManager: Result update response:', response);
       
-      // Refresh data
-      await fetchSectionData();
+      // Update local state immediately without full refresh
+      const updatedPairings = pairings.map(p => 
+        p.id === pairingId ? { ...p, result } : p
+      );
+      setPairings(updatedPairings);
       
       // Notify parent of pairings update
-      onPairingsUpdate?.(pairings);
+      onPairingsUpdate?.(updatedPairings);
+      
+      // Only refresh standings to show updated scores
+      const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
+      const sectionStandings = standingsResponse.data.data ? standingsResponse.data.data.filter((s: any) => s.section === sectionName) : [];
+      setStandings(sectionStandings);
       
       console.log('✅ SectionPairingManager: Result updated successfully');
       
@@ -173,6 +237,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{sectionName} Section</h2>
             <p className="text-gray-600">Round {currentRound}</p>
+            <div className="mt-2 text-xs text-gray-500">
+              <span className="font-semibold">Keyboard shortcuts:</span> Press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">W</kbd> for white win, <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">L</kbd> for black win, <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">D</kbd> for draw
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
