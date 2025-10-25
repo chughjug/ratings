@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
 const { exportTournamentDBF } = require('../services/dbfExport');
+const { exportTournamentTRF, generateTrfContent } = require('../services/trfExport');
 const db = require('../database');
 const router = express.Router();
 
@@ -249,6 +250,110 @@ router.get('/status/:tournamentId', async (req, res) => {
       success: false,
       error: error.message,
       message: 'Failed to get export status'
+    });
+  }
+});
+
+/**
+ * Export tournament data as TRF file using bbpPairings-master logic
+ * GET /api/export/trf/:tournamentId
+ */
+router.get('/trf/:tournamentId', async (req, res) => {
+  const { tournamentId } = req.params;
+  const { round, exportPath } = req.query;
+
+  try {
+    // Validate tournament exists
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // Set default export path if not provided
+    const finalExportPath = exportPath || path.join(__dirname, '../exports', tournamentId);
+
+    // Ensure export directory exists
+    try {
+      await fs.mkdir(finalExportPath, { recursive: true });
+    } catch (error) {
+      console.error('Failed to create export directory:', error);
+    }
+
+    // Export TRF file using bbpPairings logic
+    const result = await exportTournamentTRF(db, tournamentId, finalExportPath, {
+      round: round ? parseInt(round) : undefined
+    });
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'TRF file exported successfully using bbpPairings-master logic',
+        tournament: {
+          id: tournament.id,
+          name: tournament.name,
+          rounds: tournament.rounds,
+          format: tournament.format
+        },
+        file: {
+          fileName: result.fileName,
+          filePath: result.filePath,
+          size: result.content.length
+        },
+        metadata: result.metadata
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error,
+        message: 'Failed to export TRF file'
+      });
+    }
+  } catch (error) {
+    console.error('TRF export error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Failed to export TRF file'
+    });
+  }
+});
+
+/**
+ * Generate TRF content without writing to file
+ * GET /api/export/trf/:tournamentId/content
+ */
+router.get('/trf/:tournamentId/content', async (req, res) => {
+  const { tournamentId } = req.params;
+  const { round } = req.query;
+
+  try {
+    const result = await generateTrfContent(db, tournamentId, parseInt(round) || 1);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        content: result.content,
+        metadata: result.metadata
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: result.error,
+        message: 'Failed to generate TRF content'
+      });
+    }
+  } catch (error) {
+    console.error('TRF content generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Failed to generate TRF content'
     });
   }
 });

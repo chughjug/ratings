@@ -230,6 +230,7 @@ const liveStandingsService = require('./services/liveStandingsService');
 const paymentRoutes = require('./routes/payments');
 const chessIntegrationRoutes = require('./routes/chessIntegrations');
 const lichessRoutes = require('./routes/lichess');
+const trfExportRoutes = require('./routes/trfExport');
 
 // Use routes
 console.log('Setting up routes...');
@@ -300,6 +301,7 @@ app.use('/api/live-standings', liveStandingsRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/chess', chessIntegrationRoutes);
 app.use('/api/lichess', lichessRoutes);
+app.use('/api/export', trfExportRoutes);
 
 console.log('Routes set up successfully');
 

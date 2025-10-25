@@ -66,23 +66,28 @@ class BBPPairings {
       // Format pairings for database storage
       const formattedPairings = BBPPairings.formatPairingsForStorage(pairings, tournamentId, round);
       
-      // Generate TRF-compliant output
-      const trfOutput = new TRFOutputGenerator();
-      const trfPairingOutput = trfOutput.generatePairingOutput(pairings);
+      // Generate TRF-compliant output using bbpPairings-master logic
+      const BBPTrfGenerator = require('./bbpTrfGenerator');
+      const trfGenerator = new BBPTrfGenerator();
+      const trfContent = trfGenerator.generateTrfFile(tournament, {
+        seed: tournamentData.seed || Date.now()
+      });
       
       console.log(`[BBPPairings] Generated ${formattedPairings.length} pairings`);
       
       return {
         success: true,
         pairings: formattedPairings,
-        trfOutput: trfPairingOutput,
+        trfContent: trfContent,
+        trfOutput: trfContent, // For backward compatibility
         metadata: {
           tournamentId,
           round,
           pairingSystem,
           totalPairings: formattedPairings.length,
           byeCount: formattedPairings.filter(p => p.is_bye).length,
-          trfCompliant: true
+          trfCompliant: true,
+          bbpPairingsGenerated: true
         }
       };
       
