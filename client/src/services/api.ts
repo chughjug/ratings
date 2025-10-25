@@ -425,6 +425,24 @@ export const pairingApi = {
   
   getStandings: (tournamentId: string, includeRoundResults: boolean = false, showPrizes: boolean = false) => 
     api.get<{success: boolean, data: Standing[], error?: string}>(`/pairings/tournament/${tournamentId}/standings?t=${Date.now()}&includeRoundResults=${includeRoundResults}&showPrizes=${showPrizes}`),
+  
+  // Edit functions
+  swapPlayers: (pairingId: string) =>
+    api.post<{success: boolean, message: string}>(`/pairings/${pairingId}/swap-players`),
+  
+  updateBoardNumber: (pairingId: string, boardNumber: number) =>
+    api.put<{success: boolean, message: string}>(`/pairings/${pairingId}/board-number`, { boardNumber }),
+  
+  delete: (pairingId: string) =>
+    api.delete<{success: boolean, message: string}>(`/pairings/${pairingId}`),
+  
+  createManual: (tournamentId: string, sectionName: string, round: number, boardNumber: number) =>
+    api.post<{success: boolean, message: string, pairing: Pairing}>(`/pairings/manual`, {
+      tournamentId,
+      sectionName,
+      round,
+      boardNumber
+    }),
 };
 
 // Export API

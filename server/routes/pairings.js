@@ -2768,4 +2768,181 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
   }
 });
 
+// ============================================================================
+// EDIT FUNCTIONS
+// ============================================================================
+
+/**
+ * Swap players in a pairing
+ */
+router.post('/:pairingId/swap-players', async (req, res) => {
+  const { pairingId } = req.params;
+
+  try {
+    // Get the current pairing
+    const pairing = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM pairings WHERE id = ?', [pairingId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!pairing) {
+      return res.status(404).json({ success: false, message: 'Pairing not found' });
+    }
+
+    // Swap white and black players
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE pairings SET white_player_id = ?, black_player_id = ?, white_name = ?, black_name = ? WHERE id = ?',
+        [
+          pairing.black_player_id,
+          pairing.white_player_id,
+          pairing.black_name,
+          pairing.white_name,
+          pairingId
+        ],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({ success: true, message: 'Players swapped successfully' });
+
+  } catch (error) {
+    console.error('Error swapping players:', error);
+    res.status(500).json({ success: false, message: 'Failed to swap players' });
+  }
+});
+
+/**
+ * Update board number for a pairing
+ */
+router.put('/:pairingId/board-number', async (req, res) => {
+  const { pairingId } = req.params;
+  const { boardNumber } = req.body;
+
+  if (!boardNumber || boardNumber < 1) {
+    return res.status(400).json({ success: false, message: 'Invalid board number' });
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE pairings SET board_number = ? WHERE id = ?',
+        [boardNumber, pairingId],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({ success: true, message: 'Board number updated successfully' });
+
+  } catch (error) {
+    console.error('Error updating board number:', error);
+    res.status(500).json({ success: false, message: 'Failed to update board number' });
+  }
+});
+
+/**
+ * Delete a pairing
+ */
+router.delete('/:pairingId', async (req, res) => {
+  const { pairingId } = req.params;
+
+  try {
+    // Check if pairing exists
+    const pairing = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM pairings WHERE id = ?', [pairingId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!pairing) {
+      return res.status(404).json({ success: false, message: 'Pairing not found' });
+    }
+
+    // Delete the pairing
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM pairings WHERE id = ?', [pairingId], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({ success: true, message: 'Pairing deleted successfully' });
+
+  } catch (error) {
+    console.error('Error deleting pairing:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete pairing' });
+  }
+});
+
+/**
+ * Create a manual pairing
+ */
+router.post('/manual', async (req, res) => {
+  const { tournamentId, sectionName, round, boardNumber } = req.body;
+
+  if (!tournamentId || !sectionName || !round || !boardNumber) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+
+  try {
+    // Check if tournament exists
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+
+    // Create manual pairing
+    const pairingId = uuidv4();
+    await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO pairings (id, tournament_id, round, board_number, section, white_player_id, black_player_id, white_name, black_name, result, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        [pairingId, tournamentId, round, boardNumber, sectionName, null, null, 'TBD', 'TBD', null],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    const newPairing = {
+      id: pairingId,
+      tournament_id: tournamentId,
+      round: round,
+      board_number: boardNumber,
+      section: sectionName,
+      white_player_id: null,
+      black_player_id: null,
+      white_name: 'TBD',
+      black_name: 'TBD',
+      result: null
+    };
+
+    res.json({ 
+      success: true, 
+      message: 'Manual pairing created successfully',
+      pairing: newPairing
+    });
+
+  } catch (error) {
+    console.error('Error creating manual pairing:', error);
+    res.status(500).json({ success: false, message: 'Failed to create manual pairing' });
+  }
+});
+
 module.exports = router;
