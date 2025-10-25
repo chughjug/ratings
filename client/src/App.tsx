@@ -9,7 +9,7 @@ import pwaService from './services/pwaService';
 import Dashboard from './pages/Dashboard';
 import TournamentList from './pages/TournamentList';
 import TournamentDetail from './pages/TournamentDetail';
-import TournamentDirectorDashboard from './components/TournamentDirectorDashboard';
+import TournamentManager from './components/TournamentManager';
 import CreateTournament from './pages/CreateTournament';
 import PublicTournamentDisplay from './pages/PublicTournamentDisplay';
 import PublicTournamentList from './pages/PublicTournamentList';
@@ -24,6 +24,7 @@ import LandingPage from './pages/LandingPage';
 import PlayerPerformance from './components/PlayerPerformance';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/print.css';
+import './styles/pairing-system.css';
 
 function App() {
   useEffect(() => {
@@ -135,7 +136,7 @@ function App() {
                             <>
                               <Navbar />
                               <main className="container mx-auto px-4 py-8">
-                                <TournamentDirectorDashboard tournamentId={window.location.pathname.split('/')[2]} />
+                                <TournamentManager tournamentId={window.location.pathname.split('/')[2]} />
                               </main>
                             </>
                           </ProtectedRoute>
