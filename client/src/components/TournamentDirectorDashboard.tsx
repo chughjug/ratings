@@ -194,7 +194,7 @@ const TournamentDirectorDashboard: React.FC<TournamentDirectorDashboardProps> = 
 
   // Reset section
   const resetSection = async (sectionName: string) => {
-    if (!confirm(`Are you sure you want to reset ${sectionName}? This will delete all pairings and results.`)) {
+    if (!window.confirm(`Are you sure you want to reset ${sectionName}? This will delete all pairings and results.`)) {
       return;
     }
     

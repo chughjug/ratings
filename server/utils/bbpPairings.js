@@ -930,6 +930,87 @@ class BbpPairings {
   }
 
   /**
+   * Assign colors for Swiss system pairing
+   * Based on bbpPairings color assignment algorithm
+   */
+  assignColorsSwiss(player1, player2, tournament = {}) {
+    const player1Colors = this.getLastTwoColors(player1, tournament.colorHistory);
+    const player2Colors = this.getLastTwoColors(player2, tournament.colorHistory);
+    
+    // PRIORITY 1: Avoid immediate color repeats (WW or BB)
+    if (player1Colors === 'WW' && player2Colors !== 'WW') {
+      return player2; // Give white to player2
+    }
+    if (player2Colors === 'WW' && player1Colors !== 'WW') {
+      return player1; // Give white to player1
+    }
+    if (player1Colors === 'BB' && player2Colors !== 'BB') {
+      return player1; // Give white to player1
+    }
+    if (player2Colors === 'BB' && player1Colors !== 'BB') {
+      return player2; // Give white to player2
+    }
+    
+    // PRIORITY 2: Check for neutral color preference
+    const neutralColor = this.choosePlayerNeutralColor(player1, player2);
+    if (neutralColor !== null) {
+      return neutralColor === 'white' ? player1 : player2;
+    }
+    
+    // PRIORITY 3: Handle absolute color preferences
+    if (player1.absoluteColorPreference && player1.colorPreference === 'white') {
+      return player1;
+    }
+    if (player1.absoluteColorPreference && player1.colorPreference === 'black') {
+      return player2;
+    }
+    if (player2.absoluteColorPreference && player2.colorPreference === 'white') {
+      return player2;
+    }
+    if (player2.absoluteColorPreference && player2.colorPreference === 'black') {
+      return player1;
+    }
+    
+    // PRIORITY 4: Handle strong color preferences
+    if (player1.strongColorPreference && !player2.strongColorPreference) {
+      return player1.colorPreference === 'white' ? player1 : player2;
+    }
+    if (player2.strongColorPreference && !player1.strongColorPreference) {
+      return player2.colorPreference === 'white' ? player2 : player1;
+    }
+    
+    // PRIORITY 5: Balance colors based on current imbalance
+    const imbalance1 = this.getColorBalance(player1);
+    const imbalance2 = this.getColorBalance(player2);
+    
+    if (imbalance1 > imbalance2) {
+      return player2; // Give white to player2
+    } else if (imbalance2 > imbalance1) {
+      return player1; // Give white to player1
+    }
+    
+    // PRIORITY 6: If both players have same imbalance, alternate based on last color
+    const lastColor1 = player1Colors.slice(-1);
+    const lastColor2 = player2Colors.slice(-1);
+    
+    if (lastColor1 === 'W' && lastColor2 !== 'W') {
+      return player2; // Give white to player2
+    }
+    if (lastColor2 === 'W' && lastColor1 !== 'W') {
+      return player1; // Give white to player1
+    }
+    if (lastColor1 === 'B' && lastColor2 !== 'B') {
+      return player1; // Give white to player1
+    }
+    if (lastColor2 === 'B' && lastColor1 !== 'B') {
+      return player2; // Give white to player2
+    }
+    
+    // PRIORITY 7: Final fallback: give white to higher rated player
+    return (player1.rating || 0) >= (player2.rating || 0) ? player1 : player2;
+  }
+
+  /**
    * Generate Dutch system pairings
    * Main entry point for Dutch pairing algorithm
    */
