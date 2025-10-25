@@ -20,9 +20,6 @@ import TeamStandingsTable from '../components/TeamStandingsTable';
 import TeamPairingsTable from '../components/TeamPairingsTable';
 import RegistrationManagement from '../components/RegistrationManagement';
 import SectionPairingManager from '../components/SectionPairingManager';
-import DraggablePairingManager from '../components/DraggablePairingManager';
-import ConcisePairingManager from '../components/ConcisePairingManager';
-import StreamlinedPairingSystem from '../components/StreamlinedPairingSystem';
 import TeamStandings from '../components/TeamStandings';
 import APIDocumentationModal from '../components/APIDocumentationModal';
 import APIStatusIndicator from '../components/APIStatusIndicator';
@@ -38,6 +35,7 @@ import PaymentManager from '../components/PaymentManager';
 import PWAStatus from '../components/PWAStatus';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
+import CentralizedTournamentView from '../components/CentralizedTournamentView';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -45,13 +43,12 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes'>('pairings');
+  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes'>('overview');
   const [currentRound, setCurrentRound] = useState(1);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [sectionRounds, setSectionRounds] = useState<{ [section: string]: number }>({});
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState<string>('');
-  const [useAdvancedPairingView, setUseAdvancedPairingView] = useState(false);
   const [emailsEnabled, setEmailsEnabled] = useState(false);
 
   // Get current round for a specific section
@@ -1449,6 +1446,20 @@ const TournamentDetail: React.FC = () => {
             <nav className="flex flex-wrap gap-1 px-4 sm:px-6 overflow-x-auto">
               {/* Core Tabs */}
               <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Trophy className="h-4 w-4" />
+                  <span>Overview</span>
+                </div>
+              </button>
+              
+              <button
                 onClick={() => setActiveTab('players')}
                 className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
                   activeTab === 'players'
@@ -1562,11 +1573,22 @@ const TournamentDetail: React.FC = () => {
           </div>
 
           <div className="p-6">
+              {activeTab === 'overview' && (
+                <CentralizedTournamentView 
+                  tournamentId={id || ''} 
+                  onSectionSelect={(sectionName) => {
+                    setSelectedSection(sectionName);
+                    // Switch to pairings tab when section is selected
+                    setActiveTab('pairings');
+                  }}
+                />
+              )}
+
               {activeTab === 'players' && (
               <div>
                 {/* Combined Player Management Toolbar */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <h2 className="text-lg font-semibold text-gray-900">Player Management</h2>
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -1605,35 +1627,6 @@ const TournamentDetail: React.FC = () => {
                         <span>Export USCF</span>
                       </button>
                       
-                      {/* New Feature Buttons - TEST VERSION */}
-                      <button
-                        onClick={() => setShowSMSManager(true)}
-                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span>SMS</span>
-                      </button>
-                      <button
-                        onClick={() => setShowQRCodeGenerator(true)}
-                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                      >
-                        <QrCode className="h-4 w-4" />
-                        <span>QR Codes</span>
-                      </button>
-                      <button
-                        onClick={() => setShowAnalyticsDashboard(true)}
-                        className="flex items-center space-x-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                        <span>Analytics</span>
-                      </button>
-                      <button
-                        onClick={() => setShowChessIntegration(true)}
-                        className="flex items-center space-x-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
-                      >
-                        <Gamepad2 className="h-4 w-4" />
-                        <span>Chess Platforms</span>
-                      </button>
                       <button
                         onClick={() => setShowAPIDocs(true)}
                         className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
@@ -1681,7 +1674,7 @@ const TournamentDetail: React.FC = () => {
                         Clear selection
                       </button>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => setShowBatchOperations(true)}
                         className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -1719,6 +1712,46 @@ const TournamentDetail: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* New Feature Tools Section */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 mb-6 border border-purple-200">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Tournament Tools</h2>
+                    <p className="text-sm text-gray-600">Advanced features for tournament management</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => setShowSMSManager(true)}
+                      className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>SMS</span>
+                    </button>
+                    <button
+                      onClick={() => setShowQRCodeGenerator(true)}
+                      className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      <span>QR Codes</span>
+                    </button>
+                    <button
+                      onClick={() => setShowAnalyticsDashboard(true)}
+                      className="flex items-center space-x-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors shadow-sm"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Analytics</span>
+                    </button>
+                    <button
+                      onClick={() => setShowChessIntegration(true)}
+                      className="flex items-center space-x-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors shadow-sm"
+                    >
+                      <Gamepad2 className="h-4 w-4" />
+                      <span>Chess Platforms</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
               
               {state.players.length === 0 ? (
                 <div className="text-center py-8">
@@ -2090,123 +2123,32 @@ const TournamentDetail: React.FC = () => {
 
           {activeTab === 'pairings' && (
             <div className="space-y-4">
-              {/* Pairing System Toggle */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Pairing Management</h3>
-                    <p className="text-sm text-gray-600">
-                      {useAdvancedPairingView 
-                        ? 'Advanced pairing editor with drag-and-drop functionality and custom pairing creation.'
-                        : 'Each section operates completely independently with its own pairing generation and management.'
-                      }
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-sm font-medium ${!useAdvancedPairingView ? 'text-blue-600' : 'text-gray-500'}`}>
-                        Section View
-                      </span>
-                      <button
-                        onClick={() => setUseAdvancedPairingView(!useAdvancedPairingView)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          useAdvancedPairingView ? 'bg-blue-600' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            useAdvancedPairingView ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                      <span className={`text-sm font-medium ${useAdvancedPairingView ? 'text-blue-600' : 'text-gray-500'}`}>
-                        Advanced Editor
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-              {/* Send Pairing Emails Button */}
-              <SendPairingEmailsButton
-                tournamentId={id!}
-                round={currentRound}
-                pairingsCount={state.pairings?.length || 0}
-                webhookUrl="https://script.google.com/macros/s/AKfycbyLjx_xfOs6XNlDmAZHJKobn1MMSgOeRBHJOAS0qNK7HyQEuMm9EdRIxt5f5P6sej-a/exec"
-                isEnabled={emailsEnabled}
-                onSuccess={() => {
-                  alert('Emails sent successfully to all players!');
-                }}
-                onError={(error) => {
-                  alert(`Failed to send emails: ${error}`);
-                }}
-              />
-
-              {/* Pairing System */}
-              {useAdvancedPairingView ? (
-                <StreamlinedPairingSystem
-                  tournament={tournament}
-                  players={state.players}
-                  pairings={state.pairings || []}
-                  currentRound={currentRound}
-                  onRoundChange={setCurrentRound}
+              {selectedSection ? (
+                <SectionPairingManager
+                  tournamentId={id || ''}
+                  sectionName={selectedSection}
+                  currentRound={getCurrentRoundForSection(selectedSection)}
+                  onRoundComplete={(nextRound) => {
+                    setCurrentRoundForSection(selectedSection, nextRound);
+                    fetchPairings(nextRound);
+                  }}
                   onPairingsUpdate={(newPairings) => {
                     dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
                   }}
-                  onCompleteRound={(sectionName) => {
-                    // Handle round completion
-                    console.log(`Completing round for ${sectionName}`);
-                  }}
-                  onResetPairings={() => {
-                    // Handle pairing reset
-                    console.log('Resetting pairings');
-                  }}
-                  onPrint={() => setPrintView('pairings')}
-                  onGeneratePairingsForSection={async (sectionName) => {
-                    try {
-                      const response = await pairingApi.generateForSection(tournament.id, currentRound, sectionName);
-                      if (response.data.success) {
-                        await fetchPairings(currentRound);
-                        await fetchStandings();
-                      }
-                    } catch (error) {
-                      console.error('Failed to generate pairings:', error);
-                    }
-                  }}
-                  onResetPairingsForSection={async (sectionName) => {
-                    try {
-                      await pairingApi.resetPairings(tournament.id, currentRound);
-                      await fetchPairings(currentRound);
-                    } catch (error) {
-                      console.error('Failed to reset pairings:', error);
-                    }
-                  }}
-                  onUpdateResult={updatePairingResult}
-                  onSectionChange={(sectionName) => {
-                    setSelectedSection(sectionName);
-                  }}
-                  availableSections={getAvailableSections()}
-                  isLoading={isLoading}
                 />
               ) : (
-                <div className="separate-sections-container">
-                  {getAvailableSections().map((sectionName) => (
-                    <ConcisePairingManager
-                      key={sectionName}
-                      tournament={tournament}
-                      sectionName={sectionName}
-                      players={state.players}
-                      onPairingsUpdate={() => {
-                        // Refresh pairings and standings after update
-                        fetchPairings(currentRound);
-                        fetchStandings();
-                      }}
-                      onUpdateResult={updatePairingResult}
-                      onPrint={() => setPrintView('pairings')}
-                      isLoading={isLoading}
-                    />
-                  ))}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                  <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Section</h3>
+                  <p className="text-gray-600 mb-4">
+                    Choose a section from the Overview tab to manage pairings and results.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('overview')}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Go to Overview
+                  </button>
                 </div>
               )}
             </div>

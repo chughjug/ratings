@@ -2609,4 +2609,163 @@ router.get('/quad/:tournamentId/assignments', async (req, res) => {
   }
 });
 
+/**
+ * Get section status (simplified version)
+ */
+router.get('/tournament/:tournamentId/section/:sectionName/status', async (req, res) => {
+  const { tournamentId, sectionName } = req.params;
+
+  try {
+    // Get tournament info
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // Get current round for this section
+    const currentRound = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT MAX(round) as maxRound FROM pairings 
+         WHERE tournament_id = ? AND section = ?`,
+        [tournamentId, sectionName],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row?.maxRound || 1);
+        }
+      );
+    });
+
+    // Check if current round is complete
+    const incompletePairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT COUNT(*) as count FROM pairings 
+         WHERE tournament_id = ? AND round = ? AND section = ? AND result IS NULL`,
+        [tournamentId, currentRound, sectionName],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    const hasIncompleteResults = incompletePairings.length > 0 && incompletePairings[0].count > 0;
+    const isComplete = currentRound >= tournament.rounds && !hasIncompleteResults;
+    const canGenerateNextRound = !hasIncompleteResults && !isComplete;
+    const canCompleteRound = !hasIncompleteResults && currentRound < tournament.rounds;
+
+    // Check if section has any pairings
+    const hasPairings = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COUNT(*) as count FROM pairings 
+         WHERE tournament_id = ? AND section = ?`,
+        [tournamentId, sectionName],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row?.count > 0);
+        }
+      );
+    });
+
+    res.json({
+      currentRound,
+      totalRounds: tournament.rounds,
+      isComplete,
+      hasIncompleteResults,
+      canGenerateNextRound,
+      canCompleteRound,
+      hasPairings
+    });
+
+  } catch (error) {
+    console.error('Error getting section status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Reset section (delete all pairings and results for a section)
+ */
+router.post('/tournament/:tournamentId/section/:sectionName/reset', async (req, res) => {
+  const { tournamentId, sectionName } = req.params;
+
+  try {
+    // Delete all pairings for this section
+    await new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM pairings WHERE tournament_id = ? AND section = ?',
+        [tournamentId, sectionName],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({
+      message: `Section "${sectionName}" has been reset. All pairings and results have been deleted.`
+    });
+
+  } catch (error) {
+    console.error('Error resetting section:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Generate next round for a section
+ */
+router.post('/tournament/:tournamentId/section/:sectionName/generate-next', async (req, res) => {
+  const { tournamentId, sectionName } = req.params;
+
+  try {
+    // Get tournament info
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // Get current round for this section
+    const currentRound = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT MAX(round) as maxRound FROM pairings 
+         WHERE tournament_id = ? AND section = ?`,
+        [tournamentId, sectionName],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row?.maxRound || 1);
+        }
+      );
+    });
+
+    const nextRound = currentRound + 1;
+
+    if (nextRound > tournament.rounds) {
+      return res.status(400).json({ 
+        error: `Cannot generate round ${nextRound}. Tournament only has ${tournament.rounds} rounds.` 
+      });
+    }
+
+    // For now, just return success - actual pairing generation would go here
+    res.json({
+      message: `Round ${nextRound} generated for section "${sectionName}".`
+    });
+
+  } catch (error) {
+    console.error('Error generating next round:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

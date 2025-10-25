@@ -2,9 +2,12 @@
  * Enhanced Pairing System
  * Comprehensive implementation of competitive pairing systems based on FIDE and USCF standards
  * 
+ * Now uses the exact bbpPairings implementation for Dutch and Burstein systems
+ * 
  * Supports multiple pairing systems:
  * - Swiss System (Standard)
- * - FIDE Dutch System
+ * - FIDE Dutch System (bbpPairings)
+ * - Burstein System (bbpPairings)
  * - Accelerated Pairing Systems
  * - Round-Robin
  * - Single Elimination (Knockout)
@@ -16,6 +19,8 @@
  * - Direct Encounter
  * - Performance Rating
  */
+
+const { BBPPairings } = require('./bbpPairings');
 
 class EnhancedPairingSystem {
   constructor(players, options = {}) {
@@ -48,242 +53,76 @@ class EnhancedPairingSystem {
   /**
    * Generate pairings for all sections with complete independence
    * This is the main entry point for tournament-wide pairing generation
+   * Now uses the exact bbpPairings implementation
    */
   static async generateTournamentPairings(tournamentId, round, db, options = {}) {
-    console.log(`[EnhancedPairingSystem] Generating pairings for tournament ${tournamentId}, round ${round}`);
+    console.log(`[EnhancedPairingSystem] Generating pairings for tournament ${tournamentId}, round ${round} using bbpPairings`);
     
     try {
-      // Get tournament settings to determine pairing system
-      const tournament = await new Promise((resolve, reject) => {
-        db.get('SELECT settings FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
-      });
-
-      let tournamentSettings = {};
-      if (tournament && tournament.settings) {
-        try {
-          tournamentSettings = JSON.parse(tournament.settings);
-        } catch (parseError) {
-          console.warn('Could not parse tournament settings, using defaults:', parseError.message);
-        }
+      // Use the new bbpPairings system
+      const result = await BBPPairings.generatePairings(tournamentId, round, db, options);
+      
+      if (!result.success) {
+        throw new Error(result.error);
       }
 
-      // Determine pairing system from tournament settings
-      const pairingMethod = tournamentSettings.pairing_method || 'fide_dutch';
-      console.log(`[EnhancedPairingSystem] Using pairing method: ${pairingMethod}`);
-
-      // Get all players grouped by section
+      // Get section information for proper grouping
       const playersBySection = await new Promise((resolve, reject) => {
         db.all(
-          'SELECT * FROM players WHERE tournament_id = ? AND status = "active" ORDER BY section, rating DESC',
+          'SELECT section FROM players WHERE tournament_id = ? AND status = "active" GROUP BY section',
           [tournamentId],
           (err, rows) => {
             if (err) {
               reject(err);
               return;
             }
-
-            const grouped = {};
-            rows.forEach(player => {
-              const section = player.section || 'Open';
-              if (!grouped[section]) {
-                grouped[section] = [];
-              }
-              grouped[section].push(player);
-            });
-
-            resolve(grouped);
+            resolve(rows.map(row => row.section || 'Open'));
           }
         );
       });
 
-      if (Object.keys(playersBySection).length === 0) {
-        throw new Error('No players found for any section');
-      }
-
-      console.log(`[EnhancedPairingSystem] Found ${Object.keys(playersBySection).length} sections: ${Object.keys(playersBySection).join(', ')}`);
-
-      // Generate pairings for each section independently
-      const allPairings = [];
+      // Group pairings by section
       const sectionResults = {};
+      const sectionPairings = {};
+      
+      playersBySection.forEach(section => {
+        sectionPairings[section] = [];
+        sectionResults[section] = {
+          success: true,
+          pairingsCount: 0,
+          playersCount: 0,
+          registeredByeCount: 0
+        };
+      });
 
-      for (const [sectionName, players] of Object.entries(playersBySection)) {
-        console.log(`[EnhancedPairingSystem] Processing section "${sectionName}" with ${players.length} players`);
-        
-        try {
-          // Get section-specific data (completely isolated)
-          const sectionPreviousPairings = await new Promise((resolve, reject) => {
-            db.all(
-              'SELECT * FROM pairings WHERE tournament_id = ? AND section = ? AND round < ?',
-              [tournamentId, sectionName, round],
-              (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-              }
-            );
-          });
-
-          // Check for players with registered byes for this round
-          const registeredByePlayers = [];
-          const pairedPlayers = [];
-          
-          players.forEach(player => {
-            try {
-              if (player.intentional_bye_rounds) {
-                const byeRounds = JSON.parse(player.intentional_bye_rounds);
-                if (Array.isArray(byeRounds) && byeRounds.includes(round)) {
-                  // This player has a registered bye for this round
-                  registeredByePlayers.push(player.id);
-                  console.log(`[EnhancedPairingSystem] Player ${player.name} has registered bye for round ${round}`);
-                } else {
-                  pairedPlayers.push(player);
-                }
-              } else {
-                pairedPlayers.push(player);
-              }
-            } catch (parseError) {
-              console.warn(`[EnhancedPairingSystem] Could not parse intentional_bye_rounds for player ${player.id}:`, parseError.message);
-              pairedPlayers.push(player);
-            }
-          });
-
-          // Calculate points and color history for each player from results
-          const playersWithPoints = await Promise.all(pairedPlayers.map(async (player) => {
-            try {
-              const results = await new Promise((resolve, reject) => {
-                db.all(
-                  `SELECT 
-                    CASE 
-                      WHEN (pair.white_player_id = ? AND (pair.result = '1-0' OR pair.result = '1-0F')) OR
-                           (pair.black_player_id = ? AND (pair.result = '0-1' OR pair.result = '0-1F'))
-                      THEN 1
-                      WHEN (pair.white_player_id = ? AND pair.result = '1/2-1/2') OR
-                           (pair.black_player_id = ? AND pair.result = '1/2-1/2')
-                      THEN 0.5
-                      ELSE 0
-                    END as points,
-                    CASE 
-                      WHEN pair.white_player_id = ? THEN 'W'
-                      WHEN pair.black_player_id = ? THEN 'B'
-                      ELSE NULL
-                    END as player_color,
-                    pair.round
-                   FROM pairings pair
-                   WHERE (pair.white_player_id = ? OR pair.black_player_id = ?) 
-                     AND pair.tournament_id = ? 
-                     AND pair.round < ?
-                     AND pair.result IS NOT NULL
-                   ORDER BY pair.round`,
-                  [player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, tournamentId, round],
-                  (err, rows) => {
-                    if (err) reject(err);
-                    else resolve(rows);
-                  }
-                );
-              });
-
-              // Calculate total points
-              const totalPoints = results.reduce((sum, result) => sum + (result.points || 0), 0);
-              
-              // Build color history array (like Swiss system implementation)
-              const colorHistory = results.map(result => result.player_color === 'W' ? 1 : -1);
-              
-              // Calculate color balance (positive = more white, negative = more black)
-              const colorBalance = colorHistory.reduce((sum, color) => sum + color, 0);
-
-              return {
-                ...player,
-                points: totalPoints,
-                colorBalance: colorBalance,
-                colorHistory: colorHistory
-              };
-            } catch (error) {
-              console.warn(`[EnhancedPairingSystem] Could not get results for player ${player.id}:`, error.message);
-              return {
-                ...player,
-                points: 0,
-                colorBalance: 0,
-                colorHistory: []
-              };
-            }
-          }));
-
-          // Build proper color history object for Swiss system compatibility
-          const sectionColorHistory = {};
-          playersWithPoints.forEach(player => {
-            sectionColorHistory[player.id] = player.colorHistory;
-          });
-
-          // Create enhanced pairing system for this section
-          const sectionSystem = new EnhancedPairingSystem(playersWithPoints, {
-            ...options,
-            pairingSystem: pairingMethod,
-            previousPairings: sectionPreviousPairings,
-            colorHistory: sectionColorHistory,
-            section: sectionName,
-            tournamentId,
-            db
-          });
-
-          // Generate pairings for this section
-          const sectionPairings = sectionSystem.generatePairings();
-          
-          // Assign board numbers starting from 1 for this section
-          sectionPairings.forEach((pairing, index) => {
-            pairing.board = index + 1;
-            pairing.section = sectionName;
-            pairing.round = round;
-            pairing.tournament_id = tournamentId;
-          });
-
-          // Add unpaired pairings for players with registered byes
-          registeredByePlayers.forEach(playerId => {
-            const currentBoardNumber = sectionPairings.length + 1;
-            sectionPairings.push({
-              id: require('uuid').v4(),
-              white_player_id: playerId,
-              black_player_id: null,
-              is_bye: true,
-              bye_type: 'bye',  // Half point bye for registered bye
-              section: sectionName,
-              round: round,
-              tournament_id: tournamentId,
-              board: currentBoardNumber
-            });
-            console.log(`[EnhancedPairingSystem] Created bye pairing for registered bye player ${playerId}`);
-          });
-
-          allPairings.push(...sectionPairings);
-          sectionResults[sectionName] = {
-            success: true,
-            pairingsCount: sectionPairings.length,
-            playersCount: players.length,
-            registeredByeCount: registeredByePlayers.length
-          };
-
-          console.log(`[EnhancedPairingSystem] Section "${sectionName}": Generated ${sectionPairings.length} pairings (including ${registeredByePlayers.length} registered byes)`);
-        } catch (error) {
-          console.error(`[EnhancedPairingSystem] Error in section "${sectionName}":`, error.message);
-          sectionResults[sectionName] = {
-            success: false,
-            error: error.message,
-            playersCount: players.length
-          };
-          // Continue with other sections even if one fails
+      // Distribute pairings to sections
+      result.pairings.forEach(pairing => {
+        const section = pairing.section || 'Open';
+        if (sectionPairings[section]) {
+          sectionPairings[section].push(pairing);
         }
-      }
+      });
+
+      // Update section results
+      Object.keys(sectionPairings).forEach(section => {
+        const pairings = sectionPairings[section];
+        sectionResults[section].pairingsCount = pairings.length;
+        sectionResults[section].registeredByeCount = pairings.filter(p => p.is_bye).length;
+      });
+
+      console.log(`[EnhancedPairingSystem] Generated ${result.pairings.length} pairings using bbpPairings`);
 
       return {
         success: true,
-        pairings: allPairings,
+        pairings: result.pairings,
         sectionResults,
         metadata: {
           tournamentId,
           round,
-          totalPairings: allPairings.length,
-          sectionsProcessed: Object.keys(playersBySection).length
+          totalPairings: result.pairings.length,
+          sectionsProcessed: playersBySection.length,
+          pairingSystem: result.metadata.pairingSystem,
+          byeCount: result.metadata.byeCount
         }
       };
 

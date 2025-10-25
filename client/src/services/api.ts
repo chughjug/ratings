@@ -247,8 +247,8 @@ export const playerApi = {
 
 // Pairing API with enhanced round independence
 export const pairingApi = {
-  getByRound: (tournamentId: string, round: number) => 
-    api.get<Pairing[]>(`/pairings/tournament/${tournamentId}/round/${round}?t=${Date.now()}`),
+  getByRound: (tournamentId: string, round: number, sectionName?: string) => 
+    api.get<Pairing[]>(`/pairings/tournament/${tournamentId}/round/${round}?t=${Date.now()}${sectionName ? `&section=${sectionName}` : ''}`),
   
   // NEW: Get all pairings grouped by round for independent round management
   getAllByTournament: (tournamentId: string) => 
@@ -363,6 +363,24 @@ export const pairingApi = {
   
   updateResult: (id: string, result: string) => 
     api.put(`/pairings/${id}/result`, { result }),
+
+  // Section management methods
+  getSectionStatusSimple: (tournamentId: string, sectionName: string) =>
+    api.get<{
+      currentRound: number;
+      totalRounds: number;
+      isComplete: boolean;
+      hasIncompleteResults: boolean;
+      canGenerateNextRound: boolean;
+      canCompleteRound: boolean;
+      hasPairings: boolean;
+    }>(`/pairings/tournament/${tournamentId}/section/${sectionName}/status`),
+
+  resetSection: (tournamentId: string, sectionName: string) =>
+    api.post(`/pairings/tournament/${tournamentId}/section/${sectionName}/reset`),
+
+  generateNextRound: (tournamentId: string, sectionName: string) =>
+    api.post(`/pairings/tournament/${tournamentId}/section/${sectionName}/generate-next`),
 
   // Drag and drop pairing methods
   updatePairingPlayers: (pairingId: string, whitePlayerId: string, blackPlayerId: string, whitePlayer: any, blackPlayer: any) => 

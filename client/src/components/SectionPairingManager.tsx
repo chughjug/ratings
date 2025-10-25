@@ -1,485 +1,395 @@
-import React, { useState, useEffect } from 'react';
-import { Tournament, Player } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings } from 'lucide-react';
 import { pairingApi } from '../services/api';
 
 interface SectionPairingManagerProps {
-  tournament: Tournament;
+  tournamentId: string;
   sectionName: string;
-  players: Player[];
-  onPairingsUpdate: () => void;
-  onUpdateResult: (pairingId: string, result: string) => void;
-  onPrint: (section: string, round: number) => void;
-  isLoading: boolean;
-}
-
-interface SectionPairing {
-  id: string;
-  tournament_id: string;
-  round: number;
-  board: number;
-  white_player_id: string;
-  black_player_id: string;
-  result: string | null;
-  section: string;
-  white_name: string;
-  white_rating: number;
-  white_uscf_id: string;
-  black_name: string;
-  black_rating: number;
-  black_uscf_id: string;
-}
-
-interface SectionStatus {
-  section: string;
-  round: number;
-  totalPairings: number;
-  completedPairings: number;
-  pendingPairings: number;
-  percentage: number;
-  isComplete: boolean;
-  hasPairings: boolean;
-  canGenerateNextRound: boolean;
+  currentRound: number;
+  onRoundComplete?: (nextRound: number) => void;
+  onPairingsUpdate?: (pairings: any[]) => void;
 }
 
 const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
-  tournament,
+  tournamentId,
   sectionName,
-  players,
-  onPairingsUpdate,
-  onUpdateResult,
-  onPrint,
-  isLoading
+  currentRound,
+  onRoundComplete,
+  onPairingsUpdate
 }) => {
-  const [currentRound, setCurrentRound] = useState(1);
-  const [pairings, setPairings] = useState<SectionPairing[]>([]);
-  const [sectionStatus, setSectionStatus] = useState<SectionStatus | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [pairings, setPairings] = useState<any[]>([]);
+  const [standings, setStandings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sectionStatus, setSectionStatus] = useState<any>(null);
+  const [isCompletingRound, setIsCompletingRound] = useState(false);
+  const [isGeneratingNext, setIsGeneratingNext] = useState(false);
 
-  // Filter players for this section
-  const sectionPlayers = players.filter(player => 
-    (player.section || 'Open') === sectionName
-  );
-
-  // Load section data when component mounts or round changes
-  useEffect(() => {
-    loadSectionData();
-  }, [tournament.id, sectionName, currentRound]);
-
-  const loadSectionData = async () => {
+  // Fetch section data
+  const fetchSectionData = useCallback(async () => {
+    if (!tournamentId || !sectionName) return;
+    
     try {
-      setError(null);
+      setIsLoading(true);
       
-      // Load pairings for this section and round
-      const pairingsResponse = await pairingApi.getSectionPairings(
-        tournament.id, 
-        currentRound, 
-        sectionName
-      );
+      // Fetch pairings for current round
+      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+      setPairings(pairingsResponse.data || []);
       
-      if (pairingsResponse.data.success) {
-        setPairings(pairingsResponse.data.pairings);
-        setSectionStatus(pairingsResponse.data.sectionStatus);
-      }
-
-      // Load section status
-      const statusResponse = await pairingApi.getSectionStatus(
-        tournament.id, 
-        currentRound, 
-        sectionName
-      );
+      // Fetch standings
+      const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
+      const sectionStandings = standingsResponse.data.data ? standingsResponse.data.data.filter((s: any) => s.section === sectionName) : [];
+      setStandings(sectionStandings);
       
-      if (statusResponse.data.success) {
-        setSectionStatus(statusResponse.data);
-      }
+      // Fetch section status
+      const statusResponse = await pairingApi.getSectionStatusSimple(tournamentId, sectionName);
+      setSectionStatus(statusResponse.data);
+      
     } catch (error) {
-      console.error(`Error loading ${sectionName} section data:`, error);
-      setError(`Failed to load ${sectionName} section data`);
-    }
-  };
-
-  const handleGeneratePairings = async () => {
-    try {
-      setIsGenerating(true);
-      setError(null);
-
-      const response = await pairingApi.generateSectionPairings(
-        tournament.id,
-        currentRound,
-        sectionName
-      );
-
-      if (response.data.success) {
-        setPairings(response.data.pairings);
-        setSectionStatus(response.data.sectionStatus);
-        onPairingsUpdate();
-      } else {
-        setError('Failed to generate pairings');
-      }
-    } catch (error) {
-      console.error(`Error generating ${sectionName} pairings:`, error);
-      setError(`Failed to generate ${sectionName} pairings`);
+      console.error('Error fetching section data:', error);
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
-  };
+  }, [tournamentId, sectionName, currentRound]);
 
-  const handleUpdateResult = async (pairingId: string, result: string) => {
+  // Update pairing result
+  const updatePairingResult = async (pairingId: string, result: string) => {
     try {
-      await onUpdateResult(pairingId, result);
-      await loadSectionData(); // Reload to get updated status
-      // The parent component will handle refreshing standings
+      console.log('🎯 SectionPairingManager: Updating result for pairing:', pairingId, 'result:', result);
+      const response = await pairingApi.updateResult(pairingId, result);
+      console.log('✅ SectionPairingManager: Result update response:', response);
+      
+      // Refresh data
+      await fetchSectionData();
+      
+      // Notify parent of pairings update
+      onPairingsUpdate?.(pairings);
+      
+      console.log('✅ SectionPairingManager: Result updated successfully');
+      
     } catch (error) {
-      console.error('Error updating result:', error);
-      setError('Failed to update result');
+      console.error('❌ SectionPairingManager: Failed to update result:', error);
+      alert(`Failed to update result: ${error}`);
     }
   };
 
-  const handleRoundChange = (round: number) => {
-    if (round >= 1 && round <= tournament.rounds) {
-      setCurrentRound(round);
+  // Complete current round
+  const completeRound = async () => {
+    // Check if there are any incomplete pairings
+    const incompletePairings = pairings.filter(p => !p.result);
+    if (incompletePairings.length > 0) {
+      alert(`Cannot complete round: ${incompletePairings.length} game${incompletePairings.length !== 1 ? 's' : ''} still need${incompletePairings.length === 1 ? 's' : ''} results.`);
+      return;
+    }
+    
+    try {
+      setIsCompletingRound(true);
+      const response = await pairingApi.completeRound(tournamentId, currentRound, sectionName);
+      
+      alert(response.data.message);
+      
+      // Notify parent of round completion
+      if (response.data.nextRound) {
+        onRoundComplete?.(response.data.nextRound);
+      }
+      
+      // Refresh data
+      await fetchSectionData();
+      
+    } catch (error: any) {
+      console.error('Failed to complete round:', error);
+      alert(error.response?.data?.error || 'Failed to complete round');
+    } finally {
+      setIsCompletingRound(false);
     }
   };
 
-  const handlePrint = () => {
-    onPrint(sectionName, currentRound);
+  // Generate next round
+  const generateNextRound = async () => {
+    // Check if there are any incomplete pairings
+    const incompletePairings = pairings.filter(p => !p.result);
+    if (incompletePairings.length > 0) {
+      alert(`Cannot generate next round: ${incompletePairings.length} game${incompletePairings.length !== 1 ? 's' : ''} still need${incompletePairings.length === 1 ? 's' : ''} results.`);
+      return;
+    }
+    
+    try {
+      setIsGeneratingNext(true);
+      const response = await pairingApi.generateNextRound(tournamentId, sectionName);
+      
+      alert(response.data.message);
+      
+      // Refresh data
+      await fetchSectionData();
+      
+    } catch (error: any) {
+      console.error('Failed to generate next round:', error);
+      alert(error.response?.data?.error || 'Failed to generate next round');
+    } finally {
+      setIsGeneratingNext(false);
+    }
   };
+
+  // Reset section
+  const resetSection = async () => {
+    if (!window.confirm(`Are you sure you want to reset section "${sectionName}"? This will delete all pairings and results.`)) {
+      return;
+    }
+    
+    try {
+      const response = await pairingApi.resetSection(tournamentId, sectionName);
+      
+      alert(response.data.message);
+      
+      // Refresh data
+      await fetchSectionData();
+      
+    } catch (error: any) {
+      console.error('Failed to reset section:', error);
+      alert(error.response?.data?.error || 'Failed to reset section');
+    }
+  };
+
+  useEffect(() => {
+    fetchSectionData();
+  }, [fetchSectionData]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Loading section data...</span>
+      </div>
+    );
+  }
+
+  const incompletePairings = pairings.filter(p => !p.result);
+  const completedPairings = pairings.filter(p => p.result);
 
   return (
-    <div className="section-pairing-manager">
-      <div className="section-header">
-        <h3 className="section-title">{sectionName} Section</h3>
-        <div className="section-controls">
-          <div className="round-navigation">
-            <button 
-              onClick={() => handleRoundChange(currentRound - 1)}
-              disabled={currentRound <= 1}
-              className="btn btn-sm btn-outline"
-            >
-              ← Previous
-            </button>
-            <span className="round-display">Round {currentRound}</span>
-            <button 
-              onClick={() => handleRoundChange(currentRound + 1)}
-              disabled={currentRound >= tournament.rounds}
-              className="btn btn-sm btn-outline"
-            >
-              Next →
-            </button>
+    <div className="space-y-6">
+      {/* Section Status Header */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">{sectionName} Section</h2>
+            <p className="text-gray-600">Round {currentRound}</p>
           </div>
-          
-          <div className="section-actions">
-            <button
-              onClick={handleGeneratePairings}
-              disabled={isGenerating || isLoading}
-              className="btn btn-primary"
-            >
-              {isGenerating ? 'Generating...' : 'Generate Pairings'}
-            </button>
-            
-            <button
-              onClick={handlePrint}
-              disabled={pairings.length === 0}
-              className="btn btn-outline"
-            >
-              Print
-            </button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-600">{standings.length} players</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Settings className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-600">{pairings.length} pairings</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {error && (
-        <div className="alert alert-error">
-          {error}
+        {/* Progress Indicators */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="font-medium text-gray-900">Completed</span>
+            </div>
+            <div className="text-2xl font-bold text-green-600">{completedPairings.length}</div>
+            <div className="text-sm text-gray-600">Games finished</div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Clock className="h-5 w-5 text-yellow-600" />
+              <span className="font-medium text-gray-900">In Progress</span>
+            </div>
+            <div className="text-2xl font-bold text-yellow-600">{incompletePairings.length}</div>
+            <div className="text-sm text-gray-600">Games pending</div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Trophy className="h-5 w-5 text-blue-600" />
+              <span className="font-medium text-gray-900">Progress</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-600">
+              {pairings.length > 0 ? Math.round((completedPairings.length / pairings.length) * 100) : 0}%
+            </div>
+            <div className="text-sm text-gray-600">Complete</div>
+          </div>
         </div>
-      )}
 
-      {sectionStatus && (
-        <div className="section-status">
-          <div className="status-grid">
-            <div className="status-item">
-              <span className="status-label">Total Pairings:</span>
-              <span className="status-value">{sectionStatus.totalPairings}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Completed:</span>
-              <span className="status-value">{sectionStatus.completedPairings}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Pending:</span>
-              <span className="status-value">{sectionStatus.pendingPairings}</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Progress:</span>
-              <span className="status-value">{sectionStatus.percentage}%</span>
-            </div>
-            <div className="status-item">
-              <span className="status-label">Status:</span>
-              <span className={`status-value ${sectionStatus.isComplete ? 'complete' : 'incomplete'}`}>
-                {sectionStatus.isComplete ? 'Complete' : 'Incomplete'}
+        {/* Action Buttons */}
+        <div className="mt-6 flex space-x-3">
+          {pairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
+            <button
+              onClick={completeRound}
+              disabled={isCompletingRound}
+              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isCompletingRound ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+              <span>Complete Round</span>
+            </button>
+          )}
+
+          {pairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
+            <button
+              onClick={generateNextRound}
+              disabled={isGeneratingNext}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isGeneratingNext ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              <span>Generate Next Round</span>
+            </button>
+          )}
+
+          <button
+            onClick={resetSection}
+            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span>Reset Section</span>
+          </button>
+        </div>
+
+        {/* Status Messages */}
+        {incompletePairings.length > 0 && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <span className="text-yellow-800">
+                {incompletePairings.length} game{incompletePairings.length !== 1 ? 's' : ''} still need{incompletePairings.length === 1 ? 's' : ''} results before completing the round.
               </span>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {pairings.length > 0 ? (
-        <div className="pairings-table">
-          <table>
-            <thead>
+        {sectionStatus?.isComplete && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="text-green-800">
+                Section completed! All rounds finished.
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pairings Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Round {currentRound} Pairings</h3>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th>Board</th>
-                <th>White Player</th>
-                <th>Black Player</th>
-                <th>Result</th>
-                <th>Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
-            <tbody>
-              {pairings.map((pairing) => (
-                <tr key={pairing.id}>
-                  <td>{pairing.board}</td>
-                  <td>
-                    <div className="player-info">
-                      <div className="player-name">{pairing.white_name}</div>
-                      <div className="player-details">
-                        {pairing.white_rating} ({pairing.white_uscf_id})
-                      </div>
-                    </div>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {pairings.map((pairing, index) => (
+                <tr key={pairing.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {pairing.board || index + 1}
                   </td>
-                  <td>
-                    <div className="player-info">
-                      <div className="player-name">{pairing.black_name}</div>
-                      <div className="player-details">
-                        {pairing.black_rating} ({pairing.black_uscf_id})
-                      </div>
-                    </div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {pairing.white_name || 'TBD'}
                   </td>
-                  <td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {pairing.black_name || 'TBD'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <select
-                      value={pairing.result || ''}
-                      onChange={(e) => handleUpdateResult(pairing.id, e.target.value)}
-                      className="result-select"
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          updatePairingResult(pairing.id, e.target.value);
+                        }
+                      }}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                      value={pairing.result || ""}
                     >
-                      <option value="">Select Result</option>
-                      <option value="1-0">1-0 (White Wins)</option>
-                      <option value="0-1">0-1 (Black Wins)</option>
+                      <option value="">Select result</option>
+                      <option value="1-0">1-0 (White wins)</option>
+                      <option value="0-1">0-1 (Black wins)</option>
                       <option value="1/2-1/2">1/2-1/2 (Draw)</option>
-                      <option value="1-0F">1-0F (White Forfeit)</option>
-                      <option value="0-1F">0-1F (Black Forfeit)</option>
-                      <option value="1/2-1/2F">1/2-1/2F (Draw by Forfeit)</option>
+                      <option value="1-0F">1-0F (White wins by forfeit)</option>
+                      <option value="0-1F">0-1F (Black wins by forfeit)</option>
+                      <option value="1/2-1/2F">1/2-1/2F (Draw by forfeit)</option>
                     </select>
                   </td>
-                  <td>
-                    <button
-                      onClick={() => handleUpdateResult(pairing.id, '')}
-                      className="btn btn-sm btn-outline"
-                      disabled={!pairing.result}
-                    >
-                      Clear
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {pairing.result ? (
+                      <span className="inline-flex items-center space-x-1 text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Complete</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center space-x-1 text-yellow-600">
+                        <Clock className="h-4 w-4" />
+                        <span>Pending</span>
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      ) : (
-        <div className="no-pairings">
-          <p>No pairings found for {sectionName} section, Round {currentRound}</p>
-          <button
-            onClick={handleGeneratePairings}
-            disabled={isGenerating || isLoading}
-            className="btn btn-primary"
-          >
-            {isGenerating ? 'Generating...' : 'Generate Pairings'}
-          </button>
+      </div>
+
+      {/* Standings Preview */}
+      {standings.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Current Standings</h3>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {standings.slice(0, 10).map((player, index) => (
+                  <tr key={player.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {index + 1}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {player.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {player.score || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {player.rating || 'Unrated'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
-
-      <style>{`
-        .section-pairing-manager {
-          border: 1px solid #e0e0e0;
-          border-radius: 8px;
-          padding: 20px;
-          margin-bottom: 20px;
-          background: white;
-        }
-
-        .section-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-          padding-bottom: 15px;
-          border-bottom: 1px solid #e0e0e0;
-        }
-
-        .section-title {
-          margin: 0;
-          color: #333;
-          font-size: 1.5rem;
-        }
-
-        .section-controls {
-          display: flex;
-          gap: 20px;
-          align-items: center;
-        }
-
-        .round-navigation {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .round-display {
-          font-weight: bold;
-          min-width: 80px;
-          text-align: center;
-        }
-
-        .section-actions {
-          display: flex;
-          gap: 10px;
-        }
-
-        .section-status {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 6px;
-          margin-bottom: 20px;
-        }
-
-        .status-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-          gap: 15px;
-        }
-
-        .status-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .status-label {
-          font-weight: 500;
-          color: #666;
-        }
-
-        .status-value {
-          font-weight: bold;
-          color: #333;
-        }
-
-        .status-value.complete {
-          color: #28a745;
-        }
-
-        .status-value.incomplete {
-          color: #dc3545;
-        }
-
-        .pairings-table {
-          overflow-x: auto;
-        }
-
-        .pairings-table table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        .pairings-table th,
-        .pairings-table td {
-          padding: 12px;
-          text-align: left;
-          border-bottom: 1px solid #e0e0e0;
-        }
-
-        .pairings-table th {
-          background: #f8f9fa;
-          font-weight: 600;
-        }
-
-        .player-info {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .player-name {
-          font-weight: 500;
-        }
-
-        .player-details {
-          font-size: 0.9rem;
-          color: #666;
-        }
-
-        .result-select {
-          padding: 6px 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          background: white;
-        }
-
-        .no-pairings {
-          text-align: center;
-          padding: 40px;
-          color: #666;
-        }
-
-        .alert {
-          padding: 12px 16px;
-          border-radius: 4px;
-          margin-bottom: 20px;
-        }
-
-        .alert-error {
-          background: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f5c6cb;
-        }
-
-        .btn {
-          padding: 8px 16px;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: all 0.2s;
-        }
-
-        .btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .btn-primary {
-          background: #007bff;
-          color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #0056b3;
-        }
-
-        .btn-outline {
-          background: transparent;
-          color: #007bff;
-          border: 1px solid #007bff;
-        }
-
-        .btn-outline:hover:not(:disabled) {
-          background: #007bff;
-          color: white;
-        }
-
-        .btn-sm {
-          padding: 6px 12px;
-          font-size: 12px;
-        }
-      `}</style>
     </div>
   );
 };
