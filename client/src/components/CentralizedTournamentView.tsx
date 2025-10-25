@@ -262,7 +262,21 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
                 </button>
               )}
               
-              {section.canGenerateNext && !section.isComplete && (
+              {/* Generate Round 1 button - show when no pairings exist */}
+              {section.pairings.length === 0 && section.players.length > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    generateNextRound(section.name);
+                  }}
+                  className="flex-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors"
+                >
+                  Generate Round 1
+                </button>
+              )}
+              
+              {/* Generate Next Round button - show when pairings exist and can generate next */}
+              {section.canGenerateNext && !section.isComplete && section.pairings.length > 0 && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -355,7 +369,19 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
               </button>
             )}
             
-            {selectedSectionData.canGenerateNext && !selectedSectionData.isComplete && (
+            {/* Generate Round 1 button - show when no pairings exist */}
+            {selectedSectionData.pairings.length === 0 && selectedSectionData.players.length > 0 && (
+              <button
+                onClick={() => generateNextRound(selectedSectionData.name)}
+                className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Play className="h-4 w-4" />
+                <span>Generate Round 1</span>
+              </button>
+            )}
+            
+            {/* Generate Next Round button - show when pairings exist and can generate next */}
+            {selectedSectionData.canGenerateNext && !selectedSectionData.isComplete && selectedSectionData.pairings.length > 0 && (
               <button
                 onClick={() => generateNextRound(selectedSectionData.name)}
                 className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"

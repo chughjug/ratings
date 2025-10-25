@@ -536,14 +536,14 @@ async function importPlayersBatch(db, tournamentId, players, ratingResults) {
   // Prepare batch insert statement with all supported fields
   const stmt = db.prepare(`
     INSERT INTO players (
-      id, tournament_id, name, uscf_id, fide_id, rating, section, status, 
+      id, tournament_id, name, uscf_id, fide_id, lichess_username, rating, section, status, 
       created_at, expiration_date, intentional_bye_rounds, notes, email, 
       phone, team_id, team_name, school, grade, state, city, parent_name, 
       parent_email, parent_phone, emergency_contact, emergency_phone, 
       tshirt_size, dietary_restrictions, special_needs, source, 
       uscf_regular_rating_date, uscf_name
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const playerIds = [];
@@ -579,6 +579,7 @@ async function importPlayersBatch(db, tournamentId, players, ratingResults) {
             player.name,
             player.uscf_id || null,
             player.fide_id || null,
+            player.lichess_username || null,
             finalRating,
             player.section || null,
             finalStatus,
@@ -661,6 +662,7 @@ async function parseCSVFile(filePath) {
             name: normalizedRow.name || normalizedRow['player name'] || normalizedRow['full name'] || '',
             uscf_id: normalizedRow.uscf_id || normalizedRow['uscf id'] || normalizedRow['uscf'] || normalizedRow['member id'] || '',
             fide_id: normalizedRow.fide_id || normalizedRow['fide id'] || normalizedRow['fide'] || '',
+            lichess_username: normalizedRow.lichess_username || normalizedRow['lichess username'] || normalizedRow['lichess'] || normalizedRow['lichess handle'] || '',
             rating: normalizedRow.rating || normalizedRow['uscf rating'] || normalizedRow['regular rating'] || '',
             section: normalizedRow.section || normalizedRow['division'] || normalizedRow['class'] || '',
             team_name: normalizedRow.team_name || normalizedRow['team name'] || normalizedRow['team'] || '',
@@ -1101,6 +1103,7 @@ function generateCSVTemplate() {
     'Name',
     'USCF ID',
     'FIDE ID',
+    'Lichess Username',
     'Rating',
     'Section',
     'Team',
@@ -1119,6 +1122,7 @@ function generateCSVTemplate() {
       'John Doe',
       '12345678',
       '987654321',
+      'johndoe_chess',
       '1800',
       'Open',
       'Chess Club A',
@@ -1135,6 +1139,7 @@ function generateCSVTemplate() {
       'Jane Smith',
       '87654321',
       '',
+      'janesmith_chess',
       '1600',
       'Reserve',
       'Chess Club B',
@@ -1151,6 +1156,7 @@ function generateCSVTemplate() {
       'Bob Johnson',
       '11223344',
       '123456789',
+      'bobjohnson_chess',
       '2000',
       'Open',
       'Chess Club A',

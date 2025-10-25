@@ -394,7 +394,8 @@ class EnhancedPairingSystem {
       tournamentId: this.tournamentId,
       pointsForWin: this.options.pointsForWin || 1,
       pointsForDraw: this.options.pointsForDraw || 0.5,
-      pointsForLoss: this.options.pointsForLoss || 0
+      pointsForLoss: this.options.pointsForLoss || 0,
+      colorHistory: this.colorHistory
     });
     
     // Add section and board information

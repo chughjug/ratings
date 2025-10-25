@@ -82,7 +82,13 @@ class BbpPairings {
   /**
    * Get the last two colors played by a player
    */
-  getLastTwoColors(player) {
+  getLastTwoColors(player, colorHistory = {}) {
+    // First try to get from color history if available
+    if (colorHistory && colorHistory[player.id]) {
+      return colorHistory[player.id].slice(-2).join('');
+    }
+    
+    // Fallback to player matches
     const colors = [];
     for (const match of (player.matches || []).slice(-2)) {
       if (match.gameWasPlayed) {
@@ -425,7 +431,7 @@ class BbpPairings {
           const player2 = remainingPlayers[i + 1];
           
           // Assign colors based on bbpPairings algorithm
-          const whitePlayer = this.assignColorsSwiss(player1, player2);
+          const whitePlayer = this.assignColorsSwiss(player1, player2, tournament);
           const blackPlayer = whitePlayer === player1 ? player2 : player1;
           
           pairings.push({
@@ -490,7 +496,7 @@ class BbpPairings {
           const player2 = remainingPlayers[i + 1];
           
           // Assign colors based on bbpPairings algorithm
-          const whitePlayer = this.assignColorsSwiss(player1, player2);
+          const whitePlayer = this.assignColorsSwiss(player1, player2, tournament);
           const blackPlayer = whitePlayer === player1 ? player2 : player1;
           
           pairings.push({
@@ -539,10 +545,10 @@ class BbpPairings {
    * Assign colors for Swiss system
    * Based on bbpPairings assignColorsSwiss function
    */
-  assignColorsSwiss(player1, player2) {
-    // Get color history for both players
-    const player1Colors = this.getLastTwoColors(player1);
-    const player2Colors = this.getLastTwoColors(player2);
+  assignColorsSwiss(player1, player2, tournament = {}) {
+    // Get color history for both players from tournament or player matches
+    const player1Colors = this.getLastTwoColors(player1, tournament.colorHistory);
+    const player2Colors = this.getLastTwoColors(player2, tournament.colorHistory);
     
     // PRIORITY 1: Avoid immediate color repeats (WW or BB)
     if (player1Colors === 'WW' && player2Colors !== 'WW') {

@@ -20,6 +20,7 @@ This document describes the new CSV import functionality that allows you to bulk
 ### Optional Columns
 - **USCF ID**: USCF member ID (numeric)
 - **FIDE ID**: FIDE member ID (numeric)
+- **Lichess Username**: Lichess username for online game creation (e.g., "magnuscarlsen")
 - **Rating**: Player's rating (numeric, 0-3000)
 - **Section**: Tournament section (e.g., "Open", "Reserve")
 - **Status**: Player status ("active", "withdrawn", "bye")
@@ -36,6 +37,7 @@ The system recognizes various column name formats:
 | Name | `name`, `player name`, `full name` |
 | USCF ID | `uscf_id`, `uscf id`, `uscf`, `member id` |
 | FIDE ID | `fide_id`, `fide id`, `fide` |
+| Lichess Username | `lichess_username`, `lichess username`, `lichess`, `lichess handle` |
 | Rating | `rating`, `uscf rating`, `regular rating` |
 | Section | `section`, `division`, `class` |
 | Status | `status`, `player status` |
