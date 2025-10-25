@@ -23,7 +23,7 @@
 
 const CONFIG = {
   // Tournament API settings
-  API_BASE_URL: 'https://your-domain.com', // Replace with your tournament system URL
+  API_BASE_URL: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com', // Production tournament system URL
   API_KEY: 'demo-key-123', // Replace with your API key
   TOURNAMENT_ID: 'your-tournament-id', // Replace with your tournament ID
   
@@ -84,7 +84,7 @@ function safeAlert(message) {
 5. Paste the complete script
 6. Click **Save**
 7. In the console, run: `setup()`
-8. Then run: `setupFormImport('your-tournament-id', 'https://your-api-domain.com')`
+8. Then run: `setupFormImport('your-tournament-id', 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com')`
 
 ## Complete Code Location
 
@@ -100,7 +100,7 @@ Update these values in the copied script:
 const FORMS_CONFIG = {
   ENABLE_FORM_IMPORT: true,
   FORM_ID: 'your-google-form-id',  // Get this from your Google Form URL
-  API_BASE_URL: 'https://your-domain.com',  // Your tournament system URL
+  API_BASE_URL: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com',  // Production tournament system URL
   API_KEY: 'your-api-key',
   TOURNAMENT_ID: 'your-tournament-id',
   CHECK_INTERVAL: 5,
@@ -109,6 +109,21 @@ const FORMS_CONFIG = {
   LOOKUP_RATINGS: true
 };
 ```
+
+## ⚙️ Your Tournament Configuration
+
+**Production API Endpoint**: `https://chess-tournament-director-6ce5e76147d7.herokuapp.com`
+
+**Available Endpoints**:
+- Tournament Info: `/api/registration/{tournamentId}/info`
+- Forms Config: `/api/registration/{tournamentId}/forms-config`
+- Player Import: `/api/players/api-import/{tournamentId}`
+- Player Registration: `/api/registrations/submit`
+
+**Quick Setup**:
+1. Get your tournament ID from the tournament URL
+2. Update `TOURNAMENT_ID` in the script
+3. Run `setupFormImport('your-tournament-id')`
 
 ## Support
 

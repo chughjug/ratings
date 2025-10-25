@@ -1034,21 +1034,30 @@ router.put('/:id/status', (req, res) => {
 // Get player performance details
 router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
   const { tournamentId, playerId } = req.params;
+  
+  console.log('🔍 Player Performance Request:', { tournamentId, playerId });
 
   try {
     // 1. Get player info
+    console.log('Step 1: Fetching player info...');
     const player = await new Promise((resolve, reject) => {
       db.get(
         'SELECT * FROM players WHERE id = ? AND tournament_id = ?',
         [playerId, tournamentId],
         (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
+          if (err) {
+            console.error('❌ Error fetching player:', err);
+            reject(err);
+          } else {
+            console.log('✅ Player found:', row ? row.name : 'not found');
+            resolve(row);
+          }
         }
       );
     });
 
     if (!player) {
+      console.error('❌ Player not found:', playerId, 'in tournament:', tournamentId);
       return res.status(404).json({
         success: false,
         error: 'Player not found'
@@ -1056,19 +1065,34 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
     }
 
     // 2. Get tournament info
+    console.log('Step 2: Fetching tournament info...');
     const tournament = await new Promise((resolve, reject) => {
       db.get(
         'SELECT * FROM tournaments WHERE id = ?',
         [tournamentId],
         (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
+          if (err) {
+            console.error('❌ Error fetching tournament:', err);
+            reject(err);
+          } else {
+            console.log('✅ Tournament found:', row ? row.name : 'not found');
+            resolve(row);
+          }
         }
       );
     });
 
+    if (!tournament) {
+      console.error('❌ Tournament not found:', tournamentId);
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
     // 3. Get player's pairings
-    const pairings = await new Promise((resolve, reject) => {
+    console.log('Step 3: Fetching pairings for this player...');
+    const playerPairings = await new Promise((resolve, reject) => {
       db.all(
         `SELECT p.*, 
                 wp.name as white_name, wp.rating as white_rating,
@@ -1080,29 +1104,59 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
          ORDER BY p.round, p.board`,
         [tournamentId, playerId, playerId],
         (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
+          if (err) {
+            console.error('❌ Error fetching pairings:', err);
+            reject(err);
+          } else {
+            console.log('✅ Player pairings found:', rows ? rows.length : 0);
+            resolve(rows || []);
+          }
+        }
+      );
+    });
+
+    // 3b. Get ALL pairings for tournament (for standings calculation)
+    console.log('Step 3b: Fetching ALL pairings for standings...');
+    const allPairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT * FROM pairings WHERE tournament_id = ? ORDER BY round, board`,
+        [tournamentId],
+        (err, rows) => {
+          if (err) {
+            console.error('❌ Error fetching all pairings:', err);
+            reject(err);
+          } else {
+            console.log('✅ All pairings found:', rows ? rows.length : 0);
+            resolve(rows || []);
+          }
         }
       );
     });
 
     // 4. Get all players for standings
+    console.log('Step 4: Fetching all players...');
     const allPlayers = await new Promise((resolve, reject) => {
       db.all(
         'SELECT id, name, rating, section FROM players WHERE tournament_id = ? AND status = "active" ORDER BY name',
         [tournamentId],
         (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
+          if (err) {
+            console.error('❌ Error fetching players:', err);
+            reject(err);
+          } else {
+            console.log('✅ Players found:', rows ? rows.length : 0);
+            resolve(rows || []);
+          }
         }
       );
     });
 
     // 5. Calculate player's round performance
+    console.log('Step 5: Calculating round performance...');
     const roundPerformance = [];
     let totalPoints = 0;
 
-    pairings.forEach(pairing => {
+    playerPairings.forEach(pairing => {
       let points = 0;
       let result = pairing.result || 'TBD';
       const isWhite = pairing.white_player_id === playerId;
@@ -1133,10 +1187,12 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
         points: points
       });
     });
+    console.log('✅ Round performance calculated. Total points:', totalPoints);
 
     // 6. Calculate player stats
+    console.log('Step 6: Calculating player stats...');
     let wins = 0, draws = 0, losses = 0;
-    pairings.forEach(p => {
+    playerPairings.forEach(p => {
       if (!p.result || p.result === 'TBD') return;
       const isWhite = p.white_player_id === playerId;
       if (isWhite) {
@@ -1149,13 +1205,15 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
         else losses++;
       }
     });
+    console.log('✅ Stats: W:', wins, 'D:', draws, 'L:', losses);
 
     // 7. Calculate standings and find player rank
+    console.log('Step 7: Calculating standings...');
     const standingsData = allPlayers.map(p => {
       let playerTotalPoints = 0;
       let playerWins = 0, playerDraws = 0, playerLosses = 0;
       
-      pairings.forEach(pairing => {
+      allPairings.forEach(pairing => {
         if ((pairing.white_player_id === p.id || pairing.black_player_id === p.id) && pairing.result && pairing.result !== 'TBD') {
           const isWhite = pairing.white_player_id === p.id;
           if (isWhite) {
@@ -1199,7 +1257,9 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
     standingsData.forEach((s, idx) => {
       if (s.id === playerId) playerPlace = idx + 1;
     });
+    console.log('✅ Player rank:', playerPlace);
 
+    console.log('✅ SUCCESS - Sending response');
     res.json({
       success: true,
       tournament: {
@@ -1225,7 +1285,7 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
       ],
       standings: standingsData.slice(0, 20),
       statistics: {
-        gamesPlayed: pairings.length,
+        gamesPlayed: playerPairings.length,
         wins: wins,
         draws: draws,
         losses: losses
@@ -1233,10 +1293,12 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching player performance:', error);
+    console.error('❌ ERROR in player performance endpoint:', error);
+    console.error('Stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch player performance: ' + error.message
+      error: 'Failed to fetch player performance: ' + error.message,
+      details: error.stack
     });
   }
 });
