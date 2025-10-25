@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Trophy, Play } from 'lucide-react';
-// API imports removed to avoid build issues
+import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { Player } from '../types';
 import PairingSystem from './PairingSystem';
 
@@ -31,36 +31,87 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
       setLoading(true);
       setError(null);
       
-      // Load tournament details - using mock data for now
-      // const tournament = { name: 'Test Tournament', id: tournamentId };
+      // Fetch tournament data
+      const tournamentResponse = await tournamentApi.getById(tournamentId);
+      if (!tournamentResponse.data.success) {
+        throw new Error(tournamentResponse.data.error || 'Failed to load tournament');
+      }
       
-      // Load sections - use default section for now
-      const defaultSections = ['CHAMPIONSHIP 2DAY'];
-      const sectionsData = await Promise.all(
-        defaultSections.map(async (sectionName: string) => {
-          try {
-            // For now, use mock data to avoid API issues
-            const players: Player[] = [];
-            const currentRound = 1;
-            const pairings: any[] = [];
-            
-            return {
-              name: sectionName,
-              players,
-              pairings,
-              currentRound,
-              isComplete: false // TODO: Determine if section is complete
-            };
-          } catch (err) {
-            console.error(`Failed to load section ${sectionName}:`, err);
-            return {
-              name: sectionName,
-              players: [],
-              pairings: [],
-              currentRound: 1,
-              isComplete: false
-            };
+      const tournament = tournamentResponse.data.data;
+      
+      // Fetch players data
+      const playersResponse = await playerApi.getByTournament(tournamentId);
+      if (!playersResponse.data.success) {
+        throw new Error(playersResponse.data.error || 'Failed to load players');
+      }
+      
+      const allPlayers = playersResponse.data.data;
+      
+      // Get sections from tournament settings or from players
+      const tournamentSections = new Set<string>();
+      
+      // Add sections from tournament settings
+      if (tournament?.settings?.sections) {
+        tournament.settings.sections.forEach((s: any) => {
+          if (s.name && s.name.trim() !== '') {
+            tournamentSections.add(s.name);
           }
+        });
+      }
+      
+      // Add sections from players
+      allPlayers.forEach(player => {
+        if (player.section && player.section.trim() !== '') {
+          tournamentSections.add(player.section);
+        }
+      });
+      
+      // If no sections found, create a default one
+      if (tournamentSections.size === 0) {
+        tournamentSections.add('CHAMPIONSHIP 2DAY');
+      }
+      
+      // Group players by section
+      const playersBySection = allPlayers.reduce((acc, player) => {
+        const section = player.section || 'CHAMPIONSHIP 2DAY';
+        if (!acc[section]) {
+          acc[section] = [];
+        }
+        acc[section].push(player);
+        return acc;
+      }, {} as Record<string, Player[]>);
+      
+      // Create sections data and load pairings for each section
+      const sectionsData = await Promise.all(
+        Array.from(tournamentSections).map(async (sectionName) => {
+          const sectionPlayers = playersBySection[sectionName] || [];
+          
+          // Try to load pairings for this section
+          let sectionPairings: any[] = [];
+          let currentRound = 1;
+          
+          try {
+            // Try to get pairings for round 1 first
+            const pairingsResponse = await pairingApi.getByRound(tournamentId, 1, sectionName);
+            sectionPairings = pairingsResponse.data || [];
+            
+            // Determine current round based on pairings data
+            if (sectionPairings.length > 0) {
+              const rounds = Array.from(new Set(sectionPairings.map(p => p.round))).sort((a, b) => b - a);
+              currentRound = rounds[0] || 1;
+            }
+          } catch (err) {
+            console.warn(`Failed to load pairings for section ${sectionName}:`, err);
+            // Continue with empty pairings
+          }
+          
+          return {
+            name: sectionName,
+            players: sectionPlayers,
+            pairings: sectionPairings,
+            currentRound,
+            isComplete: false // Will be determined from tournament status
+          };
         })
       );
       
@@ -70,7 +121,7 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
       }
     } catch (err: any) {
       console.error('Failed to load tournament data:', err);
-      setError(err.response?.data?.message || 'Failed to load tournament data');
+      setError(err.response?.data?.error || err.message || 'Failed to load tournament data');
     } finally {
       setLoading(false);
     }
@@ -84,6 +135,29 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
         ? { ...section, pairings }
         : section
     ));
+  };
+
+  const refreshSectionData = async (sectionName: string) => {
+    try {
+      // Reload pairings for the specific section
+      const pairingsResponse = await pairingApi.getByRound(tournamentId, 1, sectionName);
+      const sectionPairings = pairingsResponse.data || [];
+      
+      // Update the section with new pairings data
+      setSections(prev => prev.map(section => 
+        section.name === sectionName 
+          ? { 
+              ...section, 
+              pairings: sectionPairings,
+              currentRound: sectionPairings.length > 0 
+                ? Math.max(...sectionPairings.map(p => p.round)) 
+                : section.currentRound
+            }
+          : section
+      ));
+    } catch (err) {
+      console.error(`Failed to refresh data for section ${sectionName}:`, err);
+    }
   };
 
   const selectedSectionData = sections.find(s => s.name === selectedSection);
@@ -172,7 +246,10 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
             section={selectedSectionData.name}
             round={selectedSectionData.currentRound}
             players={selectedSectionData.players}
-            onPairingsGenerated={(pairings) => handlePairingsGenerated(selectedSectionData.name, pairings)}
+            onPairingsGenerated={(pairings) => {
+              handlePairingsGenerated(selectedSectionData.name, pairings);
+              refreshSectionData(selectedSectionData.name);
+            }}
           />
         </div>
       )}
@@ -209,6 +286,13 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
                   className="btn-primary"
                 >
                   Manage
+                </button>
+                <button
+                  onClick={() => refreshSectionData(section.name)}
+                  className="btn-secondary"
+                  title="Refresh section data"
+                >
+                  ↻
                 </button>
               </div>
             </div>

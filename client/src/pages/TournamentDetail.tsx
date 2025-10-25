@@ -2389,6 +2389,7 @@ const TournamentDetail: React.FC = () => {
                   tournamentId={id || ''}
                   sectionName={selectedSection}
                   currentRound={getCurrentRoundForSection(selectedSection)}
+                  pairings={state.pairings || []}
                   onRoundComplete={(nextRound) => {
                     setCurrentRoundForSection(selectedSection, nextRound);
                     fetchPairings(nextRound, selectedSection);

@@ -7,6 +7,7 @@ interface SectionPairingManagerProps {
   tournamentId: string;
   sectionName: string;
   currentRound: number;
+  pairings: any[]; // Receive pairings from parent
   onRoundComplete?: (nextRound: number) => void;
   onPairingsUpdate?: (pairings: any[]) => void;
   onRoundChange?: (round: number) => void;
@@ -16,11 +17,11 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   tournamentId,
   sectionName,
   currentRound,
+  pairings, // Use pairings from parent
   onRoundComplete,
   onPairingsUpdate,
   onRoundChange
 }) => {
-  const [pairings, setPairings] = useState<any[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sectionStatus, setSectionStatus] = useState<any>(null);
@@ -50,16 +51,12 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     }
   }, [tournamentId, sectionName, currentRound]);
 
-  // Fetch section data
+  // Fetch section data (standings and status only, pairings come from parent)
   const fetchSectionData = useCallback(async () => {
     if (!tournamentId || !sectionName) return;
     
     try {
       setIsLoading(true);
-      
-      // Fetch pairings for current round
-      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
-      setPairings(pairingsResponse.data || []);
       
       // Fetch standings
       const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
@@ -75,7 +72,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [tournamentId, sectionName, currentRound]);
+  }, [tournamentId, sectionName]);
 
   // Update pairing result - defined before handleKeyDown to avoid dependency issues
   const updatePairingResult = useCallback(async (pairingId: string, result: string) => {
@@ -84,15 +81,11 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       const response = await pairingApi.updateResult(pairingId, result);
       console.log('✅ SectionPairingManager: Result update response:', response);
       
-      // Update local state immediately without full refresh
-      setPairings(prev => {
-        const updated = prev.map(p => 
-          p.id === pairingId ? { ...p, result } : p
-        );
-        // Notify parent of pairings update
-        onPairingsUpdate?.(updated);
-        return updated;
-      });
+      // Update parent's pairings state
+      const updatedPairings = pairings.map(p => 
+        p.id === pairingId ? { ...p, result } : p
+      );
+      onPairingsUpdate?.(updatedPairings);
       
       // Only refresh standings to show updated scores
       const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
@@ -105,7 +98,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       console.error('❌ SectionPairingManager: Failed to update result:', error);
       alert(`Failed to update result: ${error}`);
     }
-  }, [tournamentId, sectionName, onPairingsUpdate]);
+  }, [tournamentId, sectionName, pairings, onPairingsUpdate]);
 
   // Keyboard shortcuts handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -166,7 +159,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     try {
       const response = await pairingApi.swapPlayers(pairingId);
       if (response.data.success) {
-        await fetchSectionData();
+        // Refresh pairings from parent
+        const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+        onPairingsUpdate?.(pairingsResponse.data || []);
         alert('Players swapped successfully!');
       } else {
         throw new Error(response.data.message || 'Failed to swap players');
@@ -181,7 +176,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     try {
       const response = await pairingApi.updateBoardNumber(pairingId, parseInt(newBoardNumber));
       if (response.data.success) {
-        await fetchSectionData();
+        // Refresh pairings from parent
+        const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+        onPairingsUpdate?.(pairingsResponse.data || []);
         alert('Board number updated successfully!');
       } else {
         throw new Error(response.data.message || 'Failed to update board number');
@@ -200,7 +197,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     try {
       const response = await pairingApi.delete(pairingId);
       if (response.data.success) {
-        await fetchSectionData();
+        // Refresh pairings from parent
+        const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+        onPairingsUpdate?.(pairingsResponse.data || []);
         alert('Pairing deleted successfully!');
       } else {
         throw new Error(response.data.message || 'Failed to delete pairing');
@@ -220,7 +219,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     try {
       const response = await pairingApi.createManual(tournamentId, sectionName, currentRound, parseInt(newBoardNumber));
       if (response.data.success) {
-        await fetchSectionData();
+        // Refresh pairings from parent
+        const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+        onPairingsUpdate?.(pairingsResponse.data || []);
         setNewBoardNumber('');
         alert('Manual pairing added successfully!');
       } else {
@@ -256,6 +257,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       
       // Refresh data
       await fetchSectionData();
+      // Refresh pairings from parent
+      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+      onPairingsUpdate?.(pairingsResponse.data || []);
       
     } catch (error: any) {
       console.error('Failed to complete round:', error);
@@ -282,6 +286,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       
       // Refresh data
       await fetchSectionData();
+      // Refresh pairings from parent
+      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+      onPairingsUpdate?.(pairingsResponse.data || []);
       
     } catch (error: any) {
       console.error('Failed to generate next round:', error);
@@ -304,6 +311,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       
       // Refresh data
       await fetchSectionData();
+      // Refresh pairings from parent
+      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+      onPairingsUpdate?.(pairingsResponse.data || []);
       
     } catch (error: any) {
       console.error('Failed to reset section:', error);
@@ -420,6 +430,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                     alert(`Successfully generated pairings for ${sectionName} section in Round ${currentRound}`);
                     await fetchSectionData();
                     await fetchAvailableRounds();
+                    // Refresh pairings from parent
+                    const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+                    onPairingsUpdate?.(pairingsResponse.data || []);
                   } else {
                     throw new Error(response.data.message || 'Failed to generate pairings');
                   }
