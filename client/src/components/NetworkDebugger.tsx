@@ -46,10 +46,10 @@ const NetworkDebugger: React.FC = () => {
         index === 2 ? { ...test, status: 'pending', message: 'Testing CORS...' } : test
       ));
       
-      const corsResponse = await fetch('http://localhost:3000/api/tournaments', {
+      const corsResponse = await fetch('https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api/tournaments', {
         method: 'GET',
         headers: {
-          'Origin': 'http://localhost:3000',
+          'Origin': 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com',
           'Content-Type': 'application/json'
         }
       });
@@ -184,7 +184,7 @@ const NetworkDebugger: React.FC = () => {
 
       <div className="mt-4 pt-3 border-t border-gray-200">
         <div className="text-xs text-gray-500">
-          <div>API Base URL: {process.env.REACT_APP_API_URL || 'http://localhost:3000/api'}</div>
+          <div>API Base URL: {process.env.REACT_APP_API_URL || 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api'}</div>
           <div>Current URL: {window.location.href}</div>
           <div>Timestamp: {new Date().toLocaleString()}</div>
         </div>

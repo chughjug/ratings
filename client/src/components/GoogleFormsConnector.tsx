@@ -49,7 +49,7 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
 }) => {
   const [config, setConfig] = useState<FormsConfig>({
     formId: '',
-    apiBaseUrl: 'http://localhost:3000',
+    apiBaseUrl: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com',
     apiKey: 'demo-key-123',
     checkInterval: 5,
     sendConfirmationEmails: true,

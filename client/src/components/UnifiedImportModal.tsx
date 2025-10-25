@@ -109,7 +109,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
         if (process.env.NODE_ENV === 'production') {
           return '/api';
         }
-        return 'http://localhost:3000/api';
+        return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
       };
 
       const baseUrl = getApiBaseUrl();
@@ -181,7 +181,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             if (process.env.NODE_ENV === 'production') {
               return '/api';
             }
-            return 'http://localhost:3000/api';
+            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
           };
           const sheetsPreviewBaseUrl = getSheetsPreviewBaseUrl();
           endpoint = `${sheetsPreviewBaseUrl}/google-import/sheets/preview`;
@@ -201,7 +201,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             if (process.env.NODE_ENV === 'production') {
               return '/api';
             }
-            return 'http://localhost:3000/api';
+            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
           };
           const formsPreviewBaseUrl = getFormsPreviewBaseUrl();
           endpoint = `${formsPreviewBaseUrl}/google-import/forms/preview`;
@@ -288,7 +288,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             if (process.env.NODE_ENV === 'production') {
               return '/api';
             }
-            return 'http://localhost:3000/api';
+            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
           };
           const baseUrl = getApiBaseUrl();
           endpoint = `${baseUrl}/players/csv-upload`;
@@ -341,7 +341,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             if (process.env.NODE_ENV === 'production') {
               return '/api';
             }
-            return 'http://localhost:3000/api';
+            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
           };
           const excelBaseUrl = getExcelApiBaseUrl();
           endpoint = `${excelBaseUrl}/players/excel-upload`;
@@ -388,7 +388,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             if (process.env.NODE_ENV === 'production') {
               return '/api';
             }
-            return 'http://localhost:3000/api';
+            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
           };
           const sheetsBaseUrl = getSheetsApiBaseUrl();
           endpoint = useSmartImport 
@@ -410,7 +410,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             if (process.env.NODE_ENV === 'production') {
               return '/api';
             }
-            return 'http://localhost:3000/api';
+            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
           };
           const formsBaseUrl = getFormsApiBaseUrl();
           endpoint = useSmartImport 
@@ -431,7 +431,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             if (process.env.NODE_ENV === 'production') {
               return '/api';
             }
-            return 'http://localhost:3000/api';
+            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
           };
           const apiImportBaseUrl = getApiImportBaseUrl();
           endpoint = `${apiImportBaseUrl}/players/api-import/${tournamentId}`;
