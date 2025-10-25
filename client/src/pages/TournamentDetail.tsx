@@ -454,8 +454,8 @@ const TournamentDetail: React.FC = () => {
       isGeneratingRef.current = true;
       setIsLoading(true);
       
-      // Use the main pairing system which handles all sections properly
-      const response = await pairingApi.generate(id, currentRound);
+      // Use the section-specific pairing system
+      const response = await pairingApi.generateForSection(id, currentRound, sectionName);
 
       if (!response.data.success) {
         throw new Error(response.data.message || 'Failed to generate pairings');
@@ -2272,7 +2272,7 @@ const TournamentDetail: React.FC = () => {
                          try {
                            setIsLoading(true);
                            const currentRoundNum = 1; // Always start with round 1
-                           const response = await pairingApi.generate(id, currentRoundNum);
+                           const response = await pairingApi.generateForSection(id, currentRoundNum, selectedSection);
                            
                            if (response.data.success) {
                              alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
