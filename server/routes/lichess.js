@@ -129,6 +129,49 @@ router.post('/tournament/create', async (req, res) => {
 });
 
 /**
+ * Create Lichess game for a pairing
+ */
+router.post('/create-game', async (req, res) => {
+  try {
+    const { pairingId, whitePlayer, blackPlayer, timeControl } = req.body;
+    
+    if (!pairingId || !whitePlayer || !blackPlayer) {
+      return res.status(400).json({
+        success: false,
+        error: 'Pairing ID and player usernames are required'
+      });
+    }
+
+    // For now, return a mock game creation
+    // In a real implementation, this would call the Lichess API
+    const mockGame = {
+      id: `mock_game_${Date.now()}`,
+      url: `https://lichess.org/mock/${Date.now()}`,
+      white: whitePlayer,
+      black: blackPlayer,
+      timeControl: timeControl || 'G/30+0',
+      status: 'created',
+      createdAt: new Date().toISOString()
+    };
+
+    // TODO: Implement actual Lichess game creation
+    // const game = await lichessApi.createChallenge(accessToken, whitePlayer, blackPlayer, timeControl);
+    
+    res.json({
+      success: true,
+      game: mockGame
+    });
+  } catch (error) {
+    console.error('Error creating Lichess game:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create Lichess game',
+      details: error.message
+    });
+  }
+});
+
+/**
  * Join Lichess tournament
  */
 router.post('/tournament/:lichessId/join', async (req, res) => {

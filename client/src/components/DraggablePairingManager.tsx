@@ -559,6 +559,7 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
                 <th>White Player</th>
                 <th>Black Player</th>
                 <th>Result</th>
+                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -643,6 +644,15 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
                       <option value="0-1F">0-1F (Black Forfeit)</option>
                       <option value="1/2-1/2F">1/2-1/2F (Draw by Forfeit)</option>
                     </select>
+                  </td>
+                  <td>
+                    <div className="status-info">
+                      {pairing.result ? (
+                        <span className="status-completed">Completed</span>
+                      ) : (
+                        <span className="status-pending">Pending</span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <div className="pairing-actions">
@@ -1026,6 +1036,30 @@ const DraggablePairingManager: React.FC<DraggablePairingManagerProps> = ({
         .btn-sm {
           padding: 6px 12px;
           font-size: 12px;
+        }
+
+        .status-info {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .status-completed {
+          background: #d4edda;
+          color: #155724;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .status-pending {
+          background: #fff3cd;
+          color: #856404;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 500;
         }
       `}</style>
     </div>

@@ -442,8 +442,8 @@ class PairingStorageService {
     return new Promise((resolve, reject) => {
       this.db.all(
         `SELECT p.*, 
-                wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id,
-                bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id
+                wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id, wp.lichess_username as white_lichess_username,
+                bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id, bp.lichess_username as black_lichess_username
          FROM pairings p
          LEFT JOIN players wp ON p.white_player_id = wp.id
          LEFT JOIN players bp ON p.black_player_id = bp.id
@@ -1154,10 +1154,11 @@ router.post('/generate/section', async (req, res) => {
       section: sectionName,
       tournamentId,
       db,
-      round: currentRound
+      round: currentRound,
+      pairingSystem: 'fide_dutch' // Use bbpPairings Dutch system
     });
 
-    // Generate pairings for this section only
+    // Generate pairings for this section only using bbpPairings
     const generatedPairings = sectionSystem.generatePairings();
     
     // Assign board numbers and section info
@@ -1259,8 +1260,8 @@ router.get('/tournament/:tournamentId/round/:round/section/:sectionName', async 
     const pairings = await new Promise((resolve, reject) => {
       db.all(
         `SELECT p.*, 
-                pw.name as white_name, pw.rating as white_rating, pw.uscf_id as white_uscf_id,
-                pb.name as black_name, pb.rating as black_rating, pb.uscf_id as black_uscf_id
+                pw.name as white_name, pw.rating as white_rating, pw.uscf_id as white_uscf_id, pw.lichess_username as white_lichess_username,
+                pb.name as black_name, pb.rating as black_rating, pb.uscf_id as black_uscf_id, pb.lichess_username as black_lichess_username
          FROM pairings p
          LEFT JOIN players pw ON p.white_player_id = pw.id
          LEFT JOIN players pb ON p.black_player_id = pb.id
@@ -2849,10 +2850,11 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
             section: sectionName,
             tournamentId,
             db,
-            round: nextRound
+            round: nextRound,
+            pairingSystem: 'fide_dutch' // Use bbpPairings Dutch system
           });
 
-          // Generate pairings for this section only
+          // Generate pairings for this section only using bbpPairings
           const generatedPairings = sectionSystem.generatePairings();
           
           // Assign board numbers and section info

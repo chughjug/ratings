@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X } from 'lucide-react';
 import { pairingApi } from '../services/api';
+import LichessGameCreator from './LichessGameCreator';
 
 interface SectionPairingManagerProps {
   tournamentId: string;
@@ -442,6 +443,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lichess</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -488,6 +490,29 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                         <span>Pending</span>
                       </span>
                     )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <LichessGameCreator
+                      pairingId={pairing.id}
+                      whitePlayer={{
+                        id: pairing.white_id,
+                        name: pairing.white_name,
+                        lichess_username: pairing.white_lichess_username
+                      }}
+                      blackPlayer={{
+                        id: pairing.black_id,
+                        name: pairing.black_name,
+                        lichess_username: pairing.black_lichess_username
+                      }}
+                      timeControl="G/30+0"
+                      onGameCreated={(gameData) => {
+                        console.log('Lichess game created:', gameData);
+                        // You could update the pairing with game data here
+                      }}
+                      onError={(error) => {
+                        console.error('Lichess game creation error:', error);
+                      }}
+                    />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-2">
