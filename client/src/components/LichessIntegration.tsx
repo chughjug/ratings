@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, Users, Trophy, Gamepad2, Sync, Settings, AlertCircle, CheckCircle, Clock, Zap } from 'lucide-react';
+import { ExternalLink, Users, Trophy, Gamepad2, RefreshCw, Settings, AlertCircle, CheckCircle, Clock, Zap } from 'lucide-react';
 
 interface LichessUser {
   id: string;
@@ -533,7 +533,7 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
                   </>
                 ) : (
                   <>
-                    <Sync className="w-4 h-4 mr-2" />
+                    <RefreshCw className="w-4 h-4 mr-2" />
                     Sync Results
                   </>
                 )}
