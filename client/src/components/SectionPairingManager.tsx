@@ -33,6 +33,11 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [availableRounds, setAvailableRounds] = useState<number[]>([1]);
   const selectedPairingRef = useRef<string | null>(null);
 
+  // Filter pairings by section to ensure only current section's pairings are shown
+  const sectionPairings = pairings.filter(p => p.section === sectionName);
+  const incompletePairings = sectionPairings.filter(p => !p.result);
+  const completedPairings = sectionPairings.filter(p => p.result);
+
   // Fetch available rounds for the section
   const fetchAvailableRounds = useCallback(async () => {
     if (!tournamentId || !sectionName) return;
@@ -112,7 +117,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     }
 
     // Find the first incomplete pairing
-    const incompletePairings = pairings.filter(p => !p.result);
+    const incompletePairings = sectionPairings.filter(p => !p.result);
     if (incompletePairings.length === 0) return;
 
     const targetPairing = selectedPairingRef.current 
@@ -144,7 +149,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
         selectedPairingRef.current = null;
       }
     }
-  }, [pairings, updatePairingResult]);
+  }, [sectionPairings, updatePairingResult]);
 
   // Add keyboard event listener
   useEffect(() => {
@@ -238,7 +243,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   // Complete current round
   const completeRound = async () => {
     // Check if there are any incomplete pairings
-    const incompletePairings = pairings.filter(p => !p.result);
+    const incompletePairings = sectionPairings.filter(p => !p.result);
     if (incompletePairings.length > 0) {
       alert(`Cannot complete round: ${incompletePairings.length} game${incompletePairings.length !== 1 ? 's' : ''} still need${incompletePairings.length === 1 ? 's' : ''} results.`);
       return;
@@ -272,7 +277,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   // Generate next round
   const generateNextRound = async () => {
     // Check if there are any incomplete pairings
-    const incompletePairings = pairings.filter(p => !p.result);
+    const incompletePairings = sectionPairings.filter(p => !p.result);
     if (incompletePairings.length > 0) {
       alert(`Cannot generate next round: ${incompletePairings.length} game${incompletePairings.length !== 1 ? 's' : ''} still need${incompletePairings.length === 1 ? 's' : ''} results.`);
       return;
@@ -335,9 +340,6 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     );
   }
 
-  const incompletePairings = pairings.filter(p => !p.result);
-  const completedPairings = pairings.filter(p => p.result);
-
   return (
     <div className="space-y-6">
       {/* Section Status Header */}
@@ -378,7 +380,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             </div>
             <div className="flex items-center space-x-2">
               <Settings className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-600">{pairings.length} pairings</span>
+              <span className="text-sm text-gray-600">{sectionPairings.length} pairings</span>
             </div>
           </div>
         </div>
@@ -409,7 +411,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               <span className="font-medium text-gray-900">Progress</span>
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {pairings.length > 0 ? Math.round((completedPairings.length / pairings.length) * 100) : 0}%
+              {sectionPairings.length > 0 ? Math.round((completedPairings.length / sectionPairings.length) * 100) : 0}%
             </div>
             <div className="text-sm text-gray-600">Complete</div>
           </div>
@@ -417,7 +419,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
 
         {/* Action Buttons */}
         <div className="mt-6 flex space-x-3">
-          {pairings.length === 0 && (
+          {sectionPairings.length === 0 && (
             <button
               onClick={async () => {
                 if (!window.confirm(`Generate pairings for ${sectionName} section Round ${currentRound}?`)) return;
@@ -454,7 +456,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             </button>
           )}
 
-          {pairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
+          {sectionPairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
             <button
               onClick={completeRound}
               disabled={isCompletingRound}
@@ -469,7 +471,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             </button>
           )}
             
-          {pairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
+          {sectionPairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
             <button
               onClick={generateNextRound}
               disabled={isGeneratingNext}
@@ -520,7 +522,12 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       {/* Pairings Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Round {currentRound} Pairings</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {sectionName} Section - Round {currentRound} Pairings
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Showing {sectionPairings.length} pairings for this section only
+          </p>
         </div>
         
         <div className="overflow-x-auto">
@@ -537,7 +544,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {pairings.map((pairing, index) => (
+              {sectionPairings.map((pairing, index) => (
                 <tr key={pairing.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {pairing.board || index + 1}

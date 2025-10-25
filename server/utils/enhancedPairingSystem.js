@@ -428,10 +428,16 @@ class EnhancedPairingSystem {
    * Uses Swiss system pairing with enhanced color balance rules
    */
   generateFideDutchPairings() {
-    if (this.players.length < 2) return [];
+    console.log(`[EnhancedPairingSystem] generateFideDutchPairings called with ${this.players.length} players`);
+    console.log(`[EnhancedPairingSystem] Players:`, this.players.map(p => ({ id: p.id, name: p.name, rating: p.rating })));
+    
+    if (this.players.length < 2) {
+      console.log(`[EnhancedPairingSystem] Not enough players (${this.players.length}), returning empty array`);
+      return [];
+    }
 
     const bbpPairings = new BBPPairingsDirect();
-    const result = bbpPairings.generateDutchPairings(this.players, {
+    const tournament = {
       round: this.round,
       section: this.section,
       tournamentId: this.tournamentId,
@@ -439,14 +445,22 @@ class EnhancedPairingSystem {
       pointsForDraw: this.options.pointsForDraw || 0.5,
       pointsForLoss: this.options.pointsForLoss || 0,
       colorHistory: this.colorHistory
-    });
+    };
+    
+    console.log(`[EnhancedPairingSystem] Tournament object:`, tournament);
+    
+    const result = bbpPairings.generateDutchPairings(this.players, tournament);
+    console.log(`[EnhancedPairingSystem] BBPPairingsDirect result:`, result);
     
     // Add section and board information
-    return result.map((pairing, index) => ({
+    const finalResult = result.map((pairing, index) => ({
       ...pairing,
       section: this.section,
       board: index + 1
     }));
+    
+    console.log(`[EnhancedPairingSystem] Final result:`, finalResult);
+    return finalResult;
   }
 
   /**

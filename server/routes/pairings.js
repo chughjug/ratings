@@ -1102,18 +1102,26 @@ router.post('/generate/section', async (req, res) => {
     }
 
     // Get players for the specific section
+    console.log(`[PairingGeneration] Fetching players for tournament ${tournamentId}, section "${sectionName}"`);
     const players = await new Promise((resolve, reject) => {
       db.all(
         'SELECT * FROM players WHERE tournament_id = ? AND status = "active" AND section = ? ORDER BY rating DESC',
         [tournamentId, sectionName],
         (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
+          if (err) {
+            console.error(`[PairingGeneration] Database error fetching players:`, err);
+            reject(err);
+          } else {
+            console.log(`[PairingGeneration] Found ${rows.length} players for section "${sectionName}"`);
+            console.log(`[PairingGeneration] Players:`, rows.map(p => ({ id: p.id, name: p.name, rating: p.rating, section: p.section })));
+            resolve(rows);
+          }
         }
       );
     });
 
     if (players.length === 0) {
+      console.error(`[PairingGeneration] No active players found for section "${sectionName}"`);
       res.status(400).json({ error: `No active players found for section "${sectionName}"` });
       return;
     }
@@ -1159,7 +1167,18 @@ router.post('/generate/section', async (req, res) => {
     });
 
     // Generate pairings for this section only using bbpPairings
+    console.log(`[PairingGeneration] Generating pairings for ${players.length} players in section "${sectionName}"`);
     const generatedPairings = sectionSystem.generatePairings();
+    console.log(`[PairingGeneration] Generated ${generatedPairings.length} pairings`);
+    
+    // Check if pairings were generated
+    if (!generatedPairings || generatedPairings.length === 0) {
+      console.error(`[PairingGeneration] No pairings generated for section "${sectionName}"`);
+      res.status(400).json({ 
+        error: `Failed to generate pairings for section "${sectionName}". No pairings were created.` 
+      });
+      return;
+    }
     
     // Assign board numbers and section info
     generatedPairings.forEach((pairing, index) => {
