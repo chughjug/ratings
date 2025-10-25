@@ -26,6 +26,63 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const selectedPairingRef = useRef<string | null>(null);
   const resultSelectRefs = useRef<{ [key: string]: HTMLSelectElement | null }>({});
 
+  // Fetch section data
+  const fetchSectionData = useCallback(async () => {
+    if (!tournamentId || !sectionName) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // Fetch pairings for current round
+      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+      setPairings(pairingsResponse.data || []);
+      
+      // Fetch standings
+      const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
+      const sectionStandings = standingsResponse.data.data ? standingsResponse.data.data.filter((s: any) => s.section === sectionName) : [];
+      setStandings(sectionStandings);
+      
+      // Fetch section status
+      const statusResponse = await pairingApi.getSectionStatusSimple(tournamentId, sectionName);
+      setSectionStatus(statusResponse.data);
+      
+    } catch (error) {
+      console.error('Error fetching section data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tournamentId, sectionName, currentRound]);
+
+  // Update pairing result - defined before handleKeyDown to avoid dependency issues
+  const updatePairingResult = useCallback(async (pairingId: string, result: string) => {
+    try {
+      console.log('🎯 SectionPairingManager: Updating result for pairing:', pairingId, 'result:', result);
+      const response = await pairingApi.updateResult(pairingId, result);
+      console.log('✅ SectionPairingManager: Result update response:', response);
+      
+      // Update local state immediately without full refresh
+      setPairings(prev => {
+        const updated = prev.map(p => 
+          p.id === pairingId ? { ...p, result } : p
+        );
+        // Notify parent of pairings update
+        onPairingsUpdate?.(updated);
+        return updated;
+      });
+      
+      // Only refresh standings to show updated scores
+      const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
+      const sectionStandings = standingsResponse.data.data ? standingsResponse.data.data.filter((s: any) => s.section === sectionName) : [];
+      setStandings(sectionStandings);
+      
+      console.log('✅ SectionPairingManager: Result updated successfully');
+      
+    } catch (error) {
+      console.error('❌ SectionPairingManager: Failed to update result:', error);
+      alert(`Failed to update result: ${error}`);
+    }
+  }, [tournamentId, sectionName, onPairingsUpdate]);
+
   // Keyboard shortcuts handler
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Only handle if we're not typing in an input/textarea
@@ -70,7 +127,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
         selectedPairingRef.current = null;
       }
     }
-  }, [pairings]);
+  }, [pairings, updatePairingResult]);
 
   // Add keyboard event listener
   useEffect(() => {
@@ -80,61 +137,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     };
   }, [handleKeyDown]);
 
-  // Fetch section data
-  const fetchSectionData = useCallback(async () => {
-    if (!tournamentId || !sectionName) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // Fetch pairings for current round
-      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
-      setPairings(pairingsResponse.data || []);
-      
-      // Fetch standings
-      const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
-      const sectionStandings = standingsResponse.data.data ? standingsResponse.data.data.filter((s: any) => s.section === sectionName) : [];
-      setStandings(sectionStandings);
-      
-      // Fetch section status
-      const statusResponse = await pairingApi.getSectionStatusSimple(tournamentId, sectionName);
-      setSectionStatus(statusResponse.data);
-      
-    } catch (error) {
-      console.error('Error fetching section data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tournamentId, sectionName, currentRound]);
 
-  // Update pairing result
-  const updatePairingResult = async (pairingId: string, result: string) => {
-    try {
-      console.log('🎯 SectionPairingManager: Updating result for pairing:', pairingId, 'result:', result);
-      const response = await pairingApi.updateResult(pairingId, result);
-      console.log('✅ SectionPairingManager: Result update response:', response);
-      
-      // Update local state immediately without full refresh
-      const updatedPairings = pairings.map(p => 
-        p.id === pairingId ? { ...p, result } : p
-      );
-      setPairings(updatedPairings);
-      
-      // Notify parent of pairings update
-      onPairingsUpdate?.(updatedPairings);
-      
-      // Only refresh standings to show updated scores
-      const standingsResponse = await pairingApi.getStandings(tournamentId, true, true);
-      const sectionStandings = standingsResponse.data.data ? standingsResponse.data.data.filter((s: any) => s.section === sectionName) : [];
-      setStandings(sectionStandings);
-      
-      console.log('✅ SectionPairingManager: Result updated successfully');
-      
-    } catch (error) {
-      console.error('❌ SectionPairingManager: Failed to update result:', error);
-      alert(`Failed to update result: ${error}`);
-    }
-  };
 
   // Complete current round
   const completeRound = async () => {

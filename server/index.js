@@ -229,6 +229,7 @@ const liveStandingsRoutes = require('./routes/liveStandings');
 const liveStandingsService = require('./services/liveStandingsService');
 const paymentRoutes = require('./routes/payments');
 const chessIntegrationRoutes = require('./routes/chessIntegrations');
+const lichessRoutes = require('./routes/lichess');
 
 // Use routes
 console.log('Setting up routes...');
@@ -298,6 +299,7 @@ app.use('/api/player-profiles', playerProfileRoutes);
 app.use('/api/live-standings', liveStandingsRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/chess', chessIntegrationRoutes);
+app.use('/api/lichess', lichessRoutes);
 
 console.log('Routes set up successfully');
 

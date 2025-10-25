@@ -219,8 +219,8 @@ class DutchSystem {
         white_player_id: byePlayer.id,
         black_player_id: null,
         is_bye: true,
-        bye_type: isHalfPointBye ? 'half_point_bye' : 'bye',
-        result: isHalfPointBye ? '1/2-1/2' : '1-0',
+        bye_type: isHalfPointBye ? 'half_point_bye' : 'unpaired',
+        result: isHalfPointBye ? '1/2-1/2' : '1-0',  // Full bye gets 1-0 (1 point), half-point bye gets 1/2-1/2
         section: 'Open'
       });
       used.add(byePlayer.id);

@@ -36,6 +36,7 @@ import PWAStatus from '../components/PWAStatus';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
 import CentralizedTournamentView from '../components/CentralizedTournamentView';
+import LichessIntegration from '../components/LichessIntegration';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -2799,6 +2800,23 @@ const TournamentDetail: React.FC = () => {
         onClose={() => setShowChessIntegration(false)}
         tournamentId={id || ''}
       />
+
+      {/* Lichess Integration - Always visible in overview tab */}
+      {activeTab === 'overview' && state.tournament && (
+        <div className="mt-6">
+          <LichessIntegration
+            tournamentId={id || ''}
+            tournamentName={state.tournament.name}
+            timeControl={state.tournament.time_control || 'G/30+0'}
+            rounds={state.tournament.rounds}
+            players={state.players || []}
+            onGamesCreated={(games) => {
+              console.log('Lichess games created:', games);
+              // Refresh pairings or show success message
+            }}
+          />
+        </div>
+      )}
 
       {/* Section Manager Modal */}
       {showSectionManager && (

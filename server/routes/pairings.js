@@ -2338,10 +2338,10 @@ function calculatePoints(result, color) {
 function calculateByePoints(byeType) {
   if (byeType === 'unpaired') {
     return 1.0; // Full point bye
-  } else if (byeType === 'bye') {
+  } else if (byeType === 'half_point_bye' || byeType === 'bye') {
     return 0.5; // Half point bye
   }
-  return 0.5; // Default to half point bye
+  return 1.0; // Default to full point bye for byes without explicit type
 }
 
 /**
