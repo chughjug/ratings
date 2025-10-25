@@ -169,19 +169,19 @@ class LichessApiService {
         throw new Error('Both players must have Lichess usernames to create games');
       }
 
-      // Create proper Lichess URLs based on the official API demo
-      // These URLs work by opening Lichess with pre-configured parameters
-      const playWithFriendUrl = `${this.baseUrl}/?friend=${blackPlayer.lichess_username}&clock=${timeLimit}+${increment}&rated=true&variant=standard`;
+      // Create Lichess URLs using the correct lobby format
+      // The lobby accepts specific parameters for pre-filling game settings
+      const lobbyUrl = `${this.baseUrl}/`;
       const seekUrl = `${this.baseUrl}/?clock=${timeLimit}+${increment}&rated=true&variant=standard`;
       
-      // Create challenge URLs for each player
+      // Create challenge URLs - these will open the lobby with pre-filled settings
       const whiteChallengeUrl = `${this.baseUrl}/?friend=${blackPlayer.lichess_username}&clock=${timeLimit}+${increment}&rated=true&variant=standard`;
       const blackChallengeUrl = `${this.baseUrl}/?friend=${whitePlayer.lichess_username}&clock=${timeLimit}+${increment}&rated=true&variant=standard`;
 
       return {
         id: `game_${Date.now()}`,
-        url: playWithFriendUrl,
-        challengeUrl: playWithFriendUrl,
+        url: lobbyUrl,
+        challengeUrl: whiteChallengeUrl,
         seekUrl: seekUrl,
         whiteChallengeUrl: whiteChallengeUrl,
         blackChallengeUrl: blackChallengeUrl,
@@ -190,12 +190,15 @@ class LichessApiService {
         timeControl: timeControl,
         status: 'ready_to_start',
         createdAt: new Date().toISOString(),
-        type: 'direct_game',
+        type: 'lobby_game',
         instructions: `To start this game:
-1. Click "Play with Friend" to open Lichess with pre-configured settings
-2. OR use "Seek Game" to find a game with the same time control  
-3. Both players will be taken to Lichess with the correct settings
-4. The game will start when both players are ready`,
+1. Click "Open Lichess Lobby" to go to Lichess
+2. Click "Challenge a friend" and enter: ${blackPlayer.lichess_username}
+3. Set time control to: ${timeLimit} minutes + ${increment} seconds increment
+4. Set variant to: Standard
+5. Set rated to: Yes
+6. Click "Create challenge"
+7. The other player will receive a notification to accept the challenge`,
         timeControlMinutes: timeLimit,
         timeControlIncrement: increment
       };
