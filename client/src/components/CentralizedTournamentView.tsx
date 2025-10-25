@@ -3,6 +3,7 @@ import { Users, Trophy, Settings, CheckCircle, AlertCircle, Clock, Play, RotateC
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
+import '../styles/pairing-system.css';
 
 interface Section {
   name: string;
@@ -202,7 +203,7 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
         {sections.map((section) => (
           <div
             key={section.name}
-            className={`bg-white rounded-lg shadow-sm border-2 p-4 cursor-pointer transition-all ${
+            className={`section-card cursor-pointer transition-all ${
               selectedSection === section.name
                 ? 'border-blue-500 bg-blue-50'
                 : 'border-gray-200 hover:border-gray-300'
@@ -213,7 +214,7 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
             }}
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-900">{section.name}</h3>
+              <h3 className="section-title">{section.name}</h3>
               <div className="flex items-center space-x-1">
                 {section.isComplete ? (
                   <CheckCircle className="h-5 w-5 text-green-500" />
@@ -225,7 +226,7 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
               </div>
             </div>
             
-            <div className="space-y-2 text-sm text-gray-600">
+            <div className="section-stats">
               <div className="flex justify-between">
                 <span>Round:</span>
                 <span className="font-medium">{section.currentRound} / {section.totalRounds}</span>
@@ -256,7 +257,7 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
                     e.stopPropagation();
                     completeRound(section.name);
                   }}
-                  className="flex-1 bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 transition-colors"
+                  className="btn btn-sm flex-1"
                 >
                   Complete Round
                 </button>
@@ -269,7 +270,7 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
                     e.stopPropagation();
                     generateNextRound(section.name);
                   }}
-                  className="flex-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors"
+                  className="generate-btn flex-1"
                 >
                   Generate Round 1
                 </button>
@@ -282,7 +283,7 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
                     e.stopPropagation();
                     generateNextRound(section.name);
                   }}
-                  className="flex-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors"
+                  className="generate-btn flex-1"
                 >
                   Next Round
                 </button>
@@ -293,7 +294,7 @@ const CentralizedTournamentView: React.FC<CentralizedTournamentViewProps> = ({
                   e.stopPropagation();
                   resetSection(section.name);
                 }}
-                className="px-3 py-1.5 text-gray-600 hover:text-red-600 transition-colors"
+                className="btn btn-sm btn-outline"
                 title="Reset Section"
               >
                 <RotateCcw className="h-4 w-4" />

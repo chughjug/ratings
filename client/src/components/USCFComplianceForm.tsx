@@ -14,7 +14,7 @@ const USCFComplianceForm: React.FC<USCFComplianceFormProps> = ({ formData, setFo
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
