@@ -286,6 +286,67 @@ class BBPPairingsDirect {
     
     return score;
   }
+
+  /**
+   * Generate Dutch pairings for a round
+   */
+  generateDutchPairings(players, tournament) {
+    if (tournament.round === 1) {
+      return this.generateRound1Pairings(players, tournament);
+    } else {
+      return this.generateSwissPairings(players, tournament);
+    }
+  }
+
+  /**
+   * Generate Round 1 pairings (top half vs bottom half)
+   */
+  generateRound1Pairings(players, tournament) {
+    // Sort players by rating
+    const sortedPlayers = [...players].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    
+    const pairings = [];
+    const half = Math.floor(sortedPlayers.length / 2);
+    
+    for (let i = 0; i < half; i++) {
+      const player1 = sortedPlayers[i];
+      const player2 = sortedPlayers[i + half];
+      
+      // Alternate colors between boards
+      const whitePlayer = i % 2 === 0 ? player1 : player2;
+      const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
+      
+      pairings.push({
+        white_player_id: whitePlayer.id,
+        black_player_id: blackPlayer.id,
+        is_bye: false,
+        section: tournament.section,
+        round: tournament.round
+      });
+    }
+    
+    // Handle odd number of players with bye
+    if (sortedPlayers.length % 2 === 1) {
+      const byePlayer = sortedPlayers[sortedPlayers.length - 1];
+      pairings.push({
+        white_player_id: byePlayer.id,
+        black_player_id: null,
+        is_bye: true,
+        section: tournament.section,
+        round: tournament.round
+      });
+    }
+    
+    return pairings;
+  }
+
+  /**
+   * Generate tournament pairings (placeholder)
+   */
+  generateTournamentPairings(tournament) {
+    // This would be implemented to handle multiple sections
+    return [];
+  }
 }
 
 module.exports = { BBPPairingsDirect };
