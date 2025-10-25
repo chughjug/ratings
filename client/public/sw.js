@@ -22,6 +22,11 @@ const API_CACHE_PATTERNS = [
   /\/api\/pairings/
 ];
 
+// API routes that should always go to network (no offline fallback)
+const NETWORK_ONLY_PATTERNS = [
+  /\/api\/lichess/
+];
+
 // Install event - cache static files
 self.addEventListener('install', (event) => {
   console.log('Service Worker: Installing...');
@@ -70,13 +75,18 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
+  // Skip chrome-extension and other non-http requests
+  if (!url.protocol.startsWith('http')) {
     return;
   }
 
-  // Skip chrome-extension and other non-http requests
-  if (!url.protocol.startsWith('http')) {
+  // Skip Lichess API calls - let them go directly to network
+  if (NETWORK_ONLY_PATTERNS.some(pattern => pattern.test(url.pathname))) {
+    return;
+  }
+
+  // Skip non-GET requests for other APIs
+  if (request.method !== 'GET') {
     return;
   }
 

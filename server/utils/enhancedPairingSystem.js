@@ -395,24 +395,26 @@ class EnhancedPairingSystem {
     for (const score of sortedScores) {
       const group = scoreGroups[score];
       
-      // For Dutch system, handle odd numbers by giving a bye to the lowest rated player
-      // Don't move players between score groups to maintain points-based pairing
+      // For Dutch system, handle odd numbers by giving a bye to an eligible player
+      // Follow bbpPairings standard: player must not have received a pairing-allocated bye before
       if (group.length % 2 === 1) {
-        const sortedGroup = [...group].sort((a, b) => (a.rating || 0) - (b.rating || 0));
-        const byePlayer = sortedGroup[0]; // Lowest rated player gets bye
+        const sortedGroup = [...group].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        const byePlayer = this.selectByePlayer(sortedGroup);
         
-        pairings.push({
-          white_player_id: byePlayer.id,
-          black_player_id: null,
-          is_bye: true,
-          bye_type: 'bye',
-          section: this.section,
-          board: pairings.length + 1
-        });
-        
-        // Remove bye player from group
-        group.splice(group.indexOf(byePlayer), 1);
-        used.add(byePlayer.id);
+        if (byePlayer) {
+          pairings.push({
+            white_player_id: byePlayer.id,
+            black_player_id: null,
+            is_bye: true,
+            bye_type: 'bye',
+            section: this.section,
+            board: pairings.length + 1
+          });
+          
+          // Remove bye player from group
+          group.splice(group.indexOf(byePlayer), 1);
+          used.add(byePlayer.id);
+        }
       }
       
       // Use Swiss system pairing with Dutch color assignment
@@ -1270,16 +1272,14 @@ class EnhancedPairingSystem {
     const n = sortedGroup.length;
     const half = Math.floor(n / 2);
     
-    // Proper Swiss system Round 1 pairing with alternating colors
+    // Proper Swiss system Round 1 pairing
     for (let i = 0; i < half; i++) {
       const topPlayer = sortedGroup[i];           // Seed i+1
       const bottomPlayer = sortedGroup[i + half]; // Seed (N/2 + i+1)
       
-      // Alternating colors: Board 1 gets white, Board 2 gets black, etc.
-      // This ensures proper color alternation across all boards
-      const isEvenBoard = (i % 2) === 0;
-      const whitePlayer = isEvenBoard ? topPlayer : bottomPlayer;
-      const blackPlayer = isEvenBoard ? bottomPlayer : topPlayer;
+      // Use proper color assignment based on bbpPairings standard
+      const whitePlayer = this.assignColorsSwiss(topPlayer, bottomPlayer);
+      const blackPlayer = whitePlayer.id === topPlayer.id ? bottomPlayer : topPlayer;
       
       pairings.push({
         white_player_id: whitePlayer.id,
@@ -1290,17 +1290,19 @@ class EnhancedPairingSystem {
       });
     }
     
-    // Handle odd number of players (bye for last player)
+    // Handle odd number of players (bye for eligible player)
     if (n % 2 === 1) {
-      const byePlayer = sortedGroup[n - 1];
-      pairings.push({
-        white_player_id: byePlayer.id,
-        black_player_id: null,
-        is_bye: true,
-        bye_type: 'bye',
-        section: this.section,
-        board: half + 1
-      });
+      const byePlayer = this.selectByePlayer(sortedGroup);
+      if (byePlayer) {
+        pairings.push({
+          white_player_id: byePlayer.id,
+          black_player_id: null,
+          is_bye: true,
+          bye_type: 'bye',
+          section: this.section,
+          board: half + 1
+        });
+      }
     }
     
     return pairings;
@@ -1442,6 +1444,113 @@ class EnhancedPairingSystem {
     return this.previousPairings.filter(pairing => 
       pairing.white_player_id === playerId || pairing.black_player_id === playerId
     ).length;
+  }
+
+  /**
+   * Check if a player is eligible for a bye
+   * Based on bbpPairings standard: player must not have received a pairing-allocated bye before
+   */
+  isEligibleForBye(player) {
+    // Check if player has already received a pairing-allocated bye
+    // A pairing-allocated bye is when a player was paired but didn't play and got a win
+    for (const match of player.matches || []) {
+      if (!match.gameWasPlayed && match.participatedInPairing && match.result === 'win') {
+        return false; // Player already received a pairing-allocated bye
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Select the best player for a bye from a group
+   * Follows bbpPairings standard: select from lowest-rated eligible players
+   */
+  selectByePlayer(group) {
+    // Sort by rating (ascending) to prefer lower-rated players
+    const sortedGroup = [...group].sort((a, b) => (a.rating || 0) - (b.rating || 0));
+    
+    // Find the first eligible player
+    for (const player of sortedGroup) {
+      if (this.isEligibleForBye(player)) {
+        return player;
+      }
+    }
+    
+    // If no eligible player found, return null (this should not happen in practice)
+    console.warn(`[EnhancedPairingSystem] No eligible player found for bye in group of ${group.length} players`);
+    return null;
+  }
+
+  /**
+   * Choose neutral color based on compatible preferences
+   * Based on bbpPairings choosePlayerNeutralColor function
+   */
+  choosePlayerNeutralColor(player1, player2) {
+    // Check if color preferences are compatible
+    if (this.colorPreferencesAreCompatible(player1.colorPreference, player2.colorPreference)) {
+      if (player1.colorPreference && player1.colorPreference !== 'none') {
+        return player1.colorPreference;
+      } else if (player2.colorPreference && player2.colorPreference !== 'none') {
+        return player2.colorPreference === 'white' ? 'black' : 'white';
+      } else {
+        return null; // Both have no preference
+      }
+    }
+    
+    // Handle absolute color preferences
+    if (player1.absoluteColorPreference && player2.absoluteColorPreference) {
+      if (player1.colorImbalance > player2.colorImbalance) {
+        return player1.colorPreference;
+      } else if (player2.colorImbalance > player1.colorImbalance) {
+        return player2.colorPreference === 'white' ? 'black' : 'white';
+      }
+    }
+    
+    // Handle strong color preferences
+    if (player1.strongColorPreference && !player2.strongColorPreference) {
+      return player1.colorPreference;
+    }
+    if (player2.strongColorPreference && !player1.strongColorPreference) {
+      return player2.colorPreference === 'white' ? 'black' : 'white';
+    }
+    
+    // Check for repeated color patterns
+    const player1Colors = this.getLastTwoColors(player1.id);
+    const player2Colors = this.getLastTwoColors(player2.id);
+    
+    if (player1Colors === 'WW' && player2Colors !== 'WW') {
+      return 'black'; // Give black to player1
+    }
+    if (player2Colors === 'WW' && player1Colors !== 'WW') {
+      return 'white'; // Give white to player1
+    }
+    
+    return null; // No clear preference
+  }
+
+  /**
+   * Check if two color preferences are compatible
+   */
+  colorPreferencesAreCompatible(pref1, pref2) {
+    return pref1 !== pref2 || !pref1 || !pref2 || pref1 === 'none' || pref2 === 'none';
+  }
+
+  /**
+   * Handle repeated color rule for players with equal color imbalance
+   */
+  handleRepeatedColorRule(player1, player2) {
+    const player1Colors = this.getLastTwoColors(player1.id);
+    const player2Colors = this.getLastTwoColors(player2.id);
+    
+    // Avoid giving same color three times in a row
+    if (player1Colors === 'WW') return player2;
+    if (player2Colors === 'WW') return player1;
+    if (player1Colors === 'BB') return player1;
+    if (player2Colors === 'BB') return player2;
+    
+    // Default to higher rated player
+    return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
   }
 
   /**
@@ -1662,40 +1771,49 @@ class EnhancedPairingSystem {
    * Implements Swiss system color assignment rules based on FIDE standards
    */
   assignColorsSwiss(player1, player2) {
-    const player1Pref = this.getColorPreferences(player1.id);
-    const player2Pref = this.getColorPreferences(player2.id);
+    // First check for neutral color preferences (compatible preferences)
+    const neutralColor = this.choosePlayerNeutralColor(player1, player2);
+    if (neutralColor !== null) {
+      return neutralColor === 'white' ? player1 : player2;
+    }
     
-    // Rule 1: Player with more black pieces should get white (highest priority)
-    if (player1Pref < player2Pref) {
+    // Handle absolute color preferences
+    if (player1.absoluteColorPreference && player2.absoluteColorPreference) {
+      if (player1.colorPreference === player2.colorPreference) {
+        // Both have same absolute preference - use color imbalance
+        if (player1.colorImbalance > player2.colorImbalance) {
+          return player1.colorPreference === 'white' ? player1 : player2;
+        } else if (player2.colorImbalance > player1.colorImbalance) {
+          return player2.colorPreference === 'white' ? player2 : player1;
+        }
+        // Equal imbalance - use repeated color rule
+        return this.handleRepeatedColorRule(player1, player2);
+      } else {
+        // Different absolute preferences - both can be satisfied
+        return player1.colorPreference === 'white' ? player1 : player2;
+      }
+    }
+    
+    // Handle strong color preferences
+    if (player1.strongColorPreference && !player2.strongColorPreference) {
+      return player1.colorPreference === 'white' ? player1 : player2;
+    }
+    if (player2.strongColorPreference && !player1.strongColorPreference) {
+      return player2.colorPreference === 'white' ? player2 : player1;
+    }
+    
+    // Default: use color balance
+    const balance1 = this.getColorBalance(player1.id);
+    const balance2 = this.getColorBalance(player2.id);
+    
+    if (balance1 < balance2) {
       return player1; // player1 gets white
-    } else if (player1Pref > player2Pref) {
+    } else if (balance1 > balance2) {
       return player2; // player2 gets white
     }
     
-    // Rule 2: Avoid same color three times in a row
-    const lastColors1 = this.getLastTwoColors(player1.id);
-    const lastColors2 = this.getLastTwoColors(player2.id);
-    
-    if (lastColors1 === 'WW') return player2; // player1 had WW, give white to player2
-    if (lastColors2 === 'WW') return player1; // player2 had WW, give white to player1
-    if (lastColors1 === 'BB') return player1; // player1 had BB, give white to player1
-    if (lastColors2 === 'BB') return player2; // player2 had BB, give white to player2
-    
-    // Rule 3: For Round 1, ensure proper alternating colors across boards
-    if (this.round === 1) {
-      // In Round 1, alternate colors based on board position
-      // This ensures proper color distribution from the start
-      return player1.id < player2.id ? player1 : player2;
-    }
-    
-    // Rule 4: Higher rated player gets due color (if significantly different)
-    const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
-    if (ratingDiff >= 50) {
-      return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
-    }
-    
-    // Rule 5: Final tiebreaker - consistent ordering
-    return player1.id < player2.id ? player1 : player2;
+    // Equal balance: use rating
+    return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
   }
 
   /**
