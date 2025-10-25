@@ -2218,8 +2218,8 @@ const TournamentDetail: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  {selectedSection && (
-                    <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2">
+                    {selectedSection && (
                       <button
                         onClick={() => {
                           setSelectedSection('');
@@ -2228,8 +2228,46 @@ const TournamentDetail: React.FC = () => {
                       >
                         Clear Selection
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <button
+                      onClick={async () => {
+                        if (!id) return;
+                        if (!window.confirm('This will generate pairings for all sections. Continue?')) return;
+                        
+                        try {
+                          setIsLoading(true);
+                          const currentRoundNum = getCurrentRoundForSection(selectedSection || getAvailableSections()[0]);
+                          const response = await pairingApi.generate(id, currentRoundNum);
+                          
+                          if (response.data.success) {
+                            alert(`Successfully generated pairings for all sections in Round ${currentRoundNum}`);
+                            await fetchPairings(currentRoundNum);
+                            await fetchStandings();
+                          } else {
+                            throw new Error(response.data.message || 'Failed to generate pairings');
+                          }
+                        } catch (error: any) {
+                          alert(`Failed to generate pairings: ${error.message}`);
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      disabled={isLoading}
+                      className="px-4 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Users className="w-3 h-3 mr-1" />
+                          Pair All Sections
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
