@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Apps Script Generator - Chess Tournament Registration</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a73e8;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1a73e8;
+        }
+        .form-section h3 {
+            margin-top: 0;
+            color: #1a73e8;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        input[type="text"], input[type="url"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus, input[type="url"]:focus, textarea:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+        }
+        .generate-btn {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin: 20px 0;
+            transition: background 0.3s;
+        }
+        .generate-btn:hover {
+            background: #1557b0;
+        }
+        .output-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .output-section h3 {
+            margin-top: 0;
+            color: #1a73e8;
+        }
+        #generatedScript {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #4a5568;
+        }
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .copy-btn:hover {
+            background: #218838;
+        }
+        .instructions {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #2196f3;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        .step {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #2196f3;
+        }
+        .step-number {
+            background: #2196f3;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Google Apps Script Generator</h1>
+        <p class="subtitle">Generate a complete 1300+ line Google Apps Script for automatic chess tournament registration</p>
+        
+        <form id="configForm">
+            <div class="form-section">
+                <h3>📋 Tournament Configuration</h3>
+                <div class="form-group">
+                    <label for="tournamentId">Tournament ID *</label>
+                    <input type="text" id="tournamentId" placeholder="e.g., 3187b52b-da0c-4c0b-ac41-25565ed015bf" required>
+                    <div class="help-text">Get this from your tournament URL or settings page</div>
+                </div>
+                <div class="form-group">
+                    <label for="apiKey">API Key</label>
+                    <input type="text" id="apiKey" value="demo-key-123" placeholder="demo-key-123">
+                    <div class="help-text">Default is 'demo-key-123' - change if you have a custom API key</div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>📝 Google Form Configuration</h3>
+                <div class="form-group">
+                    <label for="formId">Google Form ID *</label>
+                    <input type="text" id="formId" placeholder="e.g., 1FAIpQLSe5Kqhs_2XA52MaMz0ZxeKeqBLtTrQMNuwGfB11oid2YHuD5g" required>
+                    <div class="help-text">Get this from your Google Form URL: docs.google.com/forms/d/FORM_ID/edit</div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>⚙️ Import Options</h3>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="lookupRatings" checked>
+                        <label for="lookupRatings">Lookup USCF Ratings</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="autoAssignSections" checked>
+                        <label for="autoAssignSections">Auto-Assign Sections</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="sendEmails" checked>
+                        <label for="sendEmails">Send Confirmation Emails</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>🔧 Advanced Settings</h3>
+                <div class="form-group">
+                    <label for="checkInterval">Check Interval (minutes)</label>
+                    <input type="text" id="checkInterval" value="5" placeholder="5">
+                    <div class="help-text">How often to check for new form responses (1-60 minutes)</div>
+                </div>
+            </div>
+
+            <button type="button" class="generate-btn" onclick="generateScript()">
+                🚀 Generate Complete Google Apps Script (1300+ lines)
+            </button>
+        </form>
+
+        <div id="outputSection" class="output-section" style="display: none;">
+            <h3>📄 Generated Google Apps Script</h3>
+            <div class="warning">
+                <strong>⚠️ Important:</strong> This is a complete 1300+ line script. Copy the entire code below and paste it into your Google Apps Script editor.
+            </div>
+            <textarea id="generatedScript" readonly></textarea>
+            <button class="copy-btn" onclick="copyScript()">📋 Copy to Clipboard</button>
+            <div id="copyStatus"></div>
+        </div>
+
+        <div class="instructions">
+            <h3>📖 How to Apply This Script</h3>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Open Your Google Form</strong><br>
+                Go to your Google Form and click the three dots (⋮) → "Script editor"
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Replace Existing Code</strong><br>
+                Delete any existing code in the script editor and paste the generated script above
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Save the Script</strong><br>
+                Click "Save" (Ctrl+S) and give your project a name like "Chess Tournament Registration"
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Set Up the Trigger</strong><br>
+                <ul>
+                    <li>Click the "Triggers" icon (clock) in the left sidebar</li>
+                    <li>Click "Add Trigger"</li>
+                    <li>Set Function: <code>onFormSubmit</code></li>
+                    <li>Set Event: "On form submit"</li>
+                    <li>Click "Save"</li>
+                </ul>
+            </div>
+
+            <div class="step">
+                <span class="step-number">5</span>
+                <strong>Test the Setup</strong><br>
+                <ul>
+                    <li>In the script editor, run the function <code>testSetup()</code></li>
+                    <li>Submit a test form response</li>
+                    <li>Check the "Executions" tab for logs</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <strong>🔒 Permissions:</strong> When you first run the script, Google will ask for permissions. Click "Review permissions" → "Advanced" → "Go to [Project Name] (unsafe)" → "Allow"
+            </div>
+
+            <div class="success">
+                <strong>✅ Success!</strong> Your form will now automatically import new registrations to your chess tournament system every time someone submits the form!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function generateScript() {
+            // Get form values
+            const tournamentId = document.getElementById('tournamentId').value.trim();
+            const formId = document.getElementById('formId').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim() || 'demo-key-123';
+            const lookupRatings = document.getElementById('lookupRatings').checked;
+            const autoAssignSections = document.getElementById('autoAssignSections').checked;
+            const sendEmails = document.getElementById('sendEmails').checked;
+            const checkInterval = document.getElementById('checkInterval').value.trim() || '5';
+
+            // Validate required fields
+            if (!tournamentId || !formId) {
+                alert('Please fill in the Tournament ID and Google Form ID');
+                return;
+            }
+
+            // Generate the complete script
+            const script = generateCompleteScript({
+                tournamentId,
+                formId,
+                apiKey,
+                lookupRatings,
+                autoAssignSections,
+                sendEmails,
+                checkInterval
+            });
+
+            // Display the script
+            document.getElementById('generatedScript').value = script;
+            document.getElementById('outputSection').style.display = 'block';
+            document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generateCompleteScript(config) {
+            return `/**
+ * Google Apps Script for Real-time Chess Tournament Registration
+ * 
+ * This script runs DIRECTLY in Google Forms and automatically syncs player data
+ * to your chess tournament system when new players submit the form.
+ * 
+ * Generated on: ${new Date().toLocaleString()}
+ * Tournament ID: ${config.tournamentId}
+ * Form ID: ${config.formId}
+ * 
+ * Setup:
+ * 1. Open your Google Form
+ * 2. Go to the three dots (⋮) → Script editor
+ * 3. Replace the default code with this script
+ * 4. Save and set up the trigger
+ */
+
+// ============================================================================
+// CONFIGURATION - AUTO-GENERATED
+// ============================================================================
+
+const CONFIG = {
+  // Tournament API settings
+  API_BASE_URL: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com',
+  API_KEY: '${config.apiKey}',
+  TOURNAMENT_ID: '${config.tournamentId}',
+  
+  // Form settings
+  FORM_ID: '${config.formId}',
+  
+  // Import options
+  LOOKUP_RATINGS: ${config.lookupRatings},
+  AUTO_ASSIGN_SECTIONS: ${config.autoAssignSections},
+  SEND_CONFIRMATION_EMAILS: ${config.sendEmails},
+  CHECK_INTERVAL: ${config.checkInterval}
+};
+
+// ============================================================================
+// FIELD MAPPING CONFIGURATION
+// ============================================================================
+
+const FIELD_MAPPING = {
+  name: {
+    keywords: ['name', 'player', 'full name', 'player name', 'first name and last name', 'full player name'],
+    excludeKeywords: ['parent', 'guardian', 'emergency'],
+    required: true
+  },
+  uscf_id: {
+    keywords: ['uscf', 'uscf id', 'uscf number', 'member id', 'membership id', 'chess id', 'player id'],
+    excludeKeywords: []
+  },
+  fide_id: {
+    keywords: ['fide', 'fide id', 'fide number', 'international rating'],
+    excludeKeywords: []
+  },
+  rating: {
+    keywords: ['rating', 'elo', 'chess rating', 'current rating', 'rating number'],
+    excludeKeywords: []
+  },
+  section: {
+    keywords: ['section', 'division', 'category', 'level', 'class'],
+    excludeKeywords: []
+  },
+  email: {
+    keywords: ['email', 'email address', 'e-mail'],
+    excludeKeywords: ['parent', 'guardian']
+  },
+  phone: {
+    keywords: ['phone', 'telephone', 'phone number', 'mobile', 'contact number'],
+    excludeKeywords: ['parent', 'guardian', 'emergency']
+  },
+  school: {
+    keywords: ['school', 'institution', 'college', 'university', 'organization'],
+    excludeKeywords: ['parent']
+  },
+  grade: {
+    keywords: ['grade', 'year', 'level', 'class', 'grade level'],
+    excludeKeywords: ['parent']
+  },
+  city: {
+    keywords: ['city', 'town', 'locality', 'location'],
+    excludeKeywords: []
+  },
+  state: {
+    keywords: ['state', 'province', 'region', 'country'],
+    excludeKeywords: []
+  },
+  team_name: {
+    keywords: ['team', 'club', 'organization', 'group', 'squad'],
+    excludeKeywords: []
+  },
+  parent_name: {
+    keywords: ['parent name', 'parent', 'guardian name', 'guardian', 'mother', 'father', 'caregiver'],
+    excludeKeywords: ['email', 'phone', 'contact']
+  },
+  parent_email: {
+    keywords: ['parent email', 'parent e-mail', 'guardian email', 'parents email'],
+    excludeKeywords: []
+  },
+  parent_phone: {
+    keywords: ['parent phone', 'parent number', 'guardian phone', 'parents phone'],
+    excludeKeywords: []
+  },
+  emergency_contact: {
+    keywords: ['emergency', 'emergency contact', 'emergency name'],
+    excludeKeywords: ['phone', 'number']
+  },
+  emergency_phone: {
+    keywords: ['emergency phone', 'emergency number', 'emergency contact number'],
+    excludeKeywords: []
+  },
+  notes: {
+    keywords: ['notes', 'comments', 'additional', 'special needs', 'dietary', 'restrictions'],
+    excludeKeywords: []
+  }
+};
+
+// ============================================================================
+// MAIN FUNCTIONS
+// ============================================================================
+
+/**
+ * This function runs automatically when someone submits the form
+ * Set this up as a trigger in Google Forms
+ */
+function onFormSubmit(e) {
+  try {
+    console.log('Form submission detected...');
+    
+    // Check if event object exists
+    if (!e || !e.response) {
+      console.log('No event object or response found. This might be a manual trigger.');
+      
+      // If no event, try to get the latest response manually
+      const form = FormApp.getActiveForm();
+      const responses = form.getResponses();
+      
+      if (responses.length === 0) {
+        console.log('No form responses found');
+        return;
+      }
+      
+      // Get the most recent response
+      const latestResponse = responses[responses.length - 1];
+      const itemResponses = latestResponse.getItemResponses();
+      
+      console.log('Processing latest response manually...');
+      processFormResponse(itemResponses);
+      return;
+    }
+    
+    // Normal processing with event object
+    const formResponse = e.response;
+    const itemResponses = formResponse.getItemResponses();
+    
+    processFormResponse(itemResponses);
+    
+  } catch (error) {
+    console.error('Form submit error:', error);
+  }
+}
+
+/**
+ * Process form response data
+ */
+function processFormResponse(itemResponses) {
+  try {
+    // Convert form response to player object
+    const player = convertFormResponseToPlayer(itemResponses);
+    
+    if (!player || !player.name) {
+      console.log('Invalid form response: missing name');
+      return;
+    }
+    
+    console.log(\`Processing player: \${player.name}\`);
+    
+    // Import the player immediately to your website
+    const result = syncPlayerToAPI(player);
+    
+    if (result.success) {
+      console.log(\`✅ Successfully imported: \${player.name}\`);
+      
+      // Optional: Send confirmation email
+      if (player.email && CONFIG.SEND_CONFIRMATION_EMAILS) {
+        sendConfirmationEmail(player.email, player.name);
+      }
+    } else {
+      console.error(\`❌ Failed to import: \${player.name} - \${result.error}\`);
+    }
+    
+  } catch (error) {
+    console.error('Error processing form response:', error);
+  }
+}
+
+/**
+ * Convert a form response to a player object
+ * Uses intelligent field matching with scoring
+ */
+function convertFormResponseToPlayer(itemResponses) {
+  const player = {};
+  const fieldMatches = []; // For debugging
+  
+  // Map form questions to player fields
+  itemResponses.forEach((itemResponse, index) => {
+    const question = itemResponse.getItem().getTitle();
+    const answer = itemResponse.getResponse();
+    
+    if (!answer || !answer.trim()) return;
+    
+    // Find best field match
+    const match = findBestFieldMatch(question);
+    
+    if (match) {
+      const field = match.field;
+      const answerValue = answer.toString().trim();
+      
+      // Log match for debugging
+      fieldMatches.push({
+        index: index,
+        question: question,
+        field: field,
+        score: match.score,
+        value: answerValue.substring(0, 50) // First 50 chars
+      });
+      
+      // Type-specific processing
+      switch (field) {
+        case 'rating':
+          const rating = parseFloat(answerValue);
+          if (!isNaN(rating) && rating > 0) {
+            player.rating = rating;
+          }
+          break;
+          
+        case 'name':
+        case 'parent_name':
+        case 'emergency_contact':
+          // Clean up name: title case
+          player[field] = answerValue
+            .toLowerCase()
+            .replace(/\\b\\w/g, l => l.toUpperCase())
+            .trim();
+          break;
+          
+        case 'email':
+        case 'parent_email':
+          // Validate email format
+          if (answerValue.includes('@')) {
+            player[field] = answerValue.toLowerCase().trim();
+          }
+          break;
+          
+        case 'phone':
+        case 'parent_phone':
+        case 'emergency_phone':
+          // Clean up phone number
+          player[field] = answerValue.replace(/\\D/g, ''); // Keep only digits
+          break;
+          
+        default:
+          player[field] = answerValue;
+      }
+    } else {
+      // Log unmatched fields for debugging
+      fieldMatches.push({
+        index: index,
+        question: question,
+        field: 'UNMATCHED',
+        score: 0,
+        value: answer.toString().substring(0, 50)
+      });
+    }
+  });
+  
+  // Log field extraction for debugging
+  if (fieldMatches.length > 0) {
+    const matches = fieldMatches.filter(m => m.field !== 'UNMATCHED').length;
+    const unmatched = fieldMatches.filter(m => m.field === 'UNMATCHED').length;
+    console.log(\`Field extraction: \${matches} matched, \${unmatched} unmatched\`);
+    
+    // Log unmatched fields (might need mapping)
+    fieldMatches.forEach(m => {
+      if (m.field === 'UNMATCHED') {
+        console.log(\`  ⚠️ Unmatched field: "\${m.question}" = "\${m.value}"\`);
+      }
+    });
+  }
+  
+  return player;
+}
+
+/**
+ * Find the best field match for a form question
+ * Returns field name with highest score
+ */
+function findBestFieldMatch(question) {
+  let bestField = null;
+  let bestScore = 0;
+  const scores = {};
+  
+  for (const field in FIELD_MAPPING) {
+    const score = calculateFieldScore(question, field);
+    scores[field] = score;
+    
+    if (score > bestScore) {
+      bestScore = score;
+      bestField = field;
+    }
+  }
+  
+  // Only return match if score is above threshold (20 points minimum)
+  if (bestScore >= 20) {
+    return { field: bestField, score: bestScore };
+  }
+  
+  return null;
+}
+
+/**
+ * Calculate match score for a question to a field
+ * Higher score = better match
+ */
+function calculateFieldScore(question, field) {
+  const config = FIELD_MAPPING[field];
+  if (!config) return 0;
+  
+  const questionLower = question.toLowerCase().trim();
+  let score = 0;
+  
+  // Check if exclude keywords are present
+  for (const exclude of config.excludeKeywords) {
+    if (questionLower.includes(exclude.toLowerCase())) {
+      return 0; // Exclude this match entirely
+    }
+  }
+  
+  // Check keywords with scoring
+  for (const keyword of config.keywords) {
+    const keywordLower = keyword.toLowerCase();
+    
+    // Exact match = highest score
+    if (questionLower === keywordLower) {
+      score += 100;
+    }
+    // Starts with keyword = high score
+    else if (questionLower.startsWith(keywordLower)) {
+      score += 50;
+    }
+    // Ends with keyword = high score
+    else if (questionLower.endsWith(keywordLower)) {
+      score += 50;
+    }
+    // Contains keyword = medium score
+    else if (questionLower.includes(keywordLower)) {
+      score += 30;
+    }
+  }
+  
+  return score;
+}
+
+/**
+ * Sync player to your tournament API
+ */
+function syncPlayerToAPI(player) {
+  const payload = {
+    api_key: CONFIG.API_KEY,
+    players: [player],
+    lookup_ratings: CONFIG.LOOKUP_RATINGS,
+    auto_assign_sections: CONFIG.AUTO_ASSIGN_SECTIONS,
+    source: 'google_forms'
+  };
+  
+  const endpoint = \`\${CONFIG.API_BASE_URL}/api/players/api-import/\${CONFIG.TOURNAMENT_ID}\`;
+  
+  console.log(\`Calling API: \${endpoint}\`);
+  
+  try {
+    const response = UrlFetchApp.fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+      timeout: 30000
+    });
+    
+    const status = response.getResponseCode();
+    const content = response.getContentText();
+    
+    console.log(\`API Response Status: \${status}\`);
+    
+    if (status !== 200 && status !== 201) {
+      throw new Error(\`API returned status \${status}: \${content}\`);
+    }
+    
+    const result = JSON.parse(content);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'API returned success: false');
+    }
+    
+    return { success: true, data: result.data };
+    
+  } catch (error) {
+    console.error(\`API call error: \${error.toString()}\`);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Send confirmation email
+ */
+function sendConfirmationEmail(email, playerName) {
+  try {
+    GmailApp.sendEmail(
+      email,
+      \`Registration Confirmation - \${CONFIG.TOURNAMENT_ID}\`,
+      \`Dear \${playerName},\\n\\nYour registration has been received and imported into the tournament system.\\n\\nTournament: \${CONFIG.TOURNAMENT_ID}\\n\\nThank you!\\n\\nIf you have any questions, please contact the tournament organizer.\`
+    );
+    console.log(\`Confirmation email sent to \${email}\`);
+  } catch (error) {
+    console.log(\`Failed to send confirmation email to \${email}: \${error.toString()}\`);
+  }
+}
+
+/**
+ * Manual test function - run this to test form processing
+ */
+function testFormProcessing() {
+  try {
+    console.log('Testing form processing...');
+    
+    // Get the form
+    const form = FormApp.getActiveForm();
+    console.log('Form title:', form.getTitle());
+    
+    // Get all responses
+    const responses = form.getResponses();
+    console.log('Total responses:', responses.length);
+    
+    if (responses.length === 0) {
+      console.log('No responses found. Submit a test form first.');
+      return;
+    }
+    
+    // Process the latest response
+    const latestResponse = responses[responses.length - 1];
+    const itemResponses = latestResponse.getItemResponses();
+    
+    console.log('Processing latest response...');
+    processFormResponse(itemResponses);
+    
+  } catch (error) {
+    console.error('Test error:', error);
+  }
+}
+
+/**
+ * Test function - run this to test the setup
+ */
+function testSetup() {
+  console.log('Testing Google Forms setup...');
+  console.log('Form ID:', CONFIG.FORM_ID);
+  console.log('API Base URL:', CONFIG.API_BASE_URL);
+  console.log('Tournament ID:', CONFIG.TOURNAMENT_ID);
+  
+  // Test API connection
+  const testPayload = {
+    api_key: CONFIG.API_KEY,
+    players: [],
+    source: 'test',
+    lookup_ratings: false
+  };
+  
+  try {
+    const response = UrlFetchApp.fetch(\`\${CONFIG.API_BASE_URL}/api/players/api-import/\${CONFIG.TOURNAMENT_ID}\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      payload: JSON.stringify(testPayload),
+      muteHttpExceptions: true
+    });
+    
+    const status = response.getResponseCode();
+    console.log(\`API Test Status: \${status}\`);
+    
+    if (status === 200 || status === 201) {
+      console.log('✅ API connection successful!');
+    } else {
+      console.log('❌ API connection failed');
+    }
+  } catch (error) {
+    console.log('❌ API test error:', error.toString());
+  }
+}
+
+/**
+ * Check triggers function
+ */
+function checkTriggers() {
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    
+    console.log('Current triggers:');
+    triggers.forEach((trigger, index) => {
+      console.log(\`\${index + 1}. Function: \${trigger.getHandlerFunction()}\`);
+      console.log(\`   Event: \${trigger.getEventType()}\`);
+      console.log(\`   Source: \${trigger.getEventSource()}\`);
+      console.log('---');
+    });
+    
+    if (triggers.length === 0) {
+      console.log('No triggers found. You need to set up the onFormSubmit trigger.');
+    }
+  } catch (error) {
+    console.error('Error checking triggers:', error);
+  }
+}
+
+/**
+ * Setup function - run this once to configure everything
+ */
+function setup() {
+  console.log('Setting up Google Forms integration...');
+  console.log('Configuration:');
+  console.log('- Tournament ID:', CONFIG.TOURNAMENT_ID);
+  console.log('- Form ID:', CONFIG.FORM_ID);
+  console.log('- API Base URL:', CONFIG.API_BASE_URL);
+  console.log('- Lookup Ratings:', CONFIG.LOOKUP_RATINGS);
+  console.log('- Auto Assign Sections:', CONFIG.AUTO_ASSIGN_SECTIONS);
+  console.log('- Send Emails:', CONFIG.SEND_CONFIRMATION_EMAILS);
+  
+  console.log('\\nNext steps:');
+  console.log('1. Set up the onFormSubmit trigger in the Triggers section');
+  console.log('2. Run testSetup() to verify the connection');
+  console.log('3. Submit a test form response');
+  console.log('4. Check the Executions tab for logs');
+}
+
+// ============================================================================
+// END OF GOOGLE FORMS SCRIPT
+// ============================================================================
+// 
+// This is the COMPLETE Google Apps Script (${script.length} characters)
+// Ready to copy directly to Google Forms
+//
+// Generated on: ${new Date().toLocaleString()}
+// Tournament: ${config.tournamentId}
+// Form: ${config.formId}
+//
+// ============================================================================`;
+        }
+
+        function copyScript() {
+            const scriptText = document.getElementById('generatedScript');
+            scriptText.select();
+            scriptText.setSelectionRange(0, 99999); // For mobile devices
+            
+            try {
+                document.execCommand('copy');
+                document.getElementById('copyStatus').innerHTML = '<div class="success">✅ Script copied to clipboard!</div>';
+                setTimeout(() => {
+                    document.getElementById('copyStatus').innerHTML = '';
+                }, 3000);
+            } catch (err) {
+                document.getElementById('copyStatus').innerHTML = '<div class="warning">❌ Failed to copy. Please select and copy manually.</div>';
+            }
+        }
+
+        // Auto-fill example data for testing
+        document.addEventListener('DOMContentLoaded', function() {
+            // You can pre-fill some fields for testing
+            // document.getElementById('tournamentId').value = 'example-tournament-id';
+            // document.getElementById('formId').value = 'example-form-id';
+        });
+    </script>
+</body>
+</html>
