@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Trophy, Play, RotateCcw, CheckCircle } from 'lucide-react';
-import { tournamentApi, pairingApi } from '../services/api';
+import { tournamentApi, pairingApi, playerApi } from '../services/api';
 import PairingSystem from './PairingSystem';
 
 interface Player {
@@ -45,32 +45,32 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
       
       // Load tournament details
       const tournamentResponse = await tournamentApi.getById(tournamentId);
-      const tournament = tournamentResponse.data;
+      const tournament = tournamentResponse.data.data;
       
       // Load sections
       const sectionsData = await Promise.all(
-        tournament.sections.map(async (sectionName: string) => {
+        (tournament.settings?.sections || []).map(async (section: any) => {
           try {
             // Load players for this section
-            const playersResponse = await tournamentApi.getPlayers(tournamentId, sectionName);
+            const playersResponse = await playerApi.getByTournament(tournamentId);
             const players = playersResponse.data || [];
             
             // Load current round pairings
-            const currentRound = await getCurrentRound(tournamentId, sectionName);
-            const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+            const currentRound = await getCurrentRound(tournamentId, section.name);
+            const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, section.name);
             const pairings = pairingsResponse.data || [];
             
             return {
-              name: sectionName,
+              name: section.name,
               players,
               pairings,
               currentRound,
               isComplete: false // TODO: Determine if section is complete
             };
           } catch (err) {
-            console.error(`Failed to load section ${sectionName}:`, err);
+            console.error(`Failed to load section ${section.name}:`, err);
             return {
-              name: sectionName,
+              name: section.name,
               players: [],
               pairings: [],
               currentRound: 1,
