@@ -152,6 +152,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../client/build')));
 
+// Serve the Lichess OAuth demo page
+app.get('/lichess-demo', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/public/test-lichess-oauth-demo.html'));
+});
+
 // Serve documentation files
 app.use('/docs', express.static(path.join(__dirname, './public/docs')));
 

@@ -72,7 +72,7 @@ const TournamentDetail: React.FC = () => {
   // Handle round change for the selected section
   const handleRoundChange = (round: number) => {
     setCurrentRoundForSection(selectedSection, round);
-    fetchPairings(round);
+    fetchPairings(round, selectedSection);
   };
 
   // Handle section change
@@ -80,7 +80,7 @@ const TournamentDetail: React.FC = () => {
     setSelectedSection(sectionName);
     // Fetch pairings for the current round of the new section
     const roundForSection = getCurrentRoundForSection(sectionName);
-    fetchPairings(roundForSection);
+    fetchPairings(roundForSection, sectionName);
   };
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [showBulkAddPlayer, setShowBulkAddPlayer] = useState(false);
@@ -337,11 +337,11 @@ const TournamentDetail: React.FC = () => {
     }
   }, [id, dispatch]);
 
-  const fetchPairings = useCallback(async (round: number) => {
+  const fetchPairings = useCallback(async (round: number, sectionName?: string) => {
     if (!id) return;
     try {
-      console.log('🔍 Fetching pairings for tournament:', id, 'round:', round);
-      const response = await pairingApi.getByRound(id, round);
+      console.log('🔍 Fetching pairings for tournament:', id, 'round:', round, 'section:', sectionName);
+      const response = await pairingApi.getByRound(id, round, sectionName);
       console.log('✅ Pairings fetched:', response.data.length, 'pairings');
       console.log('📊 Pairings data:', response.data);
       dispatch({ type: 'SET_PAIRINGS', payload: response.data });
@@ -431,9 +431,20 @@ const TournamentDetail: React.FC = () => {
   // Fetch pairings when component loads or when currentRound changes
   useEffect(() => {
     if (id && currentRound) {
-      fetchPairings(currentRound);
+      // Only fetch all pairings if we're not in the pairings tab with a selected section
+      if (activeTab !== 'pairings' || !selectedSection) {
+        fetchPairings(currentRound);
+      }
     }
-  }, [id, currentRound, fetchPairings]);
+  }, [id, currentRound, fetchPairings, activeTab, selectedSection]);
+
+  // Fetch section-specific pairings when in pairings tab and section changes
+  useEffect(() => {
+    if (activeTab === 'pairings' && selectedSection && id) {
+      const roundForSection = getCurrentRoundForSection(selectedSection);
+      fetchPairings(roundForSection, selectedSection);
+    }
+  }, [activeTab, selectedSection, id, fetchPairings]);
 
   // Determine current round based on existing pairings when tournament loads
   useEffect(() => {
@@ -2261,7 +2272,7 @@ const TournamentDetail: React.FC = () => {
                     <select
                       id="pairing-section-select"
                       value={selectedSection || ''}
-                      onChange={(e) => setSelectedSection(e.target.value)}
+                      onChange={(e) => handleSectionChange(e.target.value)}
                       className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">-- Select a Section --</option>
@@ -2299,7 +2310,7 @@ const TournamentDetail: React.FC = () => {
                            
                            if (response.data.success) {
                              alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
-                             await fetchPairings(currentRoundNum);
+                             await fetchPairings(currentRoundNum, selectedSection);
                              await fetchStandings();
                            } else {
                              throw new Error(response.data.message || 'Failed to generate pairings');
@@ -2325,6 +2336,50 @@ const TournamentDetail: React.FC = () => {
                          </>
                        )}
                      </button>
+                     {selectedSection && (
+                       <button
+                         onClick={async () => {
+                           if (!id) return;
+                           if (!selectedSection) {
+                             alert('Please select a section first');
+                             return;
+                           }
+                           const currentRoundNum = getCurrentRoundForSection(selectedSection);
+                           if (!window.confirm(`Generate pairings for ${selectedSection} section Round ${currentRoundNum}?`)) return;
+                           
+                           try {
+                             setIsLoading(true);
+                             const response = await pairingApi.generateForSection(id, currentRoundNum, selectedSection);
+                             
+                             if (response.data.success) {
+                               alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
+                               await fetchPairings(currentRoundNum, selectedSection);
+                               await fetchStandings();
+                             } else {
+                               throw new Error(response.data.message || 'Failed to generate pairings');
+                             }
+                           } catch (error: any) {
+                             alert(`Failed to generate pairings: ${error.message}`);
+                           } finally {
+                             setIsLoading(false);
+                           }
+                         }}
+                         disabled={isLoading || !selectedSection}
+                         className="px-4 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
+                       >
+                         {isLoading ? (
+                           <>
+                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                             Generating...
+                           </>
+                         ) : (
+                           <>
+                             <Users className="w-3 h-3 mr-1" />
+                             Generate Current Round
+                           </>
+                         )}
+                       </button>
+                     )}
                   </div>
                 </div>
               </div>
@@ -2336,10 +2391,14 @@ const TournamentDetail: React.FC = () => {
                   currentRound={getCurrentRoundForSection(selectedSection)}
                   onRoundComplete={(nextRound) => {
                     setCurrentRoundForSection(selectedSection, nextRound);
-                    fetchPairings(nextRound);
+                    fetchPairings(nextRound, selectedSection);
                   }}
                   onPairingsUpdate={(newPairings) => {
                     dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
+                  }}
+                  onRoundChange={(round) => {
+                    setCurrentRoundForSection(selectedSection, round);
+                    fetchPairings(round, selectedSection);
                   }}
                 />
               ) : (

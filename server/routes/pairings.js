@@ -2613,6 +2613,36 @@ router.get('/quad/:tournamentId/assignments', async (req, res) => {
 /**
  * Get section status (simplified version)
  */
+// Get all pairings for a specific section
+router.get('/tournament/:tournamentId/section/:sectionName', async (req, res) => {
+  const { tournamentId, sectionName } = req.params;
+
+  try {
+    const pairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT p.*, 
+                pw.name as white_name, pw.rating as white_rating, pw.uscf_id as white_uscf_id, pw.lichess_username as white_lichess_username,
+                pb.name as black_name, pb.rating as black_rating, pb.uscf_id as black_uscf_id, pb.lichess_username as black_lichess_username
+         FROM pairings p
+         LEFT JOIN players pw ON p.white_player_id = pw.id
+         LEFT JOIN players pb ON p.black_player_id = pb.id
+         WHERE p.tournament_id = ? AND p.section = ?
+         ORDER BY p.round, p.board`,
+        [tournamentId, sectionName],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    res.json(pairings);
+  } catch (error) {
+    console.error('Error fetching section pairings:', error);
+    res.status(500).json({ error: 'Failed to fetch section pairings' });
+  }
+});
+
 router.get('/tournament/:tournamentId/section/:sectionName/status', async (req, res) => {
   const { tournamentId, sectionName } = req.params;
 

@@ -250,6 +250,9 @@ export const pairingApi = {
   getByRound: (tournamentId: string, round: number, sectionName?: string) => 
     api.get<Pairing[]>(`/pairings/tournament/${tournamentId}/round/${round}?t=${Date.now()}${sectionName ? `&section=${sectionName}` : ''}`),
   
+  getBySection: (tournamentId: string, sectionName: string) => 
+    api.get<Pairing[]>(`/pairings/tournament/${tournamentId}/section/${sectionName}?t=${Date.now()}`),
+  
   // NEW: Get all pairings grouped by round for independent round management
   getAllByTournament: (tournamentId: string) => 
     api.get<{

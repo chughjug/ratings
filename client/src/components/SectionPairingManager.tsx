@@ -9,6 +9,7 @@ interface SectionPairingManagerProps {
   currentRound: number;
   onRoundComplete?: (nextRound: number) => void;
   onPairingsUpdate?: (pairings: any[]) => void;
+  onRoundChange?: (round: number) => void;
 }
 
 const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
@@ -16,7 +17,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   sectionName,
   currentRound,
   onRoundComplete,
-  onPairingsUpdate
+  onPairingsUpdate,
+  onRoundChange
 }) => {
   const [pairings, setPairings] = useState<any[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
@@ -27,8 +29,26 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPairing, setEditingPairing] = useState<any>(null);
   const [newBoardNumber, setNewBoardNumber] = useState('');
+  const [availableRounds, setAvailableRounds] = useState<number[]>([1]);
   const selectedPairingRef = useRef<string | null>(null);
-  const resultSelectRefs = useRef<{ [key: string]: HTMLSelectElement | null }>({});
+
+  // Fetch available rounds for the section
+  const fetchAvailableRounds = useCallback(async () => {
+    if (!tournamentId || !sectionName) return;
+    
+    try {
+      // Fetch all pairings for this section to determine available rounds
+      const response = await pairingApi.getBySection(tournamentId, sectionName);
+      const allPairings = response.data || [];
+      
+      // Extract unique round numbers
+      const rounds = Array.from(new Set(allPairings.map((p: any) => p.round))).sort((a, b) => a - b);
+      setAvailableRounds(rounds.length > 0 ? rounds : [currentRound]);
+    } catch (error) {
+      console.error('Error fetching available rounds:', error);
+      setAvailableRounds([currentRound]);
+    }
+  }, [tournamentId, sectionName, currentRound]);
 
   // Fetch section data
   const fetchSectionData = useCallback(async () => {
@@ -292,8 +312,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   };
 
   useEffect(() => {
+    fetchAvailableRounds();
     fetchSectionData();
-  }, [fetchSectionData]);
+  }, [fetchAvailableRounds, fetchSectionData]);
 
   if (isLoading) {
     return (
@@ -314,7 +335,28 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{sectionName} Section</h2>
-            <p className="text-gray-600">Round {currentRound}</p>
+            <div className="flex items-center space-x-4 mt-2">
+              <div className="flex items-center space-x-2">
+                <label htmlFor="round-select" className="text-sm font-medium text-gray-700">
+                  Round:
+                </label>
+                <select
+                  id="round-select"
+                  value={currentRound}
+                  onChange={(e) => {
+                    const newRound = parseInt(e.target.value);
+                    onRoundChange?.(newRound);
+                  }}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {availableRounds.map(round => (
+                    <option key={round} value={round}>
+                      Round {round}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <div className="mt-2 text-xs text-gray-500">
               <span className="font-semibold">Keyboard shortcuts:</span> Press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">W</kbd> for white win, <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">L</kbd> for black win, <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">D</kbd> for draw
             </div>
@@ -365,6 +407,40 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
 
         {/* Action Buttons */}
         <div className="mt-6 flex space-x-3">
+          {pairings.length === 0 && (
+            <button
+              onClick={async () => {
+                if (!window.confirm(`Generate pairings for ${sectionName} section Round ${currentRound}?`)) return;
+                
+                try {
+                  setIsLoading(true);
+                  const response = await pairingApi.generateForSection(tournamentId, currentRound, sectionName);
+                  
+                  if (response.data.success) {
+                    alert(`Successfully generated pairings for ${sectionName} section in Round ${currentRound}`);
+                    await fetchSectionData();
+                    await fetchAvailableRounds();
+                  } else {
+                    throw new Error(response.data.message || 'Failed to generate pairings');
+                  }
+                } catch (error: any) {
+                  alert(`Failed to generate pairings: ${error.message}`);
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Users className="h-4 w-4" />
+              )}
+              <span>Generate Pairings</span>
+            </button>
+          )}
+
           {pairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
             <button
               onClick={completeRound}
