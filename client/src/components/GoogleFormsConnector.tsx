@@ -763,7 +763,7 @@ function setup() {
 // END OF GOOGLE FORMS SCRIPT
 // ============================================================================
 // 
-// This is the COMPLETE Google Apps Script (${script.length} characters)
+// This is the COMPLETE Google Apps Script
 // Ready to copy directly to Google Forms
 //
 // Generated on: ${new Date().toLocaleString()}
