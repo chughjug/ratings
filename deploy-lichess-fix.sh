@@ -16,8 +16,9 @@ if [ -n "$(git status --porcelain)" ]; then
     echo "💾 Committing changes..."
     git commit -m "Fix Lichess integration component visibility
 
-- Fixed variable reference from 'tournament' to 'state.tournament'
+- Fixed variable reference from 'tournament' to 'state.currentTournament'
 - Updated Heroku URL to correct deployment
+- Fixed TypeScript errors
 - Component should now appear in tournament overview tab"
 else
     echo "✅ No changes to commit"

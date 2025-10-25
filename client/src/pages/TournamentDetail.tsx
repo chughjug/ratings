@@ -2927,13 +2927,13 @@ const TournamentDetail: React.FC = () => {
       />
 
       {/* Lichess Integration - Always visible in overview tab */}
-      {activeTab === 'overview' && state.tournament && (
+      {activeTab === 'overview' && state.currentTournament && (
         <div className="mt-6">
           <LichessIntegration
             tournamentId={id || ''}
-            tournamentName={state.tournament.name}
-            timeControl={state.tournament.time_control || 'G/30+0'}
-            rounds={state.tournament.rounds}
+            tournamentName={state.currentTournament.name}
+            timeControl={state.currentTournament.time_control || 'G/30+0'}
+            rounds={state.currentTournament.rounds}
             players={state.players || []}
             onGamesCreated={(games) => {
               console.log('Lichess games created:', games);
