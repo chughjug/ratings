@@ -142,24 +142,16 @@ router.post('/create-game', async (req, res) => {
       });
     }
 
-    // For now, return a mock game creation
-    // In a real implementation, this would call the Lichess API
-    const mockGame = {
-      id: `mock_game_${Date.now()}`,
-      url: `https://lichess.org/mock/${Date.now()}`,
-      white: whitePlayer,
-      black: blackPlayer,
-      timeControl: timeControl || 'G/30+0',
-      status: 'created',
-      createdAt: new Date().toISOString()
-    };
-
-    // TODO: Implement actual Lichess game creation
-    // const game = await lichessApi.createChallenge(accessToken, whitePlayer, blackPlayer, timeControl);
+    // Create a simple game challenge (no OAuth required)
+    const game = await lichessApi.createSimpleGame(
+      { lichess_username: whitePlayer, name: whitePlayer },
+      { lichess_username: blackPlayer, name: blackPlayer },
+      timeControl || 'G/30+0'
+    );
     
     res.json({
       success: true,
-      game: mockGame
+      game: game
     });
   } catch (error) {
     console.error('Error creating Lichess game:', error);

@@ -60,7 +60,8 @@ class EnhancedPairingSystem {
     
     try {
       // Use the new bbpPairings system
-      const result = await BBPPairings.generatePairings(tournamentId, round, db, options);
+      const bbpPairings = new BBPPairings();
+      const result = await bbpPairings.generateTournamentPairings(tournamentId, round, db, options);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -134,6 +135,47 @@ class EnhancedPairingSystem {
         pairings: [],
         sectionResults: {}
       };
+    }
+  }
+
+  /**
+   * Generate pairings for a specific section
+   */
+  async generatePairings() {
+    console.log(`[EnhancedPairingSystem] Generating pairings for section ${this.section}, round ${this.round}`);
+    
+    try {
+      const { BBPPairings } = require('./bbpPairings');
+      const bbpPairings = new BBPPairings();
+      
+      // Create tournament object
+      const tournament = {
+        round: this.round,
+        section: this.section,
+        tournamentId: this.tournamentId,
+        colorHistory: this.colorHistory,
+        pointsForWin: this.options.pointsForWin || 1,
+        pointsForDraw: this.options.pointsForDraw || 0.5,
+        pointsForLoss: this.options.pointsForLoss || 0
+      };
+
+      // Generate pairings using bbpPairings
+      const pairings = bbpPairings.generateDutchPairings(this.players, tournament);
+      
+      // Add section and board numbers
+      pairings.forEach((pairing, index) => {
+        pairing.section = this.section;
+        pairing.board = index + 1;
+        pairing.tournament_id = this.tournamentId;
+        pairing.round = this.round;
+      });
+
+      console.log(`[EnhancedPairingSystem] Generated ${pairings.length} pairings for section ${this.section}`);
+      return pairings;
+
+    } catch (error) {
+      console.error(`[EnhancedPairingSystem] Section pairing generation failed:`, error.message);
+      throw error;
     }
   }
 

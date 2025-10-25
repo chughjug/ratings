@@ -1082,6 +1082,15 @@ const TournamentDetail: React.FC = () => {
             
             {/* Right side - Essential Actions Only */}
             <div className="flex items-center space-x-2">
+              {/* Tournament Director Dashboard */}
+              <button
+                onClick={() => navigate(`/tournaments/${id}/director`)}
+                className="flex items-center space-x-1 px-3 py-1 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Director</span>
+              </button>
+              
               {/* PWA Status */}
               <button
                 onClick={() => setShowPWAStatus(true)}

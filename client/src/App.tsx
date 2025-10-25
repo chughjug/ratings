@@ -9,6 +9,7 @@ import pwaService from './services/pwaService';
 import Dashboard from './pages/Dashboard';
 import TournamentList from './pages/TournamentList';
 import TournamentDetail from './pages/TournamentDetail';
+import TournamentDirectorDashboard from './components/TournamentDirectorDashboard';
 import CreateTournament from './pages/CreateTournament';
 import PublicTournamentDisplay from './pages/PublicTournamentDisplay';
 import PublicTournamentList from './pages/PublicTournamentList';
@@ -122,6 +123,19 @@ function App() {
                               <Navbar />
                               <main className="container mx-auto px-4 py-8">
                                 <TournamentDetail />
+                              </main>
+                            </>
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/tournaments/:tournamentId/director" 
+                        element={
+                          <ProtectedRoute>
+                            <>
+                              <Navbar />
+                              <main className="container mx-auto px-4 py-8">
+                                <TournamentDirectorDashboard tournamentId={window.location.pathname.split('/')[2]} />
                               </main>
                             </>
                           </ProtectedRoute>

@@ -154,6 +154,47 @@ class LichessApiService {
   }
 
   /**
+   * Create a simple game link for two players (no OAuth required)
+   */
+  async createSimpleGame(whitePlayer, blackPlayer, timeControl) {
+    try {
+      // Parse time control (e.g., "G/30+0" -> 30 minutes, 0 increment)
+      const timeMatch = timeControl.match(/G\/(\d+)\+(\d+)/);
+      const timeLimit = timeMatch ? parseInt(timeMatch[1]) : 30;
+      const increment = timeMatch ? parseInt(timeMatch[2]) : 0;
+
+      // Create a Lichess challenge URL
+      const challengeUrl = new URL(`${this.baseUrl}/challenge`);
+      
+      // Add parameters for the challenge
+      challengeUrl.searchParams.set('rated', 'true');
+      challengeUrl.searchParams.set('clock.limit', (timeLimit * 60).toString());
+      challengeUrl.searchParams.set('clock.increment', increment.toString());
+      challengeUrl.searchParams.set('color', 'random');
+      challengeUrl.searchParams.set('variant', 'standard');
+      
+      if (whitePlayer.lichess_username && blackPlayer.lichess_username) {
+        challengeUrl.searchParams.set('username', whitePlayer.lichess_username);
+        challengeUrl.searchParams.set('destUser', blackPlayer.lichess_username);
+      }
+
+      return {
+        id: `challenge_${Date.now()}`,
+        url: challengeUrl.toString(),
+        white: whitePlayer.lichess_username || whitePlayer.name,
+        black: blackPlayer.lichess_username || blackPlayer.name,
+        timeControl: timeControl,
+        status: 'challenge_created',
+        createdAt: new Date().toISOString(),
+        type: 'challenge_link'
+      };
+    } catch (error) {
+      console.error('Error creating simple game:', error);
+      throw new Error('Failed to create game challenge');
+    }
+  }
+
+  /**
    * Create a Swiss tournament on Lichess
    */
   async createSwissTournament(accessToken, tournamentData) {

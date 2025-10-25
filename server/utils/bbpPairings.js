@@ -84,7 +84,7 @@ class BbpPairings {
    */
   getLastTwoColors(player, colorHistory = {}) {
     // First try to get from color history if available
-    if (colorHistory && colorHistory[player.id]) {
+    if (colorHistory && colorHistory[player.id] && Array.isArray(colorHistory[player.id])) {
       return colorHistory[player.id].slice(-2).join('');
     }
     
@@ -1137,6 +1137,168 @@ class BbpPairings {
       }
     }
     return pairings;
+  }
+
+  /**
+   * Generate tournament pairings for all sections
+   * Main entry point for tournament-wide pairing generation
+   */
+  async generateTournamentPairings(tournamentId, round, db, options = {}) {
+    console.log(`[BBPPairings] Generating pairings for tournament ${tournamentId}, round ${round}`);
+    
+    try {
+      // Get all players by section
+      const playersBySection = await new Promise((resolve, reject) => {
+        db.all(
+          'SELECT section FROM players WHERE tournament_id = ? AND status = "active" GROUP BY section',
+          [tournamentId],
+          (err, rows) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            resolve(rows.map(row => row.section || 'Open'));
+          }
+        );
+      });
+
+      const allPairings = [];
+      const sectionResults = {};
+
+      for (const section of playersBySection) {
+        console.log(`[BBPPairings] Processing section: ${section}`);
+        
+        // Get players for this section
+        const players = await new Promise((resolve, reject) => {
+          db.all(
+            `SELECT p.*, 
+                    COALESCE(SUM(CASE WHEN pr.result = 'win' THEN 1 WHEN pr.result = 'draw' THEN 0.5 ELSE 0 END), 0) as points
+             FROM players p
+             LEFT JOIN pairings pr ON p.id = pr.white_player_id OR p.id = pr.black_player_id
+             WHERE p.tournament_id = ? AND p.section = ? AND p.status = 'active'
+             GROUP BY p.id
+             ORDER BY points DESC, p.rating DESC`,
+            [tournamentId, section],
+            (err, rows) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+              resolve(rows);
+            }
+          );
+        });
+
+        if (players.length < 2) {
+          console.log(`[BBPPairings] Not enough players in section ${section} (${players.length})`);
+          sectionResults[section] = {
+            success: true,
+            pairingsCount: 0,
+            playersCount: players.length,
+            registeredByeCount: 0
+          };
+          continue;
+        }
+
+        // Get color history for this section
+        const colorHistory = await this.getColorHistory(tournamentId, section, db);
+
+        // Create tournament object
+        const tournament = {
+          round: round,
+          section: section,
+          tournamentId: tournamentId,
+          colorHistory: colorHistory,
+          pointsForWin: options.pointsForWin || 1,
+          pointsForDraw: options.pointsForDraw || 0.5,
+          pointsForLoss: options.pointsForLoss || 0
+        };
+
+        // Generate pairings for this section
+        const sectionPairings = this.generateDutchPairings(players, tournament);
+        
+        // Add section and board numbers
+        sectionPairings.forEach((pairing, index) => {
+          pairing.section = section;
+          pairing.board = index + 1;
+          pairing.tournament_id = tournamentId;
+          pairing.round = round;
+        });
+
+        allPairings.push(...sectionPairings);
+        
+        sectionResults[section] = {
+          success: true,
+          pairingsCount: sectionPairings.length,
+          playersCount: players.length,
+          registeredByeCount: sectionPairings.filter(p => p.is_bye).length
+        };
+
+        console.log(`[BBPPairings] Generated ${sectionPairings.length} pairings for section ${section}`);
+      }
+
+      return {
+        success: true,
+        pairings: allPairings,
+        sectionResults: sectionResults,
+        metadata: {
+          tournamentId: tournamentId,
+          round: round,
+          totalPairings: allPairings.length,
+          sectionsProcessed: playersBySection.length,
+          pairingSystem: 'fide_dutch',
+          byeCount: allPairings.filter(p => p.is_bye).length
+        }
+      };
+
+    } catch (error) {
+      console.error(`[BBPPairings] Tournament pairing generation failed:`, error.message);
+      return {
+        success: false,
+        error: error.message,
+        pairings: [],
+        sectionResults: {}
+      };
+    }
+  }
+
+  /**
+   * Get color history for a section
+   */
+  async getColorHistory(tournamentId, section, db) {
+    return new Promise((resolve, reject) => {
+      db.all(
+        `SELECT white_player_id, black_player_id, result
+         FROM pairings 
+         WHERE tournament_id = ? AND section = ? AND result IS NOT NULL
+         ORDER BY round, board`,
+        [tournamentId, section],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          const colorHistory = {};
+          rows.forEach(pairing => {
+            if (pairing.white_player_id) {
+              if (!colorHistory[pairing.white_player_id]) {
+                colorHistory[pairing.white_player_id] = [];
+              }
+              colorHistory[pairing.white_player_id].push('white');
+            }
+            if (pairing.black_player_id) {
+              if (!colorHistory[pairing.black_player_id]) {
+                colorHistory[pairing.black_player_id] = [];
+              }
+              colorHistory[pairing.black_player_id].push('black');
+            }
+          });
+          
+          resolve(colorHistory);
+        }
+      );
+    });
   }
 }
 
