@@ -88,6 +88,10 @@ const LichessGameCreator: React.FC<LichessGameCreatorProps> = ({
     }
   };
 
+  const openChallenge = (url: string) => {
+    window.open(url, '_blank');
+  };
+
   // Don't render if no Lichess usernames are available
   if (!whitePlayer.lichess_username && !blackPlayer.lichess_username) {
     return (
@@ -122,15 +126,34 @@ const LichessGameCreator: React.FC<LichessGameCreatorProps> = ({
       )}
 
       {gameStatus === 'created' && gameData && (
-        <div className="flex items-center space-x-1">
-          <CheckCircle className="w-3 h-3 text-green-600" />
-          <button
-            onClick={openGame}
-            className="flex items-center space-x-1 text-xs text-green-600 hover:text-green-700"
-          >
-            <ExternalLink className="w-3 h-3" />
-            <span>Open Game</span>
-          </button>
+        <div className="flex flex-col space-y-1">
+          <div className="flex items-center space-x-1">
+            <CheckCircle className="w-3 h-3 text-green-600" />
+            <span className="text-xs text-green-600">Game Ready</span>
+          </div>
+          <div className="flex space-x-1">
+            <button
+              onClick={openGame}
+              className="flex items-center space-x-1 text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span>Seek Game</span>
+            </button>
+            {gameData.whiteChallengeUrl && (
+              <button
+                onClick={() => openChallenge(gameData.whiteChallengeUrl)}
+                className="flex items-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>Challenge</span>
+              </button>
+            )}
+          </div>
+          {gameData.instructions && (
+            <div className="text-xs text-gray-500 max-w-48">
+              {gameData.instructions}
+            </div>
+          )}
         </div>
       )}
 

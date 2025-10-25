@@ -105,3 +105,4 @@ const PairingSystemExample: React.FC = () => {
 };
 
 export default PairingSystemExample;
+

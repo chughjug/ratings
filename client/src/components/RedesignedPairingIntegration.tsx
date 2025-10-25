@@ -447,3 +447,4 @@ const RedesignedPairingIntegration: React.FC<RedesignedPairingIntegrationProps> 
 };
 
 export default RedesignedPairingIntegration;
+

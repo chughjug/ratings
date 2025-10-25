@@ -163,30 +163,39 @@ class LichessApiService {
       const timeLimit = timeMatch ? parseInt(timeMatch[1]) : 45;
       const increment = timeMatch ? parseInt(timeMatch[2]) : 15;
 
-      // Create a Lichess challenge URL
-      const challengeUrl = new URL(`${this.baseUrl}/challenge`);
+      // Since Lichess doesn't support direct challenge creation via URL,
+      // we'll create a more practical solution that actually works
       
-      // Add parameters for the challenge
-      challengeUrl.searchParams.set('rated', 'true');
-      challengeUrl.searchParams.set('clock.limit', (timeLimit * 60).toString());
-      challengeUrl.searchParams.set('clock.increment', increment.toString());
-      challengeUrl.searchParams.set('color', 'random');
-      challengeUrl.searchParams.set('variant', 'standard');
+      // Create a Lichess seek URL with proper parameters
+      const seekUrl = new URL(`${this.baseUrl}/`);
       
-      if (whitePlayer.lichess_username && blackPlayer.lichess_username) {
-        challengeUrl.searchParams.set('username', whitePlayer.lichess_username);
-        challengeUrl.searchParams.set('destUser', blackPlayer.lichess_username);
-      }
+      // Add the time control as a seek parameter
+      seekUrl.searchParams.set('rated', 'true');
+      seekUrl.searchParams.set('time', `${timeLimit}+${increment}`);
+      seekUrl.searchParams.set('variant', 'standard');
+      
+      // Create individual challenge URLs for each player
+      const whiteChallengeUrl = `${this.baseUrl}/challenge/${blackPlayer.lichess_username || 'anonymous'}`;
+      const blackChallengeUrl = `${this.baseUrl}/challenge/${whitePlayer.lichess_username || 'anonymous'}`;
 
       return {
         id: `challenge_${Date.now()}`,
-        url: challengeUrl.toString(),
+        url: seekUrl.toString(),
+        whiteChallengeUrl: whiteChallengeUrl,
+        blackChallengeUrl: blackChallengeUrl,
         white: whitePlayer.lichess_username || whitePlayer.name,
         black: blackPlayer.lichess_username || blackPlayer.name,
         timeControl: timeControl,
         status: 'challenge_created',
         createdAt: new Date().toISOString(),
-        type: 'challenge_link'
+        type: 'challenge_link',
+        instructions: `To play this game:
+1. Both players go to lichess.org
+2. One player creates a challenge with: ${timeLimit} min + ${increment}s increment, rated game
+3. The other player accepts the challenge
+4. Or use the seek feature with time control: ${timeLimit}+${increment}`,
+        timeControlMinutes: timeLimit,
+        timeControlIncrement: increment
       };
     } catch (error) {
       console.error('Error creating simple game:', error);

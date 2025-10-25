@@ -60,7 +60,8 @@ class EnhancedPairingSystem {
     
     try {
       // Use the new bbpPairings system
-      const bbpPairings = new BBPPairings();
+      const { BBPPairingsDirect } = require('./bbpPairingsDirect');
+      const bbpPairings = new BBPPairingsDirect();
       const result = await bbpPairings.generateTournamentPairings(tournamentId, round, db, options);
       
       if (!result.success) {
@@ -146,7 +147,8 @@ class EnhancedPairingSystem {
     
     try {
       const { BBPPairings } = require('./bbpPairings');
-      const bbpPairings = new BBPPairings();
+      const { BBPPairingsDirect } = require('./bbpPairingsDirect');
+      const bbpPairings = new BBPPairingsDirect();
       
       // Create tournament object
       const tournament = {
