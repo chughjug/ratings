@@ -496,11 +496,12 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               <div className="card-brand">
                 <h3 className="text-lg font-semibold mb-4 brand-text">Current Round Pairings</h3>
                 <ChessStandingsTable
-                  pairings={pairings}
-                  showRatings={displayOptions.showRatings}
-                  showUscfIds={displayOptions.showUscfIds}
-                  boardNumbers={displayOptions.boardNumbers}
-                  displayFormat={displayOptions.displayFormat}
+                  standings={standings}
+                  tournament={tournament}
+                  selectedSection={selectedSection}
+                  showTiebreakers={true}
+                  showPrizes={true}
+                  tournamentId={tournamentId}
                 />
               </div>
             </div>
@@ -525,9 +526,11 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                 
                 <ChessStandingsTable
                   standings={getFilteredStandings(standings)}
-                  showRatings={displayOptions.showRatings}
-                  showUscfIds={displayOptions.showUscfIds}
-                  displayFormat={displayOptions.displayFormat}
+                  tournament={tournament}
+                  selectedSection={selectedSection}
+                  showTiebreakers={true}
+                  showPrizes={true}
+                  tournamentId={tournamentId}
                 />
               </div>
             </div>
