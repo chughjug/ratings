@@ -74,7 +74,8 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
         result: pairing.result || '',
         section: pairing.section || '',
         white_id: pairing.white_id || '',
-        black_id: pairing.black_id || ''
+        black_id: pairing.black_id || '',
+        is_bye: pairing.is_bye || false
       }));
       setPairings(pairings);
       onPairingsGenerated(pairings);
