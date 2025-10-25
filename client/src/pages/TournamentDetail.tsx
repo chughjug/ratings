@@ -2197,6 +2197,42 @@ const TournamentDetail: React.FC = () => {
 
           {activeTab === 'pairings' && (
             <div className="space-y-4">
+              {/* Section Selector */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <label htmlFor="pairing-section-select" className="text-sm font-medium text-gray-700">
+                      Select Section:
+                    </label>
+                    <select
+                      id="pairing-section-select"
+                      value={selectedSection || ''}
+                      onChange={(e) => setSelectedSection(e.target.value)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">-- Select a Section --</option>
+                      {getAvailableSections().map(section => (
+                        <option key={section} value={section}>
+                          {section}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedSection && (
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => {
+                          setSelectedSection('');
+                        }}
+                        className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        Clear Selection
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {selectedSection ? (
                 <SectionPairingManager
                   tournamentId={id || ''}
@@ -2213,16 +2249,10 @@ const TournamentDetail: React.FC = () => {
               ) : (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
                   <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Section</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Section Selected</h3>
                   <p className="text-gray-600 mb-4">
-                    Choose a section from the Overview tab to manage pairings and results.
+                    Select a section from the dropdown above to manage pairings and results.
                   </p>
-                  <button
-                    onClick={() => setActiveTab('overview')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Go to Overview
-                  </button>
                 </div>
               )}
             </div>

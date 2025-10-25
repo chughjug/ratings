@@ -364,39 +364,27 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
 
   if (!isAuthenticated) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Gamepad2 className="w-5 h-5 mr-2 text-blue-600" />
-            Lichess Integration
-          </h3>
-        </div>
-        
-        <div className="text-center py-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Gamepad2 className="w-8 h-8 text-blue-600" />
+      <div className="bg-white rounded-lg shadow-md p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Gamepad2 className="w-4 h-4 mr-2 text-blue-600" />
+            <span className="text-sm font-medium text-gray-700">Lichess Integration</span>
           </div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">
-            Connect to Lichess
-          </h4>
-          <p className="text-gray-600 mb-6">
-            Authenticate with Lichess to create online games for your tournament
-          </p>
           
           <button
             onClick={handleAuth}
             disabled={isLoading}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center mx-auto"
+            className="bg-blue-600 text-white px-3 py-1.5 text-sm rounded hover:bg-blue-700 disabled:opacity-50 flex items-center"
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
                 Connecting...
               </>
             ) : (
               <>
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Connect to Lichess
+                <ExternalLink className="w-3 h-3 mr-1" />
+                Connect
               </>
             )}
           </button>
@@ -406,22 +394,22 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <Gamepad2 className="w-5 h-5 mr-2 text-blue-600" />
-          Lichess Integration
-        </h3>
+    <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          <Gamepad2 className="w-4 h-4 mr-2 text-blue-600" />
+          <span className="text-sm font-medium text-gray-700">Lichess Integration</span>
+        </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="p-2 text-gray-500 hover:text-gray-700"
+            className="p-1 text-gray-500 hover:text-gray-700"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3 h-3" />
           </button>
           <button
             onClick={logout}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-xs text-gray-500 hover:text-gray-700"
           >
             Logout
           </button>
@@ -429,22 +417,22 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
       </div>
 
       {user && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+        <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-              <span className="text-sm font-medium text-blue-600">
+            <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mr-2">
+              <span className="text-xs font-medium text-blue-600">
                 {user.username.charAt(0).toUpperCase()}
               </span>
             </div>
             <div>
-              <div className="font-medium text-gray-900">
+              <span className="font-medium text-gray-900">
                 {user.username}
                 {user.title && <span className="ml-1 text-yellow-600">{user.title}</span>}
-              </div>
+              </span>
               {user.rating && (
-                <div className="text-sm text-gray-500">
+                <span className="ml-2 text-gray-500">
                   Rating: {user.rating}
-                </div>
+                </span>
               )}
             </div>
           </div>
@@ -452,89 +440,79 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
       )}
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center">
-          <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs flex items-center">
+          <AlertCircle className="w-3 h-3 text-red-500 mr-1" />
           <span className="text-red-700">{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center">
-          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+        <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded text-xs flex items-center">
+          <CheckCircle className="w-3 h-3 text-green-500 mr-1" />
           <span className="text-green-700">{success}</span>
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {!lichessTournament ? (
-          <div className="text-center py-4">
-            <h4 className="font-medium text-gray-900 mb-2">Create Lichess Tournament</h4>
-            <p className="text-gray-600 mb-4">
-              Create a Swiss tournament on Lichess with {rounds} rounds
-            </p>
+          <div className="text-center py-2">
             <button
               onClick={createLichessTournament}
               disabled={isLoading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="bg-blue-600 text-white px-3 py-1.5 text-sm rounded hover:bg-blue-700 disabled:opacity-50"
             >
-              {isLoading ? 'Creating...' : 'Create Tournament'}
+              {isLoading ? 'Creating...' : `Create Swiss Tournament (${rounds} rounds)`}
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
+          <div className="space-y-2">
+            <div className="p-2 bg-blue-50 rounded text-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-blue-900">{lichessTournament.name}</h4>
-                  <div className="text-sm text-blue-700">
-                    {lichessTournament.nbPlayers} players • {lichessTournament.nbRounds} rounds
-                  </div>
-                  <div className="text-sm text-blue-700">
-                    <Clock className="w-4 h-4 inline mr-1" />
-                    {Math.floor(lichessTournament.clock.limit / 60)}m + {lichessTournament.clock.increment}s
-                  </div>
+                  <span className="font-medium text-blue-900">{lichessTournament.name}</span>
+                  <span className="ml-2 text-blue-700">
+                    {lichessTournament.nbPlayers}p • {lichessTournament.nbRounds}r • 
+                    {Math.floor(lichessTournament.clock.limit / 60)}m+{lichessTournament.clock.increment}s
+                  </span>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-blue-700">
-                    Status: <span className="font-medium">{lichessTournament.status}</span>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-blue-700">{lichessTournament.status}</span>
                   <a
                     href={`https://lichess.org/swiss/${lichessTournament.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                    className="text-blue-600 hover:text-blue-800"
                   >
-                    <ExternalLink className="w-3 h-3 mr-1" />
-                    View on Lichess
+                    <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
               </div>
             </div>
 
-            <div className="flex space-x-2">
+            <div className="flex space-x-1">
               <button
                 onClick={joinTournament}
                 disabled={isLoading}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center"
+                className="flex-1 bg-green-600 text-white px-2 py-1 text-xs rounded hover:bg-green-700 disabled:opacity-50 flex items-center justify-center"
               >
-                <Users className="w-4 h-4 mr-2" />
-                Join Tournament
+                <Users className="w-3 h-3 mr-1" />
+                Join
               </button>
               
               <button
                 onClick={syncResults}
                 disabled={isLoading || syncStatus === 'syncing'}
-                className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center"
+                className="flex-1 bg-purple-600 text-white px-2 py-1 text-xs rounded hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center"
               >
                 {syncStatus === 'syncing' ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Syncing...
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                    Sync
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Sync Results
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Sync
                   </>
                 )}
               </button>
@@ -543,19 +521,19 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
         )}
 
         {showSettings && (
-          <div className="border-t pt-4">
-            <h4 className="font-medium text-gray-900 mb-3">Player Mappings</h4>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className="border-t pt-2">
+            <h4 className="text-xs font-medium text-gray-900 mb-2">Player Mappings</h4>
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {players.map(player => (
-                <div key={player.id} className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600 w-32 truncate">{player.name}</span>
-                  <span className="text-gray-400">→</span>
+                <div key={player.id} className="flex items-center space-x-1">
+                  <span className="text-xs text-gray-600 w-24 truncate">{player.name}</span>
+                  <span className="text-gray-400 text-xs">→</span>
                   <input
                     type="text"
                     value={playerMappings[player.id] || ''}
                     onChange={(e) => handlePlayerMappingChange(player.id, e.target.value)}
                     placeholder="Lichess username"
-                    className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                    className="flex-1 text-xs border border-gray-300 rounded px-1 py-0.5"
                   />
                 </div>
               ))}

@@ -6,7 +6,19 @@ class LichessApiService {
     this.baseUrl = 'https://lichess.org';
     // Lichess now uses PKCE-based OAuth that doesn't require client registration
     this.clientId = process.env.LICHESS_CLIENT_ID || 'chess-tournament-director';
-    this.redirectUri = process.env.LICHESS_REDIRECT_URI || 'http://localhost:3000/api/lichess/callback';
+    
+    // Use Heroku URL for production, localhost for development
+    const isProduction = process.env.NODE_ENV === 'production';
+    this.redirectUri = process.env.LICHESS_REDIRECT_URI || 
+      (isProduction 
+        ? 'https://chess-tournament-director.herokuapp.com/api/lichess/callback'
+        : 'http://localhost:3000/api/lichess/callback'
+      );
+    
+    // Ensure clientId is never undefined
+    if (!this.clientId || this.clientId === 'undefined') {
+      this.clientId = 'chess-tournament-director';
+    }
   }
 
   /**
@@ -49,13 +61,15 @@ class LichessApiService {
    */
   async exchangeCodeForToken(code, codeVerifier) {
     try {
-      const response = await axios.post(`${this.baseUrl}/api/token`, {
+      const params = new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
         code_verifier: codeVerifier,
         redirect_uri: this.redirectUri,
         client_id: this.clientId
-      }, {
+      });
+
+      const response = await axios.post(`${this.baseUrl}/api/token`, params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }

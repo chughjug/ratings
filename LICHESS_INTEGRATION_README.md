@@ -27,29 +27,30 @@ This document describes the Lichess API integration that allows tournament direc
 
 ## Setup Instructions
 
-### 1. Lichess OAuth Application
+### 1. Lichess OAuth Setup
 
-1. Go to [Lichess OAuth Apps](https://lichess.org/account/oauth/apps)
-2. Click "Create a new OAuth app"
-3. Fill in the details:
-   - **Name**: Your Tournament Management System
-   - **Description**: Chess tournament management with Lichess integration
-   - **Redirect URI**: `http://localhost:3000/api/lichess/callback` (for development)
-   - **Scopes**: Select `board:play`, `challenge:write`, `tournament:write`
+Lichess now uses a PKCE-based OAuth system that doesn't require traditional client registration. The integration works out of the box with a default client ID.
 
-### 2. Environment Variables
+**No registration required!** The system uses PKCE (Proof Key for Code Exchange) for secure authentication.
 
-Add these environment variables to your `.env` file:
+### 2. Environment Variables (Optional)
+
+You can optionally customize the client ID and redirect URI in your `.env` file:
 
 ```env
-# Lichess OAuth Configuration
-LICHESS_CLIENT_ID=your_client_id_here
-LICHESS_CLIENT_SECRET=your_client_secret_here
+# Lichess OAuth Configuration (optional)
+LICHESS_CLIENT_ID=your_custom_client_id
 LICHESS_REDIRECT_URI=http://localhost:3000/api/lichess/callback
 
 # For production, use your actual domain
 # LICHESS_REDIRECT_URI=https://yourdomain.com/api/lichess/callback
 ```
+
+**Note**: If you don't set these environment variables, the system will use sensible defaults:
+- `LICHESS_CLIENT_ID`: `chess-tournament-director`
+- `LICHESS_REDIRECT_URI`: 
+  - Development: `http://localhost:3000/api/lichess/callback`
+  - Production: `https://chess-tournament-director.herokuapp.com/api/lichess/callback`
 
 ### 3. Database Migration
 
@@ -208,9 +209,9 @@ The integration respects these limits and provides appropriate feedback.
 ### Common Issues
 
 1. **"Authentication failed"**
-   - Check OAuth app configuration
-   - Verify redirect URI matches exactly
-   - Ensure client ID and secret are correct
+   - The new PKCE system doesn't require client registration
+   - Verify redirect URI matches your environment
+   - Check that the OAuth flow is completing properly
 
 2. **"Failed to create tournament"**
    - Check if user has tournament creation permissions
