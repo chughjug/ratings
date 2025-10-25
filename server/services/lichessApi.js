@@ -46,7 +46,7 @@ class LichessApiService {
       redirect_uri: this.redirectUri,
       code_challenge_method: 'S256',
       code_challenge: codeChallenge,
-      scope: 'board:play,challenge:write,tournament:write',
+      scope: 'preference:read preference:write email:read',
       state: state
     });
 

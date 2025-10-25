@@ -320,6 +320,8 @@ class EnhancedPairingSystem {
     switch (this.options.pairingSystem) {
       case 'fide_dutch':
         return this.generateFideDutchPairings();
+      case 'burstein':
+        return this.generateBursteinPairings();
       case 'accelerated_swiss':
         return this.generateAcceleratedPairings();
       case 'round_robin':
@@ -385,43 +387,47 @@ class EnhancedPairingSystem {
   generateFideDutchPairings() {
     if (this.players.length < 2) return [];
 
-    const sortedPlayers = this.sortPlayersByStandings();
-    const scoreGroups = this.groupPlayersByScore(sortedPlayers);
-    const pairings = [];
-    const used = new Set();
+    const bbpPairings = new BBPPairings();
+    const result = bbpPairings.generateDutchPairings(this.players, {
+      round: this.round,
+      section: this.section,
+      tournamentId: this.tournamentId,
+      pointsForWin: this.options.pointsForWin || 1,
+      pointsForDraw: this.options.pointsForDraw || 0.5,
+      pointsForLoss: this.options.pointsForLoss || 0
+    });
     
-    const sortedScores = Object.keys(scoreGroups).sort((a, b) => parseFloat(b) - parseFloat(a));
+    // Add section and board information
+    return result.map((pairing, index) => ({
+      ...pairing,
+      section: this.section,
+      board: index + 1
+    }));
+  }
+
+  /**
+   * Burstein System Pairing
+   * Based on bbpPairings Burstein implementation
+   */
+  generateBursteinPairings() {
+    if (this.players.length < 2) return [];
+
+    const bbpPairings = new BBPPairings();
+    const result = bbpPairings.generateBursteinPairings(this.players, {
+      round: this.round,
+      section: this.section,
+      tournamentId: this.tournamentId,
+      pointsForWin: this.options.pointsForWin || 1,
+      pointsForDraw: this.options.pointsForDraw || 0.5,
+      pointsForLoss: this.options.pointsForLoss || 0
+    });
     
-    for (const score of sortedScores) {
-      const group = scoreGroups[score];
-      
-      // For Dutch system, handle odd numbers by giving a bye to an eligible player
-      // Follow bbpPairings standard: player must not have received a pairing-allocated bye before
-      if (group.length % 2 === 1) {
-        const sortedGroup = [...group].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        const byePlayer = this.selectByePlayer(sortedGroup);
-        
-        if (byePlayer) {
-          pairings.push({
-            white_player_id: byePlayer.id,
-            black_player_id: null,
-            is_bye: true,
-            bye_type: 'bye',
-            section: this.section,
-            board: pairings.length + 1
-          });
-          
-          // Remove bye player from group
-          group.splice(group.indexOf(byePlayer), 1);
-          used.add(byePlayer.id);
-        }
-      }
-      
-      // Use Swiss system pairing with Dutch color assignment
-      this.pairGroupSwissDutch(group, pairings, used);
-    }
-    
-    return pairings;
+    // Add section and board information
+    return result.map((pairing, index) => ({
+      ...pairing,
+      section: this.section,
+      board: index + 1
+    }));
   }
 
   /**
