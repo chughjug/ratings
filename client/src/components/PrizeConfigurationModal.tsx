@@ -24,6 +24,8 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
     sections: []
   });
   const [loading, setLoading] = useState(false);
+  const [generatingStructure, setGeneratingStructure] = useState(false);
+  const [prizeFund, setPrizeFund] = useState<number>(0);
 
   useEffect(() => {
     if (isOpen && currentSettings) {
@@ -48,6 +50,24 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
       alert('Failed to save prize settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateStandardStructure = async () => {
+    try {
+      setGeneratingStructure(true);
+      const response = await tournamentApi.generatePrizeStructure(tournamentId, prizeFund);
+      if (response.data.success) {
+        setSettings(response.data.data);
+        alert('Standard prize structure generated successfully!');
+      } else {
+        alert('Failed to generate prize structure');
+      }
+    } catch (error) {
+      console.error('Error generating prize structure:', error);
+      alert('Failed to generate prize structure');
+    } finally {
+      setGeneratingStructure(false);
     }
   };
 
@@ -204,6 +224,51 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
             </div>
           </div>
 
+          {/* Prize Fund and Auto-Generation */}
+          {settings.enabled && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4">Quick Setup</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Prize Fund (optional)
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="number"
+                      value={prizeFund}
+                      onChange={(e) => setPrizeFund(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter total prize fund amount"
+                      min="0"
+                      step="0.01"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={handleGenerateStandardStructure}
+                      disabled={generatingStructure}
+                      className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {generatingStructure ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Trophy className="w-4 h-4 mr-2" />
+                          Generate Standard Structure
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    This will automatically create position-based prizes, trophies, and under prizes based on your tournament size and prize fund.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Prize Sections */}
           {settings.enabled && (
             <div className="space-y-6">
@@ -340,6 +405,14 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
                           value={prize.name}
                           onChange={(e) => updatePrize(sectionIndex, prizeIndex, { ...prize, name: e.target.value })}
                           placeholder="Prize name"
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+
+                        <input
+                          type="text"
+                          value={prize.description || ''}
+                          onChange={(e) => updatePrize(sectionIndex, prizeIndex, { ...prize, description: e.target.value })}
+                          placeholder="Description (optional)"
                           className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />
 

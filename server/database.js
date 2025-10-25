@@ -118,6 +118,13 @@ db.serialize(() => {
     // Ignore error if column already exists
   });
 
+  // Add bye_rounds column if it doesn't exist (for existing databases)
+  db.run(`
+    ALTER TABLE players ADD COLUMN bye_rounds TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
   // Add team_name column for individual tournaments with team scoring
   db.run(`
     ALTER TABLE players ADD COLUMN team_name TEXT

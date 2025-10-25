@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2 } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -28,6 +28,16 @@ import APIDocumentationModal from '../components/APIDocumentationModal';
 import APIStatusIndicator from '../components/APIStatusIndicator';
 import NotificationButton from '../components/NotificationButton';
 import SendPairingEmailsButton from '../components/SendPairingEmailsButton';
+import PrizeDisplay from '../components/PrizeDisplay';
+import PrizeConfigurationModal from '../components/PrizeConfigurationModal';
+import SMSManager from '../components/SMSManager';
+import QRCodeGenerator from '../components/QRCodeGenerator';
+import PlayerProfile from '../components/PlayerProfile';
+import LiveStandings from '../components/LiveStandings';
+import PaymentManager from '../components/PaymentManager';
+import PWAStatus from '../components/PWAStatus';
+import AnalyticsDashboard from '../components/AnalyticsDashboard';
+import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -35,7 +45,7 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations'>('pairings');
+  const [activeTab, setActiveTab] = useState<'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes'>('pairings');
   const [currentRound, setCurrentRound] = useState(1);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [sectionRounds, setSectionRounds] = useState<{ [section: string]: number }>({});
@@ -109,6 +119,18 @@ const TournamentDetail: React.FC = () => {
   const [teamPairings, setTeamPairings] = useState<any[]>([]);
   const [teamScoringMethod, setTeamScoringMethod] = useState<'all_players' | 'top_players'>('all_players');
   const [teamTopN, setTeamTopN] = useState<number>(4);
+  const [showPrizeConfiguration, setShowPrizeConfiguration] = useState(false);
+  const [prizeSettings, setPrizeSettings] = useState<any>(null);
+  
+  // New feature modals
+  const [showSMSManager, setShowSMSManager] = useState(false);
+  const [showQRCodeGenerator, setShowQRCodeGenerator] = useState(false);
+  const [showPlayerProfile, setShowPlayerProfile] = useState(false);
+  const [showLiveStandings, setShowLiveStandings] = useState(false);
+  const [showPaymentManager, setShowPaymentManager] = useState(false);
+  const [showPWAStatus, setShowPWAStatus] = useState(false);
+  const [showAnalyticsDashboard, setShowAnalyticsDashboard] = useState(false);
+  const [showChessIntegration, setShowChessIntegration] = useState(false);
   
   // Sorting state - default to section sorting as requested
   const [sortField, setSortField] = useState<string>('section');
@@ -974,6 +996,48 @@ const TournamentDetail: React.FC = () => {
             
             {/* Right side - Essential Actions Only */}
             <div className="flex items-center space-x-2">
+              {/* PWA Status */}
+              <button
+                onClick={() => setShowPWAStatus(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+              >
+                <Smartphone className="h-4 w-4" />
+                <span>PWA</span>
+              </button>
+              
+              {/* New Feature Buttons in Header */}
+              <button
+                onClick={() => setShowSMSManager(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-green-600 hover:bg-green-700 rounded"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>SMS</span>
+              </button>
+              
+              <button
+                onClick={() => setShowQRCodeGenerator(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded"
+              >
+                <QrCode className="h-4 w-4" />
+                <span>QR</span>
+              </button>
+              
+              <button
+                onClick={() => setShowAnalyticsDashboard(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-orange-600 hover:bg-orange-700 rounded"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>Analytics</span>
+              </button>
+              
+              <button
+                onClick={() => setShowChessIntegration(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-cyan-600 hover:bg-cyan-700 rounded"
+              >
+                <Gamepad2 className="h-4 w-4" />
+                <span>Chess</span>
+              </button>
+              
               {/* API Status - Compact */}
               <APIStatusIndicator 
                 tournamentId={id || ''} 
@@ -1429,6 +1493,20 @@ const TournamentDetail: React.FC = () => {
                 </div>
               </button>
 
+              <button
+                onClick={() => setActiveTab('prizes')}
+                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
+                  activeTab === 'prizes'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Trophy className="h-4 w-4" />
+                  <span>Prizes</span>
+                </div>
+              </button>
+
               {/* Team-specific tabs - only show if relevant */}
               {tournament && (
                 <>
@@ -1490,7 +1568,7 @@ const TournamentDetail: React.FC = () => {
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-gray-900">Player Management</h2>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => setShowAddPlayer(true)}
                         className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -1525,6 +1603,36 @@ const TournamentDetail: React.FC = () => {
                       >
                         <Download className="h-4 w-4" />
                         <span>Export USCF</span>
+                      </button>
+                      
+                      {/* New Feature Buttons - TEST VERSION */}
+                      <button
+                        onClick={() => setShowSMSManager(true)}
+                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        <span>SMS</span>
+                      </button>
+                      <button
+                        onClick={() => setShowQRCodeGenerator(true)}
+                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <QrCode className="h-4 w-4" />
+                        <span>QR Codes</span>
+                      </button>
+                      <button
+                        onClick={() => setShowAnalyticsDashboard(true)}
+                        className="flex items-center space-x-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Analytics</span>
+                      </button>
+                      <button
+                        onClick={() => setShowChessIntegration(true)}
+                        className="flex items-center space-x-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
+                      >
+                        <Gamepad2 className="h-4 w-4" />
+                        <span>Chess Platforms</span>
                       </button>
                       <button
                         onClick={() => setShowAPIDocs(true)}
@@ -1756,6 +1864,19 @@ const TournamentDetail: React.FC = () => {
                                   </button>
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <button
+                                    onClick={() => handleSort('bye_rounds')}
+                                    className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
+                                  >
+                                    <span>Bye Rounds</span>
+                                    {sortField === 'bye_rounds' && (
+                                      sortDirection === 'asc' ? 
+                                        <ChevronUp className="h-4 w-4" /> : 
+                                        <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </button>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Actions
                                 </th>
                               </tr>
@@ -1895,6 +2016,15 @@ const TournamentDetail: React.FC = () => {
                                   );
                                 }
                               })()
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {player.bye_rounds ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                {player.bye_rounds}
+                              </span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
@@ -2118,6 +2248,20 @@ const TournamentDetail: React.FC = () => {
                     <Printer className="h-4 w-4" />
                     <span>Print</span>
                   </button>
+                  <button
+                    onClick={() => setShowLiveStandings(true)}
+                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Activity className="h-4 w-4" />
+                    <span>Live Standings</span>
+                  </button>
+                  <button
+                    onClick={() => setShowPaymentManager(true)}
+                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    <span>Payments</span>
+                  </button>
                 </div>
               </div>
               
@@ -2173,6 +2317,34 @@ const TournamentDetail: React.FC = () => {
                   })()}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'prizes' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Prize Management</h2>
+                  <p className="text-sm text-gray-600">
+                    Configure and view prize distributions for this tournament
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setShowPrizeConfiguration(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Configure Prizes</span>
+                  </button>
+                </div>
+              </div>
+              
+              <PrizeDisplay
+                tournamentId={id!}
+                showPrizeSettings={true}
+                onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
+              />
             </div>
           )}
 
@@ -2559,6 +2731,81 @@ const TournamentDetail: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Prize Configuration Modal */}
+      <PrizeConfigurationModal
+        isOpen={showPrizeConfiguration}
+        onClose={() => setShowPrizeConfiguration(false)}
+        tournamentId={id!}
+        currentSettings={prizeSettings}
+        onUpdate={(settings) => {
+          setPrizeSettings(settings);
+          // Refresh prize display if on prizes tab
+          if (activeTab === 'prizes') {
+            // The PrizeDisplay component will automatically refresh
+          }
+        }}
+      />
+
+      {/* New Feature Modals */}
+      <SMSManager
+        isOpen={showSMSManager}
+        onClose={() => setShowSMSManager(false)}
+        tournamentId={id || ''}
+      />
+
+      <QRCodeGenerator
+        isOpen={showQRCodeGenerator}
+        onClose={() => setShowQRCodeGenerator(false)}
+        tournamentId={id || ''}
+      />
+
+      <PlayerProfile
+        isOpen={showPlayerProfile}
+        onClose={() => setShowPlayerProfile(false)}
+        playerId={state.players?.[0]?.id || ''}
+      />
+
+      <LiveStandings
+        isOpen={showLiveStandings}
+        onClose={() => setShowLiveStandings(false)}
+        tournamentId={id || ''}
+      />
+
+      <PaymentManager
+        isOpen={showPaymentManager}
+        onClose={() => setShowPaymentManager(false)}
+        tournamentId={id || ''}
+      />
+
+      {showPWAStatus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">PWA Status</h2>
+              <button
+                onClick={() => setShowPWAStatus(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <PWAStatus showDetails={true} />
+          </div>
+        </div>
+      )}
+
+      <AnalyticsDashboard
+        isOpen={showAnalyticsDashboard}
+        onClose={() => setShowAnalyticsDashboard(false)}
+        tournamentId={id || ''}
+      />
+
+      <ChessPlatformIntegration
+        isOpen={showChessIntegration}
+        onClose={() => setShowChessIntegration(false)}
+        tournamentId={id || ''}
+      />
 
     </div>
   );

@@ -1195,6 +1195,35 @@ router.post('/generate/section', async (req, res) => {
       section: sectionName
     });
 
+    // Automatically record bye results for players with byes
+    for (const pairing of generatedPairings) {
+      if (pairing.is_bye && pairing.white_player_id && !pairing.black_player_id) {
+        try {
+          // Calculate bye points
+          const byePoints = calculateByePoints(pairing.bye_type);
+          
+          // Record bye result for the white player
+          await new Promise((resolve, reject) => {
+            const resultId = uuidv4();
+            db.run(
+              `INSERT INTO results (id, tournament_id, player_id, round, opponent_id, color, result, points, pairing_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [resultId, tournamentId, pairing.white_player_id, currentRound, 
+               null, 'white', `bye_${pairing.bye_type || 'bye'}`, byePoints, pairing.id],
+              function(err) {
+                if (err) reject(err);
+                else resolve();
+              }
+            );
+          });
+          
+          console.log(`[PairingGeneration] Automatically recorded bye result for player ${pairing.white_player_id}: ${byePoints} points`);
+        } catch (error) {
+          console.error(`[PairingGeneration] Error recording bye result for player ${pairing.white_player_id}:`, error.message);
+        }
+      }
+    }
+
     // Send webhook notification for pairings generated
     await sendPairingNotificationWebhook(tournamentId, currentRound, generatedPairings, tournament);
 
@@ -2303,6 +2332,16 @@ function calculatePoints(result, color) {
     return color === 'black' ? 1 : 0;
   }
   return 0;
+}
+
+// Helper function to calculate bye points based on bye type
+function calculateByePoints(byeType) {
+  if (byeType === 'unpaired') {
+    return 1.0; // Full point bye
+  } else if (byeType === 'bye') {
+    return 0.5; // Half point bye
+  }
+  return 0.5; // Default to half point bye
 }
 
 /**

@@ -198,8 +198,9 @@ function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournament
     // Sort eligible players by score and tiebreakers
     const sortedEligiblePlayers = sortStandingsByTiebreakers(eligiblePlayers, ['buchholz', 'sonnebornBerger']);
 
-    // Award prize to the top eligible player(s)
-    const topPlayers = sortedEligiblePlayers.slice(0, 1); // Award to top player only for rating prizes
+    // Award prize to the top eligible player(s) - support multiple positions for rating prizes
+    const prizeCount = prize.position || 1;
+    const topPlayers = sortedEligiblePlayers.slice(0, prizeCount);
     
     const prizeDistributions = distributePrizesToTiedPlayers(
       topPlayers,
@@ -228,11 +229,26 @@ function isEligibleForRatingPrize(player, ratingCategory) {
     return !player.rating || player.rating === 0;
   }
   
-  // Handle "Under X" categories
+  // Handle "Under X" categories (more flexible matching)
   const underMatch = ratingCategory.match(/under\s*(\d+)/i);
   if (underMatch) {
     const threshold = parseInt(underMatch[1]);
     return rating < threshold;
+  }
+  
+  // Handle range categories (e.g., "1200-1399", "1400-1599")
+  const rangeMatch = ratingCategory.match(/(\d+)\s*-\s*(\d+)/i);
+  if (rangeMatch) {
+    const minRating = parseInt(rangeMatch[1]);
+    const maxRating = parseInt(rangeMatch[2]);
+    return rating >= minRating && rating <= maxRating;
+  }
+  
+  // Handle "X+" categories (e.g., "2200+")
+  const plusMatch = ratingCategory.match(/(\d+)\s*\+/i);
+  if (plusMatch) {
+    const minRating = parseInt(plusMatch[1]);
+    return rating >= minRating;
   }
   
   // Handle USCF class categories
@@ -256,6 +272,23 @@ function isEligibleForRatingPrize(player, ratingCategory) {
   }
   if (ratingCategory.includes('Master') || ratingCategory.includes('2200+')) {
     return rating >= 2200;
+  }
+  
+  // Handle common under categories
+  if (ratingCategory.includes('U800') || ratingCategory.includes('Under 800')) {
+    return rating < 800;
+  }
+  if (ratingCategory.includes('U1000') || ratingCategory.includes('Under 1000')) {
+    return rating < 1000;
+  }
+  if (ratingCategory.includes('U1400') || ratingCategory.includes('Under 1400')) {
+    return rating < 1400;
+  }
+  if (ratingCategory.includes('U1800') || ratingCategory.includes('Under 1800')) {
+    return rating < 1800;
+  }
+  if (ratingCategory.includes('U2000') || ratingCategory.includes('Under 2000')) {
+    return rating < 2000;
   }
   
   return false;
@@ -290,7 +323,7 @@ function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, 
         player_id: player.id,
         prize_name: cashPrizes.map(p => p.name).join(' + '),
         prize_type: 'cash',
-        amount: cashPerPlayer,
+        amount: Math.round(cashPerPlayer * 100) / 100, // Round to 2 decimal places
         position: position,
         section: sectionName,
         tie_group: tiedPlayers.length > 1 ? 1 : undefined
@@ -298,20 +331,33 @@ function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, 
     });
   }
 
-  // Process non-cash prizes (use tiebreakers)
+  // Process non-cash prizes (use tiebreakers for distribution)
   if (nonCashPrizes.length > 0) {
-    nonCashPrizes.forEach((prize, index) => {
-      if (index < tiedPlayers.length) {
-        const player = tiedPlayers[index];
-        distributions.push({
-          player_id: player.id,
-          prize_name: prize.name,
-          prize_type: prize.type,
-          position: position,
-          section: sectionName,
-          tie_group: tiedPlayers.length > 1 ? 1 : undefined
-        });
+    // Group non-cash prizes by type for better distribution
+    const prizesByType = {};
+    nonCashPrizes.forEach(prize => {
+      if (!prizesByType[prize.type]) {
+        prizesByType[prize.type] = [];
       }
+      prizesByType[prize.type].push(prize);
+    });
+
+    // Distribute each type of prize
+    Object.entries(prizesByType).forEach(([prizeType, prizes]) => {
+      prizes.forEach((prize, prizeIndex) => {
+        if (prizeIndex < tiedPlayers.length) {
+          const player = tiedPlayers[prizeIndex];
+          distributions.push({
+            player_id: player.id,
+            prize_name: prize.name,
+            prize_type: prize.type,
+            amount: prize.amount || undefined,
+            position: position,
+            section: sectionName,
+            tie_group: tiedPlayers.length > 1 ? 1 : undefined
+          });
+        }
+      });
     });
   }
 
@@ -473,6 +519,104 @@ async function autoAssignPrizesOnRoundCompletion(tournamentId, round, db) {
   }
 }
 
+/**
+ * Generate standard prize structure based on tournament size and settings
+ */
+function generateStandardPrizeStructure(tournament, playerCount, prizeFund = 0) {
+  const sections = {};
+  const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+  const definedSections = settings.sections || [];
+  
+  // If no sections defined, create a default Open section
+  if (definedSections.length === 0) {
+    definedSections.push({ name: 'Open', min_rating: 0, max_rating: 9999 });
+  }
+
+  definedSections.forEach(section => {
+    const sectionName = section.name;
+    const sectionPlayers = playerCount; // This would be filtered by actual section in real implementation
+    const sectionPrizeFund = prizeFund * (sectionPlayers / playerCount);
+    
+    const prizes = [];
+    
+    // Position-based prizes
+    if (sectionPrizeFund > 0) {
+      // Cash prizes for top positions
+      const cashPrizes = [
+        { position: 1, percentage: 0.4, name: '1st Place' },
+        { position: 2, percentage: 0.25, name: '2nd Place' },
+        { position: 3, percentage: 0.15, name: '3rd Place' }
+      ];
+      
+      if (sectionPlayers >= 8) {
+        cashPrizes.push({ position: 4, percentage: 0.1, name: '4th Place' });
+      }
+      if (sectionPlayers >= 12) {
+        cashPrizes.push({ position: 5, percentage: 0.1, name: '5th Place' });
+      }
+      
+      cashPrizes.forEach(prize => {
+        if (prize.percentage > 0) {
+          prizes.push({
+            name: prize.name,
+            type: 'cash',
+            position: prize.position,
+            amount: Math.round(sectionPrizeFund * prize.percentage * 100) / 100,
+            description: `${prize.name} in ${sectionName} section`
+          });
+        }
+      });
+    }
+    
+    // Trophy prizes for top 3
+    const trophyPrizes = [
+      { position: 1, name: '1st Place Trophy', type: 'trophy' },
+      { position: 2, name: '2nd Place Trophy', type: 'trophy' },
+      { position: 3, name: '3rd Place Trophy', type: 'trophy' }
+    ];
+    
+    trophyPrizes.forEach(prize => {
+      prizes.push({
+        name: prize.name,
+        type: prize.type,
+        position: prize.position,
+        description: `${prize.name} in ${sectionName} section`
+      });
+    });
+    
+    // Under prizes based on rating distribution
+    const underPrizes = [
+      { rating: 1600, name: 'Under 1600 1st Place', type: 'cash', amount: Math.round(sectionPrizeFund * 0.05 * 100) / 100 },
+      { rating: 1200, name: 'Under 1200 1st Place', type: 'cash', amount: Math.round(sectionPrizeFund * 0.03 * 100) / 100 },
+      { rating: 1000, name: 'Under 1000 1st Place', type: 'trophy' }
+    ];
+    
+    underPrizes.forEach(prize => {
+      if (prize.amount > 0 || prize.type !== 'cash') {
+        prizes.push({
+          name: prize.name,
+          type: prize.type,
+          ratingCategory: `Under ${prize.rating}`,
+          position: 1,
+          amount: prize.amount,
+          description: `Top player under ${prize.rating} rating`
+        });
+      }
+    });
+    
+    sections[sectionName] = {
+      name: sectionName,
+      prizes: prizes
+    };
+  });
+  
+  return {
+    enabled: true,
+    autoAssign: true,
+    sections: Object.values(sections)
+  };
+}
+
 module.exports = {
   calculateAndDistributePrizes,
   getPrizeDistributions,
@@ -485,7 +629,8 @@ module.exports = {
   sortStandingsByTiebreakers,
   getTournamentStandings,
   isEligibleForRatingPrize,
-  getPlayerPosition
+  getPlayerPosition,
+  generateStandardPrizeStructure
 };
 
 

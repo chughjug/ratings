@@ -246,13 +246,13 @@ class EnhancedPairingSystem {
               white_player_id: playerId,
               black_player_id: null,
               is_bye: true,
-              bye_type: 'unpaired',  // Full point bye for registered bye
+              bye_type: 'bye',  // Half point bye for registered bye
               section: sectionName,
               round: round,
               tournament_id: tournamentId,
               board: currentBoardNumber
             });
-            console.log(`[EnhancedPairingSystem] Created unpaired pairing for registered bye player ${playerId}`);
+            console.log(`[EnhancedPairingSystem] Created bye pairing for registered bye player ${playerId}`);
           });
 
           allPairings.push(...sectionPairings);

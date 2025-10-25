@@ -776,13 +776,14 @@ router.post('/:id/complete', async (req, res) => {
     // Auto-populate prizes if enabled
     const prizeResult = await autoPopulatePrizes(db, id, tournament, standings);
 
-    // Auto-assign prizes according to USCF rules
-    await autoAssignPrizesOnTournamentCompletion(id, db);
+    // Calculate and distribute prizes based on tournament settings
+    const prizeDistributions = await calculateAndDistributePrizes(id, db);
 
     res.json({
       success: true,
       message: 'Tournament completed successfully',
-      prizeResult: prizeResult
+      prizeResult: prizeResult,
+      prizeDistributions: prizeDistributions
     });
 
   } catch (error) {
@@ -941,6 +942,53 @@ router.put('/:id/prize-settings', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update prize settings'
+    });
+  }
+});
+
+// Generate standard prize structure for a tournament
+router.post('/:id/generate-prize-structure', async (req, res) => {
+  const { id } = req.params;
+  const { prizeFund = 0 } = req.body;
+  
+  try {
+    // Get tournament
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    // Get player count
+    const playerCount = await new Promise((resolve, reject) => {
+      db.get('SELECT COUNT(*) as count FROM players WHERE tournament_id = ? AND status = "active"', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row.count);
+      });
+    });
+
+    // Generate standard prize structure
+    const { generateStandardPrizeStructure } = require('../services/prizeService');
+    const prizeStructure = generateStandardPrizeStructure(tournament, playerCount, prizeFund);
+
+    res.json({
+      success: true,
+      data: prizeStructure,
+      message: 'Standard prize structure generated successfully'
+    });
+  } catch (error) {
+    console.error('Error generating prize structure:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate prize structure'
     });
   }
 });

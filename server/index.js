@@ -222,6 +222,13 @@ const registrationRoutes = require('./routes/registrations');
 const enhancedFeaturesRoutes = require('./routes/enhancedFeatures');
 const pairingEditorRoutes = require('./routes/pairingEditor');
 const googleImportRoutes = require('./routes/googleImport');
+const smsRoutes = require('./routes/sms');
+const qrCodeRoutes = require('./routes/qrCodes');
+const playerProfileRoutes = require('./routes/playerProfiles');
+const liveStandingsRoutes = require('./routes/liveStandings');
+const liveStandingsService = require('./services/liveStandingsService');
+const paymentRoutes = require('./routes/payments');
+const chessIntegrationRoutes = require('./routes/chessIntegrations');
 
 // Use routes
 console.log('Setting up routes...');
@@ -285,6 +292,12 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/enhanced', enhancedFeaturesRoutes);
 app.use('/api/pairing-editor', pairingEditorRoutes);
 app.use('/api/google-import', googleImportRoutes);
+app.use('/api/sms', smsRoutes);
+app.use('/api/qr-codes', qrCodeRoutes);
+app.use('/api/player-profiles', playerProfileRoutes);
+app.use('/api/live-standings', liveStandingsRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/chess', chessIntegrationRoutes);
 
 console.log('Routes set up successfully');
 
@@ -391,6 +404,10 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 CORS Origin: ${process.env.CORS_ORIGIN || 'not set'}`);
   console.log(`📊 DBF file maintenance enabled - files will be automatically generated when missing`);
+  
+  // Initialize Live Standings WebSocket service
+  liveStandingsService.initialize(server);
+  console.log(`⚡ Live Standings WebSocket service initialized`);
   
   // Log server info for debugging
   if (process.env.NODE_ENV === 'production') {

@@ -157,6 +157,8 @@ export const tournamentApi = {
   calculatePrizes: (id: string) => api.post<{success: boolean, data: any[], message?: string, error?: string}>(`/tournaments/${id}/prizes/calculate`),
   updatePrizeSettings: (id: string, prizeSettings: any) => 
     api.put<{success: boolean, message: string, error?: string}>(`/tournaments/${id}/prize-settings`, { prizeSettings }),
+  generatePrizeStructure: (id: string, prizeFund?: number) => 
+    api.post<{success: boolean, data: any, message?: string, error?: string}>(`/tournaments/${id}/generate-prize-structure`, { prizeFund }),
   // Team-related endpoints
   getTeamStandings: (id: string, params?: {type?: string, scoring_method?: string, top_n?: number}) => {
     const queryParams = new URLSearchParams();
@@ -575,6 +577,341 @@ export const pairingEditorApi = {
     if (section) params.append('section', section);
     return api.get(`/pairing-editor/tournament/${tournamentId}/history?${params.toString()}`);
   }
+};
+
+// SMS API
+export const smsApi = {
+  // Send single SMS
+  sendSMS: (phoneNumber: string, message: string, options?: any) =>
+    api.post('/sms/send', { phoneNumber, message, options }),
+  
+  // Send bulk SMS
+  sendBulkSMS: (recipients: Array<{phoneNumber: string, message: string, playerName: string}>, options?: any) =>
+    api.post('/sms/bulk', { recipients, options }),
+  
+  // Send tournament notification
+  sendTournamentNotification: (tournamentId: string, notificationType: string, data?: any) =>
+    api.post(`/sms/tournament/${tournamentId}/notify`, { notificationType, data }),
+  
+  // Get SMS delivery status
+  getDeliveryStatus: (messageId: string) =>
+    api.get(`/sms/status/${messageId}`),
+  
+  // Get SMS usage statistics
+  getStats: (startDate: string, endDate: string) =>
+    api.get(`/sms/stats?startDate=${startDate}&endDate=${endDate}`),
+  
+  // Test SMS configuration
+  testSMS: (phoneNumber: string) =>
+    api.post('/sms/test', { phoneNumber }),
+  
+  // Get SMS configuration status
+  getConfig: () =>
+    api.get('/sms/config')
+};
+
+// QR Code API
+export const qrCodeApi = {
+  // Generate pairings QR code
+  generatePairings: (tournamentId: string, round: number, options?: any) =>
+    api.post('/qr-codes/pairings', { tournamentId, round, options }),
+  
+  // Generate standings QR code
+  generateStandings: (tournamentId: string, options?: any) =>
+    api.post('/qr-codes/standings', { tournamentId, options }),
+  
+  // Generate tournament QR code
+  generateTournament: (tournamentId: string, options?: any) =>
+    api.post('/qr-codes/tournament', { tournamentId, options }),
+  
+  // Generate player check-in QR code
+  generatePlayerCheckIn: (tournamentId: string, playerId: string, options?: any) =>
+    api.post('/qr-codes/player-checkin', { tournamentId, playerId, options }),
+  
+  // Generate custom QR code
+  generateCustom: (content: string, options?: any) =>
+    api.post('/qr-codes/custom', { content, options }),
+  
+  // Generate batch QR codes
+  generateTournamentBatch: (tournamentId: string, options?: any) =>
+    api.post('/qr-codes/tournament-batch', { tournamentId, options }),
+  
+  // Generate player QR codes
+  generatePlayersBatch: (tournamentId: string, players: any[], options?: any) =>
+    api.post('/qr-codes/players-batch', { tournamentId, players, options }),
+  
+  // Generate print-ready QR code
+  generatePrint: (content: string, options?: any) =>
+    api.post('/qr-codes/print', { content, options }),
+  
+  // Validate QR code content
+  validateContent: (content: string) =>
+    api.post('/qr-codes/validate', { content }),
+  
+  // Get available options
+  getOptions: () =>
+    api.get('/qr-codes/options')
+};
+
+// Player Profile API
+export const playerProfileApi = {
+  // Get player profile
+  getProfile: (playerId: string) =>
+    api.get(`/player-profiles/${playerId}`),
+  
+  // Update player profile
+  updateProfile: (playerId: string, updates: any) =>
+    api.put(`/player-profiles/${playerId}`, updates),
+  
+  // Upload player photo
+  uploadPhoto: (playerId: string, formData: FormData) =>
+    api.post(`/player-profiles/${playerId}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+  
+  // Delete player photo
+  deletePhoto: (playerId: string, photoType: string) =>
+    api.delete(`/player-profiles/${playerId}/photo/${photoType}`),
+  
+  // Get player statistics
+  getStatistics: (playerId: string) =>
+    api.get(`/player-profiles/${playerId}/statistics`),
+  
+  // Get player tournament history
+  getTournamentHistory: (playerId: string, options?: any) =>
+    api.get(`/player-profiles/${playerId}/tournaments`, { params: options }),
+  
+  // Get player achievements
+  getAchievements: (playerId: string, type?: string) =>
+    api.get(`/player-profiles/${playerId}/achievements`, { params: { type } }),
+  
+  // Add achievement
+  addAchievement: (playerId: string, achievement: any) =>
+    api.post(`/player-profiles/${playerId}/achievements`, achievement),
+  
+  // Search players
+  searchPlayers: (query: string, options?: any) =>
+    api.get('/player-profiles/search', { params: { q: query, ...options } }),
+  
+  // Get leaderboard
+  getLeaderboard: (options?: any) =>
+    api.get('/player-profiles/leaderboard', { params: options }),
+  
+  // Get achievement types
+  getAchievementTypes: () =>
+    api.get('/player-profiles/achievements/types')
+};
+
+// Live Standings API
+export const liveStandingsApi = {
+  // Get current live standings
+  getStandings: (tournamentId: string) =>
+    api.get(`/live-standings/${tournamentId}`),
+  
+  // Trigger manual update
+  triggerUpdate: (tournamentId: string) =>
+    api.post(`/live-standings/${tournamentId}/trigger`),
+  
+  // Get connected clients count
+  getClientCount: (tournamentId: string) =>
+    api.get(`/live-standings/${tournamentId}/clients`),
+  
+  // Get all active tournaments
+  getActiveTournaments: () =>
+    api.get('/live-standings/active'),
+  
+  // Update all active tournaments
+  updateAllTournaments: () =>
+    api.post('/live-standings/update-all'),
+  
+  // Get service statistics
+  getStats: () =>
+    api.get('/live-standings/stats'),
+  
+  // Cleanup inactive connections
+  cleanup: () =>
+    api.post('/live-standings/cleanup'),
+  
+  // Get WebSocket connection info
+  getWSInfo: () =>
+    api.get('/live-standings/ws-info')
+};
+
+// Payment API
+export const paymentApi = {
+  // Process entry fee payment
+  processEntryFee: (paymentData: any) =>
+    api.post('/payments/entry-fee', paymentData),
+  
+  // Confirm payment
+  confirmPayment: (confirmationData: any) =>
+    api.post('/payments/confirm', confirmationData),
+  
+  // Process prize payments
+  processPrizes: (prizeData: any) =>
+    api.post('/payments/prizes', prizeData),
+  
+  // Get payment history
+  getHistory: (tournamentId: string) =>
+    api.get(`/payments/history/${tournamentId}`),
+  
+  // Get payment statistics
+  getStats: (tournamentId: string) =>
+    api.get(`/payments/stats/${tournamentId}`),
+  
+  // Refund payment
+  refundPayment: (paymentId: string, amount?: number) =>
+    api.post('/payments/refund', { paymentId, amount }),
+  
+  // Get payment configuration
+  getConfig: () =>
+    api.get('/payments/config'),
+  
+  // Get available payment methods
+  getMethods: () =>
+    api.get('/payments/methods'),
+  
+  // Stripe specific endpoints
+  createStripeIntent: (intentData: any) =>
+    api.post('/payments/stripe/create-intent', intentData),
+  
+  // PayPal specific endpoints
+  createPayPalOrder: (orderData: any) =>
+    api.post('/payments/paypal/create-order', orderData),
+  
+  capturePayPalOrder: (orderId: string) =>
+    api.post('/payments/paypal/capture-order', { orderId })
+};
+
+// Analytics API
+export const analyticsApi = {
+  // Get comprehensive tournament analytics
+  getTournamentAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}`),
+  
+  // Get specific analytics sections
+  getTournamentOverview: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/overview`),
+  
+  getPlayerAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/players`),
+  
+  getPairingAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/pairings`),
+  
+  getRatingAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/ratings`),
+  
+  getPerformanceAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/performance`),
+  
+  getTimeAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/time`),
+  
+  getSectionAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/sections`),
+  
+  getFinancialAnalytics: (tournamentId: string) =>
+    api.get(`/analytics/tournament/${tournamentId}/financial`),
+  
+  // System-wide analytics
+  getSystemAnalytics: () =>
+    api.get('/analytics/system'),
+  
+  getTournamentTrends: () =>
+    api.get('/analytics/trends/tournaments'),
+  
+  getPlayerTrends: () =>
+    api.get('/analytics/trends/players'),
+  
+  getSystemMetrics: () =>
+    api.get('/analytics/metrics'),
+  
+  getFeatureAnalytics: () =>
+    api.get('/analytics/features'),
+  
+  // Dashboard and export
+  getDashboardData: (tournamentId: string, widgets: string[] = []) =>
+    api.get(`/analytics/dashboard/${tournamentId}`, { params: { widgets: widgets.join(',') } }),
+  
+  exportAnalytics: (tournamentId: string, format: 'json' | 'csv' = 'json') =>
+    api.get(`/analytics/export/${tournamentId}`, { params: { format } }),
+  
+  // Cache management
+  clearAnalyticsCache: () =>
+    api.post('/analytics/clear-cache')
+};
+
+// Chess Platform Integration API
+export const chessIntegrationApi = {
+  // Chess.com endpoints
+  getChessComPlayer: (username: string) =>
+    api.get(`/chess/chesscom/player/${username}`),
+  
+  getChessComPlayerStats: (username: string) =>
+    api.get(`/chess/chesscom/player/${username}/stats`),
+  
+  getChessComPlayerGames: (username: string, limit: number = 10) =>
+    api.get(`/chess/chesscom/player/${username}/games`, { params: { limit } }),
+  
+  searchChessComPlayers: (query: string) =>
+    api.get('/chess/chesscom/search', { params: { q: query } }),
+  
+  getChessComTournament: (tournamentId: string) =>
+    api.get(`/chess/chesscom/tournament/${tournamentId}`),
+  
+  getChessComLiveGames: () =>
+    api.get('/chess/chesscom/live-games'),
+  
+  getChessComPuzzle: () =>
+    api.get('/chess/chesscom/puzzle'),
+  
+  getChessComClub: (clubId: string) =>
+    api.get(`/chess/chesscom/club/${clubId}`),
+  
+  // Lichess endpoints
+  getLichessPlayer: (username: string) =>
+    api.get(`/chess/lichess/player/${username}`),
+  
+  getLichessPlayerStats: (username: string) =>
+    api.get(`/chess/lichess/player/${username}/stats`),
+  
+  getLichessPlayerGames: (username: string, limit: number = 10) =>
+    api.get(`/chess/lichess/player/${username}/games`, { params: { limit } }),
+  
+  searchLichessPlayers: (query: string) =>
+    api.get('/chess/lichess/search', { params: { q: query } }),
+  
+  getLichessTournament: (tournamentId: string) =>
+    api.get(`/chess/lichess/tournament/${tournamentId}`),
+  
+  getLichessLiveGames: () =>
+    api.get('/chess/lichess/live-games'),
+  
+  getLichessPuzzle: () =>
+    api.get('/chess/lichess/puzzle'),
+  
+  getLichessTeam: (teamId: string) =>
+    api.get(`/chess/lichess/team/${teamId}`),
+  
+  getLichessTV: () =>
+    api.get('/chess/lichess/tv'),
+  
+  // Multi-platform endpoints
+  searchPlayers: (query: string, platform?: 'chesscom' | 'lichess') =>
+    api.get('/chess/search', { params: { q: query, platform } }),
+  
+  getPlayerProfile: (username: string, platform?: 'chesscom' | 'lichess') =>
+    api.get(`/chess/player/${username}`, { params: { platform } }),
+  
+  getStatus: () =>
+    api.get('/chess/status'),
+  
+  importPlayer: (username: string, platform: 'chesscom' | 'lichess', tournamentId: string) =>
+    api.post('/chess/import-player', { username, platform, tournamentId }),
+  
+  getLeaderboards: (platform?: 'chesscom' | 'lichess', timeControl?: string) =>
+    api.get('/chess/leaderboards', { params: { platform, timeControl } })
 };
 
 export default api;

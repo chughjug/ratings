@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { TournamentProvider } from './contexts/TournamentContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
 import Navbar from './components/Navbar';
+import PWAStatus from './components/PWAStatus';
+import pwaService from './services/pwaService';
 import Dashboard from './pages/Dashboard';
 import TournamentList from './pages/TournamentList';
 import TournamentDetail from './pages/TournamentDetail';
@@ -23,11 +25,20 @@ import ProtectedRoute from './components/ProtectedRoute';
 import './styles/print.css';
 
 function App() {
+  useEffect(() => {
+    // Initialize PWA service
+    pwaService.init();
+  }, []);
+
   return (
     <AuthProvider>
       <TournamentProvider>
         <Router>
           <div className="min-h-screen bg-gray-50">
+            {/* PWA Status Component */}
+            <div className="fixed bottom-4 right-4 z-50">
+              <PWAStatus showDetails={false} />
+            </div>
               <Routes>
                 <Route path="/public/tournaments" element={<PublicTournamentList />} />
                 <Route path="/public/tournaments/:id" element={<PublicTournamentDisplay />} />
