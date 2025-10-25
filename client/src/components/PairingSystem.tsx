@@ -64,7 +64,13 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
       const pairings = (response.data || []).map(pairing => ({
         ...pairing,
         white_name: pairing.white_name || '',
-        black_name: pairing.black_name || ''
+        black_name: pairing.black_name || '',
+        white_rating: pairing.white_rating || 0,
+        black_rating: pairing.black_rating || 0,
+        white_uscf_id: pairing.white_uscf_id || '',
+        black_uscf_id: pairing.black_uscf_id || '',
+        white_lichess_username: pairing.white_lichess_username || '',
+        black_lichess_username: pairing.black_lichess_username || ''
       }));
       setPairings(pairings);
       onPairingsGenerated(pairings);
