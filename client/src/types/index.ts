@@ -10,23 +10,109 @@ export interface Tournament {
   status: 'created' | 'active' | 'completed' | 'cancelled';
   settings?: TournamentSettings;
   created_at: string;
-  // US Chess specific fields
+  
+  // USCF Compliance Fields - Required for DBF Export
+  // Location Information
   city?: string;
   state?: string;
+  zipcode?: string;
   location?: string;
+  venue_name?: string;
+  venue_address?: string;
+  venue_city?: string;
+  venue_state?: string;
+  venue_zipcode?: string;
+  
+  // Tournament Director Information
   chief_td_name?: string;
   chief_td_uscf_id?: string;
+  chief_td_email?: string;
+  chief_td_phone?: string;
+  assistant_td_name?: string;
+  assistant_td_uscf_id?: string;
+  
+  // USCF Administrative Fields
+  affiliate_id?: string;
+  uscf_tournament_id?: string;
+  uscf_section_ids?: string;
+  
+  // Tournament Classification
+  scholastic_tournament?: boolean;
+  fide_rated?: boolean;
+  uscf_rated?: boolean;
+  send_crosstable?: boolean;
+  
+  // Rating System Configuration
+  rating_system?: 'regular' | 'quick' | 'blitz';
+  k_factor?: 'regular' | 'scholastic' | 'provisional';
+  pairing_system?: 'swiss' | 'round_robin';
+  tournament_type?: 'swiss' | 'round_robin';
+  
+  // Scoring Configuration
+  bye_points?: number;
+  forfeit_points?: number;
+  half_point_bye_points?: number;
+  full_point_bye_points?: number;
+  pairing_allocated_bye_points?: number;
+  
+  // Rating Thresholds
+  provisional_rating_threshold?: number;
+  minimum_games_for_rating?: number;
+  
+  // Player Statistics
+  expected_players?: number;
+  total_players?: number;
+  rated_players?: number;
+  unrated_players?: number;
+  foreign_players?: number;
+  provisional_players?: number;
+  withdrawn_players?: number;
+  forfeit_players?: number;
+  bye_players?: number;
+  half_point_bye_players?: number;
+  full_point_bye_players?: number;
+  pairing_allocated_bye_players?: number;
+  
+  // Tournament Management
+  allow_registration?: boolean;
+  is_public?: boolean;
+  public_url?: string;
+  website?: string;
+  entry_fee_amount?: number;
+  prize_fund_amount?: number;
+  time_control_description?: string;
+  
+  // USCF Export Status
+  rating_submission_status?: 'not_submitted' | 'submitted' | 'accepted' | 'rejected';
+  rating_submission_date?: string;
+  rating_submission_notes?: string;
+  uscf_rating_report_generated?: boolean;
+  uscf_rating_report_date?: string;
+  uscf_rating_report_notes?: string;
+  
+  // Compliance and Validation
+  compliance_notes?: string;
+  regulatory_notes?: string;
+  audit_trail?: string;
+  validation_status?: 'pending' | 'validated' | 'failed';
+  validation_notes?: string;
+  validation_date?: string;
+  validation_by?: string;
+  
+  // System Fields
+  created_by?: string;
+  last_modified_by?: string;
+  last_modified_date?: string;
+  version?: string;
+  compliance_version?: string;
+  export_format_version?: string;
+  data_integrity_hash?: string;
+  
+  // Legacy fields for backward compatibility
   chief_arbiter_name?: string;
   chief_arbiter_fide_id?: string;
   chief_organizer_name?: string;
   chief_organizer_fide_id?: string;
-  expected_players?: number;
-  website?: string;
-  fide_rated?: boolean;
-  uscf_rated?: boolean;
-  allow_registration?: boolean;
-  is_public?: boolean;
-  public_url?: string;
   // Multi-day tournament fields
   days?: TournamentDay[];
   // Simultaneous exhibition fields

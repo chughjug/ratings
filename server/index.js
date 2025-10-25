@@ -231,6 +231,7 @@ const paymentRoutes = require('./routes/payments');
 const chessIntegrationRoutes = require('./routes/chessIntegrations');
 const lichessRoutes = require('./routes/lichess');
 const trfExportRoutes = require('./routes/trfExport');
+const uscfExportRoutes = require('./routes/uscfExport');
 
 // Use routes
 console.log('Setting up routes...');
@@ -302,6 +303,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/chess', chessIntegrationRoutes);
 app.use('/api/lichess', lichessRoutes);
 app.use('/api/export', trfExportRoutes);
+app.use('/api/export', uscfExportRoutes);
 
 console.log('Routes set up successfully');
 
