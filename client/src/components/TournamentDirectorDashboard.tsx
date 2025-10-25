@@ -16,11 +16,10 @@ import {
   Calendar,
   RefreshCw
 } from 'lucide-react';
-import { useTournament } from '../contexts/TournamentContext';
-import { tournamentApi, pairingApi } from '../services/api';
+import { tournamentApi, pairingApi, playerApi } from '../services/api';
 import '../styles/pairing-system.css';
 
-interface Player {
+interface DashboardPlayer {
   id: string;
   name: string;
   rating?: number;
@@ -30,13 +29,14 @@ interface Player {
   status: string;
   roundResults: { [round: number]: any };
   tiebreakers: any;
+  rank?: number;
 }
 
 interface Section {
   name: string;
   currentRound: number;
   totalRounds: number;
-  players: Player[];
+  players: DashboardPlayer[];
   pairings: any[];
   isComplete: boolean;
   hasIncompleteResults: boolean;
@@ -52,7 +52,7 @@ const TournamentDirectorDashboard: React.FC<TournamentDirectorDashboardProps> = 
   tournamentId,
   onSectionSelect
 }) => {
-  const { tournament, refreshTournament } = useTournament();
+  const [tournament, setTournament] = useState<any>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedRound, setSelectedRound] = useState<number>(1);
@@ -65,91 +65,120 @@ const TournamentDirectorDashboard: React.FC<TournamentDirectorDashboardProps> = 
     
     setIsLoading(true);
     try {
-      const [tournamentData, sectionsData] = await Promise.all([
-        tournamentApi.getTournament(tournamentId),
-        tournamentApi.getSections(tournamentId)
-      ]);
+      const tournamentResponse = await tournamentApi.getById(tournamentId);
+      const tournamentData = tournamentResponse.data.data;
+      setTournament(tournamentData);
 
-      const sectionsWithData = await Promise.all(
-        sectionsData.map(async (section: any) => {
-          const [players, pairings] = await Promise.all([
-            tournamentApi.getPlayers(tournamentId, section.name),
-            pairingApi.getPairings(tournamentId, section.name)
-          ]);
+      // Get all players for the tournament
+      const playersResponse = await playerApi.getByTournament(tournamentId);
+      const allPlayers = playersResponse.data.data;
 
-          // Calculate player points and standings
-          const playersWithPoints = players.map((player: Player) => {
-            let totalPoints = 0;
-            const roundResults: { [round: number]: any } = {};
-            
-            // Calculate points from pairings
-            pairings.forEach((pairing: any) => {
-              if (pairing.white_player_id === player.id || pairing.black_player_id === player.id) {
-                const isWhite = pairing.white_player_id === player.id;
-                const result = pairing.result;
+      // Group players by section
+      const sectionsMap = new Map<string, Section>();
+      
+      // Initialize sections from tournament data
+      const sectionsData = tournamentData.settings?.sections || [];
+      if (sectionsData.length > 0) {
+        sectionsData.forEach((section: any) => {
+          sectionsMap.set(section.name, {
+            name: section.name,
+            currentRound: 1,
+            totalRounds: tournamentData.rounds || 5,
+            players: [],
+            pairings: [],
+            isComplete: false,
+            hasIncompleteResults: false,
+            canGenerateNext: false
+          });
+        });
+      }
+
+      // Process each section
+      for (const [sectionName, section] of Array.from(sectionsMap.entries())) {
+        // Get players for this section
+        const sectionPlayers = allPlayers.filter((p: any) => p.section === sectionName);
+        
+        // Get all pairings for this section
+        const allPairings: any[] = [];
+        for (let round = 1; round <= (tournamentData.rounds || 5); round++) {
+          try {
+            const pairingsResponse = await pairingApi.getByRound(tournamentId, round, sectionName);
+            allPairings.push(...(pairingsResponse.data || []));
+          } catch (error) {
+            // No pairings for this round yet
+          }
+        }
+
+        // Calculate player points and standings
+        const playersWithPoints = sectionPlayers.map((player: any) => {
+          let totalPoints = 0;
+          const roundResults: { [round: number]: any } = {};
+          
+          // Calculate points from pairings
+          allPairings.forEach((pairing: any) => {
+            if (pairing.white_player_id === player.id || pairing.black_player_id === player.id) {
+              const isWhite = pairing.white_player_id === player.id;
+              const result = pairing.result;
+              
+              if (result) {
+                let points = 0;
+                if (result === '1-0' && isWhite) points = 1;
+                else if (result === '0-1' && !isWhite) points = 1;
+                else if (result === '1/2-1/2') points = 0.5;
                 
-                if (result) {
-                  let points = 0;
-                  if (result === '1-0' && isWhite) points = 1;
-                  else if (result === '0-1' && !isWhite) points = 1;
-                  else if (result === '1/2-1/2') points = 0.5;
-                  
-                  totalPoints += points;
-                  
-                  if (!roundResults[pairing.round]) {
-                    roundResults[pairing.round] = {};
-                  }
-                  roundResults[pairing.round] = {
-                    result,
-                    opponent: isWhite ? pairing.black_name : pairing.white_name,
-                    opponentRating: isWhite ? pairing.black_rating : pairing.white_rating,
-                    color: isWhite ? 'white' : 'black',
-                    board: pairing.board,
-                    points
-                  };
+                totalPoints += points;
+                
+                if (!roundResults[pairing.round]) {
+                  roundResults[pairing.round] = {};
                 }
+                roundResults[pairing.round] = {
+                  result,
+                  opponent: isWhite ? pairing.black_name : pairing.white_name,
+                  opponentRating: isWhite ? pairing.black_rating : pairing.white_rating,
+                  color: isWhite ? 'white' : 'black',
+                  board: pairing.board,
+                  points
+                };
               }
-            });
-
-            return {
-              ...player,
-              points: totalPoints,
-              roundResults
-            };
+            }
           });
-
-          // Sort players by points and rating
-          const sortedPlayers = playersWithPoints.sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            return (b.rating || 0) - (a.rating || 0);
-          });
-
-          // Add rank
-          sortedPlayers.forEach((player, index) => {
-            player.rank = index + 1;
-          });
-
-          const currentRound = Math.max(...pairings.map((p: any) => p.round), 0) + 1;
-          const isComplete = currentRound > tournamentData.rounds;
-          const hasIncompleteResults = pairings.some((p: any) => !p.result);
-          const canGenerateNext = !isComplete && pairings.length > 0;
 
           return {
-            name: section.name,
-            currentRound,
-            totalRounds: tournamentData.rounds,
-            players: sortedPlayers,
-            pairings,
-            isComplete,
-            hasIncompleteResults,
-            canGenerateNext
+            ...player,
+            points: totalPoints,
+            roundResults
           };
-        })
-      );
+        });
 
-      setSections(sectionsWithData);
-      if (sectionsWithData.length > 0 && !selectedSection) {
-        setSelectedSection(sectionsWithData[0].name);
+        // Sort players by points and rating
+        const sortedPlayers = playersWithPoints.sort((a: any, b: any) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return (b.rating || 0) - (a.rating || 0);
+        });
+
+        // Add rank
+        sortedPlayers.forEach((player: any, index: number) => {
+          player.rank = index + 1;
+        });
+
+        const currentRound = allPairings.length > 0 
+          ? Math.max(...allPairings.map((p: any) => p.round), 0) + 1
+          : 1;
+        const isComplete = currentRound > (tournamentData.rounds || 5);
+        const hasIncompleteResults = allPairings.some((p: any) => !p.result);
+        const canGenerateNext = !isComplete && allPairings.length > 0;
+
+        section.players = sortedPlayers;
+        section.pairings = allPairings;
+        section.currentRound = currentRound;
+        section.isComplete = isComplete;
+        section.hasIncompleteResults = hasIncompleteResults;
+        section.canGenerateNext = canGenerateNext;
+      }
+
+      setSections(Array.from(sectionsMap.values()));
+      if (sectionsMap.size > 0 && !selectedSection) {
+        setSelectedSection(Array.from(sectionsMap.keys())[0]);
       }
     } catch (error) {
       console.error('Error loading tournament data:', error);
@@ -170,7 +199,7 @@ const TournamentDirectorDashboard: React.FC<TournamentDirectorDashboardProps> = 
       if (!section) return;
 
       const round = section.currentRound;
-      await pairingApi.generateNextRound(tournamentId, sectionName, round);
+      await pairingApi.generateNextRound(tournamentId, sectionName);
       await loadTournamentData();
     } catch (error) {
       console.error('Error generating next round:', error);
@@ -183,7 +212,11 @@ const TournamentDirectorDashboard: React.FC<TournamentDirectorDashboardProps> = 
   const completeRound = async (sectionName: string) => {
     setIsLoading(true);
     try {
-      await pairingApi.completeRound(tournamentId, sectionName);
+      const section = sections.find(s => s.name === sectionName);
+      if (!section) return;
+      
+      const round = section.currentRound - 1; // Complete the previous round
+      await pairingApi.completeRound(tournamentId, round, sectionName);
       await loadTournamentData();
     } catch (error) {
       console.error('Error completing round:', error);

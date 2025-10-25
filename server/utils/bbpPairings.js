@@ -655,7 +655,7 @@ class BbpPairings {
     const pairings = [];
     
     // Process each score group
-    for (const [score, group] of scoreGroups) {
+    for (const [score, group] of Object.entries(scoreGroups)) {
       if (group.length === 0) continue;
       
       // Handle odd number of players with bye
@@ -788,7 +788,7 @@ class BbpPairings {
     const pairings = [];
     
     // Process each score group
-    for (const [score, group] of scoreGroups) {
+    for (const [score, group] of Object.entries(scoreGroups)) {
       if (group.length === 0) continue;
       
       // Handle odd number of players with bye
@@ -937,77 +937,144 @@ class BbpPairings {
     const player1Colors = this.getLastTwoColors(player1, tournament.colorHistory);
     const player2Colors = this.getLastTwoColors(player2, tournament.colorHistory);
     
+    console.log(`[DEBUG] assignColorsSwiss: ${player1.name} (${player1.rating}) vs ${player2.name} (${player2.rating})`);
+    console.log(`[DEBUG] Player1 colors: ${player1Colors}, Player2 colors: ${player2Colors}`);
+    
     // PRIORITY 1: Avoid immediate color repeats (WW or BB)
     if (player1Colors === 'WW' && player2Colors !== 'WW') {
+      console.log(`[DEBUG] Priority 1: Player1 has WW, giving white to player2`);
       return player2; // Give white to player2
     }
     if (player2Colors === 'WW' && player1Colors !== 'WW') {
+      console.log(`[DEBUG] Priority 1: Player2 has WW, giving white to player1`);
       return player1; // Give white to player1
     }
     if (player1Colors === 'BB' && player2Colors !== 'BB') {
+      console.log(`[DEBUG] Priority 1: Player1 has BB, giving white to player1`);
       return player1; // Give white to player1
     }
     if (player2Colors === 'BB' && player1Colors !== 'BB') {
+      console.log(`[DEBUG] Priority 1: Player2 has BB, giving white to player2`);
       return player2; // Give white to player2
     }
     
     // PRIORITY 2: Check for neutral color preference
     const neutralColor = this.choosePlayerNeutralColor(player1, player2);
     if (neutralColor !== null) {
+      console.log(`[DEBUG] Priority 2: Neutral color preference: ${neutralColor}`);
       return neutralColor === 'white' ? player1 : player2;
     }
     
     // PRIORITY 3: Handle absolute color preferences
     if (player1.absoluteColorPreference && player1.colorPreference === 'white') {
+      console.log(`[DEBUG] Priority 3: Player1 has absolute white preference`);
       return player1;
     }
     if (player1.absoluteColorPreference && player1.colorPreference === 'black') {
+      console.log(`[DEBUG] Priority 3: Player1 has absolute black preference, giving white to player2`);
       return player2;
     }
     if (player2.absoluteColorPreference && player2.colorPreference === 'white') {
+      console.log(`[DEBUG] Priority 3: Player2 has absolute white preference`);
       return player2;
     }
     if (player2.absoluteColorPreference && player2.colorPreference === 'black') {
+      console.log(`[DEBUG] Priority 3: Player2 has absolute black preference, giving white to player1`);
       return player1;
     }
     
     // PRIORITY 4: Handle strong color preferences
     if (player1.strongColorPreference && !player2.strongColorPreference) {
+      console.log(`[DEBUG] Priority 4: Player1 has strong preference: ${player1.colorPreference}`);
       return player1.colorPreference === 'white' ? player1 : player2;
     }
     if (player2.strongColorPreference && !player1.strongColorPreference) {
+      console.log(`[DEBUG] Priority 4: Player2 has strong preference: ${player2.colorPreference}`);
       return player2.colorPreference === 'white' ? player2 : player1;
     }
     
     // PRIORITY 5: Balance colors based on current imbalance
     const imbalance1 = this.getColorBalance(player1);
     const imbalance2 = this.getColorBalance(player2);
+    console.log(`[DEBUG] Priority 5: Player1 imbalance: ${imbalance1}, Player2 imbalance: ${imbalance2}`);
     
     if (imbalance1 > imbalance2) {
+      console.log(`[DEBUG] Priority 5: Player1 has higher imbalance, giving white to player2`);
       return player2; // Give white to player2
     } else if (imbalance2 > imbalance1) {
+      console.log(`[DEBUG] Priority 5: Player2 has higher imbalance, giving white to player1`);
       return player1; // Give white to player1
     }
     
     // PRIORITY 6: If both players have same imbalance, alternate based on last color
     const lastColor1 = player1Colors.slice(-1);
     const lastColor2 = player2Colors.slice(-1);
+    console.log(`[DEBUG] Priority 6: Last colors - Player1: ${lastColor1}, Player2: ${lastColor2}`);
     
     if (lastColor1 === 'W' && lastColor2 !== 'W') {
+      console.log(`[DEBUG] Priority 6: Player1 last was W, giving white to player2`);
       return player2; // Give white to player2
     }
     if (lastColor2 === 'W' && lastColor1 !== 'W') {
+      console.log(`[DEBUG] Priority 6: Player2 last was W, giving white to player1`);
       return player1; // Give white to player1
     }
     if (lastColor1 === 'B' && lastColor2 !== 'B') {
+      console.log(`[DEBUG] Priority 6: Player1 last was B, giving white to player1`);
       return player1; // Give white to player1
     }
     if (lastColor2 === 'B' && lastColor1 !== 'B') {
+      console.log(`[DEBUG] Priority 6: Player2 last was B, giving white to player2`);
       return player2; // Give white to player2
     }
     
     // PRIORITY 7: Final fallback: give white to higher rated player
-    return (player1.rating || 0) >= (player2.rating || 0) ? player1 : player2;
+    const higherRated = (player1.rating || 0) >= (player2.rating || 0) ? player1 : player2;
+    console.log(`[DEBUG] Priority 7: Final fallback - higher rated player: ${higherRated.name} (${higherRated.rating})`);
+    return higherRated;
+  }
+
+  /**
+   * Sort players by standings (points, then rating)
+   */
+  sortPlayersByStandings(players) {
+    return players.sort((a, b) => {
+      // First by points (descending)
+      if (b.points !== a.points) {
+        return b.points - a.points;
+      }
+      // Then by rating (descending)
+      return (b.rating || 0) - (a.rating || 0);
+    });
+  }
+
+  /**
+   * Group players by score
+   */
+  groupPlayersByScore(players) {
+    const groups = {};
+    players.forEach(player => {
+      const score = player.points || 0;
+      if (!groups[score]) {
+        groups[score] = [];
+      }
+      groups[score].push(player);
+    });
+    return groups;
+  }
+
+  /**
+   * Select bye player from a group
+   */
+  selectByePlayer(group) {
+    // Sort by rating (ascending) to give bye to lowest rated player
+    const sortedGroup = [...group].sort((a, b) => (a.rating || 0) - (b.rating || 0));
+    for (const player of sortedGroup) {
+      if (this.eligibleForBye(player)) {
+        return player;
+      }
+    }
+    return null;
   }
 
   /**
@@ -1017,11 +1084,18 @@ class BbpPairings {
   generateDutchPairings(players, tournament) {
     if (players.length < 2) return [];
 
-    const sortedPlayers = this.sortPlayersByStandings(players);
+    // For Round 1, sort by rating only
+    let sortedPlayers;
+    if (tournament.round === 1) {
+      sortedPlayers = players.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else {
+      sortedPlayers = this.sortPlayersByStandings(players);
+    }
+    
     const scoreGroups = this.groupPlayersByScore(sortedPlayers);
     const pairings = [];
 
-    for (const [score, group] of scoreGroups) {
+    for (const [score, group] of Object.entries(scoreGroups)) {
       if (group.length === 0) continue;
 
       if (group.length % 2 === 1) {
@@ -1126,7 +1200,7 @@ class BbpPairings {
     const scoreGroups = this.groupPlayersByScore(sortedPlayers);
     const pairings = [];
 
-    for (const [score, group] of scoreGroups) {
+    for (const [score, group] of Object.entries(scoreGroups)) {
       if (group.length === 0) continue;
 
       if (group.length % 2 === 1) {
