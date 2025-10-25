@@ -192,10 +192,21 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
-  // Group players by section
+  // Group players by section - include ALL sections from tournament settings AND all sections with players
   const groupPlayersBySection = (players: any[]) => {
+    // Get all sections from tournament settings
+    const tournamentSections = new Set<string>();
+    if (tournament?.settings?.sections) {
+      tournament.settings.sections.forEach((s: any) => {
+        if (s.name && s.name.trim() !== '') {
+          tournamentSections.add(s.name);
+        }
+      });
+    }
+    
+    // Group players by their assigned section
     const grouped = players.reduce((acc, player) => {
-      const section = player.section || 'No Section';
+      const section = player.section || 'Unassigned';
       if (!acc[section]) {
         acc[section] = [];
       }
@@ -203,8 +214,19 @@ const TournamentDetail: React.FC = () => {
       return acc;
     }, {} as Record<string, any[]>);
 
-    // Sort sections alphabetically
-    const sortedSections = Object.keys(grouped).sort();
+    // Also create empty sections from tournament settings if they don't have players yet
+    tournamentSections.forEach(sectionName => {
+      if (!grouped[sectionName]) {
+        grouped[sectionName] = [];
+      }
+    });
+
+    // Sort sections: "Unassigned" first, then alphabetically
+    const sortedSections = Object.keys(grouped).sort((a, b) => {
+      if (a === 'Unassigned') return -1;
+      if (b === 'Unassigned') return 1;
+      return a.localeCompare(b);
+    });
     
     return sortedSections.map(section => ({
       section,
@@ -2802,13 +2824,13 @@ const TournamentDetail: React.FC = () => {
       />
 
       {/* Lichess Integration - Always visible in overview tab */}
-      {activeTab === 'overview' && state.tournament && (
+      {activeTab === 'overview' && tournament && (
         <div className="mt-6">
           <LichessIntegration
             tournamentId={id || ''}
-            tournamentName={state.tournament.name}
-            timeControl={state.tournament.time_control || 'G/30+0'}
-            rounds={state.tournament.rounds}
+            tournamentName={tournament.name}
+            timeControl={tournament.time_control || 'G/30+0'}
+            rounds={tournament.rounds}
             players={state.players || []}
             onGamesCreated={(games) => {
               console.log('Lichess games created:', games);
