@@ -341,9 +341,11 @@ export interface Pairing {
   white_name?: string;
   white_rating?: number;
   white_uscf_id?: string;
+  white_lichess_username?: string;
   black_name?: string;
   black_rating?: number;
   black_uscf_id?: string;
+  black_lichess_username?: string;
   is_bye?: boolean;
   section?: string;
   white_id?: string;
