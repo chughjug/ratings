@@ -148,15 +148,6 @@ const LichessGameCreator: React.FC<LichessGameCreatorProps> = ({
                     <span>Seek Game</span>
                   </button>
                 )}
-                {gameData.whiteChallengeUrl && (
-                  <button
-                    onClick={() => openChallenge(gameData.whiteChallengeUrl)}
-                    className="flex items-center space-x-1 text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    <span>Challenge</span>
-                  </button>
-                )}
               </div>
               {gameData.instructions && (
                 <div className="text-xs text-gray-500 max-w-48">
