@@ -131,7 +131,7 @@ const LichessGameCreator: React.FC<LichessGameCreatorProps> = ({
                 <CheckCircle className="w-3 h-3 text-green-600" />
                 <span className="text-xs text-green-600">Game Ready</span>
               </div>
-              <div className="flex space-x-1">
+              <div className="flex flex-wrap gap-1">
                 <button
                   onClick={openGame}
                   className="flex items-center space-x-1 text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
@@ -139,10 +139,19 @@ const LichessGameCreator: React.FC<LichessGameCreatorProps> = ({
                   <ExternalLink className="w-3 h-3" />
                   <span>Start Game</span>
                 </button>
-                {gameData.challengeUrl && (
+                {gameData.seekUrl && (
                   <button
-                    onClick={() => openChallenge(gameData.challengeUrl)}
+                    onClick={() => openChallenge(gameData.seekUrl)}
                     className="flex items-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Seek Game</span>
+                  </button>
+                )}
+                {gameData.whiteChallengeUrl && (
+                  <button
+                    onClick={() => openChallenge(gameData.whiteChallengeUrl)}
+                    className="flex items-center space-x-1 text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700"
                   >
                     <ExternalLink className="w-3 h-3" />
                     <span>Challenge</span>
