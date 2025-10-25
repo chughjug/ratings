@@ -251,7 +251,7 @@ const LichessIntegration: React.FC<LichessIntegrationProps> = ({
       // Get pairings for current round (you'll need to implement this)
       const pairings = await getCurrentRoundPairings();
       
-      const challenges = pairings.map(pairing => ({
+      const challenges = pairings.map((pairing: any) => ({
         id: pairing.id,
         whitePlayer: {
           ...pairing.whitePlayer,

@@ -4,8 +4,8 @@ const crypto = require('crypto');
 class LichessApiService {
   constructor() {
     this.baseUrl = 'https://lichess.org';
-    this.clientId = process.env.LICHESS_CLIENT_ID;
-    this.clientSecret = process.env.LICHESS_CLIENT_SECRET;
+    // Lichess now uses PKCE-based OAuth that doesn't require client registration
+    this.clientId = process.env.LICHESS_CLIENT_ID || 'chess-tournament-director';
     this.redirectUri = process.env.LICHESS_REDIRECT_URI || 'http://localhost:3000/api/lichess/callback';
   }
 
