@@ -75,10 +75,23 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
     
     setIsLoading(true);
     try {
-      // Load tournament, players, and pairings data
-      // This would typically make API calls
       console.log('Loading tournament data for:', tournamentId);
-      // For now, we'll use empty data - in a real implementation, you'd fetch from API
+      
+      // Load tournament data
+      const tournamentResponse = await tournamentApi.getById(tournamentId);
+      if (tournamentResponse.data.success) {
+        setTournament(tournamentResponse.data.data);
+      }
+      
+      // Load players data
+      const playersResponse = await playerApi.getByTournament(tournamentId);
+      if (playersResponse.data.success) {
+        setPlayers(playersResponse.data.data);
+      }
+      
+      // Load pairings for current round
+      await loadPairingsForRound(currentRound);
+      
     } catch (error) {
       console.error('Failed to load tournament data:', error);
     } finally {
@@ -86,18 +99,35 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
     }
   };
 
-  const handleSectionChange = (newSection: string) => {
-    setSelectedSection(newSection);
-    if (tournamentId) {
-      navigate(`/tournaments/${tournamentId}/pairings/${newSection}`);
+  const loadPairingsForRound = async (round: number) => {
+    if (!tournamentId) return;
+    
+    try {
+      const response = await pairingApi.getByRound(tournamentId, round, selectedSection);
+      if (response.data) {
+        setPairings(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load pairings:', error);
     }
   };
 
-  const handleRoundChange = (round: number) => {
+  const handleSectionChange = async (newSection: string) => {
+    setSelectedSection(newSection);
+    if (tournamentId) {
+      navigate(`/tournaments/${tournamentId}/pairings/${newSection}`);
+      // Load pairings for the new section
+      await loadPairingsForRound(currentRound);
+    }
+  };
+
+  const handleRoundChange = async (round: number) => {
     setCurrentRound(round);
     if (propOnRoundChange) {
       propOnRoundChange(round);
     }
+    // Load pairings for the new round
+    await loadPairingsForRound(round);
   };
 
   const updateResult = async (pairingId: string, result: string) => {
@@ -105,43 +135,82 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
       if (propOnUpdateResult) {
         await propOnUpdateResult(pairingId, result);
       } else {
-        // Fallback to local state update
-        const updatedPairings = pairings.map(p => 
-          p.id === pairingId ? { ...p, result } : p
-        );
-        setPairings(updatedPairings);
-        if (propOnPairingsUpdate) {
-          propOnPairingsUpdate(updatedPairings);
+        // Call the API to update result
+        const response = await pairingApi.updateResult(pairingId, result);
+        
+        if (response.data.success) {
+          // Update local state
+          const updatedPairings = pairings.map(p => 
+            p.id === pairingId ? { ...p, result } : p
+          );
+          setPairings(updatedPairings);
+          if (propOnPairingsUpdate) {
+            propOnPairingsUpdate(updatedPairings);
+          }
+          console.log('Result updated successfully');
+        } else {
+          throw new Error(response.data.error || 'Failed to update result');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update result:', error);
+      alert(`Failed to update result. ${error.message || 'Please check the console for details.'}`);
     }
   };
 
   const generatePairingsForSection = async (sectionName: string) => {
+    if (!tournamentId) return;
+    
+    setIsLoading(true);
     try {
       if (propOnGeneratePairingsForSection) {
         await propOnGeneratePairingsForSection(sectionName);
       } else {
-        // Fallback to API call
+        // Call the API to generate pairings
         console.log('Generating pairings for section:', sectionName);
+        const response = await pairingApi.generateForSection(tournamentId, currentRound, sectionName);
+        
+        if (response.data.success) {
+          // Reload pairings after generation
+          await loadPairingsForRound(currentRound);
+          console.log('Pairings generated successfully');
+        } else {
+          throw new Error(response.data.error || 'Failed to generate pairings');
+        }
       }
     } catch (error: any) {
       console.error('Failed to generate pairings for section:', error);
-      alert(`Failed to generate pairings for section "${sectionName}". Please check the console for details.`);
+      alert(`Failed to generate pairings for section "${sectionName}". ${error.message || 'Please check the console for details.'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const resetPairingsForSection = async (sectionName: string) => {
+    if (!tournamentId) return;
+    
+    setIsLoading(true);
     try {
       if (propOnResetPairingsForSection) {
         await propOnResetPairingsForSection(sectionName);
       } else {
+        // Call the API to reset pairings
         console.log('Resetting pairings for section:', sectionName);
+        const response = await pairingApi.resetSection(tournamentId, sectionName);
+        
+        if (response.data.success) {
+          // Clear local pairings
+          setPairings([]);
+          console.log('Pairings reset successfully');
+        } else {
+          throw new Error(response.data.error || 'Failed to reset pairings');
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to reset pairings for section:', error);
+      alert(`Failed to reset pairings for section "${sectionName}". ${error.message || 'Please check the console for details.'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -155,6 +224,52 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
     return currentRoundPairings.length > 0 && currentRoundPairings.every(pairing => 
       pairing.result && pairing.result !== 'TBD'
     );
+  };
+
+  const completeRound = async () => {
+    if (!tournamentId) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await pairingApi.completeRound(tournamentId, currentRound, selectedSection);
+      
+      if (response.data.success) {
+        console.log('Round completed successfully');
+        // Reload pairings to reflect completion
+        await loadPairingsForRound(currentRound);
+      } else {
+        throw new Error(response.data.error || 'Failed to complete round');
+      }
+    } catch (error: any) {
+      console.error('Failed to complete round:', error);
+      alert(`Failed to complete round. ${error.message || 'Please check the console for details.'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generateNextRound = async () => {
+    if (!tournamentId) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await pairingApi.generateNextRound(tournamentId, selectedSection);
+      
+      if (response.data.success) {
+        console.log('Next round generated successfully');
+        // Move to the next round
+        const nextRound = currentRound + 1;
+        setCurrentRound(nextRound);
+        await loadPairingsForRound(nextRound);
+      } else {
+        throw new Error(response.data.error || 'Failed to generate next round');
+      }
+    } catch (error: any) {
+      console.error('Failed to generate next round:', error);
+      alert(`Failed to generate next round. ${error.message || 'Please check the console for details.'}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Get completion stats
@@ -280,26 +395,49 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
                   <RefreshCw className="h-4 w-4" />
                   <span>Reset</span>
                 </button>
-                <button
-                  onClick={() => generatePairingsForSection(selectedSection)}
-                  disabled={isLoading}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isLoading ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Generating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Users className="h-4 w-4" />
-                      <span>Generate</span>
-                    </>
-                  )}
-                </button>
+                {currentRoundPairings.length === 0 ? (
+                  <button
+                    onClick={() => generatePairingsForSection(selectedSection)}
+                    disabled={isLoading}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4" />
+                        <span>Generate Round {currentRound}</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => generateNextRound()}
+                    disabled={isLoading}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4" />
+                        <span>Generate Round {currentRound + 1}</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -441,7 +579,13 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
                   <span className="text-green-800 font-medium">All results submitted!</span>
                 </div>
                 <button
-                  onClick={() => propOnCompleteRound && propOnCompleteRound()}
+                  onClick={() => {
+                    if (propOnCompleteRound) {
+                      propOnCompleteRound();
+                    } else {
+                      completeRound();
+                    }
+                  }}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                 >
                   Complete Round {currentRound}
