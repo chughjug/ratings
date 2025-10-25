@@ -681,6 +681,29 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const clearStandings = async () => {
+    if (!window.confirm('This will clear all standings data from your device. This action cannot be undone. Continue?')) {
+      return;
+    }
+
+    try {
+      // Clear standings from context
+      dispatch({ type: 'SET_STANDINGS', payload: [] });
+      
+      // Clear pairings from context
+      dispatch({ type: 'SET_PAIRINGS', payload: [] });
+      
+      // Clear local storage if any
+      localStorage.removeItem(`standings_${id}`);
+      localStorage.removeItem(`pairings_${id}`);
+      
+      alert('Standings data cleared from device successfully!');
+    } catch (error) {
+      console.error('Failed to clear standings:', error);
+      alert('Failed to clear standings. Please try again.');
+    }
+  };
+
   const handleWithdrawPlayer = async (playerId: string) => {
     // eslint-disable-next-line no-restricted-globals
     if (!confirm('Are you sure you want to withdraw this player from the tournament?')) {
@@ -1169,6 +1192,14 @@ const TournamentDetail: React.FC = () => {
                       >
                         <Settings className="h-4 w-4 mr-3" />
                         Manage Sections
+                      </button>
+                      
+                      <button
+                        onClick={clearStandings}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-3" />
+                        Clear Standings
                       </button>
                       
                       <button
@@ -2229,44 +2260,48 @@ const TournamentDetail: React.FC = () => {
                         Clear Selection
                       </button>
                     )}
-                    <button
-                      onClick={async () => {
-                        if (!id) return;
-                        if (!window.confirm('This will generate pairings for all sections. Continue?')) return;
-                        
-                        try {
-                          setIsLoading(true);
-                          const currentRoundNum = getCurrentRoundForSection(selectedSection || getAvailableSections()[0]);
-                          const response = await pairingApi.generate(id, currentRoundNum);
-                          
-                          if (response.data.success) {
-                            alert(`Successfully generated pairings for all sections in Round ${currentRoundNum}`);
-                            await fetchPairings(currentRoundNum);
-                            await fetchStandings();
-                          } else {
-                            throw new Error(response.data.message || 'Failed to generate pairings');
-                          }
-                        } catch (error: any) {
-                          alert(`Failed to generate pairings: ${error.message}`);
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }}
-                      disabled={isLoading}
-                      className="px-4 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
-                    >
-                      {isLoading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Users className="w-3 h-3 mr-1" />
-                          Pair All Sections
-                        </>
-                      )}
-                    </button>
+                     <button
+                       onClick={async () => {
+                         if (!id) return;
+                         if (!selectedSection) {
+                           alert('Please select a section first');
+                           return;
+                         }
+                         if (!window.confirm(`Generate pairings for ${selectedSection} section?`)) return;
+                         
+                         try {
+                           setIsLoading(true);
+                           const currentRoundNum = 1; // Always start with round 1
+                           const response = await pairingApi.generate(id, currentRoundNum);
+                           
+                           if (response.data.success) {
+                             alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
+                             await fetchPairings(currentRoundNum);
+                             await fetchStandings();
+                           } else {
+                             throw new Error(response.data.message || 'Failed to generate pairings');
+                           }
+                         } catch (error: any) {
+                           alert(`Failed to generate pairings: ${error.message}`);
+                         } finally {
+                           setIsLoading(false);
+                         }
+                       }}
+                       disabled={isLoading || !selectedSection}
+                       className="px-4 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
+                     >
+                       {isLoading ? (
+                         <>
+                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                           Generating...
+                         </>
+                       ) : (
+                         <>
+                           <Users className="w-3 h-3 mr-1" />
+                           Generate Round 1
+                         </>
+                       )}
+                     </button>
                   </div>
                 </div>
               </div>

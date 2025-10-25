@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X } from 'lucide-react';
 import { pairingApi } from '../services/api';
 
 interface SectionPairingManagerProps {
@@ -23,6 +23,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [sectionStatus, setSectionStatus] = useState<any>(null);
   const [isCompletingRound, setIsCompletingRound] = useState(false);
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPairing, setEditingPairing] = useState<any>(null);
+  const [newBoardNumber, setNewBoardNumber] = useState('');
   const selectedPairingRef = useRef<string | null>(null);
   const resultSelectRefs = useRef<{ [key: string]: HTMLSelectElement | null }>({});
 
@@ -136,6 +139,77 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleKeyDown]);
+
+  // Edit functions
+  const swapPlayers = async (pairingId: string) => {
+    try {
+      const response = await pairingApi.swapPlayers(pairingId);
+      if (response.data.success) {
+        await fetchSectionData();
+        alert('Players swapped successfully!');
+      } else {
+        throw new Error(response.data.message || 'Failed to swap players');
+      }
+    } catch (error: any) {
+      console.error('Failed to swap players:', error);
+      alert(`Failed to swap players: ${error.message}`);
+    }
+  };
+
+  const updateBoardNumber = async (pairingId: string, newBoardNumber: string) => {
+    try {
+      const response = await pairingApi.updateBoardNumber(pairingId, parseInt(newBoardNumber));
+      if (response.data.success) {
+        await fetchSectionData();
+        alert('Board number updated successfully!');
+      } else {
+        throw new Error(response.data.message || 'Failed to update board number');
+      }
+    } catch (error: any) {
+      console.error('Failed to update board number:', error);
+      alert(`Failed to update board number: ${error.message}`);
+    }
+  };
+
+  const deletePairing = async (pairingId: string) => {
+    if (!window.confirm('Are you sure you want to delete this pairing?')) {
+      return;
+    }
+
+    try {
+      const response = await pairingApi.delete(pairingId);
+      if (response.data.success) {
+        await fetchSectionData();
+        alert('Pairing deleted successfully!');
+      } else {
+        throw new Error(response.data.message || 'Failed to delete pairing');
+      }
+    } catch (error: any) {
+      console.error('Failed to delete pairing:', error);
+      alert(`Failed to delete pairing: ${error.message}`);
+    }
+  };
+
+  const addManualPairing = async () => {
+    if (!newBoardNumber.trim()) {
+      alert('Please enter a board number');
+      return;
+    }
+
+    try {
+      const response = await pairingApi.createManual(tournamentId, sectionName, currentRound, parseInt(newBoardNumber));
+      if (response.data.success) {
+        await fetchSectionData();
+        setNewBoardNumber('');
+        alert('Manual pairing added successfully!');
+      } else {
+        throw new Error(response.data.message || 'Failed to add manual pairing');
+      }
+    } catch (error: any) {
+      console.error('Failed to add manual pairing:', error);
+      alert(`Failed to add manual pairing: ${error.message}`);
+    }
+  };
 
 
 
@@ -275,7 +349,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             <div className="text-2xl font-bold text-yellow-600">{incompletePairings.length}</div>
             <div className="text-sm text-gray-600">Games pending</div>
           </div>
-
+          
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Trophy className="h-5 w-5 text-blue-600" />
@@ -304,7 +378,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               <span>Complete Round</span>
             </button>
           )}
-
+            
           {pairings.length > 0 && incompletePairings.length === 0 && !sectionStatus?.isComplete && (
             <button
               onClick={generateNextRound}
@@ -337,9 +411,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               <span className="text-yellow-800">
                 {incompletePairings.length} game{incompletePairings.length !== 1 ? 's' : ''} still need{incompletePairings.length === 1 ? 's' : ''} results before completing the round.
               </span>
-            </div>
-          </div>
-        )}
+      </div>
+        </div>
+      )}
 
         {sectionStatus?.isComplete && (
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -368,6 +442,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -414,6 +489,35 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                       </span>
                     )}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => swapPlayers(pairing.id)}
+                        className="text-blue-600 hover:text-blue-800 p-1"
+                        title="Swap players"
+                      >
+                        <ArrowUpDown className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingPairing(pairing);
+                          setNewBoardNumber(pairing.board || (index + 1).toString());
+                          setShowEditModal(true);
+                        }}
+                        className="text-green-600 hover:text-green-800 p-1"
+                        title="Edit board number"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                    <button
+                        onClick={() => deletePairing(pairing.id)}
+                        className="text-red-600 hover:text-red-800 p-1"
+                        title="Delete pairing"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -457,6 +561,77 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add Manual Pairing Button */}
+      <div className="mt-4 flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <input
+            type="number"
+            value={newBoardNumber}
+            onChange={(e) => setNewBoardNumber(e.target.value)}
+            placeholder="Board number"
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="1"
+          />
+          <button
+            onClick={addManualPairing}
+            className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Manual Pairing</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Edit Modal */}
+      {showEditModal && editingPairing && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Edit Board Number</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Board Number
+                </label>
+                <input
+                  type="number"
+                  value={newBoardNumber}
+                  onChange={(e) => setNewBoardNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  updateBoardNumber(editingPairing.id, newBoardNumber);
+                  setShowEditModal(false);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Update
+              </button>
+            </div>
           </div>
         </div>
       )}
