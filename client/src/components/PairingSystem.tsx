@@ -92,7 +92,7 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
       setLoading(true);
       setError(null);
       
-      const response = await pairingApi.generatePairings(tournamentId, section, round);
+      const response = await pairingApi.generate(tournamentId, round, false);
       setPairings(response.data || []);
       onPairingsGenerated(response.data || []);
     } catch (err: any) {
