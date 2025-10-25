@@ -169,14 +169,12 @@ class LichessApiService {
         throw new Error('Both players must have Lichess usernames to create games');
       }
 
-      // Create proper Lichess URLs that actually work
-      // The "Play with a Friend" URL is the most reliable method
+      // Create proper Lichess URLs based on the official API demo
+      // These URLs work by opening Lichess with pre-configured parameters
       const playWithFriendUrl = `${this.baseUrl}/?friend=${blackPlayer.lichess_username}&clock=${timeLimit}+${increment}&rated=true&variant=standard`;
-      
-      // Create a seek URL for finding games with the same time control
       const seekUrl = `${this.baseUrl}/?clock=${timeLimit}+${increment}&rated=true&variant=standard`;
       
-      // Create direct challenge URLs using the correct format
+      // Create challenge URLs for each player
       const whiteChallengeUrl = `${this.baseUrl}/?friend=${blackPlayer.lichess_username}&clock=${timeLimit}+${increment}&rated=true&variant=standard`;
       const blackChallengeUrl = `${this.baseUrl}/?friend=${whitePlayer.lichess_username}&clock=${timeLimit}+${increment}&rated=true&variant=standard`;
 

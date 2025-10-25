@@ -13,8 +13,8 @@ const getApiBaseUrl = () => {
     return '/api';
   }
   
-  // In development, use full URL to localhost:5000 (backend server port)
-  return 'http://localhost:5000/api';
+  // In development, use full URL to localhost:3001 (backend server port)
+  return 'http://localhost:3001/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

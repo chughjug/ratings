@@ -20,7 +20,7 @@
  * - Performance Rating
  */
 
-const { BBPPairings } = require('./bbpPairings');
+const { BBPPairingsDirect } = require('./bbpPairingsDirect');
 
 class EnhancedPairingSystem {
   constructor(players, options = {}) {
@@ -146,7 +146,6 @@ class EnhancedPairingSystem {
     console.log(`[EnhancedPairingSystem] Generating pairings for section ${this.section}, round ${this.round}`);
     
     try {
-      const { BBPPairings } = require('./bbpPairings');
       const { BBPPairingsDirect } = require('./bbpPairingsDirect');
       const bbpPairings = new BBPPairingsDirect();
       
@@ -431,7 +430,7 @@ class EnhancedPairingSystem {
   generateFideDutchPairings() {
     if (this.players.length < 2) return [];
 
-    const bbpPairings = new BBPPairings();
+    const bbpPairings = new BBPPairingsDirect();
     const result = bbpPairings.generateDutchPairings(this.players, {
       round: this.round,
       section: this.section,
@@ -457,7 +456,7 @@ class EnhancedPairingSystem {
   generateBursteinPairings() {
     if (this.players.length < 2) return [];
 
-    const bbpPairings = new BBPPairings();
+    const bbpPairings = new BBPPairingsDirect();
     const result = bbpPairings.generateBursteinPairings(this.players, {
       round: this.round,
       section: this.section,
