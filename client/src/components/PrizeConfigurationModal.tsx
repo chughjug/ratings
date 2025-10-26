@@ -33,8 +33,12 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
     if (isOpen) {
       fetchSectionsFromPairings();
       if (currentSettings) {
-        // Always filter sections against availableSections from API
-        const validSections = currentSettings.sections.filter(section => 
+        // Ensure sections is an array and filter against availableSections from API
+        const sectionsArray = Array.isArray(currentSettings.sections) 
+          ? currentSettings.sections 
+          : [];
+        
+        const validSections = sectionsArray.filter(section => 
           availableSections.length === 0 || availableSections.includes(section.name)
         );
         setSettings({

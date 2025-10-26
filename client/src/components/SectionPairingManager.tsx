@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X } from 'lucide-react';
-import { pairingApi } from '../services/api';
+import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X, GripVertical } from 'lucide-react';
+import { pairingApi, playerApi } from '../services/api';
 import LichessGameCreator from './LichessGameCreator';
 
 interface SectionPairingManagerProps {
@@ -32,6 +32,21 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [newBoardNumber, setNewBoardNumber] = useState('');
   const [availableRounds, setAvailableRounds] = useState<number[]>([1]);
   const selectedPairingRef = useRef<string | null>(null);
+  
+  // Drag and drop state
+  const [draggedPairing, setDraggedPairing] = useState<string | null>(null);
+  const [dragOverPairing, setDragOverPairing] = useState<string | null>(null);
+  
+  // Manual pairing creation state
+  const [showManualPairingModal, setShowManualPairingModal] = useState(false);
+  const [manualBoardNumber, setManualBoardNumber] = useState('');
+  const [manualFirstBoardNumber, setManualFirstBoardNumber] = useState('1');
+  const [selectedWhitePlayer, setSelectedWhitePlayer] = useState<string>('');
+  const [selectedBlackPlayer, setSelectedBlackPlayer] = useState<string>('');
+  const [availablePlayers, setAvailablePlayers] = useState<any[]>([]);
+  
+  // Board number offset
+  const [boardNumberOffset, setBoardNumberOffset] = useState(0);
 
   // Filter pairings by section to ensure only current section's pairings are shown
   const sectionPairings = pairings.filter(p => p.section === sectionName);
@@ -213,6 +228,111 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     } catch (error: any) {
       console.error('Failed to delete pairing:', error);
       alert(`Failed to delete pairing: ${error.message}`);
+    }
+  };
+
+  const fetchPlayers = useCallback(async () => {
+    try {
+      const response = await playerApi.getAll(tournamentId);
+      setAvailablePlayers(response.data || []);
+    } catch (error) {
+      console.error('Error fetching players:', error);
+    }
+  }, [tournamentId]);
+
+  // Open manual pairing modal
+  const handleOpenManualPairing = () => {
+    const nextBoardNumber = sectionPairings.length > 0 
+      ? Math.max(...sectionPairings.map(p => p.board || 0)) + 1 
+      : parseInt(manualFirstBoardNumber);
+    setManualBoardNumber(nextBoardNumber.toString());
+    fetchPlayers();
+    setShowManualPairingModal(true);
+  };
+
+  // Add manual pairing with selected players
+  const addManualPairingWithPlayers = async () => {
+    if (!manualBoardNumber.trim()) {
+      alert('Please enter a board number');
+      return;
+    }
+
+    if (!selectedWhitePlayer || !selectedBlackPlayer) {
+      alert('Please select both white and black players');
+      return;
+    }
+
+    try {
+      const response = await pairingApi.createManualWithPlayers(
+        tournamentId, 
+        sectionName, 
+        currentRound, 
+        parseInt(manualBoardNumber),
+        selectedWhitePlayer,
+        selectedBlackPlayer
+      );
+      if (response.data.success) {
+        // Refresh pairings from parent
+        const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+        onPairingsUpdate?.(pairingsResponse.data || []);
+        setManualBoardNumber('');
+        setSelectedWhitePlayer('');
+        setSelectedBlackPlayer('');
+        setShowManualPairingModal(false);
+        alert('Manual pairing added successfully!');
+      } else {
+        throw new Error(response.data.message || 'Failed to add manual pairing');
+      }
+    } catch (error: any) {
+      console.error('Failed to add manual pairing:', error);
+      alert(`Failed to add manual pairing: ${error.message}`);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (pairingId: string) => {
+    setDraggedPairing(pairingId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, pairingId: string) => {
+    e.preventDefault();
+    setDragOverPairing(pairingId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverPairing(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetPairingId: string) => {
+    e.preventDefault();
+    setDragOverPairing(null);
+    setDraggedPairing(null);
+
+    if (!draggedPairing || draggedPairing === targetPairingId) return;
+
+    const draggedPairingData = sectionPairings.find(p => p.id === draggedPairing);
+    const targetPairingData = sectionPairings.find(p => p.id === targetPairingId);
+
+    if (!draggedPairingData || !targetPairingData) return;
+
+    try {
+      // Swap players between pairings
+      const response = await pairingApi.swapPairings(
+        draggedPairing,
+        targetPairingId
+      );
+      
+      if (response.data.success) {
+        // Refresh pairings from parent
+        const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+        onPairingsUpdate?.(pairingsResponse.data || []);
+        alert('Players swapped successfully!');
+      } else {
+        throw new Error(response.data.message || 'Failed to swap pairings');
+      }
+    } catch (error: any) {
+      console.error('Failed to swap pairings:', error);
+      alert(`Failed to swap pairings: ${error.message}`);
     }
   };
 
@@ -546,9 +666,20 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sectionPairings.map((pairing, index) => (
-                <tr key={pairing.id} className="hover:bg-gray-50">
+                <tr 
+                  key={pairing.id} 
+                  className={`hover:bg-gray-50 ${draggedPairing === pairing.id ? 'opacity-50' : ''} ${dragOverPairing === pairing.id ? 'bg-blue-100' : ''}`}
+                  draggable
+                  onDragStart={() => handleDragStart(pairing.id)}
+                  onDragOver={(e) => handleDragOver(e, pairing.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, pairing.id)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {pairing.board || index + 1}
+                    <div className="flex items-center space-x-2">
+                      <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
+                      <span>{pairing.board || (index + 1 + boardNumberOffset)}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {pairing.white_name || 'TBD'}

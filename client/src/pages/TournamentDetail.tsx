@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -37,6 +37,7 @@ import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
 import LichessIntegration from '../components/LichessIntegration';
 import OnlineGameIntegration from '../components/OnlineGameIntegration';
+import ByeManagementModal from '../components/ByeManagementModal';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -96,6 +97,7 @@ const TournamentDetail: React.FC = () => {
   const [showEditPlayer, setShowEditPlayer] = useState(false);
   const [showAPIDocs, setShowAPIDocs] = useState(false);
   const [showDeleteDuplicates, setShowDeleteDuplicates] = useState(false);
+  const [showByeManagement, setShowByeManagement] = useState(false);
   const [deleteDuplicatesCriteria, setDeleteDuplicatesCriteria] = useState<'name' | 'uscf_id' | 'both'>('name');
   const [selectedPlayer, setSelectedPlayer] = useState<{id: string, name: string} | null>(null);
   const [playerToEdit, setPlayerToEdit] = useState<any>(null);
@@ -135,6 +137,8 @@ const TournamentDetail: React.FC = () => {
   // Settings tab state
   const [logoUrl, setLogoUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [tournamentInfo, setTournamentInfo] = useState('');
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Sorting state - default to section sorting as requested
   const [sortField, setSortField] = useState<string>('section');
@@ -415,6 +419,22 @@ const TournamentDetail: React.FC = () => {
       fetchStandings();
     }
   }, [id, dispatch, fetchTournament, fetchPlayers, fetchStandings]);
+
+  // Sync tournament info with local state
+  useEffect(() => {
+    if (tournament?.tournament_information !== undefined) {
+      setTournamentInfo(tournament.tournament_information || '');
+    }
+  }, [tournament]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Initialize prize settings from tournament data
   useEffect(() => {
@@ -1089,6 +1109,25 @@ const TournamentDetail: React.FC = () => {
       console.error('Failed to update tournament:', error);
       alert(`Failed to update tournament: ${error.message || error}`);
     }
+  };
+
+  // Debounced handler for tournament info to prevent API calls on every keystroke
+  const handleTournamentInfoChange = (value: string) => {
+    setTournamentInfo(value);
+    
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Set new timeout to save after user stops typing (1 second)
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await handleTournamentUpdate('tournament_information', value);
+      } catch (error: any) {
+        console.error('Failed to save tournament info:', error);
+      }
+    }, 1000);
   };
 
   const handleSettingsSave = async () => {
@@ -1904,6 +1943,13 @@ const TournamentDetail: React.FC = () => {
                       >
                         <Code className="h-4 w-4" />
                         <span>API Docs</span>
+                      </button>
+                      <button
+                        onClick={() => setShowByeManagement(true)}
+                        className="flex items-center space-x-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+                      >
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Manage Byes</span>
                       </button>
                       <button
                         onClick={() => setShowDeleteDuplicates(true)}
@@ -2869,14 +2915,14 @@ const TournamentDetail: React.FC = () => {
                       Tournament Information (displayed on public view)
                     </label>
                     <textarea
-                      value={tournament?.tournament_information || ''}
-                      onChange={(e) => handleTournamentUpdate('tournament_information', e.target.value)}
+                      value={tournamentInfo}
+                      onChange={(e) => handleTournamentInfoChange(e.target.value)}
                       rows={6}
                       placeholder="Enter tournament information that will be displayed on the public view..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      This information will be displayed on the public tournament view page
+                      This information will be displayed on the public tournament view page. Changes are saved automatically.
                     </p>
                   </div>
                 </div>
@@ -3242,6 +3288,13 @@ const TournamentDetail: React.FC = () => {
           setPlayerToEdit(null);
         }}
         player={playerToEdit}
+        tournamentId={id || ''}
+      />
+
+      {/* Bye Management Modal */}
+      <ByeManagementModal
+        isOpen={showByeManagement}
+        onClose={() => setShowByeManagement(false)}
         tournamentId={id || ''}
       />
 
