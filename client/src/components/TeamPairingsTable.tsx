@@ -15,7 +15,7 @@ interface TeamPairing {
 interface TeamPairingsTableProps {
   pairings: TeamPairing[];
   round: number;
-  tournamentFormat: 'team-swiss' | 'team-round-robin' | 'individual-team-swiss';
+  tournamentFormat: 'team-swiss' | 'team-round-robin';
   showResults?: boolean;
 }
 
@@ -64,10 +64,7 @@ const TeamPairingsTable: React.FC<TeamPairingsTableProps> = ({
           Round {round} Team Pairings
         </h3>
         <p className="text-sm text-gray-600 mt-1">
-          {tournamentFormat === 'individual-team-swiss' 
-            ? 'Teams paired based on cumulative scores - individual players compete within team matchups'
-            : 'Teams compete directly against each other'
-          }
+          Teams compete directly against each other in board-by-board matchups
         </p>
       </div>
       

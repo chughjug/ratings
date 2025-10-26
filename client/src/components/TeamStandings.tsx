@@ -183,7 +183,7 @@ const TeamStandings: React.FC<TeamStandingsProps> = ({ tournamentId, isVisible, 
           ) : (
             <TeamStandingsTable
               standings={standings}
-              tournamentFormat="individual-team-swiss"
+              tournamentFormat="team-swiss"
               scoringMethod={scoringMethod === 'top_4' ? 'top_players' : 'all_players'}
               topN={topN}
               showTiebreakers={true}

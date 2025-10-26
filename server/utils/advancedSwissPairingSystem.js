@@ -100,6 +100,14 @@ class AdvancedSwissPairingSystem {
   getPlayersWithIntentionalByes() {
     const playersWithByes = new Set();
     
+    console.log(`[AdvancedSwissPairingSystem] Checking intentional byes for round ${this.round}`);
+    console.log(`[AdvancedSwissPairingSystem] Players data:`, this.players.map(p => ({ 
+      id: p.id, 
+      name: p.name, 
+      bye_rounds: p.bye_rounds, 
+      intentional_bye_rounds: p.intentional_bye_rounds 
+    })));
+    
     for (const player of this.players) {
       // Check both bye_rounds and intentional_bye_rounds columns
       const byeRounds = player.bye_rounds || player.intentional_bye_rounds;
@@ -119,7 +127,36 @@ class AdvancedSwissPairingSystem {
       }
     }
     
+    console.log(`[AdvancedSwissPairingSystem] Found ${playersWithByes.size} players with intentional byes:`, Array.from(playersWithByes));
     return playersWithByes;
+  }
+
+  /**
+   * Check if a player has already received a bye in previous rounds
+   */
+  hasPlayerReceivedBye(playerId) {
+    // Check previous pairings to see if player has received a bye
+    if (!this.previousPairings || this.previousPairings.length === 0) {
+      console.log(`[AdvancedSwissPairingSystem] No previous pairings available for bye check`);
+      return false;
+    }
+    
+    console.log(`[AdvancedSwissPairingSystem] Checking if player ${playerId} has received bye. Previous pairings:`, this.previousPairings);
+    
+    for (const pairing of this.previousPairings) {
+      console.log(`[AdvancedSwissPairingSystem] Checking pairing: white=${pairing.white_player_id}, black=${pairing.black_player_id}, is_bye=${pairing.is_bye}, round=${pairing.round}`);
+      
+      if (pairing.white_player_id === playerId && 
+          pairing.black_player_id === null && 
+          pairing.is_bye && 
+          pairing.round < this.round) {
+        console.log(`[AdvancedSwissPairingSystem] Player ${playerId} already received bye in round ${pairing.round}`);
+        return true;
+      }
+    }
+    
+    console.log(`[AdvancedSwissPairingSystem] Player ${playerId} has not received bye before`);
+    return false;
   }
 
   /**
@@ -154,12 +191,50 @@ class AdvancedSwissPairingSystem {
       };
     });
     
-    // Generate pairings for remaining players
+    // Handle odd number of players with automatic 1.0 point bye BEFORE generating regular pairings
+    let automaticByePairing = null;
+    let playersForRegularPairing = [...playersWithoutByes];
+    
+    if (playersWithoutByes.length % 2 === 1) {
+      // Find the player who should get the automatic bye (lowest rated who hasn't had a bye yet)
+      const availableForBye = playersWithoutByes.filter(player => {
+        // Check if player has already received a bye in previous rounds
+        return !this.hasPlayerReceivedBye(player.id);
+      });
+      
+      if (availableForBye.length > 0) {
+        // Sort by rating (ascending) to get lowest rated player
+        const byePlayer = availableForBye.sort((a, b) => (a.rating || 0) - (b.rating || 0))[0];
+        
+        // Remove the bye player from the regular pairing pool
+        playersForRegularPairing = playersWithoutByes.filter(p => p.id !== byePlayer.id);
+        
+        automaticByePairing = {
+          white_player_id: byePlayer.id,
+          black_player_id: null,
+          white_name: byePlayer.name,
+          black_name: null,
+          white_rating: byePlayer.rating,
+          black_rating: null,
+          round: this.round,
+          board: 0, // Will be assigned later
+          section: this.section,
+          tournament_id: this.tournamentId,
+          result: null,
+          is_bye: true,
+          bye_type: 'unpaired' // Automatic bye gets 1.0 point
+        };
+        
+        console.log(`[AdvancedSwissPairingSystem] Player ${byePlayer.name} gets automatic 1.0 point bye for odd player count`);
+      }
+    }
+    
+    // Generate pairings for remaining players (now guaranteed to be even number)
     let regularPairings = [];
-    if (playersWithoutByes.length >= 2) {
+    if (playersForRegularPairing.length >= 2) {
       // Temporarily replace players array for pairing generation
       const originalPlayers = this.players;
-      this.players = playersWithoutByes;
+      this.players = playersForRegularPairing;
       
       if (this.round === 1) {
         regularPairings = this.pairFirstRound();
@@ -171,15 +246,19 @@ class AdvancedSwissPairingSystem {
       this.players = originalPlayers;
     }
     
-    // Combine bye pairings and regular pairings
+    // Combine all pairings
     const allPairings = [...byePairings, ...regularPairings];
+    if (automaticByePairing) {
+      allPairings.push(automaticByePairing);
+    }
     
     // Assign proper board numbers
     allPairings.forEach((pairing, index) => {
       pairing.board = index + 1;
     });
     
-    console.log(`[AdvancedSwissPairingSystem] Generated ${allPairings.length} total pairings (${byePairings.length} byes, ${regularPairings.length} regular)`);
+    const totalByes = byePairings.length + (automaticByePairing ? 1 : 0);
+    console.log(`[AdvancedSwissPairingSystem] Generated ${allPairings.length} total pairings (${totalByes} byes, ${regularPairings.length} regular)`);
     return allPairings;
   }
 
@@ -208,30 +287,11 @@ class AdvancedSwissPairingSystem {
         white_rating: whitePlayer.rating,
         black_rating: blackPlayer.rating,
         round: this.round,
-        board: i + 1,
+        board: 0, // Will be assigned later
         section: this.section,
         tournament_id: this.tournamentId,
         result: null,
         is_bye: false
-      });
-    }
-    
-    // Handle bye if odd number of players
-    if (sortedPlayers.length % 2 === 1) {
-      const byePlayer = sortedPlayers[halfCount * 2];
-      pairings.push({
-        white_player_id: byePlayer.id,
-        black_player_id: null,
-        white_name: byePlayer.name,
-        black_name: null,
-        white_rating: byePlayer.rating,
-        black_rating: null,
-        round: this.round,
-        board: halfCount + 1,
-        section: this.section,
-        tournament_id: this.tournamentId,
-        result: 'bye',
-        is_bye: true
       });
     }
     

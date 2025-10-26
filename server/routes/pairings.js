@@ -347,7 +347,7 @@ class PairingStorageService {
    */
   getPreviousPairings(tournamentId, currentRound, section = null) {
     return new Promise((resolve, reject) => {
-      let query = 'SELECT white_player_id, black_player_id, round FROM pairings WHERE tournament_id = ? AND round < ?';
+      let query = 'SELECT white_player_id, black_player_id, round, is_bye FROM pairings WHERE tournament_id = ? AND round < ?';
       let params = [tournamentId, currentRound];
       
       if (section) {
@@ -384,8 +384,8 @@ class PairingStorageService {
   insertPairings(tournamentId, round, pairings) {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
-        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section, is_bye, result)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section, is_bye, bye_type, result)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const storedPairings = [];
@@ -404,6 +404,7 @@ class PairingStorageService {
           pairing.black_player_id,
           pairing.section || 'Open',
           pairing.is_bye || false,
+          pairing.bye_type || null,
           pairing.result || null
         ];
 
@@ -424,6 +425,7 @@ class PairingStorageService {
               black_player_id: pairing.black_player_id,
               section: pairing.section || 'Open',
               is_bye: pairing.is_bye || false,
+              bye_type: pairing.bye_type || null,
               result: pairing.result || null
             });
           }
@@ -1118,7 +1120,14 @@ router.post('/generate/section', async (req, res) => {
             reject(err);
           } else {
             console.log(`[PairingGeneration] Found ${rows.length} players for section "${sectionName}"`);
-            console.log(`[PairingGeneration] Players:`, rows.map(p => ({ id: p.id, name: p.name, rating: p.rating, section: p.section })));
+            console.log(`[PairingGeneration] Players:`, rows.map(p => ({ 
+              id: p.id, 
+              name: p.name, 
+              rating: p.rating, 
+              section: p.section,
+              bye_rounds: p.bye_rounds,
+              intentional_bye_rounds: p.intentional_bye_rounds
+            })));
             resolve(rows);
           }
         }
