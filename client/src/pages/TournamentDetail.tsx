@@ -3226,36 +3226,68 @@ const TournamentDetail: React.FC = () => {
 
           {activeTab === 'print' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between mb-6 no-print">
-                <div className="flex items-center space-x-4">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between mb-4 no-print">
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={() => setPrintViewTab('pairings')}
+                      className={`px-4 py-2 border rounded ${
+                        printViewTab === 'pairings' 
+                          ? 'bg-blue-600 text-white border-blue-600' 
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Pairings
+                    </button>
+                    <button
+                      onClick={() => setPrintViewTab('standings')}
+                      className={`px-4 py-2 border rounded ${
+                        printViewTab === 'standings' 
+                          ? 'bg-blue-600 text-white border-blue-600' 
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      Standings
+                    </button>
+                  </div>
                   <button
-                    onClick={() => setPrintViewTab('pairings')}
-                    className={`px-4 py-2 border rounded ${
-                      printViewTab === 'pairings' 
-                        ? 'bg-blue-600 text-white border-blue-600' 
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
+                    onClick={() => window.print()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-2"
                   >
-                    Pairings
-                  </button>
-                  <button
-                    onClick={() => setPrintViewTab('standings')}
-                    className={`px-4 py-2 border rounded ${
-                      printViewTab === 'standings' 
-                        ? 'bg-blue-600 text-white border-blue-600' 
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    Standings
+                    <Printer className="h-4 w-4" />
+                    <span>Print</span>
                   </button>
                 </div>
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-2"
-                >
-                  <Printer className="h-4 w-4" />
-                  <span>Print</span>
-                </button>
+                
+                <div className="flex items-center space-x-4 mb-4 no-print">
+                  <label className="text-sm font-medium text-gray-700">Select Section:</label>
+                  <select
+                    value={selectedSection || ''}
+                    onChange={(e) => handleSectionChange(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[200px]"
+                  >
+                    <option value="">-- All Sections --</option>
+                    {getAvailableSections().map(section => (
+                      <option key={section} value={section}>
+                        {section}
+                      </option>
+                    ))}
+                  </select>
+                  {printViewTab === 'pairings' && (
+                    <>
+                      <label className="text-sm font-medium text-gray-700">Round:</label>
+                      <select
+                        value={currentRound}
+                        onChange={(e) => handleRoundChange(parseInt(e.target.value))}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {Array.from({ length: tournament?.rounds || 1 }, (_, i) => i + 1).map(round => (
+                          <option key={round} value={round}>Round {round}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Print-friendly Pairings View */}
