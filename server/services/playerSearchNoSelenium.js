@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');
 
 // Enhanced cache with LRU eviction
 class LRUCache {
@@ -99,7 +100,22 @@ async function searchUSChessPlayers(searchTerm, maxResults = 10) {
 
     console.log(`Searching for: ${searchTerm}...`);
     
-    // 2. Use HTTP-based search (works everywhere including Heroku)
+    // 2. Try Puppeteer first (requires browser but gets real results)
+    let players = [];
+    try {
+      players = await searchWithPuppeteer(searchTerm, maxResults);
+    } catch (puppeteerError) {
+      console.log(`Puppeteer unavailable: ${puppeteerError.message}`);
+    }
+
+    if (players && players.length > 0) {
+      const filteredPlayers = filterSearchResults(players, searchTerm, maxResults);
+      searchCache.set(cacheKey, filteredPlayers);
+      console.log(`Puppeteer search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${filteredPlayers.length} relevant players`);
+      return filteredPlayers;
+    }
+
+    // 3. Fallback to HTTP-based search
     try {
       const httpPlayers = await searchViaMultipleEndpoints(searchTerm, maxResults);
       if (httpPlayers && httpPlayers.length > 0) {
@@ -195,9 +211,111 @@ function filterSearchResults(players, searchTerm, maxResults) {
 }
 
 /**
- * NOTE: Puppeteer-based search removed for Heroku compatibility
- * We now use HTTP-based scraping exclusively which works everywhere
+ * Search using Puppeteer to execute JavaScript and get real US Chess data
  */
+async function searchWithPuppeteer(searchTerm, maxResults) {
+  let browser;
+  
+  try {
+    console.log(`Using Puppeteer to search for: ${searchTerm}`);
+    
+    // Launch browser with optimized settings
+    // Note: puppeteer (not puppeteer-core) downloads its own Chromium
+    const chromePath = '/Users/aarushchugh/.cache/puppeteer/chrome/mac_arm-141.0.7390.122/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath: chromePath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-images',
+        '--disable-plugins',
+        '--disable-extensions'
+      ].concat(process.env.DYNO ? [
+        '--single-process',
+        '--no-zygote'
+      ] : [])
+    });
+    
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
+    
+    const url = `https://beta-ratings.uschess.org/?fuzzy=${encodeURIComponent(searchTerm)}`;
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+    
+    // Wait 4-5 seconds for JavaScript to render the search results
+    console.log('Waiting 4 seconds for JavaScript to render...');
+    await new Promise(resolve => setTimeout(resolve, 4000));
+    
+    // Look for search result cards
+    const playerCards = await page.$$('.search-card-player');
+    
+    if (playerCards.length === 0) {
+      console.log('No search result cards found');
+      return [];
+    }
+    
+    console.log(`Found ${playerCards.length} player cards`);
+    
+    const players = [];
+    
+    for (let i = 0; i < Math.min(playerCards.length, maxResults); i++) {
+      try {
+        const card = playerCards[i];
+        
+        // Extract player name
+        const nameElement = await card.$('.font-names');
+        let name = '';
+        if (nameElement) {
+          const nameSpans = await card.$$('.font-names span');
+          const nameParts = [];
+          for (let j = 0; j < nameSpans.length; j++) {
+            const text = await nameSpans[j].evaluate(el => el.textContent.trim());
+            if (text) nameParts.push(text);
+          }
+          
+          if (nameParts.length >= 2) {
+            const formatName = (n) => n.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+            name = `${formatName(nameParts[0])} ${formatName(nameParts[nameParts.length - 1])}`;
+          }
+        }
+        
+        // Extract USCF ID
+        const linkElement = await card.$('a[href*="/player/"]');
+        let memberId = null;
+        if (linkElement) {
+          const href = await linkElement.evaluate(el => el.getAttribute('href'));
+          const match = href.match(/\/player\/(\d+)/);
+          if (match) memberId = match[1];
+        }
+        
+        if (name && memberId) {
+          players.push({
+            name: name.trim(),
+            memberId: memberId.trim(),
+            uscf_id: memberId.trim(),
+            rating: null
+          });
+        }
+      } catch (e) {
+        console.log(`Error extracting player ${i}:`, e.message);
+      }
+    }
+    
+    return players;
+    
+  } catch (error) {
+    console.log(`Puppeteer search failed: ${error.message}`);
+    return [];
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
 
 /**
  * Search using the US Chess beta ratings URL only
@@ -214,9 +332,15 @@ async function searchViaMultipleEndpoints(searchTerm, maxResults) {
     for (const url of endpoints) {
       try {
         console.log(`Searching: ${url}`);
+        
+        // Make the HTTP request
         const response = await httpClient.get(url, {
-          timeout: 15000 // 15 second timeout for Heroku
+          timeout: 20000 // 20 second timeout for Heroku
         });
+        
+        console.log('Waiting 4 seconds for JavaScript to render content...');
+        // Wait for JavaScript to execute and render the search results
+        await new Promise(resolve => setTimeout(resolve, 4000));
         
         // Parse the response
         const players = parseAPIResponse(response.data, maxResults);
