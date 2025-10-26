@@ -171,8 +171,28 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
       for (let round = 1; round <= totalRounds; round++) {
         try {
           const response = await pairingApi.getByRound(id, round);
-          if (response.data) {
-            roundsData[round] = response.data;
+          if (response.data && Array.isArray(response.data)) {
+            // Transform pairing data to match expected format
+            roundsData[round] = response.data.map((pairing: any) => ({
+              id: pairing.id,
+              board: pairing.board,
+              round: pairing.round,
+              result: pairing.result || 'TBD',
+              white_player: {
+                id: pairing.white_player_id,
+                name: pairing.white_name || pairing.white_player_name || 'TBD',
+                rating: pairing.white_rating || pairing.white_player_rating
+              },
+              black_player: {
+                id: pairing.black_player_id,
+                name: pairing.black_name || pairing.black_player_name || 'TBD',
+                rating: pairing.black_rating || pairing.black_player_rating
+              },
+              white_player_id: pairing.white_player_id,
+              black_player_id: pairing.black_player_id
+            }));
+          } else {
+            roundsData[round] = [];
           }
         } catch (err) {
           console.warn(`Failed to fetch round ${round} data:`, err);
@@ -190,6 +210,34 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     setDisplayOptions(prev => ({
       ...prev,
       [key]: value
+    }));
+  };
+
+  // Transform standings data to match ChessStandingsTable interface
+  const transformStandingsData = (standings: any[]) => {
+    if (!standings) return [];
+    
+    return standings.map((player, index) => ({
+      id: player.id,
+      rank: player.rank || index + 1,
+      name: player.name,
+      rating: player.rating,
+      uscf_id: player.uscf_id,
+      section: player.section || 'Open',
+      total_points: player.total_points || 0,
+      games_played: player.games_played || 0,
+      wins: player.wins || 0,
+      losses: player.losses || 0,
+      draws: player.draws || 0,
+      tiebreakers: {
+        buchholz: 0,
+        sonnebornBerger: 0,
+        performanceRating: 0,
+        modifiedBuchholz: 0,
+        cumulative: 0
+      },
+      roundResults: player.roundResults || {},
+      prize: player.prize
     }));
   };
 
@@ -270,6 +318,26 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
 
   const { tournament, pairings, standings, currentRound, organization } = data;
   const stats = getTournamentStats();
+  
+  // Transform current round pairings data
+  const transformedPairings = pairings ? pairings.map((pairing: any) => ({
+    id: pairing.id,
+    board: pairing.board,
+    round: pairing.round,
+    result: pairing.result || 'TBD',
+    white_player: {
+      id: pairing.white_player_id,
+      name: pairing.white_name || pairing.white_player_name || 'TBD',
+      rating: pairing.white_rating || pairing.white_player_rating
+    },
+    black_player: {
+      id: pairing.black_player_id,
+      name: pairing.black_name || pairing.black_player_name || 'TBD',
+      rating: pairing.black_rating || pairing.black_player_rating
+    },
+    white_player_id: pairing.white_player_id,
+    black_player_id: pairing.black_player_id
+  })) : [];
 
   return (
     <div className={`min-h-screen bg-white ${isEmbedded ? 'embed-mode' : ''}`}>
@@ -539,47 +607,53 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Current Round Pairings */}
-              <div className="card-brand">
-                <h3 className="text-lg font-semibold mb-4 brand-text">Current Round Pairings</h3>
-                    {pairings && pairings.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b brand-border">
-                              <th className="text-left py-2 brand-text">Board</th>
-                              <th className="text-left py-2 brand-text">White</th>
-                              <th className="text-left py-2 brand-text">Black</th>
-                              <th className="text-left py-2 brand-text">Result</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pairings.map((pairing, index) => (
-                              <tr key={index} className="border-b brand-border">
-                                <td className="py-2 brand-text">{pairing.board || index + 1}</td>
-                                <td className="py-2 brand-text">
-                                  {pairing.white_player?.name || 'TBD'}
-                                  {displayOptions.showRatings && pairing.white_player?.rating && (
-                                    <span className="text-sm brand-secondary ml-2">({pairing.white_player.rating})</span>
-                                  )}
-                                </td>
-                                <td className="py-2 brand-text">
-                                  {pairing.black_player?.name || 'TBD'}
-                                  {displayOptions.showRatings && pairing.black_player?.rating && (
-                                    <span className="text-sm brand-secondary ml-2">({pairing.black_player.rating})</span>
-                                  )}
-                                </td>
-                                <td className="py-2 brand-text">{pairing.result || '-'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No pairings available for current round</p>
-                  </div>
-                )}
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">Current Round Pairings</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  {transformedPairings && transformedPairings.length > 0 ? (
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {transformedPairings.map((pairing, index) => (
+                          <tr key={pairing.id || index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {pairing.board || index + 1}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {pairing.white_player?.name || 'TBD'}
+                              {pairing.white_player?.rating && (
+                                <span className="text-sm text-gray-500 ml-2">({pairing.white_player.rating})</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {pairing.black_player?.name || 'TBD'}
+                              {pairing.black_player?.rating && (
+                                <span className="text-sm text-gray-500 ml-2">({pairing.black_player.rating})</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {pairing.result || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="px-6 py-8 text-center text-gray-500">
+                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No pairings available for current round</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -594,7 +668,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                 <div className="overflow-x-auto">
                   {standings && standings.length > 0 ? (
                     <ChessStandingsTable
-                      standings={getFilteredStandings(standings)}
+                      standings={getFilteredStandings(transformStandingsData(standings))}
                       tournament={{
                         rounds: tournament.rounds,
                         name: tournament.name
