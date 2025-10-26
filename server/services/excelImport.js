@@ -104,37 +104,50 @@ async function parseExcelFile(filePath) {
             normalizedRow[normalizedKey] = rowObj[key];
           });
           
-          // Extract player data with flexible column mapping
+          // Extract player data with flexible column mapping (using bracket notation for all)
           const player = {
-            name: normalizedRow.name || normalizedRow['player name'] || normalizedRow['full name'] || '',
-            uscf_id: normalizedRow.uscf_id || normalizedRow['uscf id'] || normalizedRow['uscf'] || normalizedRow['member id'] || '',
-            fide_id: normalizedRow.fide_id || normalizedRow['fide id'] || normalizedRow['fide'] || '',
-            lichess_username: normalizedRow.lichess_username || normalizedRow['lichess username'] || normalizedRow['lichess'] || normalizedRow['lichess handle'] || '',
-            rating: normalizedRow.rating || normalizedRow['uscf rating'] || normalizedRow['regular rating'] || '',
-            section: normalizedRow.section || normalizedRow['division'] || normalizedRow['class'] || '',
-            team_name: normalizedRow.team_name || normalizedRow['team name'] || normalizedRow['team'] || '',
+            name: normalizedRow['name'] || normalizedRow['player name'] || normalizedRow['full name'] || '',
+            uscf_id: normalizedRow['uscf id'] || normalizedRow['uscf_id'] || normalizedRow['uscf'] || normalizedRow['member id'] || '',
+            fide_id: normalizedRow['fide id'] || normalizedRow['fide_id'] || normalizedRow['fide'] || '',
+            lichess_username: normalizedRow['lichess_username'] || normalizedRow['lichess username'] || normalizedRow['lichess'] || normalizedRow['lichess handle'] || '',
+            rating: normalizedRow['rating'] || normalizedRow['uscf rating'] || normalizedRow['regular rating'] || '',
+            section: normalizedRow['section'] || normalizedRow['division'] || normalizedRow['class'] || '',
+            team_name: normalizedRow['team name'] || normalizedRow['team_name'] || normalizedRow['team'] || '',
             status: 'active', // Always default to active for imported players
-            state: normalizedRow.state || normalizedRow['state/province'] || '',
-            city: normalizedRow.city || normalizedRow['city/town'] || '',
-            email: normalizedRow.email || normalizedRow['email address'] || '',
-            phone: normalizedRow.phone || normalizedRow['phone number'] || '',
+            state: normalizedRow['state'] || normalizedRow['state/province'] || '',
+            city: normalizedRow['city'] || normalizedRow['city/town'] || '',
+            email: normalizedRow['email'] || normalizedRow['email address'] || '',
+            phone: normalizedRow['phone'] || normalizedRow['phone number'] || '',
             bye_rounds: normalizedRow['bye rounds'] || normalizedRow['bye_rounds'] || normalizedRow['byes'] || '',
             expiration_date: normalizedRow['expiration date'] || normalizedRow['expiration_date'] || normalizedRow['expires'] || '',
-            notes: normalizedRow.notes || normalizedRow['comments'] || normalizedRow['remarks'] || ''
+            notes: normalizedRow['notes'] || normalizedRow['comments'] || normalizedRow['remarks'] || ''
           };
           
           // Clean up the data
           Object.keys(player).forEach(key => {
             if (typeof player[key] === 'string') {
-              player[key] = player[key].trim();
-              if (player[key] === '') player[key] = null;
+              // Remove quotes from values if present
+              let value = player[key].trim();
+              
+              // Remove surrounding quotes if present
+              if ((value.startsWith('"') && value.endsWith('"')) || 
+                  (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.slice(1, -1);
+              }
+              
+              player[key] = value === '' ? null : value;
             }
           });
           
           // Convert rating to number if it's a valid number
-          if (player.rating && !isNaN(player.rating)) {
-            player.rating = parseInt(player.rating);
-          } else if (player.rating) {
+          if (player.rating !== null && player.rating !== undefined && player.rating !== '') {
+            const ratingValue = typeof player.rating === 'string' ? player.rating.trim() : player.rating;
+            if (!isNaN(ratingValue) && ratingValue !== '') {
+              player.rating = parseInt(ratingValue);
+            } else {
+              player.rating = null;
+            }
+          } else {
             player.rating = null;
           }
           

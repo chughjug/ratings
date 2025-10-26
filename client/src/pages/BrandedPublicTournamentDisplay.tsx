@@ -4,8 +4,7 @@ import {
   Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
   Crown, Award, BarChart3, TrendingUp, Activity, Star, MapPin, 
-  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings,
-  Image as ImageIcon, Upload
+  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
@@ -56,7 +55,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const [data, setData] = useState<PublicDisplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>('preregistered');
   const [customPages, setCustomPages] = useState<any[]>([]);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedRound, setSelectedRound] = useState<number>(1);
@@ -426,128 +425,106 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     return acc;
   }, {});
 
-  // Get branding images from tournament config
-  const getBrandingImage = (type: 'header' | 'sidebar' | 'hero' | 'footer') => {
-    if (!tournament?.public_display_config) return null;
-    try {
-      const config = JSON.parse(tournament.public_display_config);
-      return config.images?.[type];
-    } catch (e) {
-      return null;
-    }
-  };
-
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ${isEmbedded ? 'embed-mode' : ''}`} 
+    <div className={`min-h-screen bg-white ${isEmbedded ? 'embed-mode' : ''}`} 
          style={isEmbedded ? { 
            minHeight: embedSettings?.minHeight || '400px',
            maxHeight: embedSettings?.maxHeight || 'none',
            overflow: 'auto'
          } : {}}>
-      {/* Modern Header with Banner Image */}
+      {/* Simple Header with Logo Space */}
       {!isEmbedded && (
-        <header className="relative bg-white shadow-lg">
-          {/* Banner Image Area */}
-          {getBrandingImage('header') && (
-            <div className="relative h-32 overflow-hidden">
-              <img 
-                src={getBrandingImage('header')} 
-                alt="Header Banner"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-            </div>
-          )}
-          
-          {/* Logo and Navigation */}
-          <div className="relative z-10 bg-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center justify-between py-4">
-                {/* Logo */}
-                <div className="flex items-center space-x-4">
-                  {organization?.logoUrl || tournament?.logo_url ? (
-                    <img 
-                      src={organization?.logoUrl || tournament?.logo_url} 
-                      alt={organization?.name || tournament?.name}
-                      className="h-14 w-auto drop-shadow-md"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
-                      }}
-                    />
-                  ) : (
-                    <img 
-                      src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
-                      alt="PairCraft"
-                      className="h-14 w-auto drop-shadow-md"
-                    />
-                  )}
-                  <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    {organization?.name || tournament?.name || 'Chess Tournament'}
-                  </div>
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              {/* Company Logo Space */}
+              <div className="flex items-center space-x-4">
+                {organization?.logoUrl || tournament?.logo_url ? (
+                  <img 
+                    src={organization?.logoUrl || tournament?.logo_url} 
+                    alt={organization?.name || tournament?.name}
+                    className="h-12 w-auto"
+                    onError={(e) => {
+                      // Fallback to PairCraft logo if image fails to load
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
+                    }}
+                  />
+                ) : (
+                  <img 
+                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
+                    alt="PairCraft"
+                    className="h-12 w-auto"
+                  />
+                )}
+                <div className="text-lg font-semibold text-gray-900">
+                  {organization?.name || tournament?.name || 'Chess Tournament'}
                 </div>
-
-                {/* Navigation */}
-                <nav className="flex space-x-1">
-                  {[
-                    { key: 'overview', label: 'INFO' },
-                    { key: 'preregistered', label: 'ENTRIES' },
-                    { key: 'pairings', label: 'PAIRINGS' },
-                    { key: 'standings', label: 'STANDINGS' },
-                    { key: 'standings', label: 'LIVE' },
-                    { key: 'print', label: 'PRINT' },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      onClick={() => setActiveTab(item.key)}
-                      className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded-lg transition-all duration-200 ${
-                        activeTab === item.key 
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </nav>
               </div>
+
+              {/* Navigation */}
+              <nav className="flex space-x-6">
+                <button
+                  onClick={() => setActiveTab('preregistered')}
+                  className={`text-sm font-medium ${activeTab === 'preregistered' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Entries
+                </button>
+                <button
+                  onClick={() => setActiveTab('pairings')}
+                  className={`text-sm font-medium ${activeTab === 'pairings' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Pairings
+                </button>
+                <button
+                  onClick={() => setActiveTab('standings')}
+                  className={`text-sm font-medium ${activeTab === 'standings' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Standings
+                </button>
+                <button
+                  onClick={() => setActiveTab('print')}
+                  className={`text-sm font-medium ${activeTab === 'print' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Print
+                </button>
+                {/* Custom Pages */}
+                {customPages && customPages.length > 0 && customPages.map((page) => (
+                  <button
+                    key={page.id}
+                    onClick={() => setActiveTab(page.slug)}
+                    className={`text-sm font-medium ${activeTab === page.slug ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    {page.icon && <span>{page.icon}</span>}
+                    <span>{page.title}</span>
+                  </button>
+                ))}
+              </nav>
             </div>
           </div>
-        </header>
+        </div>
       )}
 
-      {/* Modern Hero Section */}
-      <div className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white overflow-hidden">
-        {getBrandingImage('hero') && (
-          <div className="absolute inset-0 opacity-20">
-            <img 
-              src={getBrandingImage('hero')} 
-              alt="Hero Background"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-2 drop-shadow-lg">{tournament.name}</h1>
-              <div className="flex items-center space-x-6 text-lg">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5" />
-                  <span>{tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBD'}</span>
+      {/* Tournament Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">{tournament.name}</h1>
+                <div className="flex items-center space-x-6 text-sm text-gray-600 mt-2">
+                  <span><strong>Date:</strong> {tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBD'}</span>
+                  {tournament.location && <span><strong>Location:</strong> {tournament.location}</span>}
                 </div>
-                {tournament.location && (
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-5 w-5" />
-                    <span>{tournament.location}</span>
-                  </div>
-                )}
               </div>
-            </div>
-            
-            <div className="text-right space-y-2">
-              <div className="text-sm opacity-90">Total Players</div>
-              <div className="text-4xl font-bold drop-shadow-lg">{stats?.totalPlayers || 0}</div>
-              <div className="text-sm opacity-90">Round {currentRound} of {tournament.rounds}</div>
+              
+              <div className="text-right">
+                <div className="text-sm text-gray-600">
+                  <strong>Total players:</strong> {stats?.totalPlayers || 0}
+                </div>
+                <div className="text-sm text-gray-600">
+                  <strong>Round:</strong> {currentRound} of {tournament.rounds}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -629,21 +606,19 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
         </div>
       )}
 
-      {/* Main Content with Modern Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-              {activeTab === 'overview' && 'Tournament Information'}
-              {activeTab === 'preregistered' && 'Tournament Entries'}
-              {activeTab === 'pairings' && 'Round Pairings'}
-              {activeTab === 'standings' && 'Current Standings'}
-              {activeTab === 'teams' && 'Team Standings'}
-              {activeTab === 'prizes' && 'Prize Information'}
-              {activeTab === 'analytics' && 'Tournament Analytics'}
-            </h2>
-          </div>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {activeTab === 'preregistered' && 'Entries'}
+            {activeTab === 'pairings' && 'Pairings'}
+            {activeTab === 'standings' && 'Standings'}
+            {activeTab === 'print' && 'Print View'}
+            {activeTab === 'teams' && 'Teams'}
+            {activeTab === 'prizes' && 'Prizes'}
+            {activeTab === 'analytics' && 'Analytics'}
+          </h2>
           
           {activeTab === 'preregistered' && (
             <p className="text-sm text-gray-600 mt-1">
@@ -676,6 +651,203 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
 
         {/* Tab Content */}
         <div className="animate-fade-in">
+          {activeTab === 'print' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6 no-print">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setPrintView('pairings')}
+                    className={`px-4 py-2 border rounded ${
+                      printView === 'pairings' 
+                        ? 'bg-blue-600 text-white border-blue-600' 
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Pairings
+                  </button>
+                  <button
+                    onClick={() => setPrintView('standings')}
+                    className={`px-4 py-2 border rounded ${
+                      printView === 'standings' 
+                        ? 'bg-blue-600 text-white border-blue-600' 
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Standings
+                  </button>
+                </div>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-2"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Print</span>
+                </button>
+              </div>
+
+              {/* Print-friendly Pairings View */}
+              {printView === 'pairings' && (
+                <div className="print-view bg-white p-8">
+                  <div className="mb-6">
+                    <h1 className="text-xl font-bold text-center mb-2">{tournament.name}</h1>
+                    <h2 className="text-lg font-semibold text-center text-gray-700 mb-4">
+                      Round {currentRound} Pairings
+                    </h2>
+                  </div>
+
+                  {Object.keys(pairingsBySection).sort().map((sectionName) => {
+                    const sectionPairings = pairingsBySection[sectionName]
+                      .sort((a: any, b: any) => (a.board || 0) - (b.board || 0));
+                    
+                    // Create a flat list of all players with their color info
+                    const allPlayers: any[] = [];
+                    sectionPairings.forEach((pairing: any, idx: number) => {
+                      if (pairing.white_player?.name && pairing.white_player.name !== 'TBD') {
+                        allPlayers.push({
+                          name: pairing.white_player.name,
+                          playerId: pairing.white_player_id,
+                          color: 'W',
+                          board: pairing.board || idx + 1,
+                          opponentName: pairing.black_player?.name,
+                          opponentId: pairing.black_player_id,
+                          opponentRating: pairing.black_player?.rating,
+                          opponentPoints: pairing.black_player?.points,
+                          pairing: pairing
+                        });
+                      }
+                      if (pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye) {
+                        allPlayers.push({
+                          name: pairing.black_player.name,
+                          playerId: pairing.black_player_id,
+                          color: 'B',
+                          board: pairing.board || idx + 1,
+                          opponentName: pairing.white_player?.name,
+                          opponentId: pairing.white_player_id,
+                          opponentRating: pairing.white_player?.rating,
+                          opponentPoints: pairing.white_player?.points,
+                          pairing: pairing
+                        });
+                      }
+                    });
+
+                    return (
+                      <div key={sectionName} className="mb-8">
+                        <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                          {sectionName} Section
+                        </h3>
+                        <table className="w-full border-collapse text-sm">
+                          <thead>
+                            <tr className="border-b-2 border-gray-800">
+                              <th className="text-left py-2 px-4 font-semibold">Player</th>
+                              <th className="text-center py-2 px-4 font-semibold">Color/Board</th>
+                              <th className="text-left py-2 px-4 font-semibold">Opponent</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allPlayers.map((playerRow, idx) => (
+                              <tr key={idx} className="border-b border-gray-300">
+                                <td className="py-2 px-4">
+                                  <div className="font-semibold">
+                                    {playerRow.name}
+                                    {getPlayerTeam(playerRow.playerId) && 
+                                      ` (${getPlayerTeam(playerRow.playerId)})`}
+                                  </div>
+                                </td>
+                                <td className="py-2 px-4 text-center font-semibold">
+                                  {playerRow.color} {playerRow.board}
+                                </td>
+                                <td className="py-2 px-4">
+                                  {playerRow.opponentName && playerRow.opponentName !== 'TBD' ? (
+                                    <div className="text-xs">
+                                      {playerRow.opponentName}
+                                      {getPlayerTeam(playerRow.opponentId) && 
+                                        `, ${getPlayerTeam(playerRow.opponentId)}`}, 
+                                      ({playerRow.opponentPoints || 0}.0,
+                                      {getPlayerTeam(playerRow.opponentId) || 'N/A'}, 
+                                      {playerRow.opponentRating || 'nnnn'})
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-500 italic">Please Wait</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Print-friendly Standings View */}
+              {printView === 'standings' && (
+                <div className="print-view bg-white p-8">
+                  <div className="mb-6">
+                    <h1 className="text-xl font-bold text-center mb-2">{tournament.name}</h1>
+                    <h2 className="text-lg font-semibold text-center text-gray-700 mb-4">
+                      Tournament Standings
+                    </h2>
+                  </div>
+
+                  {(() => {
+                    const sections: { [key: string]: any[] } = {};
+                    standings.forEach((player: any) => {
+                      const section = player.section || 'Open';
+                      if (!sections[section]) sections[section] = [];
+                      sections[section].push(player);
+                    });
+
+                    return Object.keys(sections).sort().map((sectionName) => {
+                      const sectionPlayers = sections[sectionName]
+                        .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
+
+                      return (
+                        <div key={sectionName} className="mb-8">
+                          <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                            {sectionName} Section ({sectionPlayers.length} players)
+                          </h3>
+                          <table className="w-full border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-gray-800 font-bold">
+                                <th className="text-left py-2 px-2">No.</th>
+                                <th className="text-left py-2 px-2">Name</th>
+                                <th className="text-left py-2 px-2">Team</th>
+                                <th className="text-left py-2 px-2">Rate</th>
+                                <th className="text-left py-2 px-2">Pts</th>
+                                <th className="text-left py-2 px-2">Ty</th>
+                                {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                  <th key={round} className="text-center py-2 px-2">Rnd{round}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sectionPlayers.map((player: any, idx: number) => (
+                                <tr key={player.id} className="border-b border-gray-300">
+                                  <td className="py-2 px-2">{idx + 1}.</td>
+                                  <td className="py-2 px-2 font-semibold">{player.name}</td>
+                                  <td className="py-2 px-2">{getPlayerTeam(player.id) || '-'}</td>
+                                  <td className="py-2 px-2">{player.rating || '-'}</td>
+                                  <td className="py-2 px-2 font-bold">{player.total_points || 0}</td>
+                                  <td className="py-2 px-2">-</td>
+                                  {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                    <td key={round} className="text-center py-2 px-2">
+                                      {getRoundResult(player, round, sectionPlayers)}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'preregistered' && (
             <div className="space-y-6">
               {/* Entries Table */}
@@ -731,84 +903,6 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
             </div>
           )}
 
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Current Round Pairings */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Current Round Pairings</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  {Object.keys(pairingsBySection).length > 0 ? (
-                    <div className="space-y-6">
-                      {Object.keys(pairingsBySection).sort().map((sectionName) => (
-                        <div key={sectionName} className="p-6">
-                          <h4 className="text-md font-semibold text-gray-800 mb-4 uppercase">{sectionName} Section</h4>
-                          <table className="w-full">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {pairingsBySection[sectionName].map((pairing: any, index: number) => (
-                                <tr key={pairing.id || index} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {pairing.board || index + 1}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <div className="flex flex-col">
-                                      <span className="font-semibold">{pairing.white_player?.name || 'TBD'}</span>
-                                      <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
-                                        {pairing.white_player?.rating && (
-                                          <span>({pairing.white_player.rating})</span>
-                                        )}
-                                        {pairing.white_player?.points !== undefined && (
-                                          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
-                                            {pairing.white_player.points} pts
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <div className="flex flex-col">
-                                      <span className="font-semibold">{pairing.black_player?.name || 'TBD'}</span>
-                                      <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
-                                        {pairing.black_player?.rating && (
-                                          <span>({pairing.black_player.rating})</span>
-                                        )}
-                                        {pairing.black_player?.points !== undefined && (
-                                          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
-                                            {pairing.black_player.points} pts
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {pairing.result || '-'}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-6 py-8 text-center text-gray-500">
-                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>No pairings available for current round</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
           {activeTab === 'standings' && (
             <div className="space-y-6">
@@ -856,90 +950,42 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                               </h4>
                               
                               <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-sm">
+                                <table className="w-full border-collapse text-xs border border-gray-300">
                                   <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-300">
-                                      <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        No.
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        Player's Name
-                                      </th>
-                                      <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        USCF
-                                      </th>
-                                      <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        Rating
-                                      </th>
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        Pts
-                                      </th>
+                                    <tr className="bg-gray-100 border-b-2 border-gray-500">
+                                      <th className="px-2 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">No.</th>
+                                      <th className="px-3 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">Player's Name</th>
+                                      <th className="px-2 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">USCF</th>
+                                      <th className="px-2 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">Rating</th>
+                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">Pts</th>
                                       {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
-                                        <th key={round} className="px-1 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                          Rnd{round}
-                                        </th>
+                                        <th key={round} className="px-1 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">Rnd{round}</th>
                                       ))}
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        BH
-                                      </th>
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        SB
-                                      </th>
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
-                                        Perf
-                                      </th>
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900">
-                                        Prize
-                                      </th>
+                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">BH</th>
+                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">SB</th>
+                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">Perf</th>
+                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900">Prize</th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-300">
                                     {sectionPlayers.map((player, index) => (
-                                      <tr key={player.id || index} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-2 py-2 text-left text-xs text-gray-900 font-medium border-r border-gray-300">
-                                          {index + 1}.
+                                      <tr key={player.id || index} className="hover:bg-gray-50 border-b border-gray-300">
+                                        <td className="px-2 py-2 text-left text-xs text-gray-900 font-medium border-r border-gray-300">{index + 1}.</td>
+                                        <td className="px-3 py-2 text-left text-xs text-gray-900 font-bold border-r border-gray-300">
+                                          <a href="#player" className="hover:text-blue-600 hover:underline">{player.name || 'Unknown Player'}</a>
                                         </td>
-                                        <td className="px-3 py-2 text-left text-xs text-gray-900 font-semibold border-r border-gray-300">
-                                          <a 
-                                            href={`#player-${player.id}`}
-                                            className="hover:text-blue-600 hover:underline cursor-pointer"
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              // TODO: Navigate to player page or show player details modal
-                                            }}
-                                          >
-                                            {player.name || 'Unknown Player'}
-                                          </a>
-                                        </td>
-                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">
-                                          {player.uscf_id || '-'}
-                                        </td>
-                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">
-                                          {player.rating || '-'}
-                                        </td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-900 font-bold border-r border-gray-300">
-                                          {player.total_points || 0}
-                                        </td>
-                                        {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => {
-                                          const roundResult = getRoundResult(player, round, sectionPlayers);
-                                          return (
-                                            <td key={round} className="px-1 py-2 text-center text-xs text-gray-700 border-r border-gray-300 font-mono">
-                                              {roundResult}
-                                            </td>
-                                          );
-                                        })}
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">
-                                          {player.tiebreakers?.buchholz?.toFixed(1) || '0.0'}
-                                        </td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">
-                                          {player.tiebreakers?.sonneborn_berger?.toFixed(1) || '0.0'}
-                                        </td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">
-                                          {player.performance_rating?.toFixed(1) || '0.0'}
-                                        </td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700">
-                                          {player.prize || ''}
-                                        </td>
+                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">{player.uscf_id || '-'}</td>
+                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">{player.rating || '-'}</td>
+                                        <td className="px-2 py-2 text-center text-xs text-gray-900 font-bold border-r border-gray-300">{player.total_points || 0}</td>
+                                        {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                          <td key={round} className="px-1 py-2 text-center text-xs text-gray-700 border-r border-gray-300 font-mono">
+                                            {getRoundResult(player, round, sectionPlayers)}
+                                          </td>
+                                        ))}
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">{player.tiebreakers?.buchholz?.toFixed(1) || '0.0'}</td>
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">{player.tiebreakers?.sonneborn_berger?.toFixed(1) || '0.0'}</td>
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">{player.performance_rating?.toFixed(1) || '0.0'}</td>
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700">{player.prize || ''}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -1156,27 +1202,6 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           )}
             </div>
           </div>
-
-      {/* Modern Footer with Optional Banner */}
-      {!isEmbedded && getBrandingImage('footer') && (
-        <footer className="relative mt-12">
-          <div className="relative h-48 overflow-hidden">
-            <img 
-              src={getBrandingImage('footer')} 
-              alt="Footer Banner"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
-            <div className="absolute bottom-0 left-0 right-0 pb-6 px-4">
-              <div className="max-w-7xl mx-auto text-white text-center">
-                <p className="text-sm opacity-90">
-                  © {new Date().getFullYear()} {organization?.name || tournament?.name || 'Chess Tournament'}. All rights reserved.
-                </p>
-              </div>
-            </div>
-          </div>
-        </footer>
-      )}
 
     </div>
   );
