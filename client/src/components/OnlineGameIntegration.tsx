@@ -100,8 +100,10 @@ const OnlineGameIntegration: React.FC<OnlineGameIntegrationProps> = ({
     }
     
     // Create separate URLs for white and black players with their authentication
-    const whiteUrl = `${window.location.origin}/chess.html?room=${roomCode}&name=${encodeURIComponent(pairing.white_player_name || 'White Player')}&playerId=${whiteId}&token=${whiteToken}&color=white&tc=${timeControlData.minutes}+${timeControlData.increment}`;
-    const blackUrl = `${window.location.origin}/chess.html?room=${roomCode}&name=${encodeURIComponent(pairing.black_player_name || 'Black Player')}&playerId=${blackId}&token=${blackToken}&color=black&tc=${timeControlData.minutes}+${timeControlData.increment}`;
+    // Use /2playerchess/chess.html for Heroku production
+    const basePath = isProduction ? '/2playerchess' : '';
+    const whiteUrl = `${window.location.origin}${basePath}/chess.html?room=${roomCode}&name=${encodeURIComponent(pairing.white_player_name || 'White Player')}&playerId=${whiteId}&token=${whiteToken}&color=white&tc=${timeControlData.minutes}+${timeControlData.increment}`;
+    const blackUrl = `${window.location.origin}${basePath}/chess.html?room=${roomCode}&name=${encodeURIComponent(pairing.black_player_name || 'Black Player')}&playerId=${blackId}&token=${blackToken}&color=black&tc=${timeControlData.minutes}+${timeControlData.increment}`;
     
     return { roomCode, whiteUrl, blackUrl, whiteToken, blackToken };
   };

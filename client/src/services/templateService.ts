@@ -49,7 +49,7 @@ export class TemplateService {
         id: 'blitz-tournament',
         name: 'Blitz Tournament',
         description: 'Fast-paced blitz tournament with 5+0 time control',
-        format: 'blitz',
+        format: 'swiss',
         settings: {
           blitz_rapid_settings: {
             time_control: '5+0',
@@ -71,7 +71,7 @@ export class TemplateService {
         id: 'rapid-tournament',
         name: 'Rapid Tournament',
         description: 'Rapid tournament with 15+10 time control',
-        format: 'rapid',
+        format: 'swiss',
         settings: {
           blitz_rapid_settings: {
             time_control: '15+10',
@@ -150,7 +150,7 @@ export class TemplateService {
         id: 'knockout-tournament',
         name: 'Knockout Tournament',
         description: 'Single elimination knockout tournament',
-        format: 'knockout',
+        format: 'swiss',
         settings: {
           knockout_settings: {
             seeding_method: 'rating',
@@ -169,7 +169,7 @@ export class TemplateService {
         id: 'simultaneous-exhibition',
         name: 'Simultaneous Exhibition',
         description: 'Simultaneous exhibition with master',
-        format: 'simultaneous',
+        format: 'swiss',
         settings: {
           simultaneous_settings: {
             max_boards: 20,
@@ -188,7 +188,7 @@ export class TemplateService {
         id: 'multi-day-tournament',
         name: 'Multi-Day Tournament',
         description: 'Tournament spanning multiple days',
-        format: 'multi-day',
+        format: 'swiss',
         settings: {
           multi_day_schedule: [
             {

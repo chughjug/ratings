@@ -35,9 +35,16 @@ const CreateTournament: React.FC = () => {
 
   const handleTemplateSelect = (template: TournamentTemplate) => {
     setSelectedTemplate(template.id);
+    
+    // Validate and map format to supported formats
+    const validFormats: ('swiss' | 'online' | 'quad' | 'team-swiss')[] = ['swiss', 'online', 'quad', 'team-swiss'];
+    const validFormat = validFormats.includes(template.format as any) 
+      ? template.format as any 
+      : 'swiss'; // Default to swiss if invalid format
+    
     setFormData(prev => ({
       ...prev,
-      format: template.format as any,
+      format: validFormat,
       settings: {
         ...prev.settings,
         ...template.settings

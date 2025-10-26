@@ -176,6 +176,11 @@ app.get('/2playerchess/', (req, res) => {
   res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
 });
 
+// Serve 2PlayerChess chess.html directly (for game links)
+app.get('/2playerchess/chess.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
+});
+
 // Note: chess2playerRoutes is already imported above with other routes
 
 // Serve the Lichess OAuth demo page

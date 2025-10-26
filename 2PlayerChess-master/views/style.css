@@ -1,18 +1,25 @@
-/* Custom Properties for Theme Colors */
+/* Lichess-inspired Theme Colors */
 :root {
-    --primary-bg: #ffffff;
-    --secondary-bg: #f9fafb;
-    --chess-board: #8b4513;
-    --chess-light: #f0d9b5;
-    --chess-dark: #b58863;
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-    --accent-blue: #3b82f6;
-    --accent-green: #10b981;
-    --accent-red: #ef4444;
-    --border-color: #e5e7eb;
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    /* Lichess color scheme */
+    --lichess-bg: #262421;
+    --lichess-surface: #312e2b;
+    --lichess-surface-hover: #3a3633;
+    --lichess-border: #403d39;
+    --lichess-text: #bebdb9;
+    --lichess-text-light: #d9d9d9;
+    --lichess-accent: #81c14b;
+    --lichess-accent-hover: #6fa63c;
+    --lichess-danger: #ea4335;
+    --lichess-board: #b58863;
+    --lichess-light: #f0d9b5;
+    --lichess-dark: #b58863;
+    --lichess-board-light: #f0d9b5;
+    --lichess-board-dark: #b58863;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 /* Reset and Base Styles */
@@ -23,72 +30,82 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
         'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    background-color: var(--secondary-bg);
-    color: var(--text-primary);
+    background-color: var(--lichess-bg);
+    color: var(--lichess-text);
     margin: 0;
     padding: 0;
 }
 
 .chess-bgd {
-    background: var(--secondary-bg) !important;
+    background: var(--lichess-bg) !important;
 }
 
-/* Title Styling */
+/* Title Styling - Lichess style */
 .title-container {
-    background: var(--primary-bg);
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: var(--shadow);
+    background: var(--lichess-surface);
+    border-bottom: 1px solid var(--lichess-border);
+    box-shadow: none;
 }
 
 #title {
-    color: var(--text-primary) !important;
-    font-weight: 600;
-    font-size: 1.25rem;
-    padding: 1rem;
-}
-
-.hr-show {
-    color: var(--chess-board);
-}
-
-/* Button Styling */
-.btn {
-    border-radius: 0.5rem;
+    color: var(--lichess-text-light) !important;
     font-weight: 500;
-    transition: all 0.2s;
-    border: none;
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+#title .hr-show {
+    display: none;
+}
+
+/* Button Styling - Lichess style */
+.btn {
+    border-radius: 3px;
+    font-weight: 500;
+    transition: all 0.15s;
+    border: 1px solid var(--lichess-border);
     cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
 }
 
 .btn-success {
-    background-color: var(--accent-green);
-    color: white;
+    background-color: var(--lichess-accent);
+    color: #ffffff;
+    border-color: var(--lichess-accent);
 }
 
 .btn-success:hover {
-    background-color: #059669;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lg);
+    background-color: var(--lichess-accent-hover);
+    border-color: var(--lichess-accent-hover);
+    transform: none;
+    box-shadow: var(--shadow);
 }
 
 .btn-danger {
-    background-color: var(--accent-red);
+    background-color: var(--lichess-danger);
     color: white;
+    border-color: var(--lichess-danger);
 }
 
 .btn-danger:hover {
-    background-color: #dc2626;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-lg);
+    background-color: #d93025;
+    border-color: #d93025;
+    transform: none;
+    box-shadow: var(--shadow);
 }
 
 .btn-secondary {
-    background-color: var(--text-secondary);
-    color: white;
+    background-color: var(--lichess-surface);
+    color: var(--lichess-text);
+    border-color: var(--lichess-border);
 }
 
 .btn-secondary:hover {
-    background-color: #4b5563;
+    background-color: var(--lichess-surface-hover);
+    border-color: var(--lichess-border);
 }
 
 .btn-block {
@@ -96,253 +113,336 @@ body {
     width: 100%;
 }
 
-/* Controls Container */
+/* Controls Container - Lichess style */
 #game-controls-container {
-    background: var(--primary-bg);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    background: var(--lichess-surface);
+    border-radius: 0;
+    padding: 1rem;
+    box-shadow: none;
+    border: 1px solid var(--lichess-border);
+    border-radius: 3px;
 }
 
-/* Reorder controls: clocks first, then moves, then game buttons */
-#game-controls-container > * {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Username Display */
+/* Username Display - Lichess style */
 .user {
-    color: var(--text-primary);
-    font-weight: 500;
-    padding: 0.5rem;
-    background: var(--secondary-bg);
-    border-radius: 0.5rem;
+    color: var(--lichess-text-light);
+    font-weight: 400;
+    padding: 0.5rem 0.75rem;
+    background: var(--lichess-surface);
+    border-radius: 3px;
+    border: 1px solid var(--lichess-border);
+    font-size: 0.875rem;
 }
 
 .icon-w, .icon-b {
-    font-size: 1.25rem;
+    font-size: 1rem;
     margin-right: 0.5rem;
 }
 
 .icon-w {
-    color: var(--chess-light);
+    color: var(--lichess-board-light);
 }
 
 .icon-b {
-    color: var(--chess-dark);
+    color: var(--lichess-board-dark);
 }
 
 .online {
-    color: var(--accent-green);
+    color: var(--lichess-accent);
 }
 
 .offline {
-    color: var(--text-secondary);
+    color: var(--lichess-text);
 }
 
-/* Room Code Display */
+/* Room Code Display - Lichess style */
 #copylink {
-    background: var(--secondary-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    transition: all 0.2s;
+    background: var(--lichess-surface);
+    border: 1px solid var(--lichess-border);
+    border-radius: 3px;
+    transition: all 0.15s;
+    color: var(--lichess-text);
 }
 
 #copylink:hover {
-    background: var(--primary-bg);
-    box-shadow: var(--shadow);
+    background: var(--lichess-surface-hover);
+    border-color: var(--lichess-accent);
 }
 
 #gameroom-id-code {
-    color: var(--chess-board);
+    color: var(--lichess-accent);
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
     letter-spacing: 0.05em;
+    font-family: 'Courier New', monospace;
 }
 
-/* Chat Styling */
+/* Chat Styling - Lichess style */
 .chatbox {
-    background: var(--primary-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
+    background: var(--lichess-bg);
+    border: 1px solid var(--lichess-border);
+    border-radius: 0;
     max-height: 200px;
     overflow-y: auto;
 }
 
 .chatbox li {
-    padding: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--lichess-border);
+    color: var(--lichess-text);
+    font-size: 0.875rem;
 }
 
-/* Clock Styling - Now in right panel */
+/* Clock Styling - Moved to Right Panel */
 #whiteclock, #blackclock {
-    font-weight: 700;
-    font-size: 2rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    font-weight: 600;
+    font-size: 1.8rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
     padding: 1rem;
+    background: var(--primary-bg);
     border-radius: 0.5rem;
-    text-align: center;
-    min-width: 120px;
+    box-shadow: var(--shadow);
+    margin: 0.5rem 0;
 }
 
 #whiteclock {
     color: var(--chess-light);
-    background: linear-gradient(135deg, rgba(240, 217, 181, 0.2), rgba(240, 217, 181, 0.4));
-    border: 2px solid var(--chess-light);
-    margin-bottom: 1rem;
 }
 
 #blackclock {
     color: var(--chess-dark);
-    background: linear-gradient(135deg, rgba(181, 136, 99, 0.2), rgba(181, 136, 99, 0.4));
-    border: 2px solid var(--chess-dark);
 }
 
-/* Clock Container - Position in right panel */
-#game-controls-container #whiteclockrow, 
-#game-controls-container #blackclockrow {
+/* Clock rows - move to right side */
+#whiteclockrow, #blackclockrow {
     display: flex !important;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    margin: 0.5rem 0;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    background: var(--secondary-bg);
+    border-radius: 0.5rem;
+    margin: 0.5rem;
 }
 
-#game-controls-container #whiteclockrow {
-    order: -2;
-}
-
-#game-controls-container #blackclockrow {
-    order: -1;
-}
-
-/* Hide old clocks next to board */
-#clock #whiteclockrow,
-#clock #blackclockrow {
+/* Hide clocks on board when game controls are visible */
+#game-controls-container:not([style*="display: none"]) ~ * #whiteclockrow,
+#game-controls-container:not([style*="display: none"]) ~ * #blackclockrow {
     display: none !important;
 }
 
-/* Notation Styling - Better styled moves */
-#notation-container {
-    background: var(--primary-bg);
-    border-radius: 0.75rem;
+/* Add clocks to right panel when game is active */
+#game-controls-container .clock-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     padding: 1rem;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border-color);
-    order: 2;
+}
+
+/* Add clock labels */
+#whiteclock::before {
+    content: "White";
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+#blackclock::before {
+    content: "Black";
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+/* Clocks in Right Panel - Lichess style */
+.clock-container {
+    background: var(--lichess-surface);
+    border-radius: 0;
+    padding: 0;
+    margin-bottom: 1rem;
+    border: 1px solid var(--lichess-border);
+    border-radius: 3px;
+}
+
+.clock-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--lichess-surface);
+    border-bottom: 1px solid var(--lichess-border);
+}
+
+.clock-row:last-child {
+    border-bottom: none;
+}
+
+.clock-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--lichess-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+}
+
+#whiteclock-display, #blackclock-display {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    font-family: 'Courier New', monospace;
+}
+
+#whiteclock-display {
+    color: var(--lichess-text-light);
+}
+
+#blackclock-display {
+    color: var(--lichess-text-light);
+}
+
+/* Notation Styling - Lichess style */
+#notation-container {
+    background: var(--lichess-surface);
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    border: 1px solid var(--lichess-border);
+    border-radius: 3px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#notation-inner {
+    display: flex;
+    gap: 0;
 }
 
 #white-moves, #black-moves {
     list-style: none;
     padding: 0;
     margin: 0;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
+    flex: 1;
+    background: var(--lichess-bg);
 }
 
 #white-moves li, #black-moves li {
     padding: 0.5rem 0.75rem;
-    margin: 0.25rem 0;
-    border-radius: 0.375rem;
-    transition: all 0.2s;
-    border-left: 3px solid transparent;
-    background: var(--secondary-bg);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--lichess-border);
+    transition: all 0.1s;
+    font-family: 'Courier New', monospace;
+    font-weight: 400;
+    font-size: 0.875rem;
+    color: var(--lichess-text-light);
+    cursor: pointer;
 }
 
 #white-moves li:hover, #black-moves li:hover {
-    background: var(--primary-bg);
-    border-left-color: var(--accent-blue);
-    transform: translateX(4px);
-    box-shadow: var(--shadow);
+    background: var(--lichess-surface-hover);
+    transform: none;
 }
 
-#white-moves li::before {
-    content: counter(move-counter) ".";
-    counter-increment: move-counter;
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin-right: 0.5rem;
+#white-moves li {
+    border-left: none;
 }
 
-#black-moves li::before {
-    content: counter(move-counter) "...";
-    counter-increment: move-counter;
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin-right: 0.5rem;
+#black-moves li {
+    border-left: 1px solid var(--lichess-border);
 }
 
-/* Modal Styling */
+#white-moves li:last-child, #black-moves li:last-child {
+    border-bottom: none;
+}
+
+/* Modal Styling - Lichess style */
 .modal-box {
-    background: var(--primary-bg);
-    border-radius: 0.75rem;
+    background: var(--lichess-surface);
+    border-radius: 3px;
     box-shadow: var(--shadow-lg);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--lichess-border);
+    color: var(--lichess-text-light);
 }
 
 .x-button {
     background: none;
     border: none;
-    color: var(--text-secondary);
-    font-size: 1.5rem;
+    color: var(--lichess-text);
+    font-size: 1.25rem;
     cursor: pointer;
-    transition: color 0.2s;
+    transition: color 0.15s;
 }
 
 .x-button:hover {
-    color: var(--text-primary);
+    color: var(--lichess-text-light);
 }
 
-/* Input Styling */
+/* Input Styling - Lichess style */
 input[type="text"], input[type="number"] {
-    background: var(--primary-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    color: var(--text-primary);
-    transition: all 0.2s;
+    background: var(--lichess-surface);
+    border: 1px solid var(--lichess-border);
+    border-radius: 3px;
+    padding: 0.5rem 0.75rem;
+    color: var(--lichess-text-light);
+    transition: all 0.15s;
+    font-size: 0.875rem;
 }
 
 input[type="text"]:focus, input[type="number"]:focus {
     outline: none;
-    border-color: var(--accent-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--lichess-accent);
+    box-shadow: 0 0 0 2px rgba(129, 193, 75, 0.2);
 }
 
-/* Board Styling - Make smaller when inputs are shown */
+input[type="text"]::placeholder, input[type="number"]::placeholder {
+    color: var(--lichess-text);
+    opacity: 0.6;
+}
+
+/* Board Styling - Lichess style */
 #gameboard-column {
-    border: 2px solid var(--chess-board);
-    border-radius: 0.5rem;
-    overflow: hidden;
-    box-shadow: var(--shadow-lg);
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
     transition: all 0.3s ease;
-    max-width: 600px;
+}
+
+#chessboard {
+    box-shadow: var(--shadow-lg);
+}
+
+/* Square colors for Lichess wood theme */
+.square.w {
+    background-color: var(--lichess-board-light);
+}
+
+.square.b {
+    background-color: var(--lichess-board-dark);
+}
+
+/* Make board smaller when start/join inputs are visible */
+#start-game-container:not(.d-none) ~ * #gameboard-column,
+#notation-float #start-game-container:not(.d-none) + #gameboard-column {
+    max-width: 60vw;
     margin: 0 auto;
 }
 
-/* Make board smaller when inputs are visible */
-#start-join:not([style*="display: none"]) ~ * #gameboard-column,
-body:has(input:focus) #gameboard-column {
-    max-width: 400px;
-    opacity: 0.8;
-}
-
-/* Piece Styling */
+/* Piece Styling - Lichess style */
 .chesspieceW {
-    color: var(--chess-light);
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    color: #f0f0f0;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .chesspieceB {
-    color: var(--chess-dark);
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    color: #2c2c2c;
+    text-shadow: 0;
 }
 
 /* Mobile Responsive */

@@ -20,7 +20,7 @@
         <div id="controls-column" class="col m-0 p-0">
         <div class="container-fluid w-100 h-100 ml-2 p-0">
             
-            <h4 style="margin-bottom:-7px; padding-top:8px;" id="title" class="text-center title-container"> <span class="hr-show">&lt;</span> Online Chess <span class="hr-show">&gt;</span></h4>
+            <h4 style="margin-bottom:-7px; padding-top:8px;" id="title" class="text-center title-container"> <span class="hr-show">&lt;</span> 2-Player Chess <span class="hr-show">&gt;</span></h4>
         <div id="notation-float" ><!--Start DIV-->
          
             
@@ -68,19 +68,18 @@
             <div id="game-controls-container" style="display:none" class="container-fluid col">
 
 
-                <!-- Clocks in right panel -->
-                <div id="whiteclockrow" class="row text-center align-items-center clocks" style="display:none;">
-                    <span class="col-12">
-                        <h2 id="whiteclock" class="clock-text">5:00</h2>
-                    </span>
+                <!-- Clocks Container -->
+                <div class="clock-container">
+                    <div id="whiteclockrow-display" class="clock-row">
+                        <span class="clock-label">White</span>
+                        <h2 id="whiteclock-display" class="clock-text">10:00</h2>
+                    </div>
+                    <div id="blackclockrow-display" class="clock-row">
+                        <span class="clock-label">Black</span>
+                        <h2 id="blackclock-display" class="clock-text">10:00</h2>
+                    </div>
                 </div>
-
-                <div id="blackclockrow" class="row align-items-center clocks" style="display:none;">
-                    <span class="col-12 text-center">
-                        <h2 id="blackclock" class="clock-text">5:00</h2>
-                    </span>
-                </div>
-
+                
                 <div id="usernames" class="row justify-content-around 1">
                     <span class="user"><i id="user-icon-w" class="fas fa-chess-king icon-w"></i> <span id="user1"> User 1</span>  <i id="user1circle" class="fas fa-circle online"></i></span>
                     <span class="user"></i><i id="user-icon-b" class="fas fa-chess-king icon-b"></i><span id="user2" class="fadebetween"> Waiting for user...</span>  <i id="user2circle" class="fas fa-circle offline"></i></span>
@@ -1413,6 +1412,14 @@
                 document.getElementById('whiteclock').innerHTML=`${minsW}:${zeroW}${secsW}`
                 document.getElementById('blackclock').innerHTML=`${minsB}:${zeroB}${secsB}`
                 
+                // Sync display clocks in right panel
+                if(document.getElementById('whiteclock-display')) {
+                    document.getElementById('whiteclock-display').innerHTML=`${minsW}:${zeroW}${secsW}`
+                }
+                if(document.getElementById('blackclock-display')) {
+                    document.getElementById('blackclock-display').innerHTML=`${minsB}:${zeroB}${secsB}`
+                }
+                
                 },1000)
 
             }else{
@@ -1422,6 +1429,14 @@
             }
             document.getElementById('whiteclock').innerHTML=`${minsW}:${zeroW}${secsW}`
             document.getElementById('blackclock').innerHTML=`${minsB}:${zeroB}${secsB}`
+            
+            // Sync display clocks in right panel
+            if(document.getElementById('whiteclock-display')) {
+                document.getElementById('whiteclock-display').innerHTML=`${minsW}:${zeroW}${secsW}`
+            }
+            if(document.getElementById('blackclock-display')) {
+                document.getElementById('blackclock-display').innerHTML=`${minsB}:${zeroB}${secsB}`
+            }
             socket.emit('get-current-time',minsB,minsW,secsB,secsW,zeroB,zeroW)
         }
         

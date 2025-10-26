@@ -145,6 +145,14 @@ router.post('/', (req, res) => {
     });
   }
 
+  // Validate format
+  if (!['swiss', 'online', 'quad', 'team-swiss'].includes(format)) {
+    return res.status(400).json({ 
+      success: false,
+      error: 'Format must be one of: swiss, online, quad, team-swiss' 
+    });
+  }
+
   const id = uuidv4();
   const settingsJson = JSON.stringify(settings || {});
 
@@ -264,10 +272,10 @@ router.put('/:id', (req, res) => {
       });
     }
 
-    if (!['swiss', 'online', 'quad'].includes(format)) {
+    if (!['swiss', 'online', 'quad', 'team-swiss'].includes(format)) {
       return res.status(400).json({ 
         success: false,
-        error: 'Format must be one of: swiss, online, quad' 
+        error: 'Format must be one of: swiss, online, quad, team-swiss' 
       });
     }
 
