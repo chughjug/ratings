@@ -12,9 +12,11 @@
     "heroku-postbuild": "cd client && npm install && npm run build",
     "install-all": "npm install && cd client && npm install",
     "setup": "node server/scripts/create-admin.js",
-    "start": "node server/index.js",
+    "start": "node server/start-server.js",
+    "start:server": "node server/index.js",
     "stop": "./stop-dev.sh",
-    "install-redis": "npm install redis"
+    "install-redis": "npm install redis",
+    "migrate": "node server/migrations/add-missing-columns.js"
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
@@ -47,6 +49,7 @@
     "selenium-webdriver": "^4.15.0",
     "sharp": "^0.33.5",
     "socket.io": "^4.8.1",
+    "redis": "^4.6.11",
     "sqlite3": "^5.1.6",
     "stripe": "^14.25.0",
     "twilio": "^4.23.0",

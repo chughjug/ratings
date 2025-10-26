@@ -1,13 +1,16 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'chess_tournaments.db');
+// Use Heroku's DATABASE_URL or fall back to local path
+const dbPath = process.env.DATABASE_URL || path.join(__dirname, 'chess_tournaments.db');
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
+    console.error('Database path:', dbPath);
     process.exit(1);
   } else {
     console.log('Connected to SQLite database');
+    console.log('Database path:', dbPath);
   }
 });
 

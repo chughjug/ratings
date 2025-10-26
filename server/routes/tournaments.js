@@ -109,82 +109,131 @@ router.get('/:id', (req, res) => {
 
 // Create new tournament
 router.post('/', (req, res) => {
-  const {
-    organization_id,
-    name,
-    format,
-    rounds,
-    time_control,
-    start_date,
-    end_date,
-    settings,
-    city,
-    state,
-    location,
-    chief_td_name,
-    chief_td_uscf_id,
-    chief_arbiter_name,
-    chief_arbiter_fide_id,
-    chief_organizer_name,
-    chief_organizer_fide_id,
-    expected_players,
-    website,
-    fide_rated,
-    uscf_rated,
-    allow_registration,
-    is_public,
-    public_url,
-    logo_url,
-    tournament_information
-  } = req.body;
+  try {
+    const {
+      organization_id,
+      name,
+      format,
+      rounds,
+      time_control,
+      start_date,
+      end_date,
+      settings,
+      city,
+      state,
+      location,
+      chief_td_name,
+      chief_td_uscf_id,
+      chief_arbiter_name,
+      chief_arbiter_fide_id,
+      chief_organizer_name,
+      chief_organizer_fide_id,
+      expected_players,
+      website,
+      fide_rated,
+      uscf_rated,
+      allow_registration,
+      is_public,
+      public_url,
+      logo_url,
+      tournament_information
+    } = req.body;
 
-  // Validate required fields
-  if (!name || !format || !rounds) {
-    return res.status(400).json({ 
-      success: false,
-      error: 'Name, format, and rounds are required' 
-    });
-  }
+    console.log('Creating tournament with data:', { name, format, rounds });
 
-  // Validate format
-  if (!['swiss', 'online', 'quad', 'team-swiss'].includes(format)) {
-    return res.status(400).json({ 
-      success: false,
-      error: 'Format must be one of: swiss, online, quad, team-swiss' 
-    });
-  }
-
-  const id = uuidv4();
-  const settingsJson = JSON.stringify(settings || {});
-
-  db.run(
-    `INSERT INTO tournaments (id, organization_id, name, format, rounds, time_control, start_date, end_date, status, settings,
-                             city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
-                             chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-                             expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url, logo_url, tournament_information)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, organization_id || null, name, format, rounds, time_control, start_date, end_date, 'created', settingsJson,
-     city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
-     chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null, tournament_information || null],
-    function(err) {
-      if (err) {
-        console.error('Error creating tournament:', err);
-        console.error('SQL Error details:', err.message);
-        console.error('Error code:', err.code);
-        return res.status(500).json({ 
-          success: false,
-          error: 'Failed to create tournament',
-          details: err.message 
-        });
-      }
-      res.json({ 
-        success: true,
-        data: { id },
-        message: 'Tournament created successfully' 
+    // Validate required fields
+    if (!name || !format || !rounds) {
+      console.error('Missing required fields:', { name: !!name, format: !!format, rounds: !!rounds });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Name, format, and rounds are required' 
       });
     }
-  );
+
+    // Validate format
+    if (!['swiss', 'online', 'quad', 'team-swiss'].includes(format)) {
+      console.error('Invalid format:', format);
+      return res.status(400).json({ 
+        success: false,
+        error: 'Format must be one of: swiss, online, quad, team-swiss' 
+      });
+    }
+
+    const id = uuidv4();
+    const settingsJson = JSON.stringify(settings || {});
+    
+    // Prepare parameters with proper null handling
+    const params = [
+      id,
+      organization_id || null,
+      name,
+      format,
+      rounds,
+      time_control || null,
+      start_date || null,
+      end_date || null,
+      'created',
+      settingsJson,
+      city || null,
+      state || null,
+      location || null,
+      chief_td_name || null,
+      chief_td_uscf_id || null,
+      chief_arbiter_name || null,
+      chief_arbiter_fide_id || null,
+      chief_organizer_name || null,
+      chief_organizer_fide_id || null,
+      expected_players || null,
+      website || null,
+      fide_rated ? 1 : 0,
+      uscf_rated ? 1 : 0,
+      allow_registration !== false ? 1 : 0,
+      is_public ? 1 : 0,
+      public_url || null,
+      logo_url || null,
+      tournament_information || null
+    ];
+
+    console.log('Executing SQL with params:', params.length);
+
+    db.run(
+      `INSERT INTO tournaments (id, organization_id, name, format, rounds, time_control, start_date, end_date, status, settings,
+                               city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
+                               chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
+                               expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url, logo_url, tournament_information)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      params,
+      function(err) {
+        if (err) {
+          console.error('Error creating tournament:', err);
+          console.error('SQL Error details:', err.message);
+          console.error('Error code:', err.code);
+          console.error('SQL:', err.sql);
+          console.error('Error stack:', err.stack);
+          return res.status(500).json({ 
+            success: false,
+            error: 'Failed to create tournament',
+            details: err.message,
+            code: err.code
+          });
+        }
+        console.log('Tournament created successfully with ID:', id);
+        res.json({ 
+          success: true,
+          data: { id },
+          message: 'Tournament created successfully' 
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Unexpected error in POST /api/tournaments:', error);
+    console.error('Error stack:', error.stack);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Internal server error',
+      details: error.message 
+    });
+  }
 });
 
 // Update tournament
@@ -796,7 +845,6 @@ router.get('/:id/public', async (req, res) => {
     try {
       const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
       const tiebreakCriteria = settings.tie_break_criteria || ['buchholz', 'sonnebornBerger', 'performanceRating'];
-      const { calculateTiebreakers } = require('../utils/tiebreakers');
       const standingsWithTiebreakers = await calculateTiebreakers(sortedStandings, id, tiebreakCriteria);
       
       // Merge tiebreakers into sortedStandings

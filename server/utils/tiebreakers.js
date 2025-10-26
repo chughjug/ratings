@@ -263,6 +263,56 @@ function getDefaultTiebreakerOrder() {
   ];
 }
 
+/**
+ * Calculate tiebreakers for a list of standings
+ * This is a wrapper function that calculates all specified tiebreakers for standings
+ */
+async function calculateTiebreakers(standings, tournamentId, tiebreakCriteria) {
+  const db = require('../database');
+  
+  // Calculate tiebreakers for each player
+  const promises = standings.map(async (player) => {
+    try {
+      const tiebreakers = await calculateAllTiebreakers(player.id, tournamentId, db);
+      
+      // Create tiebreakers object based on criteria
+      const tiebreakerData = {};
+      tiebreakCriteria.forEach(criterion => {
+        switch(criterion) {
+          case 'buchholz':
+            tiebreakerData.buchholz = tiebreakers.buchholz;
+            break;
+          case 'sonnebornBerger':
+            tiebreakerData.sonnebornBerger = tiebreakers.sonnebornBerger;
+            break;
+          case 'performanceRating':
+            tiebreakerData.performanceRating = tiebreakers.performanceRating;
+            break;
+          case 'modifiedBuchholz':
+            tiebreakerData.modifiedBuchholz = tiebreakers.modifiedBuchholz;
+            break;
+          case 'cumulative':
+            tiebreakerData.cumulative = tiebreakers.cumulative;
+            break;
+        }
+      });
+      
+      return {
+        ...player,
+        tiebreakers: tiebreakerData
+      };
+    } catch (error) {
+      console.error(`Error calculating tiebreakers for player ${player.id}:`, error);
+      return {
+        ...player,
+        tiebreakers: {}
+      };
+    }
+  });
+  
+  return Promise.all(promises);
+}
+
 module.exports = {
   calculateBuchholz,
   calculateSonnebornBerger,
@@ -271,5 +321,6 @@ module.exports = {
   calculateCumulative,
   calculateAllTiebreakers,
   calculateTournamentTiebreakers,
-  getDefaultTiebreakerOrder
+  getDefaultTiebreakerOrder,
+  calculateTiebreakers
 };
