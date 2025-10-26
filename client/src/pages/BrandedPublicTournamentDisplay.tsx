@@ -182,12 +182,14 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               white_player: {
                 id: pairing.white_player_id,
                 name: pairing.white_name || pairing.white_player_name || 'TBD',
-                rating: pairing.white_rating || pairing.white_player_rating
+                rating: pairing.white_rating || pairing.white_player_rating,
+                points: getPlayerPoints(pairing.white_player_id)
               },
               black_player: {
                 id: pairing.black_player_id,
                 name: pairing.black_name || pairing.black_player_name || 'TBD',
-                rating: pairing.black_rating || pairing.black_player_rating
+                rating: pairing.black_rating || pairing.black_player_rating,
+                points: getPlayerPoints(pairing.black_player_id)
               },
               white_player_id: pairing.white_player_id,
               black_player_id: pairing.black_player_id
@@ -330,16 +332,25 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     white_player: {
       id: pairing.white_player_id,
       name: pairing.white_name || pairing.white_player_name || 'TBD',
-      rating: pairing.white_rating || pairing.white_player_rating
+      rating: pairing.white_rating || pairing.white_player_rating,
+      points: getPlayerPoints(pairing.white_player_id)
     },
     black_player: {
       id: pairing.black_player_id,
       name: pairing.black_name || pairing.black_player_name || 'TBD',
-      rating: pairing.black_rating || pairing.black_player_rating
+      rating: pairing.black_rating || pairing.black_player_rating,
+      points: getPlayerPoints(pairing.black_player_id)
     },
     white_player_id: pairing.white_player_id,
     black_player_id: pairing.black_player_id
   })) : [];
+
+  // Helper function to get player points from standings
+  const getPlayerPoints = (playerId: string) => {
+    if (!standings) return 0;
+    const player = standings.find((p: any) => p.id === playerId);
+    return player ? player.total_points || 0 : 0;
+  };
 
   // Group pairings by section
   const pairingsBySection = transformedPairings.reduce((acc: any, pairing: any) => {
@@ -645,16 +656,34 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                                     {pairing.board || index + 1}
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {pairing.white_player?.name || 'TBD'}
-                                    {pairing.white_player?.rating && (
-                                      <span className="text-sm text-gray-500 ml-2">({pairing.white_player.rating})</span>
-                                    )}
+                                    <div className="flex flex-col">
+                                      <span className="font-semibold">{pairing.white_player?.name || 'TBD'}</span>
+                                      <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
+                                        {pairing.white_player?.rating && (
+                                          <span>({pairing.white_player.rating})</span>
+                                        )}
+                                        {pairing.white_player?.points !== undefined && (
+                                          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                                            {pairing.white_player.points} pts
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {pairing.black_player?.name || 'TBD'}
-                                    {pairing.black_player?.rating && (
-                                      <span className="text-sm text-gray-500 ml-2">({pairing.black_player.rating})</span>
-                                    )}
+                                    <div className="flex flex-col">
+                                      <span className="font-semibold">{pairing.black_player?.name || 'TBD'}</span>
+                                      <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
+                                        {pairing.black_player?.rating && (
+                                          <span>({pairing.black_player.rating})</span>
+                                        )}
+                                        {pairing.black_player?.points !== undefined && (
+                                          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                                            {pairing.black_player.points} pts
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {pairing.result || '-'}
@@ -843,16 +872,34 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                                         {pairing.board || index + 1}
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {pairing.white_player?.name || 'TBD'}
-                                        {pairing.white_player?.rating && (
-                                          <span className="text-sm text-gray-500 ml-2">({pairing.white_player.rating})</span>
-                                        )}
+                                        <div className="flex flex-col">
+                                          <span className="font-semibold">{pairing.white_player?.name || 'TBD'}</span>
+                                          <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
+                                            {pairing.white_player?.rating && (
+                                              <span>({pairing.white_player.rating})</span>
+                                            )}
+                                            {pairing.white_player?.points !== undefined && (
+                                              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                                                {pairing.white_player.points} pts
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {pairing.black_player?.name || 'TBD'}
-                                        {pairing.black_player?.rating && (
-                                          <span className="text-sm text-gray-500 ml-2">({pairing.black_player.rating})</span>
-                                        )}
+                                        <div className="flex flex-col">
+                                          <span className="font-semibold">{pairing.black_player?.name || 'TBD'}</span>
+                                          <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
+                                            {pairing.black_player?.rating && (
+                                              <span>({pairing.black_player.rating})</span>
+                                            )}
+                                            {pairing.black_player?.points !== undefined && (
+                                              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                                                {pairing.black_player.points} pts
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {pairing.result || '-'}
