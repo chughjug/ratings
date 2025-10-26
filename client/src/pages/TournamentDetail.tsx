@@ -1012,7 +1012,7 @@ const TournamentDetail: React.FC = () => {
   };
 
   const handleLogoRemove = async () => {
-    if (!confirm('Are you sure you want to remove the tournament logo?')) return;
+    if (!window.confirm('Are you sure you want to remove the tournament logo?')) return;
     
     try {
       setSaving(true);
