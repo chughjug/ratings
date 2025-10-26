@@ -779,7 +779,7 @@ const PublicTournamentDisplay: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Enhanced Tab Navigation */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 overflow-visible">
           <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
             <nav className="flex flex-wrap gap-2" role="tablist">
               <button
@@ -910,7 +910,7 @@ const PublicTournamentDisplay: React.FC = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6" role="tabpanel">
+          <div className="p-6 overflow-visible" role="tabpanel" style={{ minHeight: 'auto' }}>
             {activeTab === 'overview' && (
               <div className="space-y-6">
                 {/* Tournament Information Grid */}
@@ -1400,7 +1400,7 @@ const PublicTournamentDisplay: React.FC = () => {
                     <p className="text-gray-600">No standings available yet</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-6 overflow-visible">
                     {(() => {
                       // Filter standings by selected section and search
                       let filteredStandings = getFilteredStandings(standings);
@@ -1427,29 +1427,31 @@ const PublicTournamentDisplay: React.FC = () => {
                         sectionStandings.sort((a, b) => b.total_points - a.total_points);
 
                         return (
-                          <div key={sectionName} className="border border-gray-200 rounded-lg">
+                          <div key={sectionName} className="border border-gray-200 rounded-lg overflow-visible">
                             <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
                               <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
                               <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
                             </div>
                             
-                            <div className="p-4">
-                              <ChessStandingsTable
-                                standings={sectionStandings.map(player => ({
-                                  ...player,
-                                  tiebreakers: player.tiebreakers || {
-                                    buchholz: 0,
-                                    sonnebornBerger: 0,
-                                    performanceRating: 0,
-                                    modifiedBuchholz: 0,
-                                    cumulative: 0
-                                  }
-                                }))}
-                                tournament={data?.tournament}
-                                selectedSection={sectionName}
-                                showTiebreakers={true} // Show tiebreakers now that they're calculated
-                                showPrizes={true}
-                              />
+                            <div className="p-4 overflow-visible">
+                              <div className="overflow-x-auto overflow-y-visible">
+                                <ChessStandingsTable
+                                  standings={sectionStandings.map(player => ({
+                                    ...player,
+                                    tiebreakers: player.tiebreakers || {
+                                      buchholz: 0,
+                                      sonnebornBerger: 0,
+                                      performanceRating: 0,
+                                      modifiedBuchholz: 0,
+                                      cumulative: 0
+                                    }
+                                  }))}
+                                  tournament={data?.tournament}
+                                  selectedSection={sectionName}
+                                  showTiebreakers={true} // Show tiebreakers now that they're calculated
+                                  showPrizes={true}
+                                />
+                              </div>
                             </div>
                           </div>
                         );

@@ -572,14 +572,13 @@ router.get('/public/organization/:orgSlug/:tournamentId', async (req, res) => {
     // Get prizes if any
     const prizes = await new Promise((resolve, reject) => {
       db.all(`
-        SELECT pr.*, s.name as section_name
-        FROM prizes pr
-        JOIN sections s ON pr.section_id = s.id
-        WHERE s.tournament_id = ?
-        ORDER BY s.name, pr.rank
+        SELECT *
+        FROM prizes
+        WHERE tournament_id = ?
+        ORDER BY section, position, type
       `, [tournamentId], (err, rows) => {
         if (err) reject(err);
-        else resolve(rows);
+        else resolve(rows || []);
       });
     });
 
@@ -671,12 +670,13 @@ router.get('/public/organization/:orgSlug/:tournamentId', async (req, res) => {
         })),
         prizes: prizes.map(prize => ({
           id: prize.id,
-          section_id: prize.section_id,
-          section_name: prize.section_name,
-          rank: prize.rank,
-          prize_name: prize.prize_name,
-          prize_amount: prize.prize_amount,
-          prize_type: prize.prize_type,
+          section: prize.section || 'Open',
+          position: prize.position,
+          name: prize.name,
+          amount: prize.amount,
+          type: prize.type,
+          rating_category: prize.rating_category,
+          description: prize.description,
           created_at: prize.created_at
         })),
         currentRound

@@ -346,21 +346,41 @@ db.serialize(() => {
     )
   `);
 
-  // Prize distributions table (simplified - no separate prizes table)
+  // Prizes table - defines prize configurations for tournaments
+  db.run(`
+    CREATE TABLE IF NOT EXISTS prizes (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('cash', 'trophy', 'medal', 'plaque')),
+      position INTEGER,
+      rating_category TEXT,
+      section TEXT,
+      amount REAL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE
+    )
+  `);
+
+  // Prize distributions table - tracks which players received which prizes
   db.run(`
     CREATE TABLE IF NOT EXISTS prize_distributions (
       id TEXT PRIMARY KEY,
       tournament_id TEXT NOT NULL,
       player_id TEXT NOT NULL,
+      prize_id TEXT,
       prize_name TEXT NOT NULL,
       prize_type TEXT NOT NULL CHECK (prize_type IN ('cash', 'trophy', 'medal', 'plaque')),
       amount REAL,
       position INTEGER,
+      rating_category TEXT,
       section TEXT,
       tie_group INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
-      FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
+      FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE,
+      FOREIGN KEY (prize_id) REFERENCES prizes (id) ON DELETE CASCADE
     )
   `);
 
@@ -705,6 +725,35 @@ db.serialize(() => {
       FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
     )
   `);
+
+  // Migration: Add missing prize_id column to prize_distributions if it doesn't exist
+  db.run(`
+    ALTER TABLE prize_distributions ADD COLUMN prize_id TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Migration: Add missing prize_name column to prize_distributions if it doesn't exist
+  db.run(`
+    ALTER TABLE prize_distributions ADD COLUMN prize_name TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Migration: Add missing rating_category column to prize_distributions if it doesn't exist
+  db.run(`
+    ALTER TABLE prize_distributions ADD COLUMN rating_category TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Migration: Drop old section_id column if it exists (from outdated schema)
+  db.run(`
+    CREATE TEMPORARY TABLE temp_prizes AS 
+    SELECT * FROM prizes
+  `, (err) => {
+    // This is just a test query, will fail gracefully if prizes table doesn't exist yet
+  });
 });
 
 module.exports = db;

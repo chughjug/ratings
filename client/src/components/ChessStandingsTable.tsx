@@ -98,21 +98,8 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
 
   // Format player name with title
   const formatPlayerName = (player: PlayerStanding) => {
-    let name = player.name.toUpperCase();
-    
-    // Add common chess titles if not already present
-    if (!name.includes('GM') && !name.includes('IM') && !name.includes('FM') && !name.includes('CM')) {
-      // This is a simplified approach - in a real system you'd have a titles database
-      if (player.rating && player.rating >= 2500) {
-        name = `GM ${name}`;
-      } else if (player.rating && player.rating >= 2400) {
-        name = `IM ${name}`;
-      } else if (player.rating && player.rating >= 2300) {
-        name = `FM ${name}`;
-      }
-    }
-    
-    return name;
+    // Return the name as-is, preserving titles
+    return player.name;
   };
 
   // Format rating display
@@ -154,9 +141,9 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   const displayData = selectedSection === 'all' ? groupedStandings : { [selectedSection]: filteredStandings };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 overflow-visible">
       {Object.entries(displayData).map(([sectionName, sectionStandings]) => (
-        <div key={sectionName} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div key={sectionName} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-visible">
           {/* Section Header */}
           <div className="bg-gradient-to-r from-blue-600 to-slate-600 px-6 py-4">
             <h3 className="text-lg font-semibold text-white">
@@ -168,73 +155,74 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
           </div>
           
           {/* Standings Table */}
-          <div className="overflow-x-auto mb-6">
-            <table className="standings-table">
+          <div className="overflow-x-auto overflow-y-visible mb-6" style={{ padding: 0, margin: 0 }}>
+            <table className="standings-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            <th>No.</th>
-            <th>Player's Name</th>
-            <th>USCF</th>
-            <th>Rating</th>
-            <th className="score">Pts</th>
+            <th style={{ textAlign: 'center', padding: '8px' }}>No.</th>
+            <th style={{ textAlign: 'left', padding: '8px' }}>Player's Name</th>
+            <th style={{ textAlign: 'left', padding: '8px' }}>USCF</th>
+            <th style={{ textAlign: 'center', padding: '8px' }}>Rating</th>
+            <th className="score" style={{ textAlign: 'center', padding: '8px' }}>Pts</th>
             {roundColumns.map(round => (
-              <th key={round}>Rnd{round}</th>
+              <th key={round} style={{ textAlign: 'center', padding: '8px' }}>Rnd{round}</th>
             ))}
             {showTiebreakers && (
               <>
-                <th>BH</th>
-                <th>SB</th>
-                <th>Perf</th>
+                <th style={{ textAlign: 'center', padding: '8px' }}>BH</th>
+                <th style={{ textAlign: 'center', padding: '8px' }}>SB</th>
+                <th style={{ textAlign: 'center', padding: '8px' }}>Perf</th>
               </>
             )}
             {showPrizes && (
-              <th>Prize</th>
+              <th style={{ textAlign: 'center', padding: '8px' }}>Prize</th>
             )}
           </tr>
         </thead>
               <tbody>
                 {sectionStandings.map((player) => (
                   <tr key={player.id}>
-                    <td>
+                    <td style={{ textAlign: 'center', padding: '8px' }}>
                       {player.rank}.
                     </td>
-                    <td className="player">
+                    <td className="player" style={{ textAlign: 'left', padding: '8px' }}>
                       <button
                         onClick={() => navigate(`/tournaments/${actualTournamentId}/player/${player.id}`)}
-                        className="underline hover:text-blue-600"
+                        className="text-blue-600 hover:text-blue-800 underline font-semibold text-left cursor-pointer"
+                        style={{ border: 'none', background: 'none', padding: 0, margin: 0, cursor: 'pointer' }}
                       >
                         {formatPlayerName(player)}
                       </button>
                     </td>
-                    <td>
+                    <td style={{ textAlign: 'left', padding: '8px' }}>
                       {player.uscf_id || ''}
                     </td>
-                    <td>
+                    <td style={{ textAlign: 'center', padding: '8px' }}>
                       {formatRating(player.rating)}
                     </td>
-                    <td className="score">
+                    <td className="score" style={{ textAlign: 'center', padding: '8px', fontWeight: 'bold' }}>
                       {formatPoints(player.total_points)}
                     </td>
                     {roundColumns.map(round => (
-                      <td key={round} className="opponent">
+                      <td key={round} className="opponent" style={{ textAlign: 'center', padding: '8px' }}>
                         {formatRoundResult(player.roundResults[round], round)}
                       </td>
                     ))}
                     {showTiebreakers && (
                       <>
-                        <td>
+                        <td style={{ textAlign: 'center', padding: '8px' }}>
                           {formatTiebreaker(player.tiebreakers.buchholz)}
                         </td>
-                        <td>
+                        <td style={{ textAlign: 'center', padding: '8px' }}>
                           {formatTiebreaker(player.tiebreakers.sonnebornBerger)}
                         </td>
-                        <td>
+                        <td style={{ textAlign: 'center', padding: '8px' }}>
                           {formatTiebreaker(player.tiebreakers.performanceRating)}
                         </td>
                       </>
                     )}
                     {showPrizes && (
-                      <td>
+                      <td style={{ textAlign: 'center', padding: '8px' }}>
                         {player.prize || ''}
                       </td>
                     )}
