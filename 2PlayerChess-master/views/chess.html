@@ -21,41 +21,34 @@
         <div class="container-fluid w-100 h-100 ml-2 p-0">
             
             <h4 style="margin-bottom:-7px; padding-top:8px;" id="title" class="text-center title-container">Chess</h4>
-        <div id="notation-float" ><!--Start DIV-->
-         
-            
-            <div id="notation-container" class="container col">
-            
-            <hr class="text-light hr-hide">
-            <div class="container" id="notation-inner">
-                <div class="row">
-                    <ol id="white-moves" class="col">
-                        
-                    </ol>
-                    <ol id="black-moves" class="col">
+        <!-- Start/Join Buttons (shown before game starts) -->
+        <div id="start-game-container" style="display:block;">
+            <div class="start-join-wrapper">
+                <button id="start-game" class="btn btn-block btn-success">Start Game</button>
+                <button id="join-game-btn" class="btn btn-block btn-danger">Join Game</button>
+            </div>
+        </div>
 
-                    </ol>
-                </div>
-            </div>
-
-            <div class="notationstartgame-wrapper">
-            <div class="notation-navbar-container">
-            <div class="row justify-content-around notation-navbar">
-                <div id="click-left" class="notation-controls"><i  class="fas fa-chevron-left"></i></div>
-                <button id="reset-board" class="btn btn-dark">Reset</button>
-                <div id="click-right" class="notation-controls"><i class="fas fa-chevron-right"></i></div>
-            </div>
-            </div>
-            <hr class="hr-hide">
-            <div id="start-game-container">
-                <h3 style="display:none;"  class="text-center">New Game</h3>
-                <div class="container-fluid">
-                    <div id="start-join" class="row justify-content-center">
-                    <button id="start-game" class="btn btn-block btn-success w-40">Start Game</button>
-                    <button id="join-game-btn" class="btn btn-block btn-danger w-40">Join Game</button>
+        <!-- Game Controls (shown during game) -->
+        <div id="notation-float" style="display:none;">
+            <div id="notation-container" class="notation-container">
+                <div id="notation-inner" class="notation-inner">
+                    <div class="move-column">
+                        <div class="move-header">White</div>
+                        <ol id="white-moves" class="move-list"></ol>
+                    </div>
+                    <div class="move-column">
+                        <div class="move-header">Black</div>
+                        <ol id="black-moves" class="move-list"></ol>
                     </div>
                 </div>
             </div>
+
+            <div class="notation-controls">
+                <button id="click-left" class="notation-btn"><i class="fas fa-chevron-left"></i></button>
+                <button id="reset-board" class="notation-btn">Reset</button>
+                <button id="click-right" class="notation-btn"><i class="fas fa-chevron-right"></i></button>
+            </div>
         </div>
 
 
@@ -65,7 +58,7 @@
 
 
             
-            <div id="game-controls-container" style="display:none" class="container-fluid col">
+            <div id="game-controls-container" style="display:block" class="container-fluid col">
 
 
                 <!-- Clocks Container -->
@@ -553,7 +546,8 @@
         </div>
     </div>
     
-<script src="/socket.io/socket.io.js"></script>
+<script src="/socket.io/socket.io.js" onerror="window.socketIOAvailable = false;"></script>
+    <script>window.socketIOAvailable = true;</script>
  
     <script>
 
@@ -684,7 +678,35 @@
    
        
 
-        const socket = io();
+        // Check if Socket.IO is available before using it
+        let actualSocket = null;
+        try {
+            if (typeof io !== 'undefined') {
+                actualSocket = io();
+                console.log('Socket.IO initialized');
+            }
+        } catch (e) {
+            console.warn('Socket.IO not available, running in single-player mode');
+        }
+        
+        // Create a safe socket wrapper that checks if socket exists
+        const socket = {
+            emit: function(...args) {
+                if (actualSocket) {
+                    actualSocket.emit(...args);
+                } else {
+                    // Socket not available - game works in single-player mode
+                }
+            },
+            on: function(...args) {
+                if (actualSocket) {
+                    actualSocket.on(...args);
+                } else {
+                    // Socket not available - game works in single-player mode
+                }
+            }
+        };
+        
         ////////////////////////////////////////////////////////
         //SOCKET.IO CRAP
 
@@ -712,8 +734,12 @@
                     $("#user2").text(playerName);
                 }
                 
-                // Auto-join room
-                socket.emit('join', roomCode, playerName, false, 0, false);
+                // Auto-join room if socket is available
+                if (socket) {
+                    socket.emit('join', roomCode, playerName, false, 0, false);
+                } else {
+                    console.warn('Socket not available, but game will still work');
+                }
             }, 500);
         }
 
