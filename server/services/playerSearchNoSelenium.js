@@ -220,7 +220,7 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
     console.log(`Using Puppeteer to search for: ${searchTerm}`);
     
     // Launch browser with optimized settings for Heroku
-    // Use Chrome provided by puppeteer-heroku-buildpack or Puppeteer's bundled Chromium
+    // Let Puppeteer use its bundled Chromium (no executablePath set)
     
     const puppeteerArgs = [
       '--no-sandbox',
@@ -229,44 +229,23 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
       '--disable-gpu',
       '--disable-images',
       '--disable-plugins',
-      '--disable-extensions',
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process'
+      '--disable-extensions'
     ];
     
-    // Add Heroku-specific args
+    // Add Heroku-specific args for memory efficiency
     if (process.env.DYNO) {
       puppeteerArgs.push('--single-process');
       puppeteerArgs.push('--no-zygote');
+      // Increase memory limit
+      puppeteerArgs.push('--disable-dev-shm-usage');
     }
     
-    // Try to use Chrome from buildpack first, fallback to bundled Chromium
-    let executablePath = null;
-    if (process.env.DYNO) {
-      // Check if Chrome is available via buildpack
-      const { execSync } = require('child_process');
-      try {
-        const chromePath = execSync('which google-chrome-stable', { encoding: 'utf8' }).trim();
-        if (chromePath) {
-          executablePath = chromePath;
-          console.log(`Using Chrome from buildpack: ${chromePath}`);
-        }
-      } catch (e) {
-        console.log('No Chrome found via buildpack, using Puppeteer bundled Chromium');
-      }
-    }
-    
-    // Only set executablePath if we found a Chrome binary, otherwise let Puppeteer use its bundled Chromium
-    const launchOptions = {
+    console.log('Launching Puppeteer with bundled Chromium...');
+    browser = await puppeteer.launch({
       headless: true,
       args: puppeteerArgs
-    };
-    
-    if (executablePath) {
-      launchOptions.executablePath = executablePath;
-    }
-    
-    browser = await puppeteer.launch(launchOptions);
+      // Don't set executablePath - let Puppeteer use its bundled Chromium
+    });
     
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
