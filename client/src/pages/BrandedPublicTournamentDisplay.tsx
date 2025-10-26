@@ -680,24 +680,121 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           {activeTab === 'standings' && (
             <div className="space-y-6">
               {/* Standings Table */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Standings</h3>
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-slate-600">
+                  <h3 className="text-lg font-semibold text-white">Tournament Standings</h3>
                 </div>
                 <div className="overflow-x-auto">
                   {standings && standings.length > 0 ? (
-                    <ChessStandingsTable
-                      standings={getFilteredStandings(transformStandingsData(standings))}
-                      tournament={{
-                        rounds: tournament.rounds,
-                        name: tournament.name
-                      }}
-                      tournamentId={tournament.id}
-                    />
+                    (() => {
+                      // Group standings by section
+                      const standingsBySection = standings.reduce((acc: any, player: any) => {
+                        const section = player.section || 'Open';
+                        if (!acc[section]) {
+                          acc[section] = [];
+                        }
+                        acc[section].push(player);
+                        return acc;
+                      }, {});
+
+                      return (
+                        <div className="space-y-8">
+                          {Object.keys(standingsBySection).sort().map((sectionName) => (
+                            <div key={sectionName} className="p-6">
+                              <div className="mb-4">
+                                <h4 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
+                                  {sectionName} Section
+                                </h4>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {standingsBySection[sectionName].length} players
+                                </p>
+                              </div>
+                              
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Rank
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Player
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        USCF ID
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Rating
+                                      </th>
+                                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Points
+                                      </th>
+                                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Games
+                                      </th>
+                                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        W-L-D
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200">
+                                    {standingsBySection[sectionName].map((player: any, index: number) => (
+                                      <tr key={player.id} className={`hover:bg-gray-50 transition-colors ${index < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : ''}`}>
+                                        <td className="px-4 py-4 text-sm font-bold text-gray-900">
+                                          <div className="flex items-center">
+                                            {index === 0 && <span className="text-yellow-600 mr-2">🥇</span>}
+                                            {index === 1 && <span className="text-gray-400 mr-2">🥈</span>}
+                                            {index === 2 && <span className="text-orange-600 mr-2">🥉</span>}
+                                            <span className={index < 3 ? 'text-lg' : ''}>{player.rank || index + 1}</span>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-4 text-sm font-semibold text-gray-900">
+                                          <div className="flex flex-col">
+                                            <span className="font-bold">{player.name}</span>
+                                            {player.uscf_id && (
+                                              <span className="text-xs text-gray-500 mt-1">USCF: {player.uscf_id}</span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-600">
+                                          {player.uscf_id || '-'}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm font-mono text-gray-700">
+                                          {player.rating ? player.rating.toLocaleString() : '-'}
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                                            player.total_points >= 3 ? 'bg-green-100 text-green-800' :
+                                            player.total_points >= 2 ? 'bg-blue-100 text-blue-800' :
+                                            player.total_points >= 1 ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-gray-100 text-gray-800'
+                                          }`}>
+                                            {player.total_points || 0}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-center text-sm text-gray-600">
+                                          {player.games_played || 0}
+                                        </td>
+                                        <td className="px-4 py-4 text-center text-sm text-gray-600">
+                                          <span className="font-mono">
+                                            {player.wins || 0}-{player.losses || 0}-{player.draws || 0}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()
                   ) : (
-                    <div className="px-6 py-8 text-center text-gray-500">
-                      <Trophy className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>No standings available</p>
+                    <div className="px-6 py-12 text-center text-gray-500">
+                      <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Standings Available</h3>
+                      <p className="text-gray-600">Standings will appear once games are played.</p>
                     </div>
                   )}
                 </div>
