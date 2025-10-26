@@ -70,10 +70,12 @@ const OnlineGameIntegration: React.FC<OnlineGameIntegrationProps> = ({
     const whiteToken = generateSecurityToken(whiteId, whiteUscfId || whiteId);
     const blackToken = generateSecurityToken(blackId, blackUscfId || blackId);
     
+    // Determine if we're in production
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    
     // Create custom room in 2PlayerChess server
     try {
       // Use relative URL for production, localhost for development
-      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction ? '/api/chess2player/create-room' : 'http://localhost:8080/api/create-room';
       
       const response = await fetch(apiUrl, {
