@@ -152,7 +152,7 @@ async function parseExcelFile(filePath) {
           }
           
           // Only add players with at least a name
-          if (player.name) {
+          if (player.name && player.name.trim() !== '') {
             players.push(player);
           }
         } catch (error) {
