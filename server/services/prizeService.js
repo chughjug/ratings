@@ -490,6 +490,55 @@ async function getTournamentStandings(tournamentId, tournament, db) {
     );
   });
 
+  // Get pairings to determine actual sections played
+  const pairings = await new Promise((resolve, reject) => {
+    db.all(
+      'SELECT white_player_id, black_player_id, section FROM pairings WHERE tournament_id = ? AND (white_player_id IS NOT NULL OR black_player_id IS NOT NULL)',
+      [tournamentId],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      }
+    );
+  });
+
+  // Create a map of player IDs to their pairing sections (most frequent section wins)
+  const playerSectionCount = new Map();
+  pairings.forEach(pairing => {
+    if (pairing.white_player_id && pairing.section) {
+      const playerId = pairing.white_player_id;
+      if (!playerSectionCount.has(playerId)) {
+        playerSectionCount.set(playerId, new Map());
+      }
+      const sectionCount = playerSectionCount.get(playerId);
+      sectionCount.set(pairing.section, (sectionCount.get(pairing.section) || 0) + 1);
+    }
+    if (pairing.black_player_id && pairing.section) {
+      const playerId = pairing.black_player_id;
+      if (!playerSectionCount.has(playerId)) {
+        playerSectionCount.set(playerId, new Map());
+      }
+      const sectionCount = playerSectionCount.get(playerId);
+      sectionCount.set(pairing.section, (sectionCount.get(pairing.section) || 0) + 1);
+    }
+  });
+
+  // Create final map with most frequent section for each player
+  const playerSectionMap = new Map();
+  playerSectionCount.forEach((sectionCounts, playerId) => {
+    let mostFrequentSection = null;
+    let maxCount = 0;
+    sectionCounts.forEach((count, section) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostFrequentSection = section;
+      }
+    });
+    if (mostFrequentSection) {
+      playerSectionMap.set(playerId, mostFrequentSection);
+    }
+  });
+
   // Get results for each player
   const standings = await Promise.all(players.map(async (player) => {
     const results = await new Promise((resolve, reject) => {
@@ -508,11 +557,14 @@ async function getTournamentStandings(tournamentId, tournament, db) {
     const losses = results.filter(r => r.points === 0).length;
     const draws = results.filter(r => r.points === 0.5).length;
 
+    // Determine section based on pairings, falling back to player section
+    const section = playerSectionMap.get(player.id) || player.section || 'Open';
+
     return {
       id: player.id,
       name: player.name,
       rating: player.rating,
-      section: player.section,
+      section: section,
       total_points: totalPoints,
       games_played: results.length,
       wins,
