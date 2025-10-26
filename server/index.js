@@ -176,8 +176,7 @@ app.get('/2playerchess/', (req, res) => {
   res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
 });
 
-// Import and use 2PlayerChess routes (integrate into main server)
-const chess2playerRoutes = require('./routes/chess2player');
+// Note: chess2playerRoutes is already imported above with other routes
 
 // Serve the Lichess OAuth demo page
 app.get('/lichess-demo', (req, res) => {
