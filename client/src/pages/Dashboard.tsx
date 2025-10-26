@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchTeamStandings = async () => {
       const teamTournaments = state.tournaments.filter(t => 
-        t.format && (t.format.includes('team') || t.format === 'individual-team-swiss')
+        t.format && (t.format === 'team-swiss' || t.format.includes('team'))
       );
 
       if (teamTournaments.length === 0) {
