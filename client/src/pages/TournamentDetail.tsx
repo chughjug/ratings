@@ -1170,42 +1170,47 @@ const TournamentDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Simplified Header */}
-      <div className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Modern Enhanced Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-20 py-3">
             {/* Left side - Navigation and Title */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 flex-1 min-w-0">
               <button
                 onClick={() => navigate(-1)}
-                className="flex items-center text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
               >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                <span className="text-sm font-medium">Back</span>
+                <ArrowLeft className="h-5 w-5 mr-1" />
+                <span className="text-sm font-semibold">Back</span>
               </button>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">{tournament.name}</h1>
-                <div className="flex items-center space-x-3 mt-1">
+              <div className="h-8 w-px bg-gray-300"></div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold text-gray-900 truncate">{tournament.name}</h1>
+                <div className="flex items-center space-x-3 mt-1 flex-wrap">
                   <span
-                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                      tournament.status
-                    )}`}
+                    className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
+                      tournament.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : tournament.status === 'completed'
+                        ? 'bg-gray-100 text-gray-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}
                   >
                     {tournament.status ? tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1) : 'Unknown'}
                   </span>
-                  <span className="text-sm text-gray-500 capitalize">
+                  <span className="text-sm font-medium text-gray-600 capitalize">
                     {tournament.format ? tournament.format.replace('-', ' ') : 'Unknown'}
                   </span>
-                  <span className="text-sm text-gray-500">{tournament.rounds} rounds</span>
+                  <span className="text-sm font-medium text-gray-600">{tournament.rounds} rounds</span>
                 </div>
               </div>
             </div>
             
             {/* Right side - Essential Actions Only */}
-            <div className="flex items-center space-x-2">
-              {/* Tournament Director Dashboard */}
+            <div className="flex items-center space-x-2 ml-4">
+              {/* Tournament Director Dashboard - Hidden */}
+              {false && (
               <button
                 onClick={() => navigate(`/tournaments/${id}/director`)}
                 className="flex items-center space-x-1 px-3 py-1 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded"
@@ -1213,8 +1218,10 @@ const TournamentDetail: React.FC = () => {
                 <Settings className="h-4 w-4" />
                 <span>Director</span>
               </button>
+              )}
               
-              {/* PWA Status */}
+              {/* PWA Status - Hidden */}
+              {false && (
               <button
                 onClick={() => setShowPWAStatus(true)}
                 className="flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
@@ -1222,8 +1229,11 @@ const TournamentDetail: React.FC = () => {
                 <Smartphone className="h-4 w-4" />
                 <span>PWA</span>
               </button>
+              )}
               
-              {/* New Feature Buttons in Header */}
+              {/* New Feature Buttons in Header - Hidden */}
+              {false && (
+              <>
               <button
                 onClick={() => setShowSMSManager(true)}
                 className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-green-600 hover:bg-green-700 rounded"
@@ -1255,6 +1265,8 @@ const TournamentDetail: React.FC = () => {
                 <Gamepad2 className="h-4 w-4" />
                 <span>Chess</span>
               </button>
+              </>
+              )}
               
               {/* API Status - Compact */}
               <APIStatusIndicator 
@@ -1677,119 +1689,108 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
-        {/* Streamlined Tab Navigation */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex flex-wrap gap-1 px-4 sm:px-6 overflow-x-auto">
-              {/* Core Tabs */}
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                  activeTab === 'overview'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Trophy className="h-4 w-4" />
-                  <span>Overview</span>
-                </div>
-              </button>
+        {/* Modern Tab Navigation */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 mb-6 overflow-hidden">
+          <nav className="flex flex-wrap px-2 sm:px-4 overflow-x-auto scrollbar-hide">
+            {/* Core Tabs */}
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'overview'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Trophy className="h-4 w-4" />
+              <span>Overview</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('players')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'players'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              <span>Players</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                activeTab === 'players'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-gray-200 text-gray-600'
+              }`}>
+                {state.players.length}
+              </span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('pairings')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'pairings'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Trophy className="h-4 w-4" />
+              <span>Pairings</span>
+            </button>
               
-              <button
-                onClick={() => setActiveTab('players')}
-                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                  activeTab === 'players'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setActiveTab('standings')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'standings'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Trophy className="h-4 w-4" />
+              <span>Standings</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'settings'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('prizes')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'prizes'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Trophy className="h-4 w-4" />
+              <span>Prizes</span>
+            </button>
+
+            {/* Team-specific tabs - only show if relevant */}
+            {tournament && (
+              <>
+                <button
+                  onClick={() => {
+                    setActiveTab('team-standings');
+                    fetchTeamStandings();
+                  }}
+                  className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                    activeTab === 'team-standings'
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
                   <Users className="h-4 w-4" />
-                  <span>Players</span>
-                  <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                    {state.players.length}
-                  </span>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => setActiveTab('pairings')}
-                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                  activeTab === 'pairings'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Trophy className="h-4 w-4" />
-                  <span>Pairings</span>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => setActiveTab('standings')}
-                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                  activeTab === 'standings'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Trophy className="h-4 w-4" />
-                  <span>Standings</span>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                  activeTab === 'settings'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('prizes')}
-                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                  activeTab === 'prizes'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Trophy className="h-4 w-4" />
-                  <span>Prizes</span>
-                </div>
-              </button>
-
-              {/* Team-specific tabs - only show if relevant */}
-              {tournament && (
-                <>
-                  <button
-                    onClick={() => {
-                      setActiveTab('team-standings');
-                      fetchTeamStandings();
-                    }}
-                    className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                      activeTab === 'team-standings'
-                        ? 'border-blue-500 text-blue-600 bg-blue-50'
-                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4" />
-                      <span>Team Standings</span>
-                    </div>
-                  </button>
+                  <span>Team Standings</span>
+                </button>
                   
-                  {/* Team Pairings - Hidden */}
+                {/* Team Pairings - Hidden */}
                   {/* <button
                     onClick={() => setActiveTab('team-pairings')}
                     className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
@@ -1806,23 +1807,22 @@ const TournamentDetail: React.FC = () => {
                 </>
               )}
 
-              {/* Registration Management */}
-              <button
-                onClick={() => setActiveTab('registrations')}
-                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                  activeTab === 'registrations'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4" />
-                  <span>Registrations</span>
-                </div>
-              </button>
-            </nav>
-          </div>
+            {/* Registration Management */}
+            <button
+              onClick={() => setActiveTab('registrations')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'registrations'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              <span>Registrations</span>
+            </button>
+          </nav>
+        </div>
 
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-6">
               {activeTab === 'overview' && (
                 <div className="space-y-6">
@@ -2985,6 +2985,7 @@ const TournamentDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* All modals and dialogs go here, outside the max-w-7xl container */}
       {/* Add Player Modal */}
       <AddPlayerModal
         isOpen={showAddPlayer}

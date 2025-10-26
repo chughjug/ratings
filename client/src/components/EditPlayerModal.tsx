@@ -80,32 +80,36 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
   // Update form data when player changes
   useEffect(() => {
     if (player) {
-      setFormData({
-        name: player.name || '',
-        uscf_id: player.uscf_id || '',
-        fide_id: player.fide_id || '',
-        rating: player.rating?.toString() || '',
-        section: player.section || '',
-        team_name: player.team_name || '',
-        school: player.school || '',
-        grade: player.grade || '',
-        email: player.email || '',
-        phone: player.phone || '',
-        state: player.state || '',
-        city: player.city || '',
-        parent_name: player.parent_name || '',
-        parent_email: player.parent_email || '',
-        parent_phone: player.parent_phone || '',
-        emergency_contact: player.emergency_contact || '',
-        emergency_phone: player.emergency_phone || '',
-        tshirt_size: player.tshirt_size || '',
-        dietary_restrictions: player.dietary_restrictions || '',
-        special_needs: player.special_needs || '',
-        notes: player.notes || '',
-        status: player.status || 'active',
-        intentional_bye_rounds: player.intentional_bye_rounds || [],
-        lichess_username: player.lichess_username || ''
-      });
+      try {
+        setFormData({
+          name: player.name || '',
+          uscf_id: player.uscf_id || '',
+          fide_id: player.fide_id || '',
+          rating: player.rating?.toString() || '',
+          section: player.section || '',
+          team_name: player.team_name || '',
+          school: player.school || '',
+          grade: player.grade || '',
+          email: player.email || '',
+          phone: player.phone || '',
+          state: player.state || '',
+          city: player.city || '',
+          parent_name: player.parent_name || '',
+          parent_email: player.parent_email || '',
+          parent_phone: player.parent_phone || '',
+          emergency_contact: player.emergency_contact || '',
+          emergency_phone: player.emergency_phone || '',
+          tshirt_size: player.tshirt_size || '',
+          dietary_restrictions: player.dietary_restrictions || '',
+          special_needs: player.special_needs || '',
+          notes: player.notes || '',
+          status: player.status || 'active',
+          intentional_bye_rounds: Array.isArray(player.intentional_bye_rounds) ? player.intentional_bye_rounds : [],
+          lichess_username: player.lichess_username || ''
+        });
+      } catch (error) {
+        console.error('Error updating form data:', error);
+      }
     }
   }, [player]);
 
@@ -148,7 +152,7 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
         special_needs: formData.special_needs || undefined,
         notes: formData.notes || undefined,
         status: formData.status,
-        intentional_bye_rounds: formData.intentional_bye_rounds.length > 0 ? formData.intentional_bye_rounds : undefined
+        intentional_bye_rounds: Array.isArray(formData.intentional_bye_rounds) && formData.intentional_bye_rounds.length > 0 ? formData.intentional_bye_rounds : undefined
       };
 
       const response = await playerApi.update(player.id, playerData);
@@ -193,7 +197,19 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
     }
   };
 
-  if (!isOpen || !player) return null;
+  // Early return if modal is closed or no player data
+  if (!isOpen) return null;
+  
+  // If player data is not available yet, show loading state
+  if (!player) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl p-6">
+          <p className="text-gray-600">Loading player data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

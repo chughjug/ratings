@@ -298,7 +298,7 @@ class EnhancedPairingSystem {
     return new Promise((resolve, reject) => {
       db.all(
         `SELECT section, COUNT(*) as total, 
-                SUM(CASE WHEN result IS NOT NULL THEN 1 ELSE 0 END) as completed
+                SUM(CASE WHEN result IS NOT NULL OR is_bye = 1 THEN 1 ELSE 0 END) as completed
          FROM pairings 
          WHERE tournament_id = ? AND round = ?
          GROUP BY section`,

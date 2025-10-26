@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chess Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .game-info {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .game-info h2 {
+            margin: 0 0 15px 0;
+            color: #1976d2;
+        }
+        .info-item {
+            margin: 8px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 3px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            width: 140px;
+        }
+        .color-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        .color-white {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffc107;
+        }
+        .color-black {
+            background: #343a40;
+            color: white;
+            border: 2px solid #495057;
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .demo-board {
+            background: #000;
+            padding: 0;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+            height: 900px;
+            width: 100%;
+        }
+        .link-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #dee2e6;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-info">
+            <h2>🎮 Online Chess Game Setup</h2>
+            <div class="info-item">
+                <span class="info-label">Room Code:</span> 
+                <strong id="room-code">Loading...</strong>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Your Color:</span> 
+                <span id="color-assignment" class="color-badge">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Time Control:</span> 
+                <span id="time-control">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Round:</span> 
+                <span id="round">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Tournament:</span> 
+                <span id="tournament">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Player ID:</span> 
+                <span id="player-id" style="font-family: monospace; font-size: 12px;">Loading...</span>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 How This Works</h3>
+            <p>This is a <strong>demonstration</strong> of the secure online game link system. The integration generates personalized links for each player with:</p>
+            <ul>
+                <li>✅ <strong>Automatic color assignment</strong> - Your assigned color is embedded in the link</li>
+                <li>✅ <strong>Player authentication</strong> - Unique player ID and security token</li>
+                <li>✅ <strong>Room-based matching</strong> - Same room code ensures you match with your opponent</li>
+                <li>✅ <strong>Security protection</strong> - Cannot switch colors or use another player's link</li>
+            </ul>
+            <p><strong>For actual gameplay:</strong> The 2PlayerChess game requires a separate Socket.io server running on port 8080. To set it up:</p>
+            <ol>
+                <li>Navigate to <code>2PlayerChess-master</code> directory</li>
+                <li>Run <code>npm install</code> and <code>node index.js</code></li>
+                <li>Players will use the generated links to join the game</li>
+            </ol>
+        </div>
+
+        <div class="demo-board" style="padding: 0; overflow: hidden;">
+            <iframe 
+                src="http://localhost:8080/"
+                width="100%"
+                height="900px"
+                style="border: none; margin: 0; display: block;"
+                title="Chess Game"
+                allowfullscreen>
+            </iframe>
+        </div>
+
+        <div class="instructions" style="background: #d4edda; border-left-color: #28a745;">
+            <h3 style="color: #155724;">✅ Integration Complete</h3>
+            <p style="color: #155724;">The OnlineGameIntegration component is ready to use in your tournament system. It will:</p>
+            <ul style="color: #155724;">
+                <li>Generate separate links for White and Black players</li>
+                <li>Display player names and USCF IDs</li>
+                <li>Allow tournament directors to copy links easily</li>
+                <li>Ensure secure, authenticated access to games</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomCode = urlParams.get('room') || 'TEST-ROOM';
+        const timeControl = urlParams.get('tc') || '5+0';
+        const round = urlParams.get('round') || '1';
+        const tournament = urlParams.get('tournament') || 'Test Tournament';
+        const playerId = urlParams.get('playerId') || 'player-123';
+        const color = urlParams.get('color') || 'white';
+        const token = urlParams.get('token') || 'test-token';
+
+        // Display game information
+        document.getElementById('room-code').textContent = roomCode;
+        document.getElementById('color-assignment').textContent = color.toUpperCase();
+        document.getElementById('color-assignment').className = 'color-badge color-' + color;
+        document.getElementById('time-control').textContent = timeControl + ' minutes';
+        document.getElementById('round').textContent = round;
+        document.getElementById('tournament').textContent = decodeURIComponent(tournament);
+        document.getElementById('player-id').textContent = playerId;
+
+        // Log game details
+        console.log('Game Setup Complete:');
+        console.log('- Room:', roomCode);
+        console.log('- Color:', color);
+        console.log('- Player ID:', playerId);
+        console.log('- Security Token:', token);
+        console.log('- Time Control:', timeControl);
+        console.log('- Round:', round);
+        console.log('- Tournament:', tournament);
+    </script>
+</body>
+</html>

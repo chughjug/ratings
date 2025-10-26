@@ -70,9 +70,38 @@ const OnlineGameIntegration: React.FC<OnlineGameIntegrationProps> = ({
     const whiteToken = generateSecurityToken(whiteId, whiteUscfId || whiteId);
     const blackToken = generateSecurityToken(blackId, blackUscfId || blackId);
     
+    // Create custom room in 2PlayerChess server
+    try {
+      // Use relative URL for production, localhost for development
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      const apiUrl = isProduction ? '/api/chess2player/create-room' : 'http://localhost:8080/api/create-room';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomCode: roomCode,
+          whitePlayer: pairing.white_player_name || `Player ${whiteId}`,
+          blackPlayer: pairing.black_player_name || `Player ${blackId}`,
+          whitePlayerId: whiteId,
+          blackPlayerId: blackId,
+          timeControl: `${timeControlData.minutes}+${timeControlData.increment}`
+        })
+      });
+      
+      if (!response.ok) {
+        console.warn('Failed to create custom room, continuing with auto-join mode');
+      }
+    } catch (error) {
+      console.error('Error creating custom room:', error);
+      // Continue anyway - room will be created when first player joins
+    }
+    
     // Create separate URLs for white and black players with their authentication
-    const whiteUrl = `${window.location.origin}/2playerchess?room=${roomCode}&tc=${timeControlData.minutes}+${timeControlData.increment}&round=${round}&tournament=${encodeURIComponent(tournamentName)}&playerId=${whiteId}&token=${whiteToken}&color=white`;
-    const blackUrl = `${window.location.origin}/2playerchess?room=${roomCode}&tc=${timeControlData.minutes}+${timeControlData.increment}&round=${round}&tournament=${encodeURIComponent(tournamentName)}&playerId=${blackId}&token=${blackToken}&color=black`;
+    const whiteUrl = `${window.location.origin}/chess.html?room=${roomCode}&name=${encodeURIComponent(pairing.white_player_name || 'White Player')}&playerId=${whiteId}&token=${whiteToken}&color=white&tc=${timeControlData.minutes}+${timeControlData.increment}`;
+    const blackUrl = `${window.location.origin}/chess.html?room=${roomCode}&name=${encodeURIComponent(pairing.black_player_name || 'Black Player')}&playerId=${blackId}&token=${blackToken}&color=black&tc=${timeControlData.minutes}+${timeControlData.increment}`;
     
     return { roomCode, whiteUrl, blackUrl, whiteToken, blackToken };
   };

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Parse URL parameters to get room and player info
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomCode = urlParams.get('room');
+        const playerId = urlParams.get('playerId');
+        const playerName = urlParams.get('name');
+        const color = urlParams.get('color');
+        
+        // Build iframe URL - use relative path for production
+        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        let iframeSrc = isProduction ? '/2playerchess/' : 'http://localhost:8080/';
+        
+        if (roomCode && playerName && color) {
+            iframeSrc += `?room=${roomCode}&player=${encodeURIComponent(playerName)}&color=${color}`;
+        }
+        
+        document.write(`<iframe src="${iframeSrc}" title="Chess Game" allowfullscreen></iframe>`);
+    </script>
+</body>
+</html>

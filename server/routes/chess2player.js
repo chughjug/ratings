@@ -157,4 +157,61 @@ router.get('/games/:id', (req, res) => {
   );
 });
 
+// In-memory store for 2PlayerChess rooms (replicated from 2PlayerChess-master/index.js)
+// TODO: In production, use Redis or database for persistent room storage
+let chessRooms = {};
+
+/**
+ * Create a custom 2PlayerChess room
+ */
+router.post('/create-room', (req, res) => {
+  const { roomCode, whitePlayer, blackPlayer, whitePlayerId, blackPlayerId, timeControl } = req.body;
+  
+  if (!roomCode || !whitePlayer || !blackPlayer) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required fields: roomCode, whitePlayer, blackPlayer'
+    });
+  }
+  
+  // Create room with predefined players
+  chessRooms[roomCode] = {
+    first: whitePlayer,
+    firstID: whitePlayerId || '',
+    second: blackPlayer,
+    secondID: blackPlayerId || '',
+    whitePlayer: whitePlayer,
+    blackPlayer: blackPlayer,
+    timeControl: timeControl || '15',
+    customRoom: true
+  };
+  
+  console.log(`Custom room created: ${roomCode} for ${whitePlayer} vs ${blackPlayer}`);
+  
+  res.json({
+    success: true,
+    roomCode: roomCode,
+    message: `Room ${roomCode} created for ${whitePlayer} (White) vs ${blackPlayer} (Black)`
+  });
+});
+
+/**
+ * Check if a 2PlayerChess room exists
+ */
+router.get('/room/:roomCode', (req, res) => {
+  const { roomCode } = req.params;
+  
+  if (chessRooms[roomCode]) {
+    res.json({
+      success: true,
+      room: chessRooms[roomCode]
+    });
+  } else {
+    res.status(404).json({
+      success: false,
+      error: 'Room not found'
+    });
+  }
+});
+
 module.exports = router;

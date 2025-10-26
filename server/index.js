@@ -168,6 +168,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../client/build')));
 
+// Serve 2PlayerChess static files
+app.use('/2playerchess', express.static(path.join(__dirname, '../2PlayerChess-master/views')));
+
+// Serve 2PlayerChess main HTML
+app.get('/2playerchess/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
+});
+
+// Import and use 2PlayerChess routes (integrate into main server)
+const chess2playerRoutes = require('./routes/chess2player');
+
 // Serve the Lichess OAuth demo page
 app.get('/lichess-demo', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/public/test-lichess-oauth-demo.html'));
