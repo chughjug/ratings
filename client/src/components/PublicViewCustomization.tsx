@@ -187,7 +187,7 @@ const PublicViewCustomization: React.FC<PublicViewCustomizationProps> = ({ tourn
   };
 
   const handleDeletePage = (pageId: string) => {
-    if (confirm('Are you sure you want to delete this page?')) {
+    if (window.confirm('Are you sure you want to delete this page?')) {
       setCustomPages(prev => prev.filter(p => p.id !== pageId));
     }
   };
