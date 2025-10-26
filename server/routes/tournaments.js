@@ -133,7 +133,8 @@ router.post('/', (req, res) => {
     uscf_rated,
     allow_registration,
     is_public,
-    public_url
+    public_url,
+    logo_url
   } = req.body;
 
   // Validate required fields
@@ -151,12 +152,12 @@ router.post('/', (req, res) => {
     `INSERT INTO tournaments (id, organization_id, name, format, rounds, time_control, start_date, end_date, status, settings,
                              city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
                              chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-                             expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                             expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url, logo_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, organization_id || null, name, format, rounds, time_control, start_date, end_date, 'created', settingsJson,
      city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
      chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null],
+     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null],
     function(err) {
       if (err) {
         console.error('Error creating tournament:', err);
@@ -205,7 +206,8 @@ router.put('/:id', (req, res) => {
     uscf_rated,
     allow_registration,
     is_public,
-    public_url
+    public_url,
+    logo_url
   } = req.body;
 
   // Validate required fields
@@ -225,13 +227,13 @@ router.put('/:id', (req, res) => {
          city = ?, state = ?, location = ?, chief_td_name = ?, chief_td_uscf_id = ?,
          chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
          chief_organizer_fide_id = ?, expected_players = ?, website = ?,
-         fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?
+         fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?
      WHERE id = ?`,
     [organization_id || null, name, format, rounds, time_control, start_date, end_date, status, settingsJson,
      city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
      chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
      expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, 
-     allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, id],
+     allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null, id],
     function(err) {
       if (err) {
         console.error('Error updating tournament:', err);
@@ -246,9 +248,20 @@ router.put('/:id', (req, res) => {
           error: 'Tournament not found' 
         });
       }
-      res.json({ 
-        success: true,
-        message: 'Tournament updated successfully' 
+      // Return the updated tournament data
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, tournament) => {
+        if (err) {
+          console.error('Error fetching updated tournament:', err);
+          return res.json({ 
+            success: true,
+            message: 'Tournament updated successfully' 
+          });
+        }
+        res.json({ 
+          success: true,
+          data: tournament,
+          message: 'Tournament updated successfully' 
+        });
       });
     }
   );
