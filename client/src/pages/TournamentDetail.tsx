@@ -3162,8 +3162,8 @@ const TournamentDetail: React.FC = () => {
                     <span>Tiebreakers</span>
                   </button>
                   <button
-                    onClick={() => setPrintView('team-standings')}
-                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                    onClick={() => {/* Print functionality moved to Print tab */}}
+                    className="flex items-center space-x-2 bg-gray-400 text-white px-4 py-2 rounded-lg cursor-not-allowed opacity-60"
                   >
                     <Printer className="h-4 w-4" />
                     <span>Print Team Standings</span>
@@ -3199,8 +3199,8 @@ const TournamentDetail: React.FC = () => {
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => setPrintView('pairings')}
-                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                    onClick={() => {/* Print functionality moved to Print tab */}}
+                    className="flex items-center space-x-2 bg-gray-400 text-white px-4 py-2 rounded-lg cursor-not-allowed opacity-60"
                   >
                     <Printer className="h-4 w-4" />
                     <span>Print</span>
@@ -3287,8 +3287,8 @@ const TournamentDetail: React.FC = () => {
                             .map((pairing: any, idx: number) => {
                             const whitePlayer = state.players.find(p => p.id === pairing.white_player_id);
                             const blackPlayer = state.players.find(p => p.id === pairing.black_player_id);
-                            const whiteTeam = whitePlayer?.team || '';
-                            const blackTeam = blackPlayer?.team || '';
+                            const whiteTeam = (whitePlayer as any)?.team || '';
+                            const blackTeam = (blackPlayer as any)?.team || '';
                             return (
                               <React.Fragment key={pairing.id || idx}>
                                 <tr className="border-b border-gray-300">
@@ -3497,75 +3497,8 @@ const TournamentDetail: React.FC = () => {
 
 
 
-      {/* Print View */}
-      {printView && tournament && (
-        <div className="fixed inset-0 bg-white z-50 overflow-auto">
-          <div className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">
-                {printView === 'pairings' && `Round ${currentRound} Pairings`}
-                {printView === 'standings' && 'Tournament Standings'}
-                {printView === 'team-standings' && 'Team Standings'}
-                {printView === 'report' && 'Tournament Report'}
-              </h2>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Printer className="h-4 w-4" />
-                  <span>Print</span>
-                </button>
-                <button
-                  onClick={() => setPrintView(null)}
-                  className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                  <span>Close</span>
-                </button>
-              </div>
-            </div>
-            {tournament && (
-              <PrintableView
-                tournament={tournament as any}
-                pairings={state.pairings.map(p => ({
-                  id: p.id,
-                  board: p.board,
-                  white_name: p.white_name,
-                  white_rating: p.white_rating,
-                  white_uscf_id: p.white_uscf_id,
-                  black_name: p.black_name,
-                  black_rating: p.black_rating,
-                  black_uscf_id: p.black_uscf_id,
-                  result: p.result,
-                  section: p.section,
-                  is_bye: p.is_bye,
-                  white_id: p.white_id || p.white_player_id,
-                  black_id: p.black_id || p.black_player_id,
-                  round: p.round
-                }))}
-                standings={Array.isArray(state.standings) ? state.standings.map(s => ({
-                  id: s.id,
-                  name: s.name,
-                  rating: s.rating,
-                  uscf_id: undefined,
-                  total_points: s.total_points,
-                  games_played: s.games_played,
-                  wins: s.wins,
-                  losses: s.losses,
-                  draws: s.draws,
-                  buchholz: s.tiebreakers?.buchholz || 0,
-                  sonneborn_berger: s.tiebreakers?.sonnebornBerger || 0,
-                  section: s.section,
-                  rank: s.rank
-                })) : []}
-                currentRound={currentRound}
-                viewType={printView as 'pairings' | 'standings' | 'report' | 'team-standings'}
-              />
-            )}
-          </div>
-        </div>
-      )}
+      {/* Print View Modal - Replaced by Print Tab */}
+      {/* Old print modal removed - use Print tab instead */}
 
       {/* Team Standings Modal */}
       <TeamStandings
