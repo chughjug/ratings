@@ -42,9 +42,13 @@ const CreateTournament: React.FC = () => {
       ? template.format as any 
       : 'swiss'; // Default to swiss if invalid format
     
+    // Force quad tournaments to 3 rounds
+    const isQuad = validFormat === 'quad';
+    
     setFormData(prev => ({
       ...prev,
       format: validFormat,
+      rounds: isQuad ? 3 : prev.rounds,
       settings: {
         ...prev.settings,
         ...template.settings
@@ -226,6 +230,14 @@ const CreateTournament: React.FC = () => {
           [settingKey]: (e.target as HTMLInputElement).checked
         }
       }));
+    } else if (name === 'format') {
+      // Force quad tournaments to 3 rounds
+      const isQuad = value === 'quad';
+      setFormData(prev => ({
+        ...prev,
+        format: value as 'swiss' | 'online' | 'quad' | 'team-swiss',
+        rounds: isQuad ? 3 : prev.rounds
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -337,11 +349,18 @@ const CreateTournament: React.FC = () => {
       alert('Please provide a name for at least one section.');
       return;
     }
-
+    
     // Validate that an organization is selected
     if (!orgState.currentOrganization) {
       alert('Please select an organization to create a tournament.');
       setShowOrgSelector(true);
+      return;
+    }
+    
+    // Validate quad tournaments have 3 rounds
+    if (formData.format === 'quad' && formData.rounds !== 3) {
+      alert('Quad tournaments must have exactly 3 rounds.');
+      setFormData(prev => ({ ...prev, rounds: 3 }));
       return;
     }
     
@@ -537,6 +556,9 @@ const CreateTournament: React.FC = () => {
             <div>
               <label htmlFor="rounds" className="block text-sm font-medium text-gray-700 mb-2">
                 Number of Rounds *
+                {formData.format === 'quad' && (
+                  <span className="ml-2 text-xs text-gray-500 font-normal">(Fixed at 3 rounds for Quad format)</span>
+                )}
               </label>
               <input
                 type="number"
@@ -547,7 +569,8 @@ const CreateTournament: React.FC = () => {
                 min="1"
                 max="20"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
+                disabled={formData.format === 'quad'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 

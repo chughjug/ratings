@@ -128,9 +128,12 @@ const PublicTournamentDisplay: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await tournamentApi.getPublic(id);
+      console.log('Public API response:', response.data);
       if (response.data.success) {
         setData(response.data.data);
-        setCustomPages(response.data.data.customPages || []);
+        const customPagesData = response.data.data.customPages || [];
+        console.log('Custom pages from API:', customPagesData);
+        setCustomPages(customPagesData);
         setLastUpdated(new Date());
         
         // Load all rounds data asynchronously (don't wait for it)
@@ -891,7 +894,7 @@ const PublicTournamentDisplay: React.FC = () => {
               )}
               
               {/* Custom Pages Tabs */}
-              {customPages.map((page) => (
+              {customPages && customPages.length > 0 && customPages.map((page) => (
                 <button
                   key={page.id}
                   onClick={() => setActiveTab(page.slug)}
@@ -1870,7 +1873,7 @@ const PublicTournamentDisplay: React.FC = () => {
             )}
 
             {/* Custom Pages Content */}
-            {customPages.map((page) => (
+            {customPages && customPages.length > 0 && customPages.map((page) => (
               activeTab === page.slug && (
                 <div key={page.id}>
                   <div className="flex items-center justify-between mb-6">

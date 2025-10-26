@@ -2595,6 +2595,47 @@ router.post('/generate/quad', async (req, res) => {
 
     console.log(`🎯 Starting quad generation for tournament ${tournamentId} with ${tournament.rounds} rounds`);
 
+    // Get all active players to update their sections
+    const players = await new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM players WHERE tournament_id = ? AND status = "active" ORDER BY rating DESC',
+        [tournamentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    if (players.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No active players found for quad pairing'
+      });
+    }
+
+    // Create quad assignments and update player sections
+    const system = new QuadPairingSystem(players, { groupSize: 4 });
+    const quads = system.getQuadAssignments();
+    
+    // Update player sections in the database based on their quad assignment
+    for (const quad of quads) {
+      for (const player of quad.players) {
+        await new Promise((resolve, reject) => {
+          db.run(
+            'UPDATE players SET section = ? WHERE id = ?',
+            [quad.id, player.id],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+      }
+    }
+
+    console.log(`✅ Updated ${players.length} players to their quad sections`);
+
     for (let round = 1; round <= tournament.rounds; round++) {
       // Generate quad pairings for this round
       let result;
@@ -2683,7 +2724,12 @@ router.post('/generate/quad', async (req, res) => {
         roundsData: allResults,
         totalGamesAllRounds,
         totalByesAllRounds,
-        message: `Successfully created ${allResults.length} rounds with sections reassigned`
+        quads: quads.map(q => ({
+          id: q.id,
+          number: q.number,
+          players: q.players.map(p => p.id)
+        })),
+        message: `Successfully created ${allResults.length} rounds with ${quads.length} quads. All player sections have been updated, and standings will reflect the new quad assignments.`
       }
     });
 
