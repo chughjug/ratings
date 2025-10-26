@@ -24,3 +24,15 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Smooth transitions for logo and header elements */
+* {
+  transition-property: transform, opacity, background-color, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Logo hover effects */
+img[alt="PairCraft Logo"] {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}

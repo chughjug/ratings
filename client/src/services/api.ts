@@ -463,6 +463,14 @@ export const pairingApi = {
       pairingId1,
       pairingId2
     }),
+  
+  swapPlayers: (pairingId1: string, pairingId2: string, position1: 'white' | 'black', position2: 'white' | 'black') =>
+    api.post<{success: boolean, message: string}>(`/pairings/swap-players`, {
+      pairingId1,
+      pairingId2,
+      position1,
+      position2
+    }),
 };
 
 // Export API

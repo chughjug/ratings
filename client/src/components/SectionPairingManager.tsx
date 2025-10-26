@@ -34,8 +34,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const selectedPairingRef = useRef<string | null>(null);
   
   // Drag and drop state
-  const [draggedPairing, setDraggedPairing] = useState<string | null>(null);
-  const [dragOverPairing, setDragOverPairing] = useState<string | null>(null);
+  const [draggedPlayer, setDraggedPlayer] = useState<{pairingId: string, position: 'white' | 'black', name: string, id: string} | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<{pairingId: string, position: 'white' | 'black'} | null>(null);
   
   // Manual pairing creation state
   const [showManualPairingModal, setShowManualPairingModal] = useState(false);
@@ -176,9 +176,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   }, [handleKeyDown]);
 
   // Edit functions
-  const swapPlayers = async (pairingId: string) => {
+  const swapPlayersInPairing = async (pairingId: string) => {
     try {
-      const response = await pairingApi.swapPlayers(pairingId);
+      const response = await pairingApi.swapPlayers(pairingId, '', 'white', 'black'); // Not used anymore
       if (response.data.success) {
         // Refresh pairings from parent
         const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
@@ -289,50 +289,59 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     }
   };
 
-  // Drag and drop handlers
-  const handleDragStart = (pairingId: string) => {
-    setDraggedPairing(pairingId);
+  // Drag and drop handlers for individual players
+  const handlePlayerDragStart = (e: React.DragEvent, pairing: any, position: 'white' | 'black') => {
+    const playerInfo = {
+      pairingId: pairing.id,
+      position,
+      name: position === 'white' ? pairing.white_name : pairing.black_name,
+      id: position === 'white' ? pairing.white_player_id : pairing.black_player_id
+    };
+    setDraggedPlayer(playerInfo);
+    e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent, pairingId: string) => {
+  const handlePlayerDragOver = (e: React.DragEvent, pairingId: string, position: 'white' | 'black') => {
     e.preventDefault();
-    setDragOverPairing(pairingId);
+    setDragOverCell({ pairingId, position });
   };
 
-  const handleDragLeave = () => {
-    setDragOverPairing(null);
+  const handlePlayerDragLeave = () => {
+    setDragOverCell(null);
   };
 
-  const handleDrop = async (e: React.DragEvent, targetPairingId: string) => {
+  const handlePlayerDrop = async (e: React.DragEvent, targetPairing: any, targetPosition: 'white' | 'black') => {
     e.preventDefault();
-    setDragOverPairing(null);
-    setDraggedPairing(null);
+    setDragOverCell(null);
+    
+    if (!draggedPlayer) return;
 
-    if (!draggedPairing || draggedPairing === targetPairingId) return;
-
-    const draggedPairingData = sectionPairings.find(p => p.id === draggedPairing);
-    const targetPairingData = sectionPairings.find(p => p.id === targetPairingId);
-
-    if (!draggedPairingData || !targetPairingData) return;
+    // Don't allow dropping on the same cell
+    if (draggedPlayer.pairingId === targetPairing.id && draggedPlayer.position === targetPosition) {
+      setDraggedPlayer(null);
+      return;
+    }
 
     try {
-      // Swap players between pairings
-      const response = await pairingApi.swapPairings(
-        draggedPairing,
-        targetPairingId
+      const response = await pairingApi.swapPlayers(
+        draggedPlayer.pairingId,
+        targetPairing.id,
+        draggedPlayer.position,
+        targetPosition
       );
       
       if (response.data.success) {
         // Refresh pairings from parent
         const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
         onPairingsUpdate?.(pairingsResponse.data || []);
-        alert('Players swapped successfully!');
       } else {
-        throw new Error(response.data.message || 'Failed to swap pairings');
+        throw new Error(response.data.message || 'Failed to swap players');
       }
     } catch (error: any) {
-      console.error('Failed to swap pairings:', error);
-      alert(`Failed to swap pairings: ${error.message}`);
+      console.error('Failed to swap players:', error);
+      alert(`Failed to swap players: ${error.message}`);
+    } finally {
+      setDraggedPlayer(null);
     }
   };
 
@@ -668,12 +677,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               {sectionPairings.map((pairing, index) => (
                 <tr 
                   key={pairing.id} 
-                  className={`hover:bg-gray-50 ${draggedPairing === pairing.id ? 'opacity-50' : ''} ${dragOverPairing === pairing.id ? 'bg-blue-100' : ''}`}
-                  draggable
-                  onDragStart={() => handleDragStart(pairing.id)}
-                  onDragOver={(e) => handleDragOver(e, pairing.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, pairing.id)}
+                  className="hover:bg-gray-50"
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     <div className="flex items-center space-x-2">
@@ -681,10 +685,24 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                       <span>{pairing.board || (index + 1 + boardNumberOffset)}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td 
+                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-move ${draggedPlayer && draggedPlayer.pairingId === pairing.id && draggedPlayer.position === 'white' ? 'opacity-50' : ''} ${dragOverCell && dragOverCell.pairingId === pairing.id && dragOverCell.position === 'white' ? 'bg-blue-100' : ''}`}
+                    draggable
+                    onDragStart={(e) => handlePlayerDragStart(e, pairing, 'white')}
+                    onDragOver={(e) => handlePlayerDragOver(e, pairing.id, 'white')}
+                    onDragLeave={handlePlayerDragLeave}
+                    onDrop={(e) => handlePlayerDrop(e, pairing, 'white')}
+                  >
                     {pairing.white_name || 'TBD'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td 
+                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-move ${pairing.is_bye ? '' : draggedPlayer && draggedPlayer.pairingId === pairing.id && draggedPlayer.position === 'black' ? 'opacity-50' : ''} ${pairing.is_bye ? '' : dragOverCell && dragOverCell.pairingId === pairing.id && dragOverCell.position === 'black' ? 'bg-blue-100' : ''}`}
+                    draggable={!pairing.is_bye}
+                    onDragStart={(e) => !pairing.is_bye && handlePlayerDragStart(e, pairing, 'black')}
+                    onDragOver={(e) => !pairing.is_bye && handlePlayerDragOver(e, pairing.id, 'black')}
+                    onDragLeave={handlePlayerDragLeave}
+                    onDrop={(e) => !pairing.is_bye && handlePlayerDrop(e, pairing, 'black')}
+                  >
                     {pairing.is_bye ? 'BYE' : (pairing.black_name || 'TBD')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -754,9 +772,25 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => swapPlayers(pairing.id)}
+                        onClick={async () => {
+                          try {
+                            const response = await pairingApi.swapPlayers(
+                              pairing.id,
+                              pairing.id,
+                              'white',
+                              'black'
+                            );
+                            if (response.data.success) {
+                              const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+                              onPairingsUpdate?.(pairingsResponse.data || []);
+                              alert('Players swapped successfully!');
+                            }
+                          } catch (error: any) {
+                            alert(`Failed to swap players: ${error.message}`);
+                          }
+                        }}
                         className="text-blue-600 hover:text-blue-800 p-1"
-                        title="Swap players"
+                        title="Swap players in pairing"
                       >
                         <ArrowUpDown className="h-4 w-4" />
                       </button>

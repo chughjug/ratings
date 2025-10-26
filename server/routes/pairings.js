@@ -3547,4 +3547,99 @@ router.post('/swap', async (req, res) => {
   }
 });
 
+/**
+ * Swap individual players between two pairings
+ */
+router.post('/swap-players', async (req, res) => {
+  const { pairingId1, pairingId2, position1, position2 } = req.body;
+
+  if (!pairingId1 || !pairingId2 || !position1 || !position2) {
+    return res.status(400).json({ success: false, message: 'All parameters are required' });
+  }
+
+  try {
+    // Get both pairings
+    const [pairing1, pairing2] = await Promise.all([
+      new Promise((resolve, reject) => {
+        db.get('SELECT * FROM pairings WHERE id = ?', [pairingId1], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      }),
+      new Promise((resolve, reject) => {
+        db.get('SELECT * FROM pairings WHERE id = ?', [pairingId2], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      })
+    ]);
+
+    if (!pairing1 || !pairing2) {
+      return res.status(404).json({ success: false, message: 'One or both pairings not found' });
+    }
+
+    // Get the player IDs from the source positions
+    const player1Id = position1 === 'white' ? pairing1.white_player_id : pairing1.black_player_id;
+    const player1Name = position1 === 'white' ? pairing1.white_name : pairing1.black_name;
+    
+    const player2Id = position2 === 'white' ? pairing2.white_player_id : pairing2.black_player_id;
+    const player2Name = position2 === 'white' ? pairing2.white_name : pairing2.black_name;
+
+    // Swap the players
+    await Promise.all([
+      new Promise((resolve, reject) => {
+        if (position2 === 'white') {
+          db.run(
+            `UPDATE pairings SET white_player_id = ?, white_name = ? WHERE id = ?`,
+            [player1Id, player1Name, pairingId2],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        } else {
+          db.run(
+            `UPDATE pairings SET black_player_id = ?, black_name = ? WHERE id = ?`,
+            [player1Id, player1Name, pairingId2],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        }
+      }),
+      new Promise((resolve, reject) => {
+        if (position1 === 'white') {
+          db.run(
+            `UPDATE pairings SET white_player_id = ?, white_name = ? WHERE id = ?`,
+            [player2Id, player2Name, pairingId1],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        } else {
+          db.run(
+            `UPDATE pairings SET black_player_id = ?, black_name = ? WHERE id = ?`,
+            [player2Id, player2Name, pairingId1],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        }
+      })
+    ]);
+
+    res.json({ 
+      success: true, 
+      message: 'Players swapped successfully'
+    });
+
+  } catch (error) {
+    console.error('Error swapping players:', error);
+    res.status(500).json({ success: false, message: 'Failed to swap players' });
+  }
+});
+
 module.exports = router;

@@ -19,21 +19,23 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-white shadow-lg border-b">
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-20">
           <div className="flex items-center space-x-8">
-            <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center">
-              <PairCraftLogo size="md" showText={true} />
+            <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center group">
+              <div className="transform transition-transform group-hover:scale-105">
+                <PairCraftLogo size="md" showText={true} />
+              </div>
             </Link>
             
-            <div className="hidden md:flex space-x-6">
+            <div className="hidden md:flex space-x-1">
               <Link
                 to="/dashboard"
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isActive('/dashboard') 
-                    ? 'bg-chess-board text-white' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
                 }`}
               >
                 <Home className="h-4 w-4" />
@@ -42,10 +44,10 @@ const Navbar: React.FC = () => {
               
               <Link
                 to="/tournaments"
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isActive('/tournaments') 
-                    ? 'bg-chess-board text-white' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
                 }`}
               >
                 <Trophy className="h-4 w-4" />
@@ -54,10 +56,10 @@ const Navbar: React.FC = () => {
               
               <Link
                 to="/chess"
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isActive('/chess') 
-                    ? 'bg-chess-board text-white' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
                 }`}
               >
                 <Gamepad2 className="h-4 w-4" />
@@ -66,15 +68,15 @@ const Navbar: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {isAuthenticated ? (
               <>
                 <Link
                   to="/profile"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     isActive('/profile') 
-                      ? 'bg-chess-board text-white' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
                   }`}
                 >
                   <User className="h-4 w-4" />
@@ -83,7 +85,7 @@ const Navbar: React.FC = () => {
                 
                 <Link
                   to="/tournaments/new"
-                  className="flex items-center space-x-1 bg-chess-board text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-chess-dark transition-colors"
+                  className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
                 >
                   <Plus className="h-4 w-4" />
                   <span>New Tournament</span>
@@ -91,7 +93,7 @@ const Navbar: React.FC = () => {
 
                 <button
                   onClick={handleLogout}
-                  className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Logout</span>
@@ -100,7 +102,7 @@ const Navbar: React.FC = () => {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center space-x-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Login / Sign Up</span>
