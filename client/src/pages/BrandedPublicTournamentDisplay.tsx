@@ -858,59 +858,87 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                               <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-sm">
                                   <thead>
-                                    <tr className="bg-gray-50">
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                    <tr className="bg-gray-50 border-b border-gray-300">
+                                      <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         No.
                                       </th>
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         Player's Name
                                       </th>
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         USCF
                                       </th>
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         Rating
                                       </th>
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         Pts
                                       </th>
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                        <th key={round} className="px-1 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
+                                          Rnd{round}
+                                        </th>
+                                      ))}
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         BH
                                       </th>
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         SB
                                       </th>
-                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900 border-r border-gray-300">
                                         Perf
+                                      </th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-900">
+                                        Prize
                                       </th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-gray-200">
+                                  <tbody className="divide-y divide-gray-300">
                                     {sectionPlayers.map((player, index) => (
                                       <tr key={player.id || index} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                        <td className="px-2 py-2 text-left text-xs text-gray-900 font-medium border-r border-gray-300">
                                           {index + 1}.
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                          {player.name || 'Unknown Player'}
+                                        <td className="px-3 py-2 text-left text-xs text-gray-900 font-semibold border-r border-gray-300">
+                                          <a 
+                                            href={`#player-${player.id}`}
+                                            className="hover:text-blue-600 hover:underline cursor-pointer"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              // TODO: Navigate to player page or show player details modal
+                                            }}
+                                          >
+                                            {player.name || 'Unknown Player'}
+                                          </a>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">
                                           {player.uscf_id || '-'}
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">
                                           {player.rating || '-'}
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                        <td className="px-2 py-2 text-center text-xs text-gray-900 font-bold border-r border-gray-300">
                                           {player.total_points || 0}
                                         </td>
-                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
-                                          {player.tiebreakers?.buchholz || '0.0'}
+                                        {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => {
+                                          const roundResult = getRoundResult(player, round, sectionPlayers);
+                                          return (
+                                            <td key={round} className="px-1 py-2 text-center text-xs text-gray-700 border-r border-gray-300 font-mono">
+                                              {roundResult}
+                                            </td>
+                                          );
+                                        })}
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">
+                                          {player.tiebreakers?.buchholz?.toFixed(1) || '0.0'}
                                         </td>
-                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
-                                          {player.tiebreakers?.sonneborn_berger || '0.0'}
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">
+                                          {player.tiebreakers?.sonneborn_berger?.toFixed(1) || '0.0'}
                                         </td>
-                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
-                                          {player.performance_rating || '0.0'}
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">
+                                          {player.performance_rating?.toFixed(1) || '0.0'}
+                                        </td>
+                                        <td className="px-2 py-2 text-center text-xs text-gray-700">
+                                          {player.prize || ''}
                                         </td>
                                       </tr>
                                     ))}

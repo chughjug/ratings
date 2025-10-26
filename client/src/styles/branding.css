@@ -518,6 +518,15 @@
     page-break-inside: avoid;
   }
 
+  /* Page break between sections */
+  .print-view .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+
+  .print-view .mb-8:not(:first-child) {
+    page-break-before: auto;
+  }
+
   /* Ensure text is black */
   .print-view * {
     color: #000 !important;

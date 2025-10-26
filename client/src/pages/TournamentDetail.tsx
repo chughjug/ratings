@@ -3300,83 +3300,160 @@ const TournamentDetail: React.FC = () => {
                     </h2>
                   </div>
 
-                  {selectedSection && state.pairings.filter(p => p.section === selectedSection && p.round === currentRound).length > 0 && (
-                    <div className="mb-8">
-                      <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
-                        {selectedSection} Section
-                      </h3>
-                      <table className="w-full border-collapse text-sm">
-                        <thead>
-                          <tr className="border-b-2 border-gray-800">
-                            <th className="text-left py-2 px-4 font-semibold">Player</th>
-                            <th className="text-center py-2 px-4 font-semibold">Color/Board</th>
-                            <th className="text-left py-2 px-4 font-semibold">Opponent</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {state.pairings
-                            .filter(p => p.section === selectedSection && p.round === currentRound)
-                            .map((pairing: any, idx: number) => {
-                            const whitePlayer = state.players.find(p => p.id === pairing.white_player_id);
-                            const blackPlayer = state.players.find(p => p.id === pairing.black_player_id);
-                            const whiteTeam = (whitePlayer as any)?.team || '';
-                            const blackTeam = (blackPlayer as any)?.team || '';
-                            return (
-                              <React.Fragment key={pairing.id || idx}>
-                                <tr className="border-b border-gray-300">
-                                  <td className="py-2 px-4">
-                                    <div className="font-semibold">
-                                      {pairing.white_player?.name || 'TBD'}
-                                      {whiteTeam && ` (${whiteTeam})`}
-                                    </div>
-                                  </td>
-                                  <td className="py-2 px-4 text-center font-semibold">
-                                    W {pairing.board || idx + 1}
-                                  </td>
-                                  <td className="py-2 px-4">
-                                    {pairing.black_player?.name && pairing.black_player.name !== 'TBD' ? (
-                                      <div className="text-xs">
-                                        {pairing.black_player.name}
-                                        {blackTeam && ` (${blackTeam})`}, ({pairing.black_player.points || 0}.0, {blackTeam || 'N/A'}, {pairing.black_player.rating || 'nnnn'})
-                                      </div>
-                                    ) : (
-                                      <span className="text-gray-500 italic">Please Wait</span>
-                                    )}
-                                  </td>
-                                </tr>
-                                {pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye && (
+                  {selectedSection ? (
+                    // Single section view
+                    state.pairings.filter(p => p.section === selectedSection && p.round === currentRound).length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                          {selectedSection} Section
+                        </h3>
+                        <table className="w-full border-collapse text-sm">
+                          <thead>
+                            <tr className="border-b-2 border-gray-800">
+                              <th className="text-left py-2 px-4 font-semibold">Player</th>
+                              <th className="text-center py-2 px-4 font-semibold">Color/Board</th>
+                              <th className="text-left py-2 px-4 font-semibold">Opponent</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {state.pairings
+                              .filter(p => p.section === selectedSection && p.round === currentRound)
+                              .map((pairing: any, idx: number) => {
+                              const whitePlayer = state.players.find(p => p.id === pairing.white_player_id);
+                              const blackPlayer = state.players.find(p => p.id === pairing.black_player_id);
+                              const whiteTeam = (whitePlayer as any)?.team || '';
+                              const blackTeam = (blackPlayer as any)?.team || '';
+                              return (
+                                <React.Fragment key={pairing.id || idx}>
                                   <tr className="border-b border-gray-300">
                                     <td className="py-2 px-4">
                                       <div className="font-semibold">
-                                        {pairing.black_player.name}
-                                        {blackTeam && ` (${blackTeam})`}
+                                        {pairing.white_player?.name || 'TBD'}
+                                        {whiteTeam && ` (${whiteTeam})`}
                                       </div>
                                     </td>
                                     <td className="py-2 px-4 text-center font-semibold">
-                                      B {pairing.board || idx + 1}
+                                      W {pairing.board || idx + 1}
                                     </td>
                                     <td className="py-2 px-4">
-                                      <div className="text-xs">
-                                        {pairing.white_player.name}
-                                        {whiteTeam && ` (${whiteTeam})`}, ({pairing.white_player.points || 0}.0, {whiteTeam || 'N/A'}, {pairing.white_player.rating || 'nnnn'})
-                                      </div>
+                                      {pairing.black_player?.name && pairing.black_player.name !== 'TBD' ? (
+                                        <div className="text-xs">
+                                          {pairing.black_player.name}
+                                          {blackTeam && ` (${blackTeam})`}, ({pairing.black_player.points || 0}.0, {blackTeam || 'N/A'}, {pairing.black_player.rating || 'nnnn'})
+                                        </div>
+                                      ) : (
+                                        <span className="text-gray-500 italic">Please Wait</span>
+                                      )}
                                     </td>
                                   </tr>
-                                )}
-                              </React.Fragment>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {!selectedSection && (
-                    <div className="text-center py-12">
-                      <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Section Selected</h3>
-                      <p className="text-gray-600">Select a section from the dropdown above to view pairings.</p>
-                    </div>
+                                  {pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye && (
+                                    <tr className="border-b border-gray-300">
+                                      <td className="py-2 px-4">
+                                        <div className="font-semibold">
+                                          {pairing.black_player.name}
+                                          {blackTeam && ` (${blackTeam})`}
+                                        </div>
+                                      </td>
+                                      <td className="py-2 px-4 text-center font-semibold">
+                                        B {pairing.board || idx + 1}
+                                      </td>
+                                      <td className="py-2 px-4">
+                                        <div className="text-xs">
+                                          {pairing.white_player.name}
+                                          {whiteTeam && ` (${whiteTeam})`}, ({pairing.white_player.points || 0}.0, {whiteTeam || 'N/A'}, {pairing.white_player.rating || 'nnnn'})
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  ) : (
+                    // All sections view
+                    (() => {
+                      const allSections = state.pairings
+                        .filter(p => p.round === currentRound)
+                        .map(p => p.section)
+                        .filter(s => s !== null && s !== undefined) as string[];
+                      const sections = Array.from(new Set(allSections));
+                      return sections.map(section => {
+                        const sectionPairings = state.pairings.filter(p => p.section === section && p.round === currentRound);
+                        if (sectionPairings.length === 0) return null;
+                        
+                        return (
+                          <div key={section} className="mb-8 page-break-inside-avoid">
+                            <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                              {section} Section
+                            </h3>
+                            <table className="w-full border-collapse text-sm">
+                              <thead>
+                                <tr className="border-b-2 border-gray-800">
+                                  <th className="text-left py-2 px-4 font-semibold">Player</th>
+                                  <th className="text-center py-2 px-4 font-semibold">Color/Board</th>
+                                  <th className="text-left py-2 px-4 font-semibold">Opponent</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sectionPairings.map((pairing: any, idx: number) => {
+                                  const whitePlayer = state.players.find(p => p.id === pairing.white_player_id);
+                                  const blackPlayer = state.players.find(p => p.id === pairing.black_player_id);
+                                  const whiteTeam = (whitePlayer as any)?.team || '';
+                                  const blackTeam = (blackPlayer as any)?.team || '';
+                                  return (
+                                    <React.Fragment key={pairing.id || idx}>
+                                      <tr className="border-b border-gray-300">
+                                        <td className="py-2 px-4">
+                                          <div className="font-semibold">
+                                            {pairing.white_player?.name || 'TBD'}
+                                            {whiteTeam && ` (${whiteTeam})`}
+                                          </div>
+                                        </td>
+                                        <td className="py-2 px-4 text-center font-semibold">
+                                          W {pairing.board || idx + 1}
+                                        </td>
+                                        <td className="py-2 px-4">
+                                          {pairing.black_player?.name && pairing.black_player.name !== 'TBD' ? (
+                                            <div className="text-xs">
+                                              {pairing.black_player.name}
+                                              {blackTeam && ` (${blackTeam})`}, ({pairing.black_player.points || 0}.0, {blackTeam || 'N/A'}, {pairing.black_player.rating || 'nnnn'})
+                                            </div>
+                                          ) : (
+                                            <span className="text-gray-500 italic">Please Wait</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                      {pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye && (
+                                        <tr className="border-b border-gray-300">
+                                          <td className="py-2 px-4">
+                                            <div className="font-semibold">
+                                              {pairing.black_player.name}
+                                              {blackTeam && ` (${blackTeam})`}
+                                            </div>
+                                          </td>
+                                          <td className="py-2 px-4 text-center font-semibold">
+                                            B {pairing.board || idx + 1}
+                                          </td>
+                                          <td className="py-2 px-4">
+                                            <div className="text-xs">
+                                              {pairing.white_player.name}
+                                              {whiteTeam && ` (${whiteTeam})`}, ({pairing.white_player.points || 0}.0, {whiteTeam || 'N/A'}, {pairing.white_player.rating || 'nnnn'})
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      });
+                    })()
                   )}
                 </div>
               )}
@@ -3391,55 +3468,104 @@ const TournamentDetail: React.FC = () => {
                     </h2>
                   </div>
 
-                  {selectedSection && state.standings.filter((s: any) => s.section === selectedSection).length > 0 && (
-                    <div className="mb-8">
-                      <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
-                        {selectedSection} Section ({state.standings.filter((s: any) => s.section === selectedSection).length} players)
-                      </h3>
-                      <table className="w-full border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-gray-800 font-bold">
-                            <th className="text-left py-2 px-2">No.</th>
-                            <th className="text-left py-2 px-2">Name</th>
-                            <th className="text-left py-2 px-2">Team</th>
-                            <th className="text-left py-2 px-2">Rate</th>
-                            <th className="text-left py-2 px-2">Pts</th>
-                            <th className="text-left py-2 px-2">Ty</th>
-                            {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
-                              <th key={round} className="text-center py-2 px-2">Rnd{round}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {state.standings
-                            .filter((s: any) => s.section === selectedSection)
-                            .sort((a: any, b: any) => (b.total_points || 0) - (a.total_points || 0))
-                            .map((player: any, idx: number) => (
-                              <tr key={player.id} className="border-b border-gray-300">
-                                <td className="py-2 px-2">{idx + 1}.</td>
-                                <td className="py-2 px-2 font-semibold">{player.name}</td>
-                                <td className="py-2 px-2">{player.team || '-'}</td>
-                                <td className="py-2 px-2">{player.rating || '-'}</td>
-                                <td className="py-2 px-2 font-bold">{player.total_points || 0}</td>
-                                <td className="py-2 px-2">-</td>
-                                {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
-                                  <td key={round} className="text-center py-2 px-2">
-                                    {getRoundResultForPrint(player, round, state.standings.filter((s: any) => s.section === selectedSection))}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {!selectedSection && (
-                    <div className="text-center py-12">
-                      <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Section Selected</h3>
-                      <p className="text-gray-600">Select a section from the dropdown above to view standings.</p>
-                    </div>
+                  {selectedSection ? (
+                    // Single section view
+                    state.standings.filter((s: any) => s.section === selectedSection).length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                          {selectedSection} Section ({state.standings.filter((s: any) => s.section === selectedSection).length} players)
+                        </h3>
+                        <table className="w-full border-collapse text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-800 font-bold">
+                              <th className="text-left py-2 px-2">No.</th>
+                              <th className="text-left py-2 px-2">Name</th>
+                              <th className="text-left py-2 px-2">Team</th>
+                              <th className="text-left py-2 px-2">Rate</th>
+                              <th className="text-left py-2 px-2">Pts</th>
+                              <th className="text-left py-2 px-2">Ty</th>
+                              {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                <th key={round} className="text-center py-2 px-2">Rnd{round}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {state.standings
+                              .filter((s: any) => s.section === selectedSection)
+                              .sort((a: any, b: any) => (b.total_points || 0) - (a.total_points || 0))
+                              .map((player: any, idx: number) => (
+                                <tr key={player.id} className="border-b border-gray-300">
+                                  <td className="py-2 px-2">{idx + 1}.</td>
+                                  <td className="py-2 px-2 font-semibold">{player.name}</td>
+                                  <td className="py-2 px-2">{player.team || '-'}</td>
+                                  <td className="py-2 px-2">{player.rating || '-'}</td>
+                                  <td className="py-2 px-2 font-bold">{player.total_points || 0}</td>
+                                  <td className="py-2 px-2">-</td>
+                                  {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                    <td key={round} className="text-center py-2 px-2">
+                                      {getRoundResultForPrint(player, round, state.standings.filter((s: any) => s.section === selectedSection))}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  ) : (
+                    // All sections view
+                    (() => {
+                      const allSections = state.standings
+                        .map((s: any) => s.section)
+                        .filter(s => s !== null && s !== undefined) as string[];
+                      const sections = Array.from(new Set(allSections));
+                      return sections.map(section => {
+                        const sectionPlayers = state.standings.filter((s: any) => s.section === section);
+                        if (sectionPlayers.length === 0) return null;
+                        
+                        return (
+                          <div key={section} className="mb-8 page-break-inside-avoid">
+                            <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                              {section} Section ({sectionPlayers.length} players)
+                            </h3>
+                            <table className="w-full border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b border-gray-800 font-bold">
+                                  <th className="text-left py-2 px-2">No.</th>
+                                  <th className="text-left py-2 px-2">Name</th>
+                                  <th className="text-left py-2 px-2">Team</th>
+                                  <th className="text-left py-2 px-2">Rate</th>
+                                  <th className="text-left py-2 px-2">Pts</th>
+                                  <th className="text-left py-2 px-2">Ty</th>
+                                  {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                    <th key={round} className="text-center py-2 px-2">Rnd{round}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sectionPlayers
+                                  .sort((a: any, b: any) => (b.total_points || 0) - (a.total_points || 0))
+                                  .map((player: any, idx: number) => (
+                                    <tr key={player.id} className="border-b border-gray-300">
+                                      <td className="py-2 px-2">{idx + 1}.</td>
+                                      <td className="py-2 px-2 font-semibold">{player.name}</td>
+                                      <td className="py-2 px-2">{player.team || '-'}</td>
+                                      <td className="py-2 px-2">{player.rating || '-'}</td>
+                                      <td className="py-2 px-2 font-bold">{player.total_points || 0}</td>
+                                      <td className="py-2 px-2">-</td>
+                                      {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                        <td key={round} className="text-center py-2 px-2">
+                                          {getRoundResultForPrint(player, round, sectionPlayers)}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      });
+                    })()
                   )}
                 </div>
               )}
