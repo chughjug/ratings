@@ -25,6 +25,7 @@ interface PublicDisplayData {
   analytics?: any;
   activePlayersList?: any[];
   organization?: any;
+  customPages?: any[];
 }
 
 interface DisplayOptions {
@@ -54,7 +55,8 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const [data, setData] = useState<PublicDisplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'pairings' | 'standings' | 'teams' | 'prizes' | 'analytics' | 'preregistered'>('overview');
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [customPages, setCustomPages] = useState<any[]>([]);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [allRoundsData, setAllRoundsData] = useState<{ [round: number]: any[] }>({});
@@ -125,8 +127,12 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
       setLoading(true);
       setError(null);
       const response = await tournamentApi.getPublic(id);
+      console.log('Branded Public API response:', response.data);
       if (response.data.success) {
         setData(response.data.data);
+        const customPagesData = response.data.data.customPages || [];
+        console.log('Custom pages from API:', customPagesData);
+        setCustomPages(customPagesData);
         setLastUpdated(new Date());
         
         // Load all rounds data asynchronously (don't wait for it)
@@ -437,6 +443,17 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                 >
                   LIVE
                 </button>
+                {/* Custom Pages */}
+                {customPages && customPages.length > 0 && customPages.map((page) => (
+                  <button
+                    key={page.id}
+                    onClick={() => setActiveTab(page.slug)}
+                    className={`text-sm font-medium ${activeTab === page.slug ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    {page.icon && <span>{page.icon}</span>}
+                    <span>{page.title}</span>
+                  </button>
+                ))}
               </nav>
             </div>
           </div>
@@ -997,6 +1014,18 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               </div>
             </div>
           )}
+
+          {/* Custom Pages Content */}
+          {customPages && customPages.length > 0 && customPages.map((page) => (
+            activeTab === page.slug && (
+              <div key={page.id} className="space-y-6">
+                <div 
+                  className="bg-white border border-gray-200 rounded-lg p-6"
+                  dangerouslySetInnerHTML={{ __html: page.content }}
+                />
+              </div>
+            )
+          ))}
 
           {activeTab === 'analytics' && (
             <div className="space-y-8">
