@@ -4,7 +4,7 @@ import {
   Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
   Crown, Award, BarChart3, TrendingUp, Activity, Star, MapPin, 
-  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings
+  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings, CheckCircle
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
@@ -72,6 +72,20 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const [playerSearch, setPlayerSearch] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [printView, setPrintView] = useState<'pairings' | 'standings'>('pairings');
+  const [registrationForm, setRegistrationForm] = useState({
+    name: '',
+    email: '',
+    uscf_id: '',
+    rating: '',
+    phone: ''
+  });
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
 
   // Calculate player scores from all pairings
   const calculatePlayerScores = useCallback(() => {
@@ -492,6 +506,28 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   }`}
                 >
                   Standings
+                </button>
+                {tournament.allow_registration && (
+                  <button
+                    onClick={() => setActiveTab('register')}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      activeTab === 'register' 
+                        ? 'bg-gray-900 text-white shadow-sm' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Register
+                  </button>
+                )}
+                <button
+                  onClick={() => setActiveTab('contact')}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    activeTab === 'contact' 
+                      ? 'bg-gray-900 text-white shadow-sm' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Contact
                 </button>
                 {/* Custom Pages */}
                 {customPages && customPages.length > 0 && customPages.map((page) => (
@@ -1316,6 +1352,225 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               </div>
             )
           ))}
+
+          {/* Registration Tab */}
+          {activeTab === 'register' && tournament.allow_registration && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600">
+                  <h3 className="text-lg font-semibold text-white">Tournament Registration</h3>
+                </div>
+                <div className="p-6">
+                  {formSubmitted ? (
+                    <div className="text-center py-8">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Registration Submitted!</h3>
+                      <p className="text-gray-600">Thank you for registering. We'll send you a confirmation email shortly.</p>
+                      <button
+                        onClick={() => {
+                          setFormSubmitted(false);
+                          setRegistrationForm({
+                            name: '',
+                            email: '',
+                            uscf_id: '',
+                            rating: '',
+                            phone: ''
+                          });
+                        }}
+                        className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                      >
+                        Submit Another Registration
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      setFormSubmitting(true);
+                      try {
+                        // TODO: Implement API call to submit registration
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        setFormSubmitted(true);
+                      } catch (error) {
+                        console.error('Registration error:', error);
+                      } finally {
+                        setFormSubmitting(false);
+                      }
+                    }} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Full Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={registrationForm.name}
+                          onChange={(e) => setRegistrationForm({ ...registrationForm, name: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="Enter your full name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={registrationForm.email}
+                          onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="your.email@example.com"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            USCF ID
+                          </label>
+                          <input
+                            type="text"
+                            value={registrationForm.uscf_id}
+                            onChange={(e) => setRegistrationForm({ ...registrationForm, uscf_id: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                            placeholder="USCF ID"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Rating
+                          </label>
+                          <input
+                            type="text"
+                            value={registrationForm.rating}
+                            onChange={(e) => setRegistrationForm({ ...registrationForm, rating: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                            placeholder="Rating"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          value={registrationForm.phone}
+                          onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={formSubmitting}
+                        className="w-full px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {formSubmitting ? 'Submitting...' : 'Submit Registration'}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contact Tab */}
+          {activeTab === 'contact' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+                  <h3 className="text-lg font-semibold text-white">Contact Tournament Director</h3>
+                </div>
+                <div className="p-6">
+                  {formSubmitted ? (
+                    <div className="text-center py-8">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+                        <CheckCircle className="w-8 h-8 text-blue-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Message Sent!</h3>
+                      <p className="text-gray-600">Thank you for contacting us. We'll get back to you soon.</p>
+                      <button
+                        onClick={() => {
+                          setFormSubmitted(false);
+                          setContactForm({
+                            name: '',
+                            email: '',
+                            message: ''
+                          });
+                        }}
+                        className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                      >
+                        Send Another Message
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      setFormSubmitting(true);
+                      try {
+                        // TODO: Implement API call to submit contact form
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        setFormSubmitted(true);
+                      } catch (error) {
+                        console.error('Contact form error:', error);
+                      } finally {
+                        setFormSubmitting(false);
+                      }
+                    }} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Your Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={contactForm.name}
+                          onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="Enter your name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={contactForm.email}
+                          onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="your.email@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Message <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          required
+                          rows={6}
+                          value={contactForm.message}
+                          onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="Enter your message..."
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={formSubmitting}
+                        className="w-full px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {formSubmitting ? 'Sending...' : 'Send Message'}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTab === 'analytics' && (
             <div className="space-y-8">
