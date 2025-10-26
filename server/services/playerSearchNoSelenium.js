@@ -219,9 +219,8 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
   try {
     console.log(`Using Puppeteer to search for: ${searchTerm}`);
     
-    // Launch browser with optimized settings
-    // Note: puppeteer (not puppeteer-core) downloads its own Chromium
-    // Don't specify executablePath - let Puppeteer use its bundled Chromium
+    // Launch browser with optimized settings for Heroku
+    // Use Chrome provided by puppeteer-heroku-buildpack or Puppeteer's bundled Chromium
     
     const puppeteerArgs = [
       '--no-sandbox',
@@ -230,17 +229,36 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
       '--disable-gpu',
       '--disable-images',
       '--disable-plugins',
-      '--disable-extensions'
+      '--disable-extensions',
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process'
     ];
     
-    // Add Heroku-specific args if on Heroku
+    // Add Heroku-specific args
     if (process.env.DYNO) {
       puppeteerArgs.push('--single-process');
       puppeteerArgs.push('--no-zygote');
     }
     
+    // Try to use Chrome from buildpack first, fallback to bundled Chromium
+    let executablePath = null;
+    if (process.env.DYNO) {
+      // Check if Chrome is available via buildpack
+      const { execSync } = require('child_process');
+      try {
+        const chromePath = execSync('which google-chrome-stable', { encoding: 'utf8' }).trim();
+        if (chromePath) {
+          executablePath = chromePath;
+          console.log(`Using Chrome from buildpack: ${chromePath}`);
+        }
+      } catch (e) {
+        console.log('No Chrome found via buildpack, using Puppeteer bundled Chromium');
+      }
+    }
+    
     browser = await puppeteer.launch({
       headless: true,
+      executablePath: executablePath,
       args: puppeteerArgs
     });
     
