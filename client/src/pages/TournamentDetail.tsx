@@ -3226,8 +3226,8 @@ const TournamentDetail: React.FC = () => {
 
           {activeTab === 'print' && (
             <div className="space-y-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center justify-between mb-4 no-print">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 no-print">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-4">
                     <button
                       onClick={() => setPrintViewTab('pairings')}
@@ -3259,7 +3259,7 @@ const TournamentDetail: React.FC = () => {
                   </button>
                 </div>
                 
-                <div className="flex items-center space-x-4 mb-4 no-print">
+                <div className="flex items-center space-x-4 mb-4">
                   <label className="text-sm font-medium text-gray-700">Select Section:</label>
                   <select
                     value={selectedSection || ''}

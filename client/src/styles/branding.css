@@ -453,12 +453,31 @@
 
 /* Print styles */
 @media print {
+  /* Hide navigation and controls that shouldn't print */
+  .no-print,
+  header,
+  nav,
   .header-brand,
   .footer-brand,
   .btn-brand,
   .social-brand,
-  .no-print {
+  button,
+  .bg-gray-50 {
     display: none !important;
+  }
+
+  /* Show print-view content */
+  .print-view {
+    display: block !important;
+    position: relative;
+    visibility: visible;
+    page-break-inside: avoid;
+  }
+  
+  /* Ensure print-view children are visible */
+  .print-view * {
+    visibility: visible !important;
+    color: #000 !important;
   }
   
   .card-brand {
@@ -470,14 +489,6 @@
   .print-view {
     font-family: 'Courier New', monospace;
     font-size: 10pt;
-  }
-
-  /* Hide navigation and controls */
-  nav,
-  button,
-  .bg-gray-50,
-  .animate-fade-in > div:first-child {
-    display: none !important;
   }
 
   /* Page setup */

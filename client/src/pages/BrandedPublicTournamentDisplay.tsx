@@ -948,7 +948,38 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
 
                     return (
                       <div className="space-y-8">
+                        {/* Section Filter Buttons */}
+                        {sectionNames.length > 1 && (
+                          <div className="flex flex-wrap gap-2 pb-4 border-b border-gray-200">
+                            <button
+                              onClick={() => setSelectedSection('')}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                selectedSection === '' 
+                                  ? 'bg-gray-900 text-white shadow-sm' 
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              All Sections
+                            </button>
+                            {sectionNames.map((sectionName) => (
+                              <button
+                                key={sectionName}
+                                onClick={() => setSelectedSection(sectionName)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                  selectedSection === sectionName 
+                                    ? 'bg-gray-900 text-white shadow-sm' 
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                              >
+                                {sectionName}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        
                         {sectionNames.map((sectionName) => {
+                          // Filter by selected section
+                          if (selectedSection && selectedSection !== sectionName) return null;
                           const sectionPlayers = sections[sectionName];
                           if (!sectionPlayers || sectionPlayers.length === 0) return null;
 
@@ -1031,9 +1062,44 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                         return acc;
                       }, {});
 
+                      const sectionNames = Object.keys(roundPairingsBySection).sort();
+
                       return (
                         <div className="space-y-6">
-                          {Object.keys(roundPairingsBySection).sort().map((sectionName) => (
+                          {/* Section Filter Buttons */}
+                          {sectionNames.length > 1 && (
+                            <div className="flex flex-wrap gap-2 pb-4 px-6 border-b border-gray-200">
+                              <button
+                                onClick={() => setSelectedSection('')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                  selectedSection === '' 
+                                    ? 'bg-gray-900 text-white shadow-sm' 
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                              >
+                                All Sections
+                              </button>
+                              {sectionNames.map((sectionName) => (
+                                <button
+                                  key={sectionName}
+                                  onClick={() => setSelectedSection(sectionName)}
+                                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    selectedSection === sectionName 
+                                      ? 'bg-gray-900 text-white shadow-sm' 
+                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {sectionName}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {sectionNames.map((sectionName) => {
+                            // Filter by selected section
+                            if (selectedSection && selectedSection !== sectionName) return null;
+                            
+                            return (
                             <div key={sectionName} className="p-6">
                               <h4 className="text-md font-semibold text-gray-800 mb-4 uppercase">{sectionName} Section</h4>
                               <table className="w-full">
@@ -1089,7 +1155,8 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                                 </tbody>
                               </table>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       );
                     })()
