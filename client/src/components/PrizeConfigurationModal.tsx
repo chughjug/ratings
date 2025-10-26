@@ -58,8 +58,6 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
     }
   };
 
-  const [calculatingPrizes, setCalculatingPrizes] = useState(false);
-
   const handleSave = async () => {
     try {
       setLoading(true);
