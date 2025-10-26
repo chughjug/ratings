@@ -444,11 +444,28 @@ const TournamentDetail: React.FC = () => {
           ? JSON.parse(tournament.settings) 
           : tournament.settings;
         
-        const prizeSettings = settings.prize_settings || { enabled: false, autoAssign: false, sections: [] };
+        const prizeSettings = settings.prize_settings || settings.prizes || { enabled: false, autoAssign: false, sections: [] };
+        
+        // Ensure sections is always an array - handle string "[]" case
+        if (!Array.isArray(prizeSettings.sections)) {
+          if (typeof prizeSettings.sections === 'string') {
+            try {
+              prizeSettings.sections = JSON.parse(prizeSettings.sections);
+            } catch (e) {
+              prizeSettings.sections = [];
+            }
+          } else {
+            prizeSettings.sections = [];
+          }
+        }
+        
         setPrizeSettings(prizeSettings);
       } catch (e) {
         console.error('Error parsing tournament settings:', e);
+        setPrizeSettings({ enabled: false, autoAssign: false, sections: [] });
       }
+    } else {
+      setPrizeSettings({ enabled: false, autoAssign: false, sections: [] });
     }
   }, [tournament]);
 

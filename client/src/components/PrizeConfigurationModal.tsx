@@ -32,18 +32,17 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchSectionsFromPairings();
+      
+      // Initialize settings with currentSettings if available, ensure sections is an array
       if (currentSettings) {
-        // Ensure sections is an array and filter against availableSections from API
         const sectionsArray = Array.isArray(currentSettings.sections) 
           ? currentSettings.sections 
           : [];
         
-        const validSections = sectionsArray.filter(section => 
-          availableSections.length === 0 || availableSections.includes(section.name)
-        );
         setSettings({
-          ...currentSettings,
-          sections: validSections
+          enabled: currentSettings.enabled || false,
+          autoAssign: currentSettings.autoAssign || false,
+          sections: sectionsArray
         });
       } else {
         setSettings({
@@ -53,7 +52,24 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
         });
       }
     }
-  }, [isOpen, currentSettings, availableSections]);
+  }, [isOpen, currentSettings]);
+
+  // Filter out invalid sections when availableSections loads
+  useEffect(() => {
+    if (isOpen && availableSections.length > 0 && settings.sections.length > 0) {
+      const validSections = settings.sections.filter(section => 
+        availableSections.includes(section.name)
+      );
+      
+      if (validSections.length !== settings.sections.length) {
+        console.log(`Filtered out ${settings.sections.length - validSections.length} invalid sections`);
+        setSettings(prev => ({
+          ...prev,
+          sections: validSections
+        }));
+      }
+    }
+  }, [availableSections, isOpen]);
 
   const fetchSectionsFromPairings = async () => {
     try {
