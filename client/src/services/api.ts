@@ -431,9 +431,6 @@ export const pairingApi = {
     api.get<{success: boolean, data: Standing[], error?: string}>(`/pairings/tournament/${tournamentId}/standings?t=${Date.now()}&includeRoundResults=${includeRoundResults}&showPrizes=${showPrizes}`),
   
   // Edit functions
-  swapPlayers: (pairingId: string) =>
-    api.post<{success: boolean, message: string}>(`/pairings/${pairingId}/swap-players`),
-  
   updateBoardNumber: (pairingId: string, boardNumber: number) =>
     api.put<{success: boolean, message: string}>(`/pairings/${pairingId}/board-number`, { boardNumber }),
   
