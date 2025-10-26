@@ -421,6 +421,36 @@
   }
 }
 
+/* Embed mode styles */
+.embed-mode {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.embed-mode .embed-header {
+  display: none;
+}
+
+.embed-mode .embed-footer {
+  display: none;
+}
+
+/* Responsive embed styles */
+@media (max-width: 768px) {
+  .embed-mode {
+    font-size: 14px;
+  }
+  
+  .embed-mode .tournament-header {
+    padding: 1rem;
+  }
+  
+  .embed-mode .tournament-title h1 {
+    font-size: 1.5rem;
+  }
+}
+
 /* Print styles */
 @media print {
   .header-brand,

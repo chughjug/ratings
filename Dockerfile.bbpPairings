@@ -1,0 +1,31 @@
+FROM ubuntu:22.04
+
+# Install build essentials and dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    g++ \
+    make \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy bbpPairings source code
+COPY bbpPairings-master/ /app/bbpPairings-master/
+
+# Compile bbpPairings
+WORKDIR /app/bbpPairings-master
+RUN make clean && make
+
+# Copy the executable to a known location
+RUN cp bbpPairings /app/bbpPairings
+
+# Set working directory back to app
+WORKDIR /app
+
+# Create a simple wrapper script
+RUN echo '#!/bin/bash\n/app/bbpPairings "$@"' > /app/run_bbpPairings.sh && chmod +x /app/run_bbpPairings.sh
+
+# Default command
+CMD ["/app/run_bbpPairings.sh"]

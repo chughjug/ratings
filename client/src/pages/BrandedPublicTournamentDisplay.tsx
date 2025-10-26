@@ -370,7 +370,12 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   }, {});
 
   return (
-    <div className={`min-h-screen bg-white ${isEmbedded ? 'embed-mode' : ''}`}>
+    <div className={`min-h-screen bg-white ${isEmbedded ? 'embed-mode' : ''}`} 
+         style={isEmbedded ? { 
+           minHeight: embedSettings?.minHeight || '400px',
+           maxHeight: embedSettings?.maxHeight || 'none',
+           overflow: 'auto'
+         } : {}}>
       {/* Simple Header with Logo Space */}
       {!isEmbedded && (
         <div className="bg-white border-b border-gray-200">
@@ -378,19 +383,25 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
             <div className="flex items-center justify-between py-4">
               {/* Company Logo Space */}
               <div className="flex items-center space-x-4">
-                {organization?.logoUrl ? (
+                {organization?.logoUrl || tournament?.logo_url ? (
                   <img 
-                    src={organization.logoUrl} 
-                    alt={organization.name}
+                    src={organization?.logoUrl || tournament?.logo_url} 
+                    alt={organization?.name || tournament?.name}
                     className="h-12 w-auto"
+                    onError={(e) => {
+                      // Fallback to PairCraft logo if image fails to load
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
+                    }}
                   />
                 ) : (
-                  <div className="h-12 w-32 bg-gray-100 rounded flex items-center justify-center text-gray-400 text-sm">
-                    Company Logo
-                  </div>
+                  <img 
+                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
+                    alt="PairCraft"
+                    className="h-12 w-auto"
+                  />
                 )}
                 <div className="text-lg font-semibold text-gray-900">
-                  {organization?.name || 'Chess Tournament'}
+                  {organization?.name || tournament?.name || 'Chess Tournament'}
                 </div>
               </div>
 
@@ -739,82 +750,82 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                             <div key={sectionName} className="p-6">
                               <div className="mb-4">
                                 <h4 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
-                                  {sectionName} Section
+                                  {sectionName} Section ({standingsBySection[sectionName].length} players)
                                 </h4>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  {standingsBySection[sectionName].length} players
-                                </p>
                               </div>
                               
                               <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
+                                <table className="w-full border-collapse text-sm">
                                   <thead>
                                     <tr className="bg-gray-50">
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                        Rank
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        No.
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                        Player
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Player's Name
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                        USCF ID
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        USCF
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
                                         Rating
                                       </th>
-                                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                        Points
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Pts
                                       </th>
-                                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                        Games
+                                      {Array.from({ length: tournament?.rounds || 5 }, (_, i) => (
+                                        <th key={i} className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                          Rnd{i + 1}
+                                        </th>
+                                      ))}
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        BH
                                       </th>
-                                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                        W-L-D
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        SB
+                                      </th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Perf
+                                      </th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Prize
                                       </th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-200">
                                     {standingsBySection[sectionName].map((player: any, index: number) => (
-                                      <tr key={player.id} className={`hover:bg-gray-50 transition-colors ${index < 3 ? 'bg-gradient-to-r from-yellow-50 to-orange-50' : ''}`}>
-                                        <td className="px-4 py-4 text-sm font-bold text-gray-900">
-                                          <div className="flex items-center">
-                                            {index === 0 && <span className="text-yellow-600 mr-2">🥇</span>}
-                                            {index === 1 && <span className="text-gray-400 mr-2">🥈</span>}
-                                            {index === 2 && <span className="text-orange-600 mr-2">🥉</span>}
-                                            <span className={index < 3 ? 'text-lg' : ''}>{player.rank || index + 1}</span>
-                                          </div>
+                                      <tr key={player.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {index + 1}.
                                         </td>
-                                        <td className="px-4 py-4 text-sm font-semibold text-gray-900">
-                                          <div className="flex flex-col">
-                                            <span className="font-bold">{player.name}</span>
-                                            {player.uscf_id && (
-                                              <span className="text-xs text-gray-500 mt-1">USCF: {player.uscf_id}</span>
-                                            )}
-                                          </div>
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {player.name}
                                         </td>
-                                        <td className="px-4 py-4 text-sm text-gray-600">
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                                           {player.uscf_id || '-'}
                                         </td>
-                                        <td className="px-4 py-4 text-sm font-mono text-gray-700">
-                                          {player.rating ? player.rating.toLocaleString() : '-'}
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                          {player.rating || '-'}
                                         </td>
-                                        <td className="px-4 py-4 text-center">
-                                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
-                                            player.total_points >= 3 ? 'bg-green-100 text-green-800' :
-                                            player.total_points >= 2 ? 'bg-blue-100 text-blue-800' :
-                                            player.total_points >= 1 ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-gray-100 text-gray-800'
-                                          }`}>
-                                            {player.total_points || 0}
-                                          </span>
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {player.total_points || 0}
                                         </td>
-                                        <td className="px-4 py-4 text-center text-sm text-gray-600">
-                                          {player.games_played || 0}
+                                        {Array.from({ length: tournament?.rounds || 5 }, (_, i) => (
+                                          <td key={i} className="px-2 py-2 text-center text-sm text-gray-500">
+                                            {player.roundResults && player.roundResults[i] ? player.roundResults[i] : '-'}
+                                          </td>
+                                        ))}
+                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
+                                          {player.tiebreakers?.buchholz || '0.0'}
                                         </td>
-                                        <td className="px-4 py-4 text-center text-sm text-gray-600">
-                                          <span className="font-mono">
-                                            {player.wins || 0}-{player.losses || 0}-{player.draws || 0}
-                                          </span>
+                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
+                                          {player.tiebreakers?.sonneborn_berger || '0.0'}
+                                        </td>
+                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
+                                          {player.performance_rating || '0.0'}
+                                        </td>
+                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
+                                          -
                                         </td>
                                       </tr>
                                     ))}

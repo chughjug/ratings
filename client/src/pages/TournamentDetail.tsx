@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -43,7 +43,7 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'settings'>('overview');
   const [currentRound, setCurrentRound] = useState(1);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [sectionRounds, setSectionRounds] = useState<{ [section: string]: number }>({});
@@ -130,6 +130,10 @@ const TournamentDetail: React.FC = () => {
   const [showChessIntegration, setShowChessIntegration] = useState(false);
   const [showSectionManager, setShowSectionManager] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
+  
+  // Settings tab state
+  const [logoUrl, setLogoUrl] = useState('');
+  const [saving, setSaving] = useState(false);
   
   // Sorting state - default to section sorting as requested
   const [sortField, setSortField] = useState<string>('section');
@@ -967,6 +971,82 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  // Settings tab handlers
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setSaving(true);
+      
+      // For now, we'll use a simple approach - convert to data URL
+      // In production, you'd want to upload to a file storage service
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        await handleTournamentUpdate('logo_url', dataUrl);
+        setLogoUrl('');
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to upload logo:', error);
+      alert('Failed to upload logo. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogoUrlSave = async () => {
+    if (!logoUrl.trim()) return;
+    
+    try {
+      setSaving(true);
+      await handleTournamentUpdate('logo_url', logoUrl.trim());
+      setLogoUrl('');
+    } catch (error) {
+      console.error('Failed to save logo URL:', error);
+      alert('Failed to save logo URL. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    if (!confirm('Are you sure you want to remove the tournament logo?')) return;
+    
+    try {
+      setSaving(true);
+      await handleTournamentUpdate('logo_url', '');
+    } catch (error) {
+      console.error('Failed to remove logo:', error);
+      alert('Failed to remove logo. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTournamentUpdate = async (field: string, value: any) => {
+    if (!id) return;
+    
+    try {
+      const response = await tournamentApi.update(id, { [field]: value });
+      if (response.data.success) {
+        dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
+      } else {
+        throw new Error(response.data.error || 'Failed to update tournament');
+      }
+    } catch (error: any) {
+      console.error('Failed to update tournament:', error);
+      alert(`Failed to update tournament: ${error.message || error}`);
+    }
+  };
+
+  const handleSettingsSave = async () => {
+    // This function is called when the save button is clicked
+    // Individual field updates are handled by handleTournamentUpdate
+    alert('Settings saved successfully!');
+  };
+
   console.log('TournamentDetail: Render state:', { 
     tournament, 
     isLoading, 
@@ -1625,6 +1705,20 @@ const TournamentDetail: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <Trophy className="h-4 w-4" />
                   <span>Standings</span>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
+                  activeTab === 'settings'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
                 </div>
               </button>
 
@@ -2535,6 +2629,201 @@ const TournamentDetail: React.FC = () => {
                   })()}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Tournament Settings</h3>
+                
+                {/* Logo Upload Section */}
+                <div className="mb-8">
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Tournament Logo</h4>
+                  <div className="flex items-start space-x-6">
+                    {/* Current Logo Display */}
+                    <div className="flex-shrink-0">
+                      <div className="w-32 h-20 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                        {tournament?.logo_url ? (
+                          <img 
+                            src={tournament.logo_url} 
+                            alt="Tournament Logo"
+                            className="max-w-full max-h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              ((e.target as HTMLImageElement).nextElementSibling as HTMLElement).style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className={`flex flex-col items-center justify-center text-gray-400 text-xs ${tournament?.logo_url ? 'hidden' : 'flex'}`}>
+                          <Upload className="h-6 w-6 mb-1" />
+                          <span>No Logo</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Upload Controls */}
+                    <div className="flex-1">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Upload Logo
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            PNG, JPG, or SVG. Recommended size: 200x60px or similar aspect ratio.
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Or enter logo URL
+                          </label>
+                          <div className="flex space-x-2">
+                            <input
+                              type="url"
+                              value={logoUrl}
+                              onChange={(e) => setLogoUrl(e.target.value)}
+                              placeholder="https://example.com/logo.png"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <button
+                              onClick={handleLogoUrlSave}
+                              disabled={!logoUrl.trim()}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                              Save URL
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {tournament?.logo_url && (
+                          <button
+                            onClick={handleLogoRemove}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          >
+                            Remove Logo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tournament Information */}
+                <div className="mb-8">
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Tournament Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tournament Name
+                      </label>
+                      <input
+                        type="text"
+                        value={tournament?.name || ''}
+                        onChange={(e) => handleTournamentUpdate('name', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Time Control
+                      </label>
+                      <input
+                        type="text"
+                        value={tournament?.time_control || ''}
+                        onChange={(e) => handleTournamentUpdate('time_control', e.target.value)}
+                        placeholder="G/45+15"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location
+                      </label>
+                      <input
+                        type="text"
+                        value={tournament?.location || ''}
+                        onChange={(e) => handleTournamentUpdate('location', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Website
+                      </label>
+                      <input
+                        type="url"
+                        value={tournament?.website || ''}
+                        onChange={(e) => handleTournamentUpdate('website', e.target.value)}
+                        placeholder="https://example.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Public Settings */}
+                <div className="mb-8">
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Public Settings</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="is_public"
+                        checked={tournament?.is_public || false}
+                        onChange={(e) => handleTournamentUpdate('is_public', e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="is_public" className="ml-2 block text-sm text-gray-900">
+                        Make tournament publicly viewable
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="allow_registration"
+                        checked={tournament?.allow_registration || false}
+                        onChange={(e) => handleTournamentUpdate('allow_registration', e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="allow_registration" className="ml-2 block text-sm text-gray-900">
+                        Allow online registration
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSettingsSave}
+                    disabled={saving}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        <span>Save Settings</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -1081,7 +1081,7 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
  * Generate pairings for a specific section
  */
 router.post('/generate/section', async (req, res) => {
-  const { tournamentId, round, sectionName } = req.body;
+  const { tournamentId, round, sectionName, clearExisting = false } = req.body;
 
   try {
     // Get tournament info
@@ -1120,7 +1120,72 @@ router.post('/generate/section', async (req, res) => {
       );
     });
 
-    if (players.length === 0) {
+    // Calculate points for each player from game results
+    console.log(`[PairingGeneration] Calculating points for ${players.length} players`);
+    const playersWithPoints = await Promise.all(players.map(async (player) => {
+      try {
+        const results = await new Promise((resolve, reject) => {
+          db.all(
+            `SELECT 
+              CASE 
+                WHEN (pair.white_player_id = ? AND pair.result = '1-0') OR
+                     (pair.black_player_id = ? AND pair.result = '0-1')
+                THEN 1
+                WHEN (pair.white_player_id = ? AND pair.result = '0-1') OR
+                     (pair.black_player_id = ? AND pair.result = '1-0')
+                THEN 0
+                WHEN (pair.white_player_id = ? AND pair.result = '1/2-1/2') OR
+                     (pair.black_player_id = ? AND pair.result = '1/2-1/2')
+                THEN 0.5
+                WHEN (pair.white_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%')) OR
+                     (pair.black_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%'))
+                THEN 1
+                ELSE 0
+              END as points,
+              pair.color,
+              pair.result
+             FROM pairings pair
+             WHERE (pair.white_player_id = ? OR pair.black_player_id = ?) 
+               AND pair.tournament_id = ? 
+               AND pair.round < ?
+               AND pair.result IS NOT NULL
+             ORDER BY pair.round`,
+            [player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, tournamentId, currentRound],
+            (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows);
+            }
+          );
+        });
+
+        const totalPoints = results.reduce((sum, result) => sum + (result.points || 0), 0);
+        
+        console.log(`[PairingGeneration] Player ${player.name} (${player.id}): ${totalPoints} points from ${results.length} games`);
+        
+        return {
+          ...player,
+          points: totalPoints,
+          gameResults: results
+        };
+      } catch (error) {
+        console.error(`[PairingGeneration] Error calculating points for player ${player.id}:`, error.message);
+        return {
+          ...player,
+          points: 0,
+          gameResults: []
+        };
+      }
+    }));
+
+    console.log(`[PairingGeneration] Players with points:`, playersWithPoints.map(p => ({ 
+      id: p.id, 
+      name: p.name, 
+      rating: p.rating, 
+      points: p.points,
+      section: p.section 
+    })));
+
+    if (playersWithPoints.length === 0) {
       console.error(`[PairingGeneration] No active players found for section "${sectionName}"`);
       res.status(400).json({ error: `No active players found for section "${sectionName}"` });
       return;
@@ -1131,15 +1196,25 @@ router.post('/generate/section', async (req, res) => {
 
     // Get color history for this section
     const sectionColorHistory = {};
-    for (const player of players) {
+    for (const player of playersWithPoints) {
       try {
         const results = await new Promise((resolve, reject) => {
           db.all(
-            'SELECT color FROM results WHERE player_id = ? ORDER BY round',
-            [player.id],
+            `SELECT 
+              CASE 
+                WHEN white_player_id = ? THEN 'white'
+                WHEN black_player_id = ? THEN 'black'
+                ELSE NULL
+              END as color
+             FROM pairings 
+             WHERE (white_player_id = ? OR black_player_id = ?) 
+               AND tournament_id = ? 
+               AND round < ?
+             ORDER BY round`,
+            [player.id, player.id, player.id, player.id, tournamentId, currentRound],
             (err, rows) => {
               if (err) reject(err);
-              else resolve(rows);
+              else resolve(rows.filter(row => row.color !== null));
             }
           );
         });
@@ -1156,19 +1231,19 @@ router.post('/generate/section', async (req, res) => {
     }
 
     // Create enhanced pairing system for this section only
-    const sectionSystem = new EnhancedPairingSystem(players, {
+    const sectionSystem = new EnhancedPairingSystem(playersWithPoints, {
       previousPairings,
       colorHistory: sectionColorHistory,
       section: sectionName,
       tournamentId,
       db,
       round: currentRound,
-      pairingSystem: 'fide_dutch' // Use bbpPairings Dutch system
+      pairingSystem: 'advanced_swiss' // Use advanced Swiss system
     });
 
     // Generate pairings for this section only using bbpPairings
-    console.log(`[PairingGeneration] Generating pairings for ${players.length} players in section "${sectionName}"`);
-    const generatedPairings = sectionSystem.generatePairings();
+    console.log(`[PairingGeneration] Generating pairings for ${playersWithPoints.length} players in section "${sectionName}"`);
+    const generatedPairings = await sectionSystem.generatePairings();
     console.log(`[PairingGeneration] Generated ${generatedPairings.length} pairings`);
     
     // Check if pairings were generated
@@ -1200,7 +1275,7 @@ router.post('/generate/section', async (req, res) => {
       );
     });
 
-    if (existingSectionPairings > 0) {
+    if (existingSectionPairings > 0 && !clearExisting) {
       res.status(400).json({ 
         error: `Round ${currentRound} already has ${existingSectionPairings} pairings for section "${sectionName}". Use clearExisting=true to replace them.` 
       });
@@ -1209,7 +1284,7 @@ router.post('/generate/section', async (req, res) => {
 
     // Store pairings using the robust storage system
     const storeResult = await pairingStorage.storePairings(tournamentId, currentRound, generatedPairings, {
-      clearExisting: false,
+      clearExisting: clearExisting,
       validateBeforeStore: true,
       validateRoundSeparation: false, // Allow section independence
       section: sectionName
@@ -1257,6 +1332,14 @@ router.post('/generate/section', async (req, res) => {
           pairingsCount: generatedPairings.length,
           playersCount: players.length
         }
+      },
+      metadata: {
+        tournamentId,
+        round: currentRound,
+        section: sectionName,
+        pairingSystem: 'advanced_swiss',
+        cppUsed: false, // Advanced Swiss system uses JavaScript implementation
+        generatedAt: new Date().toISOString()
       },
       ...storeResult
     });
@@ -2863,20 +2946,84 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
             throw new Error(`No active players found for section "${sectionName}"`);
           }
 
+          // Calculate points for each player from game results
+          const playersWithPoints = await Promise.all(players.map(async (player) => {
+            try {
+              const results = await new Promise((resolve, reject) => {
+                db.all(
+                  `SELECT 
+                    CASE 
+                      WHEN (pair.white_player_id = ? AND pair.result = '1-0') OR
+                           (pair.black_player_id = ? AND pair.result = '0-1')
+                      THEN 1
+                      WHEN (pair.white_player_id = ? AND pair.result = '0-1') OR
+                           (pair.black_player_id = ? AND pair.result = '1-0')
+                      THEN 0
+                      WHEN (pair.white_player_id = ? AND pair.result = '1/2-1/2') OR
+                           (pair.black_player_id = ? AND pair.result = '1/2-1/2')
+                      THEN 0.5
+                      WHEN (pair.white_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%')) OR
+                           (pair.black_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%'))
+                      THEN 1
+                      ELSE 0
+                    END as points,
+                    pair.color,
+                    pair.result
+                   FROM pairings pair
+                   WHERE (pair.white_player_id = ? OR pair.black_player_id = ?) 
+                     AND pair.tournament_id = ? 
+                     AND pair.round < ?
+                     AND pair.result IS NOT NULL
+                   ORDER BY pair.round`,
+                  [player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, player.id, tournamentId, nextRound],
+                  (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                  }
+                );
+              });
+
+              const totalPoints = results.reduce((sum, result) => sum + (result.points || 0), 0);
+              
+              return {
+                ...player,
+                points: totalPoints,
+                gameResults: results
+              };
+            } catch (error) {
+              console.error(`Error calculating points for player ${player.id}:`, error.message);
+              return {
+                ...player,
+                points: 0,
+                gameResults: []
+              };
+            }
+          }));
+
           // Get previous pairings for Swiss system (filtered by section)
           const previousPairings = await pairingStorage.getPreviousPairings(tournamentId, nextRound, sectionName);
 
           // Get color history for this section
           const sectionColorHistory = {};
-          for (const player of players) {
+          for (const player of playersWithPoints) {
             try {
               const results = await new Promise((resolve, reject) => {
                 db.all(
-                  'SELECT color FROM results WHERE player_id = ? ORDER BY round',
-                  [player.id],
+                  `SELECT 
+                    CASE 
+                      WHEN white_player_id = ? THEN 'white'
+                      WHEN black_player_id = ? THEN 'black'
+                      ELSE NULL
+                    END as color
+                   FROM pairings 
+                   WHERE (white_player_id = ? OR black_player_id = ?) 
+                     AND tournament_id = ? 
+                     AND round < ?
+                   ORDER BY round`,
+                  [player.id, player.id, player.id, player.id, tournamentId, nextRound],
                   (err, rows) => {
                     if (err) reject(err);
-                    else resolve(rows);
+                    else resolve(rows.filter(row => row.color !== null));
                   }
                 );
               });
@@ -2893,18 +3040,18 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
           }
 
           // Create enhanced pairing system for this section only
-          const sectionSystem = new EnhancedPairingSystem(players, {
+          const sectionSystem = new EnhancedPairingSystem(playersWithPoints, {
             previousPairings,
             colorHistory: sectionColorHistory,
             section: sectionName,
             tournamentId,
             db,
             round: nextRound,
-            pairingSystem: 'fide_dutch' // Use bbpPairings Dutch system
+            pairingSystem: 'advanced_swiss' // Use advanced Swiss system
           });
 
           // Generate pairings for this section only using bbpPairings
-          const generatedPairings = sectionSystem.generatePairings();
+          const generatedPairings = await sectionSystem.generatePairings();
           
           // Assign board numbers and section info
           generatedPairings.forEach((pairing, index) => {

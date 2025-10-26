@@ -21,6 +21,8 @@
  */
 
 const { BBPPairingsDirect } = require('./bbpPairingsDirect');
+const { BBPPairingsCPP } = require('./bbpPairingsCPP');
+const { AdvancedSwissPairingSystem } = require('./advancedSwissPairingSystem');
 
 class EnhancedPairingSystem {
   constructor(players, options = {}) {
@@ -28,6 +30,7 @@ class EnhancedPairingSystem {
     this.options = {
       pairingSystem: 'fide_dutch',
       tiebreakerOrder: ['buchholz', 'sonneborn_berger', 'direct_encounter', 'performance_rating'],
+      useCPP: true, // Prefer C++ implementation when available
       colorBalanceRules: 'fide',
       accelerationSettings: {
         enabled: false,
@@ -48,6 +51,22 @@ class EnhancedPairingSystem {
     this.section = options.section || 'Open';
     this.tournamentId = options.tournamentId;
     this.db = options.db;
+    
+    // Check if C++ executable is available
+    this.cppAvailable = this.checkCPPAvailability();
+  }
+
+  /**
+   * Check if C++ bbpPairings executable is available
+   */
+  checkCPPAvailability() {
+    try {
+      const bbpPairings = new BBPPairingsCPP();
+      return true;
+    } catch (error) {
+      console.log(`[EnhancedPairingSystem] C++ bbpPairings not available: ${error.message}`);
+      return false;
+    }
   }
 
   /**
@@ -357,14 +376,35 @@ class EnhancedPairingSystem {
   }
 
   /**
+   * Generate pairings using advanced Swiss system
+   */
+  generateAdvancedSwissPairings() {
+    console.log(`[EnhancedPairingSystem] Using Advanced Swiss Pairing System`);
+    
+    const swissSystem = new AdvancedSwissPairingSystem(this.players, {
+      previousPairings: this.previousPairings,
+      colorHistory: this.colorHistory,
+      section: this.section,
+      tournamentId: this.tournamentId,
+      round: this.round,
+      db: this.db
+    });
+    
+    const pairings = swissSystem.generatePairings();
+    console.log(`[EnhancedPairingSystem] Advanced Swiss generated ${pairings.length} pairings`);
+    
+    return pairings;
+  }
+
+  /**
    * Generate pairings based on selected system
    */
-  generatePairings() {
+  async generatePairings() {
     switch (this.options.pairingSystem) {
       case 'fide_dutch':
-        return this.generateFideDutchPairings();
+        return await this.generateFideDutchPairings();
       case 'burstein':
-        return this.generateBursteinPairings();
+        return await this.generateBursteinPairings();
       case 'accelerated_swiss':
         return this.generateAcceleratedPairings();
       case 'round_robin':
@@ -373,8 +413,10 @@ class EnhancedPairingSystem {
         return this.generateSingleEliminationPairings();
       case 'quad':
         return this.generateQuadPairings();
+      case 'advanced_swiss':
+        return this.generateAdvancedSwissPairings();
       default:
-        return this.generateFideDutchPairings();
+        return await this.generateFideDutchPairings();
     }
   }
 
@@ -427,7 +469,7 @@ class EnhancedPairingSystem {
    * Algorithmic with aggressive color correction
    * Uses Swiss system pairing with enhanced color balance rules
    */
-  generateFideDutchPairings() {
+  async generateFideDutchPairings() {
     console.log(`[EnhancedPairingSystem] generateFideDutchPairings called with ${this.players.length} players`);
     console.log(`[EnhancedPairingSystem] Players:`, this.players.map(p => ({ id: p.id, name: p.name, rating: p.rating })));
     
@@ -436,6 +478,43 @@ class EnhancedPairingSystem {
       return [];
     }
 
+    // Try C++ implementation first if available and preferred
+    if (this.options.useCPP && this.cppAvailable) {
+      console.log(`[EnhancedPairingSystem] Using C++ bbpPairings implementation`);
+      try {
+        const bbpPairingsCPP = new BBPPairingsCPP();
+        const result = await bbpPairingsCPP.generatePairings(this.tournamentId, this.round, this.players, {
+          pairingSystem: 'dutch',
+          tournamentName: this.section,
+          sectionName: this.section,
+          tournamentRounds: this.options.tournamentRounds || 5,
+          tournamentType: 'S',
+          timeControl: this.options.timeControl || '90+30',
+          tournamentChiefTD: this.options.tournamentChiefTD || 'TD',
+          tournamentChiefArbiter: this.options.tournamentChiefArbiter || 'Arbiter',
+          tournamentChiefOrganizer: this.options.tournamentChiefOrganizer || 'Organizer',
+          tournamentWebsite: this.options.tournamentWebsite || '',
+          tournamentEmail: this.options.tournamentEmail || '',
+          tournamentPhone: this.options.tournamentPhone || '',
+          tournamentAddress: this.options.tournamentAddress || '',
+          tournamentFederation: this.options.tournamentFederation || 'USA',
+          tournamentFederationCode: this.options.tournamentFederationCode || 'USA',
+          tournamentDate: this.options.tournamentDate || new Date().toISOString().split('T')[0]
+        });
+        
+        if (result.success) {
+          console.log(`[EnhancedPairingSystem] C++ bbpPairings result:`, result.pairings);
+          return result.pairings;
+        } else {
+          console.log(`[EnhancedPairingSystem] C++ bbpPairings failed: ${result.error}, falling back to JavaScript`);
+        }
+      } catch (error) {
+        console.log(`[EnhancedPairingSystem] C++ bbpPairings error: ${error.message}, falling back to JavaScript`);
+      }
+    }
+
+    // Fallback to JavaScript implementation
+    console.log(`[EnhancedPairingSystem] Using JavaScript bbpPairings implementation`);
     const bbpPairings = new BBPPairingsDirect();
     const tournament = {
       round: this.round,
@@ -467,11 +546,53 @@ class EnhancedPairingSystem {
    * Burstein System Pairing
    * Based on bbpPairings Burstein implementation
    */
-  generateBursteinPairings() {
-    if (this.players.length < 2) return [];
+  async generateBursteinPairings() {
+    console.log(`[EnhancedPairingSystem] generateBursteinPairings called with ${this.players.length} players`);
+    
+    if (this.players.length < 2) {
+      console.log(`[EnhancedPairingSystem] Not enough players (${this.players.length}), returning empty array`);
+      return [];
+    }
 
+    // Try C++ implementation first if available and preferred
+    if (this.options.useCPP && this.cppAvailable) {
+      console.log(`[EnhancedPairingSystem] Using C++ bbpPairings implementation for Burstein`);
+      try {
+        const bbpPairingsCPP = new BBPPairingsCPP();
+        const result = await bbpPairingsCPP.generatePairings(this.tournamentId, this.round, this.players, {
+          pairingSystem: 'burstein',
+          tournamentName: this.section,
+          sectionName: this.section,
+          tournamentRounds: this.options.tournamentRounds || 5,
+          tournamentType: 'S',
+          timeControl: this.options.timeControl || '90+30',
+          tournamentChiefTD: this.options.tournamentChiefTD || 'TD',
+          tournamentChiefArbiter: this.options.tournamentChiefArbiter || 'Arbiter',
+          tournamentChiefOrganizer: this.options.tournamentChiefOrganizer || 'Organizer',
+          tournamentWebsite: this.options.tournamentWebsite || '',
+          tournamentEmail: this.options.tournamentEmail || '',
+          tournamentPhone: this.options.tournamentPhone || '',
+          tournamentAddress: this.options.tournamentAddress || '',
+          tournamentFederation: this.options.tournamentFederation || 'USA',
+          tournamentFederationCode: this.options.tournamentFederationCode || 'USA',
+          tournamentDate: this.options.tournamentDate || new Date().toISOString().split('T')[0]
+        });
+        
+        if (result.success) {
+          console.log(`[EnhancedPairingSystem] C++ bbpPairings Burstein result:`, result.pairings);
+          return result.pairings;
+        } else {
+          console.log(`[EnhancedPairingSystem] C++ bbpPairings Burstein failed: ${result.error}, falling back to JavaScript`);
+        }
+      } catch (error) {
+        console.log(`[EnhancedPairingSystem] C++ bbpPairings Burstein error: ${error.message}, falling back to JavaScript`);
+      }
+    }
+
+    // Fallback to JavaScript implementation
+    console.log(`[EnhancedPairingSystem] Using JavaScript bbpPairings implementation for Burstein`);
     const bbpPairings = new BBPPairingsDirect();
-    const result = bbpPairings.generateBursteinPairings(this.players, {
+    const result = bbpPairings.generateDutchPairings(this.players, {
       round: this.round,
       section: this.section,
       tournamentId: this.tournamentId,

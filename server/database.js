@@ -59,6 +59,7 @@ db.serialize(() => {
       allow_registration BOOLEAN DEFAULT 1,
       is_public BOOLEAN DEFAULT 0,
       public_url TEXT,
+      logo_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (organization_id) REFERENCES organizations (id)
     )

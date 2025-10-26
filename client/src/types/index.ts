@@ -77,6 +77,7 @@ export interface Tournament {
   allow_registration?: boolean;
   is_public?: boolean;
   public_url?: string;
+  logo_url?: string;
   website?: string;
   entry_fee_amount?: number;
   prize_fund_amount?: number;
