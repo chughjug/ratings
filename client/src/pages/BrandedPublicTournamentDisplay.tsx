@@ -495,14 +495,20 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               {/* Current Round Pairings */}
               <div className="card-brand">
                 <h3 className="text-lg font-semibold mb-4 brand-text">Current Round Pairings</h3>
-                <ChessStandingsTable
-                  standings={standings}
-                  tournament={tournament}
-                  selectedSection={selectedSection}
-                  showTiebreakers={true}
-                  showPrizes={true}
-                  tournamentId={id}
-                />
+                {pairings && pairings.length > 0 ? (
+                  <ChessStandingsTable
+                    pairings={pairings}
+                    showRatings={displayOptions.showRatings}
+                    showUscfIds={displayOptions.showUscfIds}
+                    boardNumbers={displayOptions.boardNumbers}
+                    displayFormat={displayOptions.displayFormat}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No pairings available for current round</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -524,19 +530,159 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   </div>
                 </div>
                 
-                <ChessStandingsTable
-                  standings={getFilteredStandings(standings)}
-                  tournament={tournament}
-                  selectedSection={selectedSection}
-                  showTiebreakers={true}
-                  showPrizes={true}
-                  tournamentId={id}
-                />
+                {standings && standings.length > 0 ? (
+                  <ChessStandingsTable
+                    standings={getFilteredStandings(standings)}
+                    showRatings={displayOptions.showRatings}
+                    showUscfIds={displayOptions.showUscfIds}
+                    displayFormat={displayOptions.displayFormat}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Trophy className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No standings available</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Add other tab content here */}
+          {activeTab === 'pairings' && (
+            <div className="space-y-8">
+              {/* Round Selection */}
+              <div className="card-brand">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold brand-text">Round Pairings</h3>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setSelectedRound(Math.max(1, selectedRound - 1))}
+                      disabled={selectedRound <= 1}
+                      className="btn-brand-ghost disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-sm brand-text">Round {selectedRound}</span>
+                    <button
+                      onClick={() => setSelectedRound(Math.min(tournament.rounds, selectedRound + 1))}
+                      disabled={selectedRound >= tournament.rounds}
+                      className="btn-brand-ghost disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                {allRoundsData[selectedRound] && allRoundsData[selectedRound].length > 0 ? (
+                  <ChessStandingsTable
+                    pairings={allRoundsData[selectedRound]}
+                    showRatings={displayOptions.showRatings}
+                    showUscfIds={displayOptions.showUscfIds}
+                    boardNumbers={displayOptions.boardNumbers}
+                    displayFormat={displayOptions.displayFormat}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No pairings available for round {selectedRound}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'teams' && (
+            <div className="space-y-8">
+              <div className="card-brand">
+                <h3 className="text-lg font-semibold mb-4 brand-text">Team Standings</h3>
+                {data.teamStandings && data.teamStandings.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b brand-border">
+                          <th className="text-left py-2 brand-text">Rank</th>
+                          <th className="text-left py-2 brand-text">Team</th>
+                          <th className="text-left py-2 brand-text">Points</th>
+                          <th className="text-left py-2 brand-text">Games</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.teamStandings.map((team, index) => (
+                          <tr key={team.id} className="border-b brand-border">
+                            <td className="py-2 brand-text">{index + 1}</td>
+                            <td className="py-2 brand-text">{team.name}</td>
+                            <td className="py-2 brand-text">{team.points}</td>
+                            <td className="py-2 brand-text">{team.games}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Crown className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No team standings available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'prizes' && (
+            <div className="space-y-8">
+              <div className="card-brand">
+                <h3 className="text-lg font-semibold mb-4 brand-text">Prize Information</h3>
+                {data.prizes && data.prizes.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {data.prizes.map((prize) => (
+                      <div key={prize.id} className="border brand-border rounded p-4">
+                        <h4 className="font-medium brand-text mb-2">{prize.name}</h4>
+                        <p className="text-sm brand-secondary">{prize.description}</p>
+                        {prize.amount && (
+                          <p className="text-sm brand-primary font-medium mt-2">${prize.amount}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Award className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No prize information available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <div className="space-y-8">
+              <div className="card-brand">
+                <h3 className="text-lg font-semibold mb-4 brand-text">Tournament Analytics</h3>
+                {data.analytics ? (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 border brand-border rounded">
+                        <div className="text-2xl font-bold brand-primary">{data.analytics.totalGames || 0}</div>
+                        <div className="text-sm brand-secondary">Total Games</div>
+                      </div>
+                      <div className="text-center p-4 border brand-border rounded">
+                        <div className="text-2xl font-bold brand-primary">{data.analytics.averageRating || 0}</div>
+                        <div className="text-sm brand-secondary">Average Rating</div>
+                      </div>
+                      <div className="text-center p-4 border brand-border rounded">
+                        <div className="text-2xl font-bold brand-primary">{data.analytics.completionRate || 0}%</div>
+                        <div className="text-sm brand-secondary">Completion Rate</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <TrendingUp className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No analytics data available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
