@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Embed Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+      color: white;
+      padding: 40px;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .header-info {
+      display: flex;
+      gap: 30px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      padding: 20px 40px;
+      background: #f8f8f8;
+      border-bottom: 2px solid #e0e0e0;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 12px 24px;
+      background: #e0e0e0;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+
+    .tab:hover {
+      background: #d0d0d0;
+    }
+
+    .tab.active {
+      background: #1a1a1a;
+      color: white;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section h2 {
+      font-size: 1.8em;
+      margin-bottom: 20px;
+      color: #1a1a1a;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table th {
+      background: #f8f8f8;
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+      color: #1a1a1a;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    table td {
+      padding: 15px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    table tr:hover {
+      background: #f8f8f8;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: #f8f8f8;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9em;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #666;
+    }
+
+    .error {
+      background: #fee;
+      color: #c00;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px;
+    }
+
+    input {
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 16px;
+      width: 300px;
+    }
+
+    button {
+      padding: 12px 24px;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    .tournament-input {
+      margin-bottom: 20px;
+    }
+
+    #endpoint-url {
+      margin-top: 10px;
+      font-family: monospace;
+      color: #666;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎯 Tournament Embeddable API Demo</h1>
+      <p>Enter a tournament ID to view the embeddable data</p>
+      
+      <div class="tournament-input">
+        <input type="text" id="tournament-id" placeholder="Enter tournament ID" />
+        <button onclick="loadTournament()">Load Tournament</button>
+      </div>
+      
+      <div id="endpoint-url"></div>
+    </div>
+
+    <div id="content">
+      <div class="loading">
+        <p>Enter a tournament ID above to get started</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadTournament() {
+      const tournamentId = document.getElementById('tournament-id').value.trim();
+      
+      if (!tournamentId) {
+        alert('Please enter a tournament ID');
+        return;
+      }
+
+      const endpointUrl = `/api/tournaments/${tournamentId}/embed`;
+      document.getElementById('endpoint-url').textContent = `Endpoint: ${window.location.origin}${endpointUrl}`;
+
+      document.getElementById('content').innerHTML = '<div class="loading">Loading tournament data...</div>';
+
+      try {
+        const response = await fetch(endpointUrl);
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error);
+        }
+
+        renderTournament(data);
+      } catch (error) {
+        document.getElementById('content').innerHTML = `
+          <div class="error">
+            <strong>Error:</strong> ${error.message}
+            <br><br>
+            Make sure you have a valid tournament ID and the API endpoint is accessible.
+          </div>
+        `;
+      }
+    }
+
+    function renderTournament(data) {
+      let html = '';
+
+      // Tournament info
+      html += `
+        <div class="header" style="background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); border-radius: 0;">
+          <h1>${data.tournament.name}</h1>
+          <div class="header-info">
+            <div class="info-item"><strong>Format:</strong> ${data.tournament.format}</div>
+            <div class="info-item"><strong>Status:</strong> ${data.tournament.status}</div>
+            <div class="info-item"><strong>Current Round:</strong> ${data.currentRound} / ${data.tournament.rounds}</div>
+            <div class="info-item"><strong>Total Players:</strong> ${data.statistics.totalPlayers}</div>
+          </div>
+        </div>
+      `;
+
+      // Stats
+      html += `
+        <div class="content">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">${data.statistics.activePlayers}</div>
+              <div class="stat-label">Active Players</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${data.statistics.completedGames}</div>
+              <div class="stat-label">Completed Games</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${Math.round(data.statistics.averageRating)}</div>
+              <div class="stat-label">Avg Rating</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Round tabs
+      html += '<div class="tabs">';
+      for (let round = 1; round <= data.tournament.rounds; round++) {
+        html += `<button class="tab ${round === data.currentRound ? 'active' : ''}" onclick="showRound(${round})">Round ${round}</button>`;
+      }
+      html += '</div>';
+
+      // Pairings
+      html += '<div class="content">';
+      html += '<div class="section" id="pairings-section"></div>';
+
+      // Standings
+      html += `
+        <div class="section">
+          <h2>Standings</h2>
+          <table id="standings-table"></table>
+        </div>
+      `;
+
+      html += '</div></div>';
+
+      document.getElementById('content').innerHTML = html;
+
+      // Render initial round
+      showRound(data.currentRound);
+
+      // Store data globally
+      window.tournamentData = data;
+
+      // Render standings
+      renderStandings(data);
+    }
+
+    function showRound(round) {
+      if (!window.tournamentData) return;
+
+      const pairings = window.tournamentData.pairingsByRound[round] || [];
+      
+      const section = document.getElementById('pairings-section');
+      const sectionHtml = `<h2>Round ${round} Pairings</h2>`;
+      
+      if (pairings.length === 0) {
+        section.innerHTML = sectionHtml + '<p>No pairings for this round yet.</p>';
+        return;
+      }
+
+      let tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th>Board</th>
+              <th>White Player</th>
+              <th>Rating</th>
+              <th></th>
+              <th>Black Player</th>
+              <th>Rating</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      pairings.forEach(p => {
+        tableHtml += `
+          <tr>
+            <td>${p.board}</td>
+            <td><strong>${p.white_name}</strong></td>
+            <td>${p.white_rating || 'Unrated'}</td>
+            <td style="text-align: center; color: #999;">vs</td>
+            <td><strong>${p.black_name}</strong></td>
+            <td>${p.black_rating || 'Unrated'}</td>
+            <td><strong>${p.result || 'TBD'}</strong></td>
+          </tr>
+        `;
+      });
+
+      tableHtml += '</tbody></table>';
+      section.innerHTML = sectionHtml + tableHtml;
+
+      // Update active tab
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.textContent.includes(`Round ${round}`)) {
+          tab.classList.add('active');
+        }
+      });
+    }
+
+    function renderStandings(data) {
+      const standings = data.standings;
+      const table = document.getElementById('standings-table');
+      
+      let html = `
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Rating</th>
+            <th>Section</th>
+            <th>Points</th>
+            <th>Games</th>
+            <th>W-D-L</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      standings.forEach((player, index) => {
+        html += `
+          <tr>
+            <td><strong>${index + 1}</strong></td>
+            <td>${player.name}</td>
+            <td>${player.rating || 'Unrated'}</td>
+            <td>${player.section || 'Open'}</td>
+            <td><strong>${player.total_points}</strong></td>
+            <td>${player.games_played}</td>
+            <td>${player.wins}-${player.draws}-${player.losses}</td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody>';
+      table.innerHTML = html;
+    }
+
+    // Allow Enter key to load tournament
+    document.getElementById('tournament-id').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        loadTournament();
+      }
+    });
+
+    // For demo purposes, you can set a default tournament ID here
+    // document.getElementById('tournament-id').value = 'YOUR-TOURNAMENT-ID';
+  </script>
+</body>
+</html>
+

@@ -1611,4 +1611,345 @@ router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
   }
 });
 
+// ============================================================================
+// EMBEDDABLE PUBLIC TOURNAMENT API ENDPOINT
+// Returns complete tournament data for embedding/reconstruction
+// ============================================================================
+
+// Handle preflight OPTIONS requests for embed endpoint
+router.options('/:id/embed', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.sendStatus(200);
+});
+
+router.get('/:id/embed', async (req, res) => {
+  try {
+    // Set CORS headers for embeddable API (allow from any origin)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    
+    const { id } = req.params;
+    const { format = 'json' } = req.query;
+    
+    // Get tournament info
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Tournament not found' 
+      });
+    }
+
+    // Parse settings
+    let settings = {};
+    try {
+      settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+    } catch (e) {
+      console.warn('Failed to parse tournament settings:', e);
+    }
+
+    // Get all players
+    const players = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT id, name, rating, uscf_id, fide_id, section, status, notes
+         FROM players WHERE tournament_id = ? ORDER BY section, rating DESC NULLS LAST`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Get pairings for ALL rounds
+    const allPairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT p.*, 
+                wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id,
+                bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id
+         FROM pairings p
+         LEFT JOIN players wp ON p.white_player_id = wp.id
+         LEFT JOIN players bp ON p.black_player_id = bp.id
+         WHERE p.tournament_id = ?
+         ORDER BY p.round, p.section, p.board`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Group pairings by round
+    const pairingsByRound = {};
+    allPairings.forEach(pairing => {
+      if (!pairingsByRound[pairing.round]) {
+        pairingsByRound[pairing.round] = [];
+      }
+      pairingsByRound[pairing.round].push(pairing);
+    });
+
+    // Get standings with calculations
+    const standings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT p.id, p.name, p.rating, p.section, p.uscf_id,
+                COALESCE(SUM(r.points), 0) as total_points,
+                COUNT(r.id) as games_played,
+                COUNT(CASE WHEN r.result = '1-0' OR r.result = '1-0F' THEN 1 END) as wins,
+                COUNT(CASE WHEN r.result = '0-1' OR r.result = '0-1F' THEN 1 END) as losses,
+                COUNT(CASE WHEN r.result = '1/2-1/2' OR r.result = '1/2-1/2F' THEN 1 END) as draws
+         FROM players p
+         LEFT JOIN results r ON p.id = r.player_id
+         WHERE p.tournament_id = ? AND p.status = 'active'
+         GROUP BY p.id
+         ORDER BY p.section, total_points DESC, p.rating DESC`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Get round-by-round results
+    const roundResults = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT 
+          r.player_id,
+          r.round,
+          r.result,
+          r.opponent_id,
+          r.points,
+          op.name as opponent_name,
+          op.rating as opponent_rating,
+          op.section as opponent_section,
+          r.color,
+          r.board
+        FROM results r
+        LEFT JOIN players op ON r.opponent_id = op.id
+        WHERE r.tournament_id = ?
+        ORDER BY r.player_id, r.round`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Group standings by section
+    const standingsBySection = {};
+    standings.forEach(player => {
+      const section = player.section || 'Open';
+      if (!standingsBySection[section]) {
+        standingsBySection[section] = [];
+      }
+      standingsBySection[section].push(player);
+    });
+
+    // Rank players within each section
+    Object.keys(standingsBySection).forEach(section => {
+      standingsBySection[section].forEach((player, index) => {
+        player.rank = index + 1;
+      });
+    });
+
+    // Add round results to standings
+    const roundResultsByPlayer = {};
+    roundResults.forEach(result => {
+      if (!roundResultsByPlayer[result.player_id]) {
+        roundResultsByPlayer[result.player_id] = {};
+      }
+      roundResultsByPlayer[result.player_id][result.round] = {
+        result: result.result,
+        opponent_name: result.opponent_name,
+        opponent_rating: result.opponent_rating,
+        points: result.points,
+        color: result.color,
+        board: result.board
+      };
+    });
+
+    Object.keys(standingsBySection).forEach(section => {
+      standingsBySection[section].forEach((player) => {
+        player.roundResults = roundResultsByPlayer[player.id] || {};
+      });
+    });
+
+    // Calculate tiebreakers
+    const tiebreakCriteria = settings.tie_break_criteria || ['buchholz', 'sonnebornBerger', 'performanceRating'];
+    try {
+      const standingsWithTiebreakers = await calculateTiebreakers(Object.values(standingsBySection).flat(), id, tiebreakCriteria);
+      const tiebreakerMap = {};
+      standingsWithTiebreakers.forEach(standing => {
+        tiebreakerMap[standing.id] = standing.tiebreakers;
+      });
+      
+      standings.forEach(player => {
+        player.tiebreakers = tiebreakerMap[player.id] || {
+          buchholz: 0,
+          sonnebornBerger: 0,
+          performanceRating: 0,
+          modifiedBuchholz: 0,
+          cumulative: 0
+        };
+      });
+    } catch (error) {
+      console.warn('Could not calculate tiebreakers:', error);
+    }
+
+    // Get prize information
+    let prizes = [];
+    try {
+      prizes = await new Promise((resolve, reject) => {
+        db.all(
+          'SELECT * FROM prizes WHERE tournament_id = ? ORDER BY position ASC, type ASC',
+          [id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+    } catch (error) {
+      console.warn('Could not fetch prizes:', error);
+    }
+
+    // Get organization branding if tournament has organization
+    let organization = null;
+    if (tournament.organization_id) {
+      try {
+        organization = await new Promise((resolve, reject) => {
+          db.get(
+            `SELECT id, name, slug, website, logoUrl, settings 
+             FROM organizations WHERE id = ?`,
+            [tournament.organization_id],
+            (err, row) => {
+              if (err) reject(err);
+              else resolve(row);
+            }
+          );
+        });
+      } catch (error) {
+        console.warn('Could not fetch organization:', error);
+      }
+    }
+
+    // Calculate current round
+    const currentRound = allPairings.length > 0 
+      ? Math.max(...allPairings.map(p => p.round))
+      : 1;
+
+    // Build comprehensive response
+    const responseData = {
+      success: true,
+      meta: {
+        generatedAt: new Date().toISOString(),
+        tournamentId: id,
+        format: 'embed',
+        version: '1.0.0'
+      },
+      tournament: {
+        id: tournament.id,
+        name: tournament.name,
+        format: tournament.format,
+        rounds: tournament.rounds,
+        time_control: tournament.time_control,
+        start_date: tournament.start_date,
+        end_date: tournament.end_date,
+        status: tournament.status,
+        city: tournament.city,
+        state: tournament.state,
+        location: tournament.location,
+        chief_td_name: tournament.chief_td_name,
+        chief_td_uscf_id: tournament.chief_td_uscf_id,
+        website: tournament.website,
+        fide_rated: tournament.fide_rated,
+        uscf_rated: tournament.uscf_rated,
+        allow_registration: tournament.allow_registration,
+        is_public: tournament.is_public,
+        public_url: tournament.public_url,
+        logo_url: tournament.logo_url,
+        tournament_information: tournament.tournament_information,
+        settings: settings
+      },
+      currentRound,
+      players,
+      pairings: allPairings,
+      pairingsByRound,
+      standings: Object.values(standingsBySection).flat(),
+      standingsBySection,
+      prizes,
+      organization: organization ? {
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug,
+        website: organization.website,
+        logoUrl: organization.logoUrl,
+        branding: organization.settings ? JSON.parse(organization.settings) : null
+      } : null,
+      statistics: {
+        totalPlayers: players.length,
+        activePlayers: players.filter(p => p.status === 'active').length,
+        totalGames: allPairings.length,
+        completedGames: allPairings.filter(p => p.result && p.result !== 'TBD').length,
+        averageRating: players.length > 0 
+          ? players.reduce((sum, p) => sum + (p.rating || 0), 0) / players.length 
+          : 0
+      }
+    };
+
+    // Return appropriate format
+    if (format === 'html') {
+      res.setHeader('Content-Type', 'text/html');
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${tournament.name} - Tournament Data</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+            h1 { color: #333; }
+            pre { background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; }
+            .meta { color: #666; font-size: 14px; margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>${tournament.name}</h1>
+            <div class="meta">Generated: ${new Date().toLocaleString()}</div>
+            <p>This is the embeddable API data for the tournament.</p>
+            <p><strong>Usage:</strong> Make a GET request to <code>/api/tournaments/${id}/embed</code> to get JSON data.</p>
+            <h2>Tournament Data (JSON)</h2>
+            <pre>${JSON.stringify(responseData, null, 2)}</pre>
+          </div>
+        </body>
+        </html>
+      `);
+    } else {
+      res.json(responseData);
+    }
+
+  } catch (error) {
+    console.error('Error fetching embeddable tournament data:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch embeddable tournament data',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

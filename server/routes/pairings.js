@@ -1108,6 +1108,19 @@ router.post('/generate/section', async (req, res) => {
       return;
     }
 
+    // Check tournament format - Quad and Team Swiss tournaments use different endpoints
+    if (tournament.format === 'quad') {
+      return res.status(400).json({ 
+        error: 'Quad tournaments must use the /generate/quad endpoint, which generates all rounds at once' 
+      });
+    }
+
+    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+      return res.status(400).json({ 
+        error: `Team tournaments must use the /generate/team-swiss endpoint for round ${round}` 
+      });
+    }
+
     // Get players for the specific section
     console.log(`[PairingGeneration] Fetching players for tournament ${tournamentId}, section "${sectionName}"`);
     const players = await new Promise((resolve, reject) => {
@@ -2552,6 +2565,14 @@ router.post('/generate/quad', async (req, res) => {
       return res.status(404).json({
         success: false,
         error: 'Tournament not found'
+      });
+    }
+
+    // Verify this is a quad tournament
+    if (tournament.format !== 'quad') {
+      return res.status(400).json({
+        success: false,
+        error: `This endpoint is only for quad format tournaments. Tournament format is: ${tournament.format}`
       });
     }
 
