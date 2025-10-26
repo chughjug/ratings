@@ -1238,10 +1238,81 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           {customPages && customPages.length > 0 && customPages.map((page) => (
             activeTab === page.slug && (
               <div key={page.id} className="space-y-6">
-                <div 
-                  className="bg-white border border-gray-200 rounded-lg p-6"
-                  dangerouslySetInnerHTML={{ __html: page.content }}
-                />
+                {/* Page Title */}
+                {(page.name || page.title) && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <h2 className="text-2xl font-bold text-gray-900">{page.name || page.title}</h2>
+                    {page.description && (
+                      <p className="text-gray-600 mt-2">{page.description}</p>
+                    )}
+                  </div>
+                )}
+                
+                {/* Page Sections */}
+                {page.sections && Array.isArray(page.sections) && page.sections.length > 0 && (
+                  <div className="space-y-4">
+                    {page.sections.map((section: any, index: number) => (
+                      <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        {section.title && (
+                          <h3 className="text-xl font-semibold text-gray-900 mb-4">{section.title}</h3>
+                        )}
+                        {section.content && (
+                          <div 
+                            className="text-gray-700 prose max-w-none"
+                            dangerouslySetInnerHTML={{ __html: section.content }}
+                          />
+                        )}
+                        {section.text && (
+                          <p className="text-gray-700 whitespace-pre-wrap">{section.text}</p>
+                        )}
+                        {section.links && Array.isArray(section.links) && section.links.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            {section.links.map((link: any, linkIndex: number) => (
+                              <a
+                                key={linkIndex}
+                                href={link.url}
+                                target={link.external ? '_blank' : undefined}
+                                rel={link.external ? 'noopener noreferrer' : undefined}
+                                className="block text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {link.text || link.url}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Direct HTML Content (fallback for backwards compatibility) */}
+                {page.content && (!page.sections || page.sections.length === 0) && (
+                  <div 
+                    className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: page.content }}
+                  />
+                )}
+                
+                {/* Page Links */}
+                {page.links && Array.isArray(page.links) && page.links.length > 0 && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Useful Links</h3>
+                    <div className="space-y-2">
+                      {page.links.map((link: any, index: number) => (
+                        <a
+                          key={index}
+                          href={link.url}
+                          target={link.external ? '_blank' : undefined}
+                          rel={link.external ? 'noopener noreferrer' : undefined}
+                          className="block text-blue-600 hover:text-blue-800 hover:underline py-2"
+                        >
+                          {link.icon && <span className="mr-2">{link.icon}</span>}
+                          {link.text || link.url}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           ))}
