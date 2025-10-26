@@ -284,75 +284,51 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
         />
       )}
 
-      {/* Hero Section */}
-      <div className={`brand-background border-b brand-border ${
-        brandingState.layout.headerStyle === 'hero' ? 'py-16' : 'py-8'
-      }`}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            {/* Tournament Title */}
-            <h1 className={`font-bold brand-text mb-4 ${
-              brandingState.layout.headerStyle === 'hero' 
-                ? 'text-4xl md:text-6xl' 
-                : 'text-3xl md:text-4xl'
-            }`}>
-              {tournament.name}
-            </h1>
-            
-            {/* Tournament Meta */}
-            <div className="flex flex-wrap items-center justify-center gap-8 mb-8 text-sm brand-secondary">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium">Round {currentRound} of {tournament.rounds}</span>
+      {/* Tournament Header */}
+      <div className="brand-background border-b brand-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Tournament Info Tab */}
+          <div className="py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="bg-brand-primary text-white px-4 py-2 rounded-t-lg font-medium text-sm">
+                  Tournament
+                </div>
+                <div className="flex items-center space-x-6">
+                  <div>
+                    <h1 className="text-2xl font-bold brand-text">{tournament.name}</h1>
+                    <div className="flex items-center space-x-4 text-sm brand-secondary mt-1">
+                      <span>{tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBD'}</span>
+                      {tournament.location && <span>• {tournament.location}</span>}
+                      <span>• Round {currentRound} of {tournament.rounds}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <span className="capitalize">{tournament.format.replace('-', ' ')} Tournament</span>
+              <div className="flex items-center space-x-3">
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  tournament.status === 'active' ? 'bg-green-100 text-green-800' : 
+                  tournament.status === 'completed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)}
+                </div>
+                
+                <a
+                  href={`/register/${tournament.id}`}
+                  className="btn-brand"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Register</span>
+                </a>
+                
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="btn-brand-ghost"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
               </div>
-              
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  tournament.status === 'active' ? 'bg-green-500' : 
-                  tournament.status === 'completed' ? 'bg-blue-500' : 'bg-gray-400'
-                }`}></div>
-                <span>{tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)}</span>
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <a
-                href={`/register/${tournament.id}`}
-                className="btn-brand"
-              >
-                <Users className="h-4 w-4" />
-                <span>Register</span>
-              </a>
-              
-              <button
-                onClick={handleShare}
-                className="btn-brand-outline"
-              >
-                <Share2 className="h-4 w-4" />
-                <span>Share</span>
-              </button>
-              
-              <button
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className={`btn-brand-ghost ${
-                  autoRefresh ? 'bg-brand-hover' : ''
-                }`}
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Auto refresh</span>
-              </button>
-
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="btn-brand-ghost"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </button>
             </div>
           </div>
         </div>
@@ -435,58 +411,117 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
       )}
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tournament Stats */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="card-brand text-center">
-              <div className="text-2xl font-bold brand-primary">{stats.totalPlayers}</div>
-              <div className="text-sm brand-secondary">Players</div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Sidebar - Tournament Navigation */}
+          <div className="lg:col-span-3">
+            <div className="card-brand">
+              <h3 className="text-lg font-semibold brand-text mb-4">Tournament</h3>
+              <nav className="space-y-2">
+                {[
+                  { id: 'overview', label: 'Overview', icon: BarChart3, count: stats?.totalPlayers },
+                  { id: 'pairings', label: 'Pairings', icon: Users, count: stats?.totalGames },
+                  { id: 'standings', label: 'Standings', icon: Trophy, count: stats?.totalPlayers },
+                  { id: 'teams', label: 'Teams', icon: Crown, count: stats?.totalTeams },
+                  { id: 'prizes', label: 'Prizes', icon: Award },
+                  { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
+                        activeTab === tab.id
+                          ? 'bg-brand-primary text-white'
+                          : 'hover:bg-brand-hover brand-text'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className="h-4 w-4" />
+                        <span className="font-medium">{tab.label}</span>
+                      </div>
+                      {tab.count !== undefined && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          activeTab === tab.id ? 'bg-white bg-opacity-20' : 'bg-gray-100'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
-            <div className="card-brand text-center">
-              <div className="text-2xl font-bold brand-primary">{stats.totalGames}</div>
-              <div className="text-sm brand-secondary">Games</div>
-            </div>
-            <div className="card-brand text-center">
-              <div className="text-2xl font-bold brand-primary">{stats.completedGames}</div>
-              <div className="text-sm brand-secondary">Completed</div>
-            </div>
-            <div className="card-brand text-center">
-              <div className="text-2xl font-bold brand-primary">{stats.averageRating}</div>
-              <div className="text-sm brand-secondary">Avg Rating</div>
-            </div>
-          </div>
-        )}
 
-        {/* Tab Navigation */}
-        <div className="border-b brand-border mb-8">
-          <nav className="flex space-x-8">
-            {[
-              { id: 'overview', label: 'Overview', icon: BarChart3 },
-              { id: 'pairings', label: 'Pairings', icon: Users },
-              { id: 'standings', label: 'Standings', icon: Trophy },
-              { id: 'teams', label: 'Teams', icon: Crown },
-              { id: 'prizes', label: 'Prizes', icon: Award },
-              { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-brand-primary text-brand-primary'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+            {/* Tournament Stats */}
+            {stats && (
+              <div className="card-brand mt-6">
+                <h3 className="text-lg font-semibold brand-text mb-4">Statistics</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm brand-secondary">Total Players</span>
+                    <span className="font-semibold brand-text">{stats.totalPlayers}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm brand-secondary">Games Played</span>
+                    <span className="font-semibold brand-text">{stats.totalGames}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm brand-secondary">Completed</span>
+                    <span className="font-semibold brand-text">{stats.completedGames}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm brand-secondary">Avg Rating</span>
+                    <span className="font-semibold brand-text">{stats.averageRating}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Main Content Area */}
+          <div className="lg:col-span-6">
+            {/* Section Header */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold brand-text uppercase">
+                    {activeTab === 'overview' && 'OVERVIEW'}
+                    {activeTab === 'pairings' && 'PAIRINGS'}
+                    {activeTab === 'standings' && 'STANDINGS'}
+                    {activeTab === 'teams' && 'TEAMS'}
+                    {activeTab === 'prizes' && 'PRIZES'}
+                    {activeTab === 'analytics' && 'ANALYTICS'}
+                  </h2>
+                  {activeTab === 'standings' && (
+                    <p className="text-sm brand-secondary mt-1">
+                      Total players: <span className="font-bold brand-text">{stats?.totalPlayers || 0}</span>
+                    </p>
+                  )}
+                </div>
+                
+                {activeTab === 'pairings' && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setSelectedRound(Math.max(1, selectedRound - 1))}
+                      disabled={selectedRound <= 1}
+                      className="btn-brand-ghost disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-sm brand-text font-medium">Round {selectedRound}</span>
+                    <button
+                      onClick={() => setSelectedRound(Math.min(tournament.rounds, selectedRound + 1))}
+                      disabled={selectedRound >= tournament.rounds}
+                      className="btn-brand-ghost disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
         {/* Tab Content */}
         <div className="animate-fade-in">
@@ -683,6 +718,99 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               </div>
             </div>
           )}
+            </div>
+          </div>
+
+          {/* Right Sidebar - Additional Info */}
+          <div className="lg:col-span-3">
+            {/* Quick Actions */}
+            <div className="card-brand">
+              <h3 className="text-lg font-semibold brand-text mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <button
+                  onClick={handleShare}
+                  className="w-full btn-brand-outline"
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span>Share Tournament</span>
+                </button>
+                
+                <button
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`w-full ${
+                    autoRefresh ? 'btn-brand' : 'btn-brand-outline'
+                  }`}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Auto Refresh</span>
+                </button>
+                
+                <a
+                  href={`/register/${tournament.id}`}
+                  className="w-full btn-brand"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Register</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Tournament Details */}
+            <div className="card-brand mt-6">
+              <h3 className="text-lg font-semibold brand-text mb-4">Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm brand-secondary">Format:</span>
+                  <p className="font-medium brand-text capitalize">{tournament.format.replace('-', ' ')}</p>
+                </div>
+                <div>
+                  <span className="text-sm brand-secondary">Rounds:</span>
+                  <p className="font-medium brand-text">{tournament.rounds}</p>
+                </div>
+                <div>
+                  <span className="text-sm brand-secondary">Time Control:</span>
+                  <p className="font-medium brand-text">{tournament.time_control || 'Not specified'}</p>
+                </div>
+                <div>
+                  <span className="text-sm brand-secondary">Location:</span>
+                  <p className="font-medium brand-text">{tournament.location || 'Not specified'}</p>
+                </div>
+                {tournament.entry_fee_amount && (
+                  <div>
+                    <span className="text-sm brand-secondary">Entry Fee:</span>
+                    <p className="font-medium brand-text">${tournament.entry_fee_amount}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Organization Info */}
+            {organization && (
+              <div className="card-brand mt-6">
+                <h3 className="text-lg font-semibold brand-text mb-4">Organization</h3>
+                <div className="text-center">
+                  {organization.logoUrl && (
+                    <img 
+                      src={organization.logoUrl} 
+                      alt={organization.name}
+                      className="h-16 w-16 mx-auto mb-3 rounded"
+                    />
+                  )}
+                  <h4 className="font-medium brand-text">{organization.name}</h4>
+                  {organization.description && (
+                    <p className="text-sm brand-secondary mt-2">{organization.description}</p>
+                  )}
+                  <Link
+                    to={`/public/organizations/${organization.slug || organization.id}`}
+                    className="inline-flex items-center space-x-2 text-brand-primary hover:text-brand-primary mt-3 text-sm"
+                  >
+                    <Globe className="h-4 w-4" />
+                    <span>View Organization</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
