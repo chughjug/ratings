@@ -28,12 +28,13 @@ const ByeManagementModal: React.FC<ByeManagementModalProps> = ({
         let byeRounds: number[] = [];
         if (player.intentional_bye_rounds) {
           if (typeof player.intentional_bye_rounds === 'string') {
+            const byeString = player.intentional_bye_rounds;
             // Try to parse as JSON first
             try {
-              byeRounds = JSON.parse(player.intentional_bye_rounds);
+              byeRounds = JSON.parse(byeString);
             } catch {
               // If not JSON, try comma-separated
-              byeRounds = player.intentional_bye_rounds
+              byeRounds = byeString
                 .split(',')
                 .map(r => parseInt(r.trim()))
                 .filter(r => !isNaN(r));
