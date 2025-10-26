@@ -975,4 +975,22 @@ export const chessIntegrationApi = {
     api.get('/chess/leaderboards', { params: { platform, timeControl } })
 };
 
+// Custom Pages API
+export const customPagesApi = {
+  getAll: (tournamentId: string) =>
+    api.get(`/custom-pages/tournament/${tournamentId}`),
+  
+  getOne: (id: string) =>
+    api.get(`/custom-pages/${id}`),
+  
+  create: (data: any) =>
+    api.post('/custom-pages', data),
+  
+  update: (id: string, data: any) =>
+    api.put(`/custom-pages/${id}`, data),
+  
+  delete: (id: string) =>
+    api.delete(`/custom-pages/${id}`)
+};
+
 export default api;

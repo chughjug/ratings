@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, X, Save, ArrowUp, ArrowDown } from 'lucide-react';
+import { customPagesApi } from '../services/api';
 
 interface CustomPage {
   id?: string;
@@ -28,10 +29,9 @@ const CustomPagesManager: React.FC<CustomPagesManagerProps> = ({ tournamentId })
 
   const fetchPages = async () => {
     try {
-      const response = await fetch(`/api/custom-pages/tournament/${tournamentId}`);
-      const data = await response.json();
-      if (data.success) {
-        setPages(data.data);
+      const response = await customPagesApi.getAll(tournamentId);
+      if (response.data.success) {
+        setPages(response.data.data);
       }
     } catch (error) {
       console.error('Failed to fetch custom pages:', error);
@@ -41,16 +41,11 @@ const CustomPagesManager: React.FC<CustomPagesManagerProps> = ({ tournamentId })
   const handleCreate = async (page: CustomPage) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/custom-pages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...page,
-          tournament_id: tournamentId
-        })
+      const response = await customPagesApi.create({
+        ...page,
+        tournament_id: tournamentId
       });
-      const data = await response.json();
-      if (data.success) {
+      if (response.data.success) {
         await fetchPages();
         setShowAddModal(false);
       }
@@ -64,13 +59,8 @@ const CustomPagesManager: React.FC<CustomPagesManagerProps> = ({ tournamentId })
   const handleUpdate = async (page: CustomPage) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/custom-pages/${page.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(page)
-      });
-      const data = await response.json();
-      if (data.success) {
+      const response = await customPagesApi.update(page.id!, page);
+      if (response.data.success) {
         await fetchPages();
         setEditingPage(null);
       }
@@ -84,11 +74,8 @@ const CustomPagesManager: React.FC<CustomPagesManagerProps> = ({ tournamentId })
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this page?')) return;
     try {
-      const response = await fetch(`/api/custom-pages/${id}`, {
-        method: 'DELETE'
-      });
-      const data = await response.json();
-      if (data.success) {
+      const response = await customPagesApi.delete(id);
+      if (response.data.success) {
         await fetchPages();
       }
     } catch (error) {

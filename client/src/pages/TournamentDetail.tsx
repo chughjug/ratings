@@ -36,6 +36,7 @@ import PWAStatus from '../components/PWAStatus';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
 import LichessIntegration from '../components/LichessIntegration';
+import CustomPagesManager from '../components/CustomPagesManager';
 import OnlineGameIntegration from '../components/OnlineGameIntegration';
 import ByeManagementModal from '../components/ByeManagementModal';
 import PublicViewCustomization from '../components/PublicViewCustomization';
@@ -2996,6 +2997,13 @@ const TournamentDetail: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Custom Pages Management */}
+                {id && (
+                  <div className="mb-8">
+                    <CustomPagesManager tournamentId={id} />
+                  </div>
+                )}
 
                 {/* Prizes Section */}
                 <div className="mb-8">
