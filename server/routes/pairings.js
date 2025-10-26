@@ -1112,7 +1112,7 @@ router.post('/generate/section', async (req, res) => {
     console.log(`[PairingGeneration] Fetching players for tournament ${tournamentId}, section "${sectionName}"`);
     const players = await new Promise((resolve, reject) => {
       db.all(
-        'SELECT * FROM players WHERE tournament_id = ? AND status = "active" AND section = ? ORDER BY rating DESC',
+        'SELECT * FROM players WHERE tournament_id = ? AND (status = "active" OR status = "inactive") AND section = ? ORDER BY rating DESC',
         [tournamentId, sectionName],
         (err, rows) => {
           if (err) {
@@ -2455,7 +2455,7 @@ function calculatePoints(result, color) {
 function calculateByePoints(byeType) {
   if (byeType === 'unpaired') {
     return 1.0; // Full point bye
-  } else if (byeType === 'half_point_bye' || byeType === 'bye') {
+  } else if (byeType === 'half_point_bye' || byeType === 'bye' || byeType === 'inactive') {
     return 0.5; // Half point bye
   }
   return 1.0; // Default to full point bye for byes without explicit type
@@ -2686,7 +2686,7 @@ router.get('/quad/:tournamentId/assignments', async (req, res) => {
     // Get all active players
     const players = await new Promise((resolve, reject) => {
       db.all(
-        'SELECT * FROM players WHERE tournament_id = ? AND status = "active" ORDER BY rating DESC',
+        'SELECT * FROM players WHERE tournament_id = ? AND (status = "active" OR status = "inactive") ORDER BY rating DESC',
         [tournamentId],
         (err, rows) => {
           if (err) reject(err);
@@ -3082,7 +3082,7 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
           // Get players for the specific section
           const players = await new Promise((resolve, reject) => {
             db.all(
-              'SELECT * FROM players WHERE tournament_id = ? AND status = "active" AND section = ? ORDER BY rating DESC',
+              'SELECT * FROM players WHERE tournament_id = ? AND (status = "active" OR status = "inactive") AND section = ? ORDER BY rating DESC',
               [tournamentId, sectionName],
               (err, rows) => {
                 if (err) reject(err);

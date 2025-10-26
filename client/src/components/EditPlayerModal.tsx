@@ -184,8 +184,13 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
   };
 
   const getAvailableSections = () => {
-    if (!state.currentTournament) return [];
-    return getSectionOptions(state.currentTournament, state.players);
+    if (!state.currentTournament || !state.players) return [];
+    try {
+      return getSectionOptions(state.currentTournament, state.players);
+    } catch (error) {
+      console.error('Error getting sections:', error);
+      return [];
+    }
   };
 
   if (!isOpen || !player) return null;
@@ -312,11 +317,19 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
                 >
                   <option value="">Select Section</option>
-                  {getAvailableSections().map(section => (
-                    <option key={section} value={section}>
-                      {section}
-                    </option>
-                  ))}
+                  {(() => {
+                    try {
+                      const sections = getAvailableSections();
+                      return sections.map((section: string) => (
+                        <option key={section} value={section}>
+                          {section}
+                        </option>
+                      ));
+                    } catch (error) {
+                      console.error('Error rendering section options:', error);
+                      return <option value="">Error loading sections</option>;
+                    }
+                  })()}
                 </select>
               </div>
 

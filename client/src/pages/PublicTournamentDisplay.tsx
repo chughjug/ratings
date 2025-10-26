@@ -1429,8 +1429,8 @@ const PublicTournamentDisplay: React.FC = () => {
                               <ChessStandingsTable
                                 standings={sectionStandings.map(player => ({
                                   ...player,
-                                  tiebreakers: {
-                                    buchholz: 0, // Default values since tiebreakers aren't calculated in public API
+                                  tiebreakers: player.tiebreakers || {
+                                    buchholz: 0,
                                     sonnebornBerger: 0,
                                     performanceRating: 0,
                                     modifiedBuchholz: 0,
@@ -1439,7 +1439,7 @@ const PublicTournamentDisplay: React.FC = () => {
                                 }))}
                                 tournament={data?.tournament}
                                 selectedSection={sectionName}
-                                showTiebreakers={false} // Hide tiebreakers since they're not calculated
+                                showTiebreakers={true} // Show tiebreakers now that they're calculated
                                 showPrizes={true}
                               />
                             </div>

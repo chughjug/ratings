@@ -721,15 +721,52 @@ router.get('/:id/public', async (req, res) => {
       sortedStandings.push(...standingsBySection[section]);
     });
 
-    // Get prize information
+    // Calculate tiebreakers for standings
     try {
-      const prizes = await new Promise((resolve, reject) => {
+      const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+      const tiebreakCriteria = settings.tie_break_criteria || ['buchholz', 'sonnebornBerger', 'performanceRating'];
+      const { calculateTiebreakers } = require('../utils/tiebreakers');
+      const standingsWithTiebreakers = await calculateTiebreakers(sortedStandings, id, tiebreakCriteria);
+      
+      // Merge tiebreakers into sortedStandings
+      standingsWithTiebreakers.forEach(standing => {
+        const index = sortedStandings.findIndex(p => p.id === standing.id);
+        if (index !== -1) {
+          sortedStandings[index].tiebreakers = standing.tiebreakers || {
+            buchholz: 0,
+            sonnebornBerger: 0,
+            performanceRating: 0,
+            modifiedBuchholz: 0,
+            cumulative: 0
+          };
+        }
+      });
+    } catch (error) {
+      console.warn('Could not calculate tiebreakers for public view:', error);
+      // Add default tiebreakers if calculation fails
+      sortedStandings.forEach(player => {
+        if (!player.tiebreakers) {
+          player.tiebreakers = {
+            buchholz: 0,
+            sonnebornBerger: 0,
+            performanceRating: 0,
+            modifiedBuchholz: 0,
+            cumulative: 0
+          };
+        }
+      });
+    }
+
+    // Get prize information
+    let prizes = [];
+    try {
+      prizes = await new Promise((resolve, reject) => {
         db.all(
           'SELECT * FROM prizes WHERE tournament_id = ? ORDER BY position ASC, type ASC',
           [id],
           (err, rows) => {
             if (err) reject(err);
-            else resolve(rows);
+            else resolve(rows || []);
           }
         );
       });
@@ -788,7 +825,12 @@ router.get('/:id/public', async (req, res) => {
         pairings,
         standings: sortedStandings,
         currentRound,
-        activePlayersList
+        activePlayersList,
+        prizes: prizes.map(prize => ({
+          ...prize,
+          amount: prize.amount ? parseFloat(prize.amount) : undefined,
+          conditions: prize.conditions ? JSON.parse(prize.conditions) : []
+        }))
       }
     });
 

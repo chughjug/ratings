@@ -105,10 +105,18 @@ class AdvancedSwissPairingSystem {
       id: p.id, 
       name: p.name, 
       bye_rounds: p.bye_rounds, 
-      intentional_bye_rounds: p.intentional_bye_rounds 
+      intentional_bye_rounds: p.intentional_bye_rounds,
+      status: p.status
     })));
     
     for (const player of this.players) {
+      // Check if player is inactive - treat as bye
+      if (player.status === 'inactive') {
+        playersWithByes.add(player.id);
+        console.log(`[AdvancedSwissPairingSystem] Player ${player.name} is inactive - treating as bye`);
+        continue;
+      }
+      
       // Check both bye_rounds and intentional_bye_rounds columns
       const byeRounds = player.bye_rounds || player.intentional_bye_rounds;
       
@@ -174,6 +182,13 @@ class AdvancedSwissPairingSystem {
     // Create bye pairings for players with intentional byes
     const byePairings = Array.from(playersWithByes).map((playerId, index) => {
       const player = this.players.find(p => p.id === playerId);
+      let byeType = 'bye'; // Default to intentional bye (0.5 points)
+      
+      // Determine bye type based on player status
+      if (player.status === 'inactive') {
+        byeType = 'inactive'; // Inactive players get 0.5 points
+      }
+      
       return {
         white_player_id: player.id,
         black_player_id: null,
@@ -187,7 +202,7 @@ class AdvancedSwissPairingSystem {
         tournament_id: this.tournamentId,
         result: null,
         is_bye: true,
-        bye_type: 'bye' // Intentional bye gets 1/2 point
+        bye_type: byeType
       };
     });
     

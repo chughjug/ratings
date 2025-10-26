@@ -49,6 +49,13 @@ async function calculateAndDistributePrizes(tournamentId, db) {
         else resolve();
       });
     });
+    
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM prizes WHERE tournament_id = ?', [tournamentId], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
 
     const distributions = [];
 
@@ -75,35 +82,94 @@ async function calculateAndDistributePrizes(tournamentId, db) {
 
     // Save distributions to database
     if (distributions.length > 0) {
-      const stmt = db.prepare(`
-        INSERT INTO prize_distributions (id, tournament_id, player_id, prize_name, prize_type, amount, position, section, tie_group)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
       const { v4: uuidv4 } = require('uuid');
       
+      // First, create prize definitions in the prizes table
+      const prizeStmt = db.prepare(`
+        INSERT INTO prizes (id, tournament_id, name, type, position, rating_category, section, amount, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      // Then create distributions in the prize_distributions table
+      const distStmt = db.prepare(`
+        INSERT INTO prize_distributions (id, tournament_id, player_id, prize_id, amount, position, rating_category, section, tie_group)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      // Group distributions by prize to avoid duplicates
+      const prizeMap = new Map();
+      
       distributions.forEach(dist => {
-        const id = uuidv4();
-        stmt.run([
-          id,
-          tournamentId,
-          dist.player_id,
-          dist.prize_name,
-          dist.prize_type,
-          dist.amount,
-          dist.position,
-          dist.section,
-          dist.tie_group
-        ]);
+        const prizeKey = `${dist.prize_name}-${dist.prize_type}-${dist.section}-${dist.position || ''}-${dist.rating_category || ''}`;
+        if (!prizeMap.has(prizeKey)) {
+          const prizeId = uuidv4();
+          prizeMap.set(prizeKey, {
+            prizeId,
+            prize: {
+              id: prizeId,
+              tournament_id: tournamentId,
+              name: dist.prize_name,
+              type: dist.prize_type,
+              position: dist.position,
+              rating_category: dist.rating_category,
+              section: dist.section,
+              amount: dist.amount,
+              description: dist.prize_name
+            },
+            distributions: []
+          });
+        }
+        
+        prizeMap.get(prizeKey).distributions.push({
+          id: uuidv4(),
+          tournament_id: tournamentId,
+          player_id: dist.player_id,
+          prize_id: prizeMap.get(prizeKey).prizeId,
+          amount: dist.amount,
+          position: dist.position,
+          rating_category: dist.rating_category,
+          section: dist.section,
+          tie_group: dist.tie_group
+        });
       });
-
-      stmt.finalize((err) => {
-        if (err) {
-          console.error('Error saving prize distributions:', err);
-        } else {
-          console.log(`Successfully distributed ${distributions.length} prizes for tournament ${tournamentId}`);
+      
+      // Insert prizes and distributions
+      prizeMap.forEach(({ prize, distributions }) => {
+        try {
+          prizeStmt.run([
+            prize.id,
+            prize.tournament_id,
+            prize.name,
+            prize.type,
+            prize.position,
+            prize.rating_category,
+            prize.section,
+            prize.amount,
+            prize.description
+          ]);
+          
+          distributions.forEach(dist => {
+            distStmt.run([
+              dist.id,
+              dist.tournament_id,
+              dist.player_id,
+              dist.prize_id,
+              dist.amount,
+              dist.position,
+              dist.rating_category,
+              dist.section,
+              dist.tie_group
+            ]);
+          });
+        } catch (err) {
+          console.error('Error saving prize:', err);
         }
       });
+
+      prizeStmt.finalize();
+      distStmt.finalize();
+      
+      console.log(`Successfully distributed ${distributions.length} prizes for tournament ${tournamentId}`);
     }
 
     return distributions;
@@ -463,7 +529,13 @@ async function getTournamentStandings(tournamentId, tournament, db) {
   const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
   const tiebreakCriteria = settings.tie_break_criteria || ['buchholz', 'sonnebornBerger'];
   
-  const standingsWithTiebreakers = await calculateTournamentTiebreakers(standings, tournamentId, tiebreakCriteria);
+  const tiebreakersData = await calculateTournamentTiebreakers(tournamentId, db);
+  
+  // Add tiebreakers to standings
+  const standingsWithTiebreakers = standings.map(player => ({
+    ...player,
+    tiebreakers: tiebreakersData[player.id] || {}
+  }));
 
   return standingsWithTiebreakers;
 }
@@ -474,9 +546,10 @@ async function getTournamentStandings(tournamentId, tournament, db) {
 async function getPrizeDistributions(tournamentId, db) {
   return new Promise((resolve, reject) => {
     db.all(
-      `SELECT pd.*, p.name as player_name
+      `SELECT pd.*, p.name as player_name, pr.name as prize_name, pr.type as prize_type
        FROM prize_distributions pd
        JOIN players p ON pd.player_id = p.id
+       JOIN prizes pr ON pd.prize_id = pr.id
        WHERE pd.tournament_id = ?
        ORDER BY pd.position ASC, pd.prize_type ASC`,
       [tournamentId],

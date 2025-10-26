@@ -1979,7 +1979,8 @@ const TournamentDetail: React.FC = () => {
                 </div>
               )}
 
-              {/* New Feature Tools Section */}
+              {/* New Feature Tools Section - Hidden */}
+              {false && (
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 mb-6 border border-purple-200">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div>
@@ -2018,6 +2019,7 @@ const TournamentDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
+              )}
               
               {state.players.length === 0 ? (
                 <div className="text-center py-8">
@@ -2426,6 +2428,8 @@ const TournamentDetail: React.FC = () => {
                       ))}
                     </select>
                   </div>
+                  {/* Generate Round buttons - Hidden */}
+                  {false && (
                   <div className="flex items-center space-x-2">
                     {selectedSection && (
                       <button
@@ -2524,6 +2528,7 @@ const TournamentDetail: React.FC = () => {
                        </button>
                      )}
                   </div>
+                  )}
                 </div>
               </div>
 
