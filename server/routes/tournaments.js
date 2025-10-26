@@ -583,6 +583,23 @@ router.get('/public/organization/:orgSlug/:tournamentId', async (req, res) => {
       });
     });
 
+    // Get custom pages
+    let customPages = [];
+    try {
+      customPages = await new Promise((resolve, reject) => {
+        db.all(
+          'SELECT * FROM custom_pages WHERE tournament_id = ? AND is_active = 1 ORDER BY order_index, created_at',
+          [tournamentId],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+    } catch (error) {
+      console.warn('Could not fetch custom pages:', error);
+    }
+
     res.json({
       success: true,
       data: {
