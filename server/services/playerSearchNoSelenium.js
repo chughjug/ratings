@@ -221,23 +221,27 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
     
     // Launch browser with optimized settings
     // Note: puppeteer (not puppeteer-core) downloads its own Chromium
-    const chromePath = '/Users/aarushchugh/.cache/puppeteer/chrome/mac_arm-141.0.7390.122/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
+    // Don't specify executablePath - let Puppeteer use its bundled Chromium
+    
+    const puppeteerArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-images',
+      '--disable-plugins',
+      '--disable-extensions'
+    ];
+    
+    // Add Heroku-specific args if on Heroku
+    if (process.env.DYNO) {
+      puppeteerArgs.push('--single-process');
+      puppeteerArgs.push('--no-zygote');
+    }
     
     browser = await puppeteer.launch({
       headless: true,
-      executablePath: chromePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-images',
-        '--disable-plugins',
-        '--disable-extensions'
-      ].concat(process.env.DYNO ? [
-        '--single-process',
-        '--no-zygote'
-      ] : [])
+      args: puppeteerArgs
     });
     
     const page = await browser.newPage();
