@@ -4,7 +4,8 @@ import {
   Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
   Crown, Award, BarChart3, TrendingUp, Activity, Star, MapPin, 
-  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings
+  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings,
+  Image as ImageIcon, Upload
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
@@ -71,6 +72,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [playerSearch, setPlayerSearch] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [printView, setPrintView] = useState<'pairings' | 'standings'>('pairings');
 
   // Calculate player scores from all pairings
   const calculatePlayerScores = useCallback(() => {
@@ -266,6 +268,55 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     );
   };
 
+  // Helper function to get player team
+  const getPlayerTeam = (playerId: string) => {
+    const player = standings?.find((p: any) => p.id === playerId);
+    return player?.team || '';
+  };
+
+  // Helper function to get round result for standings display
+  const getRoundResult = (player: any, round: number, sectionPlayers?: any[]) => {
+    if (!sectionPlayers) return '-';
+    
+    // Look for pairings in this round with this player
+    const roundPairings = allRoundsData[round] || [];
+    const pairing = roundPairings.find((p: any) => 
+      p.white_player_id === player.id || p.black_player_id === player.id
+    );
+    
+    if (!pairing) return '-';
+    
+    // Get opponent
+    const isWhite = pairing.white_player_id === player.id;
+    const opponentId = isWhite ? pairing.black_player_id : pairing.white_player_id;
+    
+    // Find opponent's rank in current standings (sort by points descending)
+    const sortedPlayers = [...sectionPlayers].sort((a: any, b: any) => 
+      (b.total_points || 0) - (a.total_points || 0)
+    );
+    const opponentIdx = sortedPlayers.findIndex((p: any) => p.id === opponentId);
+    const opponentNum = opponentIdx !== undefined && opponentIdx !== -1 ? opponentIdx + 1 : '-';
+    
+    if (pairing.is_bye) {
+      return '-B-';
+    }
+    
+    if (!pairing.result || pairing.result === 'TBD') {
+      return `A${opponentNum}`;
+    }
+    
+    // Determine if player won, lost, or drew
+    if (pairing.result === '1-0' || pairing.result === '1-0F') {
+      return isWhite ? `W${opponentNum}` : `L${opponentNum}`;
+    } else if (pairing.result === '0-1' || pairing.result === '0-1F') {
+      return isWhite ? `L${opponentNum}` : `W${opponentNum}`;
+    } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
+      return `D${opponentNum}`;
+    }
+    
+    return 'TBD';
+  };
+
   // Get tournament statistics
   const getTournamentStats = () => {
     if (!data) return null;
@@ -375,112 +426,128 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     return acc;
   }, {});
 
+  // Get branding images from tournament config
+  const getBrandingImage = (type: 'header' | 'sidebar' | 'hero' | 'footer') => {
+    if (!tournament?.public_display_config) return null;
+    try {
+      const config = JSON.parse(tournament.public_display_config);
+      return config.images?.[type];
+    } catch (e) {
+      return null;
+    }
+  };
+
   return (
-    <div className={`min-h-screen bg-white ${isEmbedded ? 'embed-mode' : ''}`} 
+    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ${isEmbedded ? 'embed-mode' : ''}`} 
          style={isEmbedded ? { 
            minHeight: embedSettings?.minHeight || '400px',
            maxHeight: embedSettings?.maxHeight || 'none',
            overflow: 'auto'
          } : {}}>
-      {/* Simple Header with Logo Space */}
+      {/* Modern Header with Banner Image */}
       {!isEmbedded && (
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
-              {/* Company Logo Space */}
-              <div className="flex items-center space-x-4">
-                {organization?.logoUrl || tournament?.logo_url ? (
-                  <img 
-                    src={organization?.logoUrl || tournament?.logo_url} 
-                    alt={organization?.name || tournament?.name}
-                    className="h-12 w-auto"
-                    onError={(e) => {
-                      // Fallback to PairCraft logo if image fails to load
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
-                    }}
-                  />
-                ) : (
-                  <img 
-                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
-                    alt="PairCraft"
-                    className="h-12 w-auto"
-                  />
-                )}
-                <div className="text-lg font-semibold text-gray-900">
-                  {organization?.name || tournament?.name || 'Chess Tournament'}
+        <header className="relative bg-white shadow-lg">
+          {/* Banner Image Area */}
+          {getBrandingImage('header') && (
+            <div className="relative h-32 overflow-hidden">
+              <img 
+                src={getBrandingImage('header')} 
+                alt="Header Banner"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+            </div>
+          )}
+          
+          {/* Logo and Navigation */}
+          <div className="relative z-10 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between py-4">
+                {/* Logo */}
+                <div className="flex items-center space-x-4">
+                  {organization?.logoUrl || tournament?.logo_url ? (
+                    <img 
+                      src={organization?.logoUrl || tournament?.logo_url} 
+                      alt={organization?.name || tournament?.name}
+                      className="h-14 w-auto drop-shadow-md"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
+                      alt="PairCraft"
+                      className="h-14 w-auto drop-shadow-md"
+                    />
+                  )}
+                  <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    {organization?.name || tournament?.name || 'Chess Tournament'}
+                  </div>
                 </div>
-              </div>
 
-              {/* Navigation */}
-              <nav className="flex space-x-6">
-                <button
-                  onClick={() => setActiveTab('overview')}
-                  className={`text-sm font-medium ${activeTab === 'overview' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Info
-                </button>
-                <button
-                  onClick={() => setActiveTab('preregistered')}
-                  className={`text-sm font-medium ${activeTab === 'preregistered' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Entries
-                </button>
-                <button
-                  onClick={() => setActiveTab('pairings')}
-                  className={`text-sm font-medium ${activeTab === 'pairings' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Pairings
-                </button>
-                <button
-                  onClick={() => setActiveTab('standings')}
-                  className={`text-sm font-medium ${activeTab === 'standings' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Standings
-                </button>
-                <button
-                  onClick={() => setActiveTab('standings')}
-                  className={`text-sm font-medium ${activeTab === 'standings' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  LIVE
-                </button>
-                {/* Custom Pages */}
-                {customPages && customPages.length > 0 && customPages.map((page) => (
-                  <button
-                    key={page.id}
-                    onClick={() => setActiveTab(page.slug)}
-                    className={`text-sm font-medium ${activeTab === page.slug ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                  >
-                    {page.icon && <span>{page.icon}</span>}
-                    <span>{page.title}</span>
-                  </button>
-                ))}
-              </nav>
+                {/* Navigation */}
+                <nav className="flex space-x-1">
+                  {[
+                    { key: 'overview', label: 'INFO' },
+                    { key: 'preregistered', label: 'ENTRIES' },
+                    { key: 'pairings', label: 'PAIRINGS' },
+                    { key: 'standings', label: 'STANDINGS' },
+                    { key: 'standings', label: 'LIVE' },
+                    { key: 'print', label: 'PRINT' },
+                  ].map((item) => (
+                    <button
+                      key={item.key}
+                      onClick={() => setActiveTab(item.key)}
+                      className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide rounded-lg transition-all duration-200 ${
+                        activeTab === item.key 
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
             </div>
           </div>
-        </div>
+        </header>
       )}
 
-      {/* Tournament Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{tournament.name}</h1>
-                <div className="flex items-center space-x-6 text-sm text-gray-600 mt-2">
-                  <span><strong>Date:</strong> {tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBD'}</span>
-                  {tournament.location && <span><strong>Location:</strong> {tournament.location}</span>}
+      {/* Modern Hero Section */}
+      <div className="relative bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white overflow-hidden">
+        {getBrandingImage('hero') && (
+          <div className="absolute inset-0 opacity-20">
+            <img 
+              src={getBrandingImage('hero')} 
+              alt="Hero Background"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-2 drop-shadow-lg">{tournament.name}</h1>
+              <div className="flex items-center space-x-6 text-lg">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5" />
+                  <span>{tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBD'}</span>
                 </div>
+                {tournament.location && (
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-5 w-5" />
+                    <span>{tournament.location}</span>
+                  </div>
+                )}
               </div>
-              
-              <div className="text-right">
-                <div className="text-sm text-gray-600">
-                  <strong>Total players:</strong> {stats?.totalPlayers || 0}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <strong>Round:</strong> {currentRound} of {tournament.rounds}
-                </div>
-              </div>
+            </div>
+            
+            <div className="text-right space-y-2">
+              <div className="text-sm opacity-90">Total Players</div>
+              <div className="text-4xl font-bold drop-shadow-lg">{stats?.totalPlayers || 0}</div>
+              <div className="text-sm opacity-90">Round {currentRound} of {tournament.rounds}</div>
             </div>
           </div>
         </div>
@@ -562,19 +629,22 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content with Modern Cards */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Section Header */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {activeTab === 'overview' && 'Tournament Information'}
-            {activeTab === 'preregistered' && 'Entries'}
-            {activeTab === 'pairings' && 'Pairings'}
-            {activeTab === 'standings' && 'Standings'}
-            {activeTab === 'teams' && 'Teams'}
-            {activeTab === 'prizes' && 'Prizes'}
-            {activeTab === 'analytics' && 'Analytics'}
-          </h2>
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+              {activeTab === 'overview' && 'Tournament Information'}
+              {activeTab === 'preregistered' && 'Tournament Entries'}
+              {activeTab === 'pairings' && 'Round Pairings'}
+              {activeTab === 'standings' && 'Current Standings'}
+              {activeTab === 'print' && 'Print View'}
+              {activeTab === 'teams' && 'Team Standings'}
+              {activeTab === 'prizes' && 'Prize Information'}
+              {activeTab === 'analytics' && 'Tournament Analytics'}
+            </h2>
+          </div>
           
           {activeTab === 'preregistered' && (
             <p className="text-sm text-gray-600 mt-1">
@@ -607,6 +677,203 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
 
         {/* Tab Content */}
         <div className="animate-fade-in">
+          {activeTab === 'print' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6 no-print">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setPrintView('pairings')}
+                    className={`px-4 py-2 border rounded ${
+                      printView === 'pairings' 
+                        ? 'bg-blue-600 text-white border-blue-600' 
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Pairings
+                  </button>
+                  <button
+                    onClick={() => setPrintView('standings')}
+                    className={`px-4 py-2 border rounded ${
+                      printView === 'standings' 
+                        ? 'bg-blue-600 text-white border-blue-600' 
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Standings
+                  </button>
+                </div>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-2"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Print</span>
+                </button>
+              </div>
+
+              {/* Print-friendly Pairings View */}
+              {printView === 'pairings' && (
+                <div className="print-view bg-white p-8">
+                  <div className="mb-6">
+                    <h1 className="text-xl font-bold text-center mb-2">{tournament.name}</h1>
+                    <h2 className="text-lg font-semibold text-center text-gray-700 mb-4">
+                      Round {currentRound} Pairings
+                    </h2>
+                  </div>
+
+                  {Object.keys(pairingsBySection).sort().map((sectionName) => {
+                    const sectionPairings = pairingsBySection[sectionName]
+                      .sort((a: any, b: any) => (a.board || 0) - (b.board || 0));
+                    
+                    // Create a flat list of all players with their color info
+                    const allPlayers: any[] = [];
+                    sectionPairings.forEach((pairing: any, idx: number) => {
+                      if (pairing.white_player?.name && pairing.white_player.name !== 'TBD') {
+                        allPlayers.push({
+                          name: pairing.white_player.name,
+                          playerId: pairing.white_player_id,
+                          color: 'W',
+                          board: pairing.board || idx + 1,
+                          opponentName: pairing.black_player?.name,
+                          opponentId: pairing.black_player_id,
+                          opponentRating: pairing.black_player?.rating,
+                          opponentPoints: pairing.black_player?.points,
+                          pairing: pairing
+                        });
+                      }
+                      if (pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye) {
+                        allPlayers.push({
+                          name: pairing.black_player.name,
+                          playerId: pairing.black_player_id,
+                          color: 'B',
+                          board: pairing.board || idx + 1,
+                          opponentName: pairing.white_player?.name,
+                          opponentId: pairing.white_player_id,
+                          opponentRating: pairing.white_player?.rating,
+                          opponentPoints: pairing.white_player?.points,
+                          pairing: pairing
+                        });
+                      }
+                    });
+
+                    return (
+                      <div key={sectionName} className="mb-8">
+                        <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                          {sectionName} Section
+                        </h3>
+                        <table className="w-full border-collapse text-sm">
+                          <thead>
+                            <tr className="border-b-2 border-gray-800">
+                              <th className="text-left py-2 px-4 font-semibold">Player</th>
+                              <th className="text-center py-2 px-4 font-semibold">Color/Board</th>
+                              <th className="text-left py-2 px-4 font-semibold">Opponent</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allPlayers.map((playerRow, idx) => (
+                              <tr key={idx} className="border-b border-gray-300">
+                                <td className="py-2 px-4">
+                                  <div className="font-semibold">
+                                    {playerRow.name}
+                                    {getPlayerTeam(playerRow.playerId) && 
+                                      ` (${getPlayerTeam(playerRow.playerId)})`}
+                                  </div>
+                                </td>
+                                <td className="py-2 px-4 text-center font-semibold">
+                                  {playerRow.color} {playerRow.board}
+                                </td>
+                                <td className="py-2 px-4">
+                                  {playerRow.opponentName && playerRow.opponentName !== 'TBD' ? (
+                                    <div className="text-xs">
+                                      {playerRow.opponentName}
+                                      {getPlayerTeam(playerRow.opponentId) && 
+                                        `, ${getPlayerTeam(playerRow.opponentId)}`}, 
+                                      ({playerRow.opponentPoints || 0}.0,
+                                      {getPlayerTeam(playerRow.opponentId) || 'N/A'}, 
+                                      {playerRow.opponentRating || 'nnnn'})
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-500 italic">Please Wait</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Print-friendly Standings View */}
+              {printView === 'standings' && (
+                <div className="print-view bg-white p-8">
+                  <div className="mb-6">
+                    <h1 className="text-xl font-bold text-center mb-2">{tournament.name}</h1>
+                    <h2 className="text-lg font-semibold text-center text-gray-700 mb-4">
+                      Tournament Standings
+                    </h2>
+                  </div>
+
+                  {(() => {
+                    const sections: { [key: string]: any[] } = {};
+                    standings.forEach((player: any) => {
+                      const section = player.section || 'Open';
+                      if (!sections[section]) sections[section] = [];
+                      sections[section].push(player);
+                    });
+
+                    return Object.keys(sections).sort().map((sectionName) => {
+                      const sectionPlayers = sections[sectionName]
+                        .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
+
+                      return (
+                        <div key={sectionName} className="mb-8">
+                          <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                            {sectionName} Section ({sectionPlayers.length} players)
+                          </h3>
+                          <table className="w-full border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-gray-800 font-bold">
+                                <th className="text-left py-2 px-2">No.</th>
+                                <th className="text-left py-2 px-2">Name</th>
+                                <th className="text-left py-2 px-2">Team</th>
+                                <th className="text-left py-2 px-2">Rate</th>
+                                <th className="text-left py-2 px-2">Pts</th>
+                                <th className="text-left py-2 px-2">Ty</th>
+                                {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                  <th key={round} className="text-center py-2 px-2">Rnd{round}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sectionPlayers.map((player: any, idx: number) => (
+                                <tr key={player.id} className="border-b border-gray-300">
+                                  <td className="py-2 px-2">{idx + 1}.</td>
+                                  <td className="py-2 px-2 font-semibold">{player.name}</td>
+                                  <td className="py-2 px-2">{getPlayerTeam(player.id) || '-'}</td>
+                                  <td className="py-2 px-2">{player.rating || '-'}</td>
+                                  <td className="py-2 px-2 font-bold">{player.total_points || 0}</td>
+                                  <td className="py-2 px-2">-</td>
+                                  {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                    <td key={round} className="text-center py-2 px-2">
+                                      {getRoundResult(player, round, sectionPlayers)}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'preregistered' && (
             <div className="space-y-6">
               {/* Entries Table */}
@@ -1059,6 +1326,27 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           )}
             </div>
           </div>
+
+      {/* Modern Footer with Optional Banner */}
+      {!isEmbedded && getBrandingImage('footer') && (
+        <footer className="relative mt-12">
+          <div className="relative h-48 overflow-hidden">
+            <img 
+              src={getBrandingImage('footer')} 
+              alt="Footer Banner"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+            <div className="absolute bottom-0 left-0 right-0 pb-6 px-4">
+              <div className="max-w-7xl mx-auto text-white text-center">
+                <p className="text-sm opacity-90">
+                  © {new Date().getFullYear()} {organization?.name || tournament?.name || 'Chess Tournament'}. All rights reserved.
+                </p>
+              </div>
+            </div>
+          </div>
+        </footer>
+      )}
 
     </div>
   );

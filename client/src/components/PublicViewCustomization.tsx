@@ -51,6 +51,12 @@ const PublicViewCustomization: React.FC<PublicViewCustomizationProps> = ({ tourn
       backgroundColor: '#ffffff',
       textColor: '#1f2937',
       accentColor: '#f59e0b',
+    },
+    images: {
+      header: '',
+      hero: '',
+      footer: '',
+      sidebar: ''
     }
   });
 
@@ -333,6 +339,47 @@ const PublicViewCustomization: React.FC<PublicViewCustomizationProps> = ({ tourn
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Image className="h-5 w-5 mr-2 text-blue-600" />
+                  Branding Images
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Upload images to customize your tournament's appearance. Recommended sizes: Header (1200x300px), Hero (1920x600px), Footer (1200x400px)
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: 'header', label: 'Header Banner', description: 'Shown at the top of the page' },
+                    { key: 'hero', label: 'Hero Background', description: 'Background for tournament title section' },
+                    { key: 'footer', label: 'Footer Banner', description: 'Shown at the bottom of the page' },
+                    { key: 'sidebar', label: 'Sidebar Image', description: 'Optional sidebar branding' },
+                  ].map(image => (
+                    <div key={image.key}>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {image.label}
+                      </label>
+                      <p className="text-xs text-gray-500 mb-2">{image.description}</p>
+                      <input
+                        type="text"
+                        value={overlayConfig.images[image.key as keyof typeof overlayConfig.images]}
+                        onChange={(e) => handleOverlayChange('images', { ...overlayConfig.images, [image.key]: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      {overlayConfig.images[image.key as keyof typeof overlayConfig.images] && (
+                        <div className="mt-2">
+                          <img 
+                            src={overlayConfig.images[image.key as keyof typeof overlayConfig.images]} 
+                            alt={image.label}
+                            className="w-full h-32 object-cover rounded-md border border-gray-300"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 

@@ -456,12 +456,70 @@
   .header-brand,
   .footer-brand,
   .btn-brand,
-  .social-brand {
-    display: none;
+  .social-brand,
+  .no-print {
+    display: none !important;
   }
   
   .card-brand {
     box-shadow: none;
     border: 1px solid #000;
+  }
+
+  /* Print view specific styles */
+  .print-view {
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+  }
+
+  /* Hide navigation and controls */
+  nav,
+  button,
+  .bg-gray-50,
+  .animate-fade-in > div:first-child {
+    display: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  /* Table styles for print */
+  .print-view table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+
+  .print-view th,
+  .print-view td {
+    border: 1px solid #000;
+    padding: 4px 8px;
+    text-align: left;
+  }
+
+  .print-view th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-view h1,
+  .print-view h2,
+  .print-view h3 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-view .mb-8 {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure text is black */
+  .print-view * {
+    color: #000 !important;
   }
 }

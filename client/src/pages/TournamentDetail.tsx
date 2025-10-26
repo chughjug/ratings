@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -47,7 +47,8 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'settings'>('settings');
+  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'settings' | 'print'>('settings');
+  const [printViewTab, setPrintViewTab] = useState<'pairings' | 'standings'>('pairings');
   const [currentRound, setCurrentRound] = useState(1);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [sectionRounds, setSectionRounds] = useState<{ [section: string]: number }>({});
@@ -104,7 +105,7 @@ const TournamentDetail: React.FC = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<{id: string, name: string} | null>(null);
   const [playerToEdit, setPlayerToEdit] = useState<any>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
-  const [printView, setPrintView] = useState<'pairings' | 'standings' | 'report' | 'team-standings' | null>(null);
+  // printView is already declared above as printViewTab
   const [displayOptions, setDisplayOptions] = useState({
     showRatings: true,
     showUscfIds: false,
@@ -305,6 +306,51 @@ const TournamentDetail: React.FC = () => {
     });
     
     return warnings;
+  };
+
+  // Helper function to get round result for print display
+  const getRoundResultForPrint = (player: any, round: number, sectionPlayers: any[]) => {
+    if (!state.pairings || state.pairings.length === 0) return '-';
+    
+    // Filter pairings for the selected section and round
+    const filteredPairings = state.pairings.filter((p: any) => 
+      p.section === selectedSection && p.round === round
+    );
+    
+    const pairing = filteredPairings.find((p: any) => 
+      (p.white_player_id === player.id || p.black_player_id === player.id)
+    );
+    
+    if (!pairing) return '-';
+    
+    const isWhite = pairing.white_player_id === player.id;
+    const opponentId = isWhite ? pairing.black_player_id : pairing.white_player_id;
+    
+    // Find opponent's rank in current standings (sort by points descending)
+    const sortedPlayers = [...sectionPlayers].sort((a: any, b: any) => 
+      (b.total_points || 0) - (a.total_points || 0)
+    );
+    const opponentIdx = sortedPlayers.findIndex((p: any) => p.id === opponentId);
+    const opponentNum = opponentIdx !== undefined && opponentIdx !== -1 ? opponentIdx + 1 : '-';
+    
+    if (pairing.is_bye) {
+      return '-B-';
+    }
+    
+    if (!pairing.result || pairing.result === 'TBD') {
+      return `A${opponentNum}`;
+    }
+    
+    // Determine if player won, lost, or drew
+    if (pairing.result === '1-0' || pairing.result === '1-0F') {
+      return isWhite ? `W${opponentNum}` : `L${opponentNum}`;
+    } else if (pairing.result === '0-1' || pairing.result === '0-1F') {
+      return isWhite ? `L${opponentNum}` : `W${opponentNum}`;
+    } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
+      return `D${opponentNum}`;
+    }
+    
+    return 'TBD';
   };
 
   const fetchTournament = useCallback(async () => {
@@ -1825,6 +1871,18 @@ const TournamentDetail: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('print')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'print'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Printer className="h-4 w-4" />
+              <span>Print</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('prizes')}
               className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
                 activeTab === 'prizes'
@@ -2709,7 +2767,7 @@ const TournamentDetail: React.FC = () => {
                     <span>Tiebreakers</span>
                   </button>
                   <button
-                    onClick={() => setPrintView('standings')}
+                    onClick={() => setPrintViewTab('standings')}
                     className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                   >
                     <Printer className="h-4 w-4" />
@@ -3163,6 +3221,196 @@ const TournamentDetail: React.FC = () => {
           {activeTab === 'registrations' && (
             <div>
               <RegistrationManagement tournamentId={id || ''} />
+            </div>
+          )}
+
+          {activeTab === 'print' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6 no-print">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setPrintViewTab('pairings')}
+                    className={`px-4 py-2 border rounded ${
+                      printViewTab === 'pairings' 
+                        ? 'bg-blue-600 text-white border-blue-600' 
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Pairings
+                  </button>
+                  <button
+                    onClick={() => setPrintViewTab('standings')}
+                    className={`px-4 py-2 border rounded ${
+                      printViewTab === 'standings' 
+                        ? 'bg-blue-600 text-white border-blue-600' 
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Standings
+                  </button>
+                </div>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-2"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Print</span>
+                </button>
+              </div>
+
+              {/* Print-friendly Pairings View */}
+              {printViewTab === 'pairings' && tournament && (
+                <div className="print-view bg-white p-8">
+                  <div className="mb-6">
+                    <h1 className="text-xl font-bold text-center mb-2">{tournament.name}</h1>
+                    <h2 className="text-lg font-semibold text-center text-gray-700 mb-4">
+                      Round {currentRound} Pairings
+                    </h2>
+                  </div>
+
+                  {selectedSection && state.pairings.filter(p => p.section === selectedSection && p.round === currentRound).length > 0 && (
+                    <div className="mb-8">
+                      <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                        {selectedSection} Section
+                      </h3>
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b-2 border-gray-800">
+                            <th className="text-left py-2 px-4 font-semibold">Player</th>
+                            <th className="text-center py-2 px-4 font-semibold">Color/Board</th>
+                            <th className="text-left py-2 px-4 font-semibold">Opponent</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {state.pairings
+                            .filter(p => p.section === selectedSection && p.round === currentRound)
+                            .map((pairing: any, idx: number) => {
+                            const whitePlayer = state.players.find(p => p.id === pairing.white_player_id);
+                            const blackPlayer = state.players.find(p => p.id === pairing.black_player_id);
+                            const whiteTeam = whitePlayer?.team || '';
+                            const blackTeam = blackPlayer?.team || '';
+                            return (
+                              <React.Fragment key={pairing.id || idx}>
+                                <tr className="border-b border-gray-300">
+                                  <td className="py-2 px-4">
+                                    <div className="font-semibold">
+                                      {pairing.white_player?.name || 'TBD'}
+                                      {whiteTeam && ` (${whiteTeam})`}
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-4 text-center font-semibold">
+                                    W {pairing.board || idx + 1}
+                                  </td>
+                                  <td className="py-2 px-4">
+                                    {pairing.black_player?.name && pairing.black_player.name !== 'TBD' ? (
+                                      <div className="text-xs">
+                                        {pairing.black_player.name}
+                                        {blackTeam && ` (${blackTeam})`}, ({pairing.black_player.points || 0}.0, {blackTeam || 'N/A'}, {pairing.black_player.rating || 'nnnn'})
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-500 italic">Please Wait</span>
+                                    )}
+                                  </td>
+                                </tr>
+                                {pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye && (
+                                  <tr className="border-b border-gray-300">
+                                    <td className="py-2 px-4">
+                                      <div className="font-semibold">
+                                        {pairing.black_player.name}
+                                        {blackTeam && ` (${blackTeam})`}
+                                      </div>
+                                    </td>
+                                    <td className="py-2 px-4 text-center font-semibold">
+                                      B {pairing.board || idx + 1}
+                                    </td>
+                                    <td className="py-2 px-4">
+                                      <div className="text-xs">
+                                        {pairing.white_player.name}
+                                        {whiteTeam && ` (${whiteTeam})`}, ({pairing.white_player.points || 0}.0, {whiteTeam || 'N/A'}, {pairing.white_player.rating || 'nnnn'})
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {!selectedSection && (
+                    <div className="text-center py-12">
+                      <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Section Selected</h3>
+                      <p className="text-gray-600">Select a section from the dropdown above to view pairings.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Print-friendly Standings View */}
+              {printViewTab === 'standings' && tournament && (
+                <div className="print-view bg-white p-8">
+                  <div className="mb-6">
+                    <h1 className="text-xl font-bold text-center mb-2">{tournament.name}</h1>
+                    <h2 className="text-lg font-semibold text-center text-gray-700 mb-4">
+                      Tournament Standings
+                    </h2>
+                  </div>
+
+                  {selectedSection && state.standings.filter((s: any) => s.section === selectedSection).length > 0 && (
+                    <div className="mb-8">
+                      <h3 className="font-semibold text-lg mb-4 uppercase border-b-2 border-gray-300 pb-2">
+                        {selectedSection} Section ({state.standings.filter((s: any) => s.section === selectedSection).length} players)
+                      </h3>
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-gray-800 font-bold">
+                            <th className="text-left py-2 px-2">No.</th>
+                            <th className="text-left py-2 px-2">Name</th>
+                            <th className="text-left py-2 px-2">Team</th>
+                            <th className="text-left py-2 px-2">Rate</th>
+                            <th className="text-left py-2 px-2">Pts</th>
+                            <th className="text-left py-2 px-2">Ty</th>
+                            {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                              <th key={round} className="text-center py-2 px-2">Rnd{round}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {state.standings
+                            .filter((s: any) => s.section === selectedSection)
+                            .sort((a: any, b: any) => (b.total_points || 0) - (a.total_points || 0))
+                            .map((player: any, idx: number) => (
+                              <tr key={player.id} className="border-b border-gray-300">
+                                <td className="py-2 px-2">{idx + 1}.</td>
+                                <td className="py-2 px-2 font-semibold">{player.name}</td>
+                                <td className="py-2 px-2">{player.team || '-'}</td>
+                                <td className="py-2 px-2">{player.rating || '-'}</td>
+                                <td className="py-2 px-2 font-bold">{player.total_points || 0}</td>
+                                <td className="py-2 px-2">-</td>
+                                {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
+                                  <td key={round} className="text-center py-2 px-2">
+                                    {getRoundResultForPrint(player, round, state.standings.filter((s: any) => s.section === selectedSection))}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {!selectedSection && (
+                    <div className="text-center py-12">
+                      <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Section Selected</h3>
+                      <p className="text-gray-600">Select a section from the dropdown above to view standings.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           </div>
