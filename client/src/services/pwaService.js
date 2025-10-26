@@ -30,7 +30,8 @@ class PWAService {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               // New content is available, show update notification
-              this.showUpdateNotification();
+              // this.showUpdateNotification(); // Disabled - auto-updates silently in background
+              console.log('New version detected, will activate on next load');
             }
           });
         });

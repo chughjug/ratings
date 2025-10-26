@@ -1,15 +1,17 @@
 import React from 'react';
 
 const ChessGame: React.FC = () => {
-  // Use window.location to get the origin and point to the correct backend port
-  const backendUrl = process.env.NODE_ENV === 'production' 
-    ? window.location.origin 
-    : 'http://localhost:5000';
+  // In development, use the standalone 2PlayerChess server on port 3000
+  // In production (Heroku), the main server serves 2PlayerChess at /2playerchess
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const chessGameUrl = isDevelopment 
+    ? 'http://localhost:3000'
+    : '/2playerchess';
   
   return (
     <div className="fixed inset-0 bg-black" style={{ top: '64px', zIndex: 1000 }}>
       <iframe 
-        src={`${backendUrl}/2playerchess/`}
+        src={chessGameUrl}
         title="2PlayerChess"
         className="w-full h-full border-0"
         style={{ height: 'calc(100vh - 64px)', width: '100%' }}

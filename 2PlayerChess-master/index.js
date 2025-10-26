@@ -249,6 +249,7 @@ io.on('connection', (socket) => {
 
 
 
-http.listen(process.env.PORT | port, ()=>{
-    console.log(`Listening on port: ${port}`)
+http.listen(process.env.PORT || port, ()=>{
+    const actualPort = process.env.PORT || port
+    console.log(`Listening on port: ${actualPort}`)
 })

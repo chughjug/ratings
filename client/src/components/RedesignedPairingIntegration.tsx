@@ -196,7 +196,8 @@ const RedesignedPairingIntegration: React.FC<RedesignedPairingIntegrationProps> 
           ? Math.max(...allPairings.map((p: any) => p.round), 0) + 1
           : 1;
         const isComplete = currentRound > (tournamentData.rounds || 5);
-        const hasIncompleteResults = allPairings.some((p: any) => !p.result);
+        // BYE pairings are automatically complete, don't count them as incomplete
+        const hasIncompleteResults = allPairings.some((p: any) => !p.result && !p.is_bye);
         const canGenerateNext = !isComplete && allPairings.length > 0;
 
         // Calculate color balance status
@@ -205,10 +206,11 @@ const RedesignedPairingIntegration: React.FC<RedesignedPairingIntegrationProps> 
         const colorBalanceStatus = balancedPlayers / totalPlayers >= 0.8 ? 'balanced' : 
                                  balancedPlayers / totalPlayers >= 0.6 ? 'imbalanced' : 'critical';
 
-        // Calculate pairing quality
+        // Calculate pairing quality (exclude BYEs from incomplete count)
+        const incompleteCount = allPairings.filter(p => !p.result && !p.is_bye).length;
         const qualityScore = Math.min(100, Math.max(0, 
           (balancedPlayers / totalPlayers) * 100 - 
-          (allPairings.filter(p => !p.result).length / Math.max(allPairings.length, 1)) * 20
+          (incompleteCount / Math.max(allPairings.length, 1)) * 20
         ));
         const pairingQuality = qualityScore >= 90 ? 'excellent' :
                               qualityScore >= 80 ? 'good' :

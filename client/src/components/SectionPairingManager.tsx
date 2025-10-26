@@ -35,8 +35,9 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
 
   // Filter pairings by section to ensure only current section's pairings are shown
   const sectionPairings = pairings.filter(p => p.section === sectionName);
-  const incompletePairings = sectionPairings.filter(p => !p.result);
-  const completedPairings = sectionPairings.filter(p => p.result);
+  // BYE pairings don't need a result field - they're automatically complete
+  const incompletePairings = sectionPairings.filter(p => !p.result && !p.is_bye);
+  const completedPairings = sectionPairings.filter(p => p.result || p.is_bye);
 
   // Fetch available rounds for the section
   const fetchAvailableRounds = useCallback(async () => {
@@ -116,8 +117,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       return;
     }
 
-    // Find the first incomplete pairing
-    const incompletePairings = sectionPairings.filter(p => !p.result);
+    // Find the first incomplete pairing (BYEs are automatically complete)
+    const incompletePairings = sectionPairings.filter(p => !p.result && !p.is_bye);
     if (incompletePairings.length === 0) return;
 
     const targetPairing = selectedPairingRef.current 
@@ -242,8 +243,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
 
   // Complete current round
   const completeRound = async () => {
-    // Check if there are any incomplete pairings
-    const incompletePairings = sectionPairings.filter(p => !p.result);
+    // Check if there are any incomplete pairings (BYEs are automatically complete)
+    const incompletePairings = sectionPairings.filter(p => !p.result && !p.is_bye);
     if (incompletePairings.length > 0) {
       alert(`Cannot complete round: ${incompletePairings.length} game${incompletePairings.length !== 1 ? 's' : ''} still need${incompletePairings.length === 1 ? 's' : ''} results.`);
       return;
@@ -276,8 +277,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
 
   // Generate next round
   const generateNextRound = async () => {
-    // Check if there are any incomplete pairings
-    const incompletePairings = sectionPairings.filter(p => !p.result);
+    // Check if there are any incomplete pairings (BYEs are automatically complete)
+    const incompletePairings = sectionPairings.filter(p => !p.result && !p.is_bye);
     if (incompletePairings.length > 0) {
       alert(`Cannot generate next round: ${incompletePairings.length} game${incompletePairings.length !== 1 ? 's' : ''} still need${incompletePairings.length === 1 ? 's' : ''} results.`);
       return;

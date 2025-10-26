@@ -28,12 +28,19 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
   const [prizeFund, setPrizeFund] = useState<number>(0);
   const [availableSections, setAvailableSections] = useState<string[]>([]);
 
-  // Fetch sections from pairings when modal opens
+  // Fetch sections from standings when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchSectionsFromPairings();
       if (currentSettings) {
-        setSettings(currentSettings);
+        // Always filter sections against availableSections from API
+        const validSections = currentSettings.sections.filter(section => 
+          availableSections.length === 0 || availableSections.includes(section.name)
+        );
+        setSettings({
+          ...currentSettings,
+          sections: validSections
+        });
       } else {
         setSettings({
           enabled: false,
@@ -42,7 +49,7 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
         });
       }
     }
-  }, [isOpen, currentSettings]);
+  }, [isOpen, currentSettings, availableSections]);
 
   const fetchSectionsFromPairings = async () => {
     try {

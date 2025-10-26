@@ -39,8 +39,18 @@ async function calculateAndDistributePrizes(tournamentId, db) {
       return [];
     }
 
-    // Get standings with tiebreakers
-    const standings = await getTournamentStandings(tournamentId, tournament, db);
+    // Get standings using the same logic as the standings endpoint
+    const standings = await getStandingsForPrizes(tournamentId, db);
+
+    // Get unique sections from standings (this is the actual source of truth)
+    const actualSections = new Set();
+    standings.forEach(player => {
+      if (player.section) {
+        actualSections.add(player.section);
+      }
+    });
+    
+    console.log(`Sections found in standings: ${Array.from(actualSections).join(', ')}`);
 
     // Clear existing distributions
     await new Promise((resolve, reject) => {
@@ -58,15 +68,12 @@ async function calculateAndDistributePrizes(tournamentId, db) {
     });
 
     const distributions = [];
-
-    // Get sections from pairings (not from player.section)
-    const sectionsFromPairings = await getSectionsFromPairings(tournamentId, db);
     
     // Process each section's prizes
     for (const sectionConfig of prizeSettings.sections) {
-      // Check if this section exists in pairings
-      if (!sectionsFromPairings.has(sectionConfig.name)) {
-        console.log(`Section ${sectionConfig.name} not found in pairings, skipping...`);
+      // Check if this section exists in actual sections from standings
+      if (!actualSections.has(sectionConfig.name)) {
+        console.log(`Section ${sectionConfig.name} not found in standings, skipping...`);
         continue;
       }
       
@@ -515,6 +522,37 @@ async function getSectionsFromPairings(tournamentId, db) {
 }
 
 /**
+ * Get sections from players (fallback when no pairings exist)
+ */
+async function getSectionsFromPlayers(tournamentId, db) {
+  const sections = new Set();
+  
+  const players = await new Promise((resolve, reject) => {
+    db.all(
+      'SELECT DISTINCT section FROM players WHERE tournament_id = ? AND section IS NOT NULL AND status = "active"',
+      [tournamentId],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      }
+    );
+  });
+  
+  players.forEach(player => {
+    if (player.section) {
+      sections.add(player.section);
+    }
+  });
+  
+  // If no sections found, add 'Open' as default
+  if (sections.size === 0) {
+    sections.add('Open');
+  }
+  
+  return sections;
+}
+
+/**
  * Get tournament standings with tiebreakers
  */
 async function getTournamentStandings(tournamentId, tournament, db) {
@@ -782,6 +820,68 @@ function generateStandardPrizeStructure(tournament, playerCount, prizeFund = 0) 
   };
 }
 
+/**
+ * Get standings using the same logic as the standings endpoint
+ * This ensures sections are consistent between standings and prizes
+ */
+async function getStandingsForPrizes(tournamentId, db) {
+  try {
+    // Get tournament
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      throw new Error('Tournament not found');
+    }
+
+    // Get all players
+    const players = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT p.*, 
+         COALESCE(SUM(CASE WHEN r.result = '1-0' AND r.player_id = p.id THEN 1.0
+                           WHEN r.result = '0-1' AND r.opponent_id = p.id THEN 1.0
+                           WHEN r.result = '1/2-1/2' AND (r.player_id = p.id OR r.opponent_id = p.id) THEN 0.5
+                           WHEN r.result = '1-0F' AND r.player_id = p.id THEN 1.0
+                           WHEN r.result = '0-1F' AND r.opponent_id = p.id THEN 1.0
+                           WHEN r.result = '1/2-1/2F' AND (r.player_id = p.id OR r.opponent_id = p.id) THEN 0.5
+                           WHEN r.result = '0-1' AND r.player_id = p.id THEN 0.0
+                           WHEN r.result = '1-0' AND r.opponent_id = p.id THEN 0.0
+                           WHEN r.result = '0-1F' AND r.player_id = p.id THEN 0.0
+                           WHEN r.result = '1-0F' AND r.opponent_id = p.id THEN 0.0
+                           ELSE 0.0 END), 0) as total_points
+         FROM players p
+         LEFT JOIN results r ON p.id = r.player_id
+         WHERE p.tournament_id = ? AND p.status = 'active'
+         GROUP BY p.id
+         ORDER BY COALESCE(p.section, 'Open'), total_points DESC, p.rating DESC`,
+        [tournamentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    // Sections are determined by the player.section field
+    return players.map(player => ({
+      id: player.id,
+      name: player.name,
+      rating: player.rating,
+      section: player.section || 'Open',
+      total_points: player.total_points || 0,
+      uscf_id: player.uscf_id,
+      fide_id: player.fide_id
+    }));
+  } catch (error) {
+    console.error('Error getting standings for prizes:', error);
+    return [];
+  }
+}
+
 module.exports = {
   calculateAndDistributePrizes,
   getPrizeDistributions,
@@ -793,7 +893,9 @@ module.exports = {
   groupStandingsByScore,
   sortStandingsByTiebreakers,
   getTournamentStandings,
+  getStandingsForPrizes,
   getSectionsFromPairings,
+  getSectionsFromPlayers,
   isEligibleForRatingPrize,
   getPlayerPosition,
   generateStandardPrizeStructure

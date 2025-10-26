@@ -155,18 +155,17 @@ router.post('/', (req, res) => {
 
   const id = uuidv4();
   const settingsJson = JSON.stringify(settings || {});
-  const tournament_information = req.body.tournament_information || null;
 
   db.run(
     `INSERT INTO tournaments (id, organization_id, name, format, rounds, time_control, start_date, end_date, status, settings,
                              city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
                              chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-                             expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url, logo_url, tournament_information)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                             expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url, logo_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, organization_id || null, name, format, rounds, time_control, start_date, end_date, 'created', settingsJson,
      city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
      chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null, tournament_information || null],
+     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null],
     function(err) {
       if (err) {
         console.error('Error creating tournament:', err);
@@ -235,8 +234,7 @@ router.put('/:id', (req, res) => {
       allow_registration = existingTournament.allow_registration,
       is_public = existingTournament.is_public,
       public_url = existingTournament.public_url,
-      logo_url = existingTournament.logo_url,
-      tournament_information = existingTournament.tournament_information
+      logo_url = existingTournament.logo_url
     } = req.body;
 
     // Debug logging for tournament updates
@@ -283,6 +281,30 @@ router.put('/:id', (req, res) => {
 
     const settingsJson = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
 
+    // Convert boolean fields properly (handle 0, 1, true, false, null, undefined)
+    const fideRated = fide_rated === true || fide_rated === 1 || fide_rated === '1' ? 1 : 0;
+    const uscfRated = uscf_rated === true || uscf_rated === 1 || uscf_rated === '1' ? 1 : 0;
+    const allowReg = allow_registration === true || allow_registration === 1 || allow_registration === '1' ? 1 : 0;
+    const isPublic = is_public === true || is_public === 1 || is_public === '1' ? 1 : 0;
+
+    // Debug logging
+    console.log('Updating tournament with parameters:', {
+      id,
+      name,
+      format,
+      rounds: roundsNum,
+      settings: settingsJson ? (settingsJson.length > 100 ? settingsJson.substring(0, 100) + '...' : settingsJson) : 'empty'
+    });
+    
+    // Check all parameters
+    const params = [organization_id || null, name, format, roundsNum, time_control, start_date, end_date, status, settingsJson,
+     city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
+     chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
+     expected_players, website, fideRated, uscfRated, 
+     allowReg, isPublic, public_url || null, logo_url || null, id];
+    
+    console.log('Parameters count:', params.length);
+
     db.run(
       `UPDATE tournaments 
        SET organization_id = ?, name = ?, format = ?, rounds = ?, time_control = ?, 
@@ -290,19 +312,19 @@ router.put('/:id', (req, res) => {
            city = ?, state = ?, location = ?, chief_td_name = ?, chief_td_uscf_id = ?,
            chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
            chief_organizer_fide_id = ?, expected_players = ?, website = ?,
-           fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?, tournament_information = ?
+           fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?
        WHERE id = ?`,
-      [organization_id || null, name, format, roundsNum, time_control, start_date, end_date, status, settingsJson,
-       city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
-       chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-       expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, 
-       allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null, tournament_information || null, id],
+      params,
     function(err) {
       if (err) {
         console.error('Error updating tournament:', err);
+        console.error('SQL Error details:', err.message);
+        console.error('Error code:', err.code);
+        console.error('Tournament ID:', id);
         return res.status(500).json({ 
           success: false,
-          error: 'Failed to update tournament' 
+          error: 'Failed to update tournament',
+          details: err.message 
         });
       }
       if (this.changes === 0) {
@@ -974,13 +996,23 @@ async function getTournamentStandings(tournamentId, tournament) {
 
 // Prize management endpoints
 
-// Get sections from pairings
+// Get sections from standings (same logic as prizes)
 router.get('/:id/sections', async (req, res) => {
   const { id } = req.params;
   
   try {
-    const { getSectionsFromPairings } = require('../services/prizeService');
-    const sections = await getSectionsFromPairings(id, db);
+    const { getStandingsForPrizes } = require('../services/prizeService');
+    const standings = await getStandingsForPrizes(id, db);
+    
+    // Extract unique sections from standings
+    const sections = new Set();
+    standings.forEach(player => {
+      if (player.section) {
+        sections.add(player.section);
+      }
+    });
+    
+    console.log(`Sections from standings: ${Array.from(sections).join(', ')}`);
     
     res.json({
       success: true,

@@ -416,6 +416,22 @@ const TournamentDetail: React.FC = () => {
     }
   }, [id, dispatch, fetchTournament, fetchPlayers, fetchStandings]);
 
+  // Initialize prize settings from tournament data
+  useEffect(() => {
+    if (tournament && tournament.settings) {
+      try {
+        const settings = typeof tournament.settings === 'string' 
+          ? JSON.parse(tournament.settings) 
+          : tournament.settings;
+        
+        const prizeSettings = settings.prize_settings || { enabled: false, autoAssign: false, sections: [] };
+        setPrizeSettings(prizeSettings);
+      } catch (e) {
+        console.error('Error parsing tournament settings:', e);
+      }
+    }
+  }, [tournament]);
+
   // Set initial selected section when sections are available
   useEffect(() => {
     if (tournament && selectedSection === '') {
