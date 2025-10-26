@@ -88,7 +88,7 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
     }
 
     // Format opponent display - show opponent's position/rank number or TBD if not available
-    const colorSymbol = color === 'white' ? '(b)' : '(w)'; // Note: color is the player's color, so opponent is opposite
+    const colorSymbol = color === 'white' ? '(w)' : '(b)'; // Show the player's actual color
     
     // Show opponent's rank if available, otherwise show TBD
     const opponentDisplay = opponent_rank ? opponent_rank.toString() : 'TBD';

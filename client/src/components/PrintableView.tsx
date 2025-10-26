@@ -6,9 +6,10 @@ interface PrintableViewProps {
   pairings?: PairingData[];
   standings?: StandingData[];
   currentRound?: number;
-  viewType: 'pairings' | 'standings' | 'report';
+  viewType: 'pairings' | 'standings' | 'report' | 'team-standings';
   selectedSection?: string;
   separatePages?: boolean;
+  template?: 'classic' | 'modern' | 'elegant' | 'minimal';
 }
 
 const PrintableView: React.FC<PrintableViewProps> = ({
@@ -18,8 +19,15 @@ const PrintableView: React.FC<PrintableViewProps> = ({
   currentRound = 1,
   viewType,
   selectedSection = 'all',
-  separatePages = false
+  separatePages = false,
+  template = 'classic'
 }) => {
+  const getTemplateClasses = () => {
+    const baseClasses = `template-${template}`;
+    const viewClasses = `template-${viewType}`;
+    return `${baseClasses} ${viewClasses}`;
+  };
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return 'TBD';
     return new Date(dateStr).toLocaleDateString();
@@ -351,6 +359,109 @@ const PrintableView: React.FC<PrintableViewProps> = ({
     );
   };
 
+  const renderTeamStandings = () => {
+    const filteredStandings = filterBySection(standings);
+    
+    if (selectedSection !== 'all') {
+      // Single section view
+      const sectionStandings = filteredStandings;
+      sectionStandings.sort((a, b) => b.total_points - a.total_points);
+
+      return (
+        <div className="section">
+          <h3 className="section-header">{selectedSection} Section - Team Standings</h3>
+          
+          <div className="table-container">
+            <table className="team-standings-table">
+              <thead>
+                <tr>
+                  <th className="rank">Rank</th>
+                  <th>Team Name</th>
+                  <th className="team-score">Score</th>
+                  <th>Games</th>
+                  <th>W-L-D</th>
+                  <th className="tiebreak">Buchholz</th>
+                  <th className="tiebreak">S-B</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sectionStandings.map((standing, index) => (
+                  <tr key={standing.id} className="player-row">
+                    <td className="rank">{index + 1}</td>
+                    <td>
+                      <div className="team-name">{standing.name}</div>
+                      {standing.uscf_id && (
+                        <div className="team-members">Team ID: [{standing.uscf_id}]</div>
+                      )}
+                    </td>
+                    <td className="team-score">{standing.total_points}</td>
+                    <td>{standing.games_played}</td>
+                    <td>{standing.wins}-{standing.losses}-{standing.draws}</td>
+                    <td className="tiebreak">{standing.buchholz?.toFixed(1) || '-'}</td>
+                    <td className="tiebreak">{standing.sonneborn_berger?.toFixed(1) || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // All sections view
+    const standingsBySection = groupBySection(filteredStandings);
+    const sortedSections = Object.keys(standingsBySection).sort();
+
+    return (
+      <div className="section">
+        {sortedSections.map((sectionName, index) => {
+          const sectionStandings = standingsBySection[sectionName];
+          sectionStandings.sort((a, b) => b.total_points - a.total_points);
+
+          return (
+            <div key={sectionName} className={separatePages && index > 0 ? 'section-break' : 'no-page-break'}>
+              <h3 className="section-header">{sectionName} Section - Team Standings</h3>
+              
+              <div className="table-container">
+                <table className="team-standings-table">
+                  <thead>
+                    <tr>
+                      <th className="rank">Rank</th>
+                      <th>Team Name</th>
+                      <th className="team-score">Score</th>
+                      <th>Games</th>
+                      <th>W-L-D</th>
+                      <th className="tiebreak">Buchholz</th>
+                      <th className="tiebreak">S-B</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sectionStandings.map((standing, index) => (
+                      <tr key={standing.id} className="player-row">
+                        <td className="rank">{index + 1}</td>
+                        <td>
+                          <div className="team-name">{standing.name}</div>
+                          {standing.uscf_id && (
+                            <div className="team-members">Team ID: [{standing.uscf_id}]</div>
+                          )}
+                        </td>
+                        <td className="team-score">{standing.total_points}</td>
+                        <td>{standing.games_played}</td>
+                        <td>{standing.wins}-{standing.losses}-{standing.draws}</td>
+                        <td className="tiebreak">{standing.buchholz?.toFixed(1) || '-'}</td>
+                        <td className="tiebreak">{standing.sonneborn_berger?.toFixed(1) || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderTournamentReport = () => (
     <div className="section">
       {/* Tournament Summary */}
@@ -387,11 +498,12 @@ const PrintableView: React.FC<PrintableViewProps> = ({
   );
 
   return (
-    <div className="printable-content">
+    <div className={`printable-content ${getTemplateClasses()}`}>
       {renderTournamentHeader()}
       
       {viewType === 'pairings' && renderPairings()}
       {viewType === 'standings' && renderStandings()}
+      {viewType === 'team-standings' && renderTeamStandings()}
       {viewType === 'report' && renderTournamentReport()}
       
       <div className="print-footer">

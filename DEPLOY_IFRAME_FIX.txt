@@ -1,0 +1,37 @@
+╔══════════════════════════════════════════════════════════════╗
+║          HEROKU IFRAME EMBEDDING FIX - QUICK DEPLOY          ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ Changes are ready to deploy to Heroku!
+
+📋 WHAT WAS CHANGED:
+   • server/index.js - Added iframe embedding support
+   • Set Content-Security-Policy: frame-ancestors *
+   • Disabled X-Frame-Options header
+   
+🚀 DEPLOY NOW:
+
+   Option 1 - Automated:
+   $ ./deploy-iframe-fix.sh
+
+   Option 2 - Manual:
+   $ git add server/index.js
+   $ git commit -m "Enable iframe embedding"
+   $ git push heroku main
+
+🧪 TEST AFTER DEPLOYMENT:
+
+   1. Open test-simple-iframe.html in browser
+   2. Change iframe URL to your Heroku app
+   3. Reload page - should work!
+
+🔍 VERIFY HEADERS:
+
+   $ curl -I https://YOUR-APP.herokuapp.com | grep -i "csp"
+
+   Should see: Content-Security-Policy: ...frame-ancestors *;
+   Should NOT see: X-Frame-Options: DENY
+
+📚 Full guide: HEROKU_IFRAME_DEPLOYMENT.md
+
+═══════════════════════════════════════════════════════════════

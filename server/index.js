@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 5000;
 // Trust proxy for rate limiting behind reverse proxy (Heroku)
 app.set('trust proxy', 1);
 
-// Security middleware
+// Security middleware - Configure helmet to allow iframe embedding
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -36,11 +36,27 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000", "ws://localhost:*", "http:", "https:"],
       frameSrc: ["'self'", "https:"],
+      frameAncestors: ["*"], // Allow embedding in iframes from any origin
       fontSrc: ["'self'", "data:", "https:"],
     },
   },
   crossOriginEmbedderPolicy: false,
+  xFrameOptions: false, // Explicitly disable X-Frame-Options to allow iframe embedding
+  originAgentCluster: false,
 }));
+
+// Add custom header middleware AFTER helmet to ensure iframe headers are set correctly
+app.use((req, res, next) => {
+  // Explicitly set CSP frame-ancestors to allow all origins
+  const csp = res.getHeader('Content-Security-Policy');
+  if (csp && typeof csp === 'string') {
+    // Update existing CSP to ensure frame-ancestors is set to *
+    res.setHeader('Content-Security-Policy', csp.replace(/frame-ancestors[^;]*;?/, '') + 'frame-ancestors *;');
+  }
+  // Ensure X-Frame-Options is not set (it might interfere)
+  res.removeHeader('X-Frame-Options');
+  next();
+});
 
 // Rate limiting - more generous for development
 const limiter = rateLimit({

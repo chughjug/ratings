@@ -249,6 +249,13 @@ db.serialize(() => {
     // Ignore error if column already exists
   });
 
+  // Add is_bye column to pairings table if it doesn't exist (for existing databases)
+  db.run(`
+    ALTER TABLE pairings ADD COLUMN is_bye BOOLEAN DEFAULT 0
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
   // Results table
   db.run(`
     CREATE TABLE IF NOT EXISTS results (

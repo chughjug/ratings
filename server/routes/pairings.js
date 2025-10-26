@@ -4,6 +4,7 @@ const db = require('../database');
 const { EnhancedPairingSystem } = require('../utils/enhancedPairingSystem');
 const { calculateTournamentTiebreakers, getDefaultTiebreakerOrder } = require('../utils/tiebreakers');
 const QuadPairingSystem = require('../utils/quadPairingSystem');
+const TeamSwissPairingSystem = require('../utils/teamSwissPairingSystem');
 const axios = require('axios');
 const router = express.Router();
 
@@ -383,8 +384,8 @@ class PairingStorageService {
   insertPairings(tournamentId, round, pairings) {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
-        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section, is_bye, result)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const storedPairings = [];
@@ -401,7 +402,9 @@ class PairingStorageService {
           pairing.board || (index + 1),
           pairing.white_player_id,
           pairing.black_player_id,
-          pairing.section || 'Open'
+          pairing.section || 'Open',
+          pairing.is_bye || false,
+          pairing.result || null
         ];
 
         stmt.run(pairingData, function(err) {
@@ -419,7 +422,9 @@ class PairingStorageService {
               board: pairing.board || (index + 1),
               white_player_id: pairing.white_player_id,
               black_player_id: pairing.black_player_id,
-              section: pairing.section || 'Open'
+              section: pairing.section || 'Open',
+              is_bye: pairing.is_bye || false,
+              result: pairing.result || null
             });
           }
       });
@@ -2708,6 +2713,141 @@ router.get('/quad/:tournamentId/assignments', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message
+    });
+  }
+});
+
+/**
+ * Generate Team Swiss tournament pairings
+ * Teams are paired using Swiss system, board-by-board games
+ */
+router.post('/generate/team-swiss', async (req, res) => {
+  const { tournamentId, round } = req.body;
+
+  try {
+    if (!tournamentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'tournamentId is required'
+      });
+    }
+
+    if (!round) {
+      return res.status(400).json({
+        success: false,
+        error: 'round is required'
+      });
+    }
+
+    // Get tournament info
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    if (tournament.format !== 'team-swiss') {
+      return res.status(400).json({
+        success: false,
+        error: 'This endpoint is only for team-swiss format tournaments'
+      });
+    }
+
+    console.log(`🎯 Starting team Swiss pairing generation for tournament ${tournamentId}, round ${round}`);
+
+    // Generate team pairings using TeamSwissPairingSystem
+    const result = await TeamSwissPairingSystem.generateTournamentTeamPairings(
+      tournamentId,
+      round,
+      db,
+      {
+        pairingSystem: 'fide_dutch'
+      }
+    );
+
+    if (!result || !result.pairings || result.pairings.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No pairings generated. Make sure teams have members.'
+      });
+    }
+
+    console.log(`✅ Generated ${result.pairings.length} individual pairings for ${result.teamCount} teams`);
+
+    // Store pairings
+    let storedCount = 0;
+    const storedPairings = [];
+    
+    for (const pairing of result.pairings) {
+      try {
+        const pairingId = uuidv4();
+        
+        await new Promise((resolve, reject) => {
+          db.run(
+            `INSERT INTO pairings 
+             (id, tournament_id, round, board, white_player_id, black_player_id, result, section, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            [
+              pairingId,
+              tournamentId,
+              round,
+              pairing.board,
+              pairing.white_player_id,
+              pairing.black_player_id,
+              null,
+              `${pairing.team1Name} vs ${pairing.team2Name || 'BYE'}` // Store as section for display
+            ],
+            (err) => {
+              if (err) {
+                console.error('Error inserting pairing:', err);
+                reject(err);
+              } else {
+                storedCount++;
+                resolve();
+              }
+            }
+          );
+        });
+
+        storedPairings.push({
+          id: pairingId,
+          ...pairing
+        });
+
+      } catch (pairingError) {
+        console.error(`Error storing pairing:`, pairingError);
+      }
+    }
+
+    console.log(`✅ Stored ${storedCount} pairings`);
+
+    res.json({
+      success: true,
+      message: 'Team Swiss pairings generated successfully',
+      data: {
+        tournamentId,
+        round,
+        teamCount: result.teamCount,
+        totalGames: result.totalGames,
+        totalByes: result.totalByes,
+        storedCount,
+        pairings: storedPairings
+      }
+    });
+
+  } catch (error) {
+    console.error('Error generating team Swiss pairings:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Unknown error generating team Swiss pairings'
     });
   }
 });

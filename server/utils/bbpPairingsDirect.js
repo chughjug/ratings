@@ -103,13 +103,30 @@ class BBPPairingsDirect {
 
   /**
    * Choose player color - main color assignment function
-   * From dutch.cpp lines 554-582
+   * Color equalization takes precedence over higher seed getting white
    */
   choosePlayerColor(player1, player2, tournament) {
-    // Simple alternating color assignment based on player order
-    // Higher rated player gets white on odd boards, black on even boards
-    const boardNumber = tournament.boardNumber || 1;
-    return (boardNumber % 2 === 1) ? this.COLOR_WHITE : this.COLOR_BLACK;
+    const colorHistory = tournament.colorHistory || {};
+    
+    // Get color balance for each player
+    const getColorBalance = (playerId) => {
+      const history = colorHistory[playerId] || [];
+      if (!Array.isArray(history)) return 0;
+      return history.reduce((sum, color) => sum + (color === 1 ? 1 : -1), 0);
+    };
+    
+    const balance1 = getColorBalance(player1.id);
+    const balance2 = getColorBalance(player2.id);
+    
+    // Rule 1: Player with more black pieces should get white (highest priority)
+    if (balance1 < balance2) {
+      return this.COLOR_WHITE; // player1 gets white
+    } else if (balance1 > balance2) {
+      return this.COLOR_BLACK; // player1 gets black (player2 gets white)
+    }
+    
+    // Equal balance: use consistent ordering (color equalization takes precedence)
+    return player1.id < player2.id ? this.COLOR_WHITE : this.COLOR_BLACK;
   }
 
   /**

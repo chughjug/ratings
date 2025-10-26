@@ -553,29 +553,38 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                     {pairing.white_name || 'TBD'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {pairing.black_name || 'TBD'}
+                    {pairing.is_bye ? 'BYE' : (pairing.black_name || 'TBD')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          updatePairingResult(pairing.id, e.target.value);
-                        }
-                      }}
-                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                      value={pairing.result || ""}
-                    >
-                      <option value="">Select result</option>
-                      <option value="1-0">1-0 (White wins)</option>
-                      <option value="0-1">0-1 (Black wins)</option>
-                      <option value="1/2-1/2">1/2-1/2 (Draw)</option>
-                      <option value="1-0F">1-0F (White wins by forfeit)</option>
-                      <option value="0-1F">0-1F (Black wins by forfeit)</option>
-                      <option value="1/2-1/2F">1/2-1/2F (Draw by forfeit)</option>
-                    </select>
+                    {pairing.is_bye ? (
+                      <span className="text-sm text-blue-600 font-medium">BYE</span>
+                    ) : (
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            updatePairingResult(pairing.id, e.target.value);
+                          }
+                        }}
+                        className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                        value={pairing.result || ""}
+                      >
+                        <option value="">Select result</option>
+                        <option value="1-0">1-0 (White wins)</option>
+                        <option value="0-1">0-1 (Black wins)</option>
+                        <option value="1/2-1/2">1/2-1/2 (Draw)</option>
+                        <option value="1-0F">1-0F (White wins by forfeit)</option>
+                        <option value="0-1F">0-1F (Black wins by forfeit)</option>
+                        <option value="1/2-1/2F">1/2-1/2F (Draw by forfeit)</option>
+                      </select>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {pairing.result ? (
+                    {pairing.is_bye ? (
+                      <span className="inline-flex items-center space-x-1 text-blue-600">
+                        <Clock className="h-4 w-4" />
+                        <span>Full Point BYE 1.0</span>
+                      </span>
+                    ) : pairing.result ? (
                       <span className="inline-flex items-center space-x-1 text-green-600">
                         <CheckCircle className="h-4 w-4" />
                         <span>Complete</span>

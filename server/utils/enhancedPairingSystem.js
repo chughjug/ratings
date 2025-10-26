@@ -70,6 +70,34 @@ class EnhancedPairingSystem {
   }
 
   /**
+   * Get players who have intentional byes for the current round
+   */
+  getPlayersWithIntentionalByes() {
+    const playersWithByes = new Set();
+    
+    for (const player of this.players) {
+      // Check both bye_rounds and intentional_bye_rounds columns
+      const byeRounds = player.bye_rounds || player.intentional_bye_rounds;
+      
+      if (byeRounds && byeRounds.trim() !== '') {
+        try {
+          // Parse comma-separated round numbers
+          const rounds = byeRounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+          
+          if (rounds.includes(this.round)) {
+            playersWithByes.add(player.id);
+            console.log(`[EnhancedPairingSystem] Player ${player.name} has intentional bye for round ${this.round}`);
+          }
+        } catch (error) {
+          console.warn(`[EnhancedPairingSystem] Error parsing bye rounds for player ${player.name}: ${error.message}`);
+        }
+      }
+    }
+    
+    return playersWithByes;
+  }
+
+  /**
    * Generate pairings for all sections with complete independence
    * This is the main entry point for tournament-wide pairing generation
    * Now uses the exact bbpPairings implementation
@@ -78,6 +106,23 @@ class EnhancedPairingSystem {
     console.log(`[EnhancedPairingSystem] Generating pairings for tournament ${tournamentId}, round ${round} using bbpPairings`);
     
     try {
+      // Check tournament format - team tournaments should not use this system
+      const tournament = await new Promise((resolve, reject) => {
+        db.get('SELECT format FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+      if (!tournament) {
+        throw new Error('Tournament not found');
+      }
+
+      // Team tournaments should use the team-swiss endpoint
+      if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+        throw new Error(`This tournament is a team tournament (${tournament.format}). Use the team-swiss pairing endpoint instead.`);
+      }
+
       // Use the new bbpPairings system
       const { BBPPairingsDirect } = require('./bbpPairingsDirect');
       const bbpPairings = new BBPPairingsDirect();
@@ -165,33 +210,66 @@ class EnhancedPairingSystem {
     console.log(`[EnhancedPairingSystem] Generating pairings for section ${this.section}, round ${this.round}`);
     
     try {
-      const { BBPPairingsDirect } = require('./bbpPairingsDirect');
-      const bbpPairings = new BBPPairingsDirect();
+      // Filter out players with intentional byes for this round
+      const playersWithByes = this.getPlayersWithIntentionalByes();
+      const playersWithoutByes = this.players.filter(player => !playersWithByes.has(player.id));
       
-      // Create tournament object
-      const tournament = {
-        round: this.round,
-        section: this.section,
-        tournamentId: this.tournamentId,
-        colorHistory: this.colorHistory,
-        pointsForWin: this.options.pointsForWin || 1,
-        pointsForDraw: this.options.pointsForDraw || 0.5,
-        pointsForLoss: this.options.pointsForLoss || 0
-      };
+      console.log(`[EnhancedPairingSystem] ${playersWithByes.size} players have intentional byes, ${playersWithoutByes.length} players available for pairing`);
+      
+      // Create bye pairings for players with intentional byes
+      const byePairings = Array.from(playersWithByes).map((playerId, index) => {
+        const player = this.players.find(p => p.id === playerId);
+        return {
+          white_player_id: player.id,
+          black_player_id: null,
+          white_name: player.name,
+          black_name: null,
+          white_rating: player.rating,
+          black_rating: null,
+          round: this.round,
+          board: 0, // Will be assigned later
+          section: this.section,
+          tournament_id: this.tournamentId,
+          result: null,
+          is_bye: true,
+          bye_type: 'bye' // Intentional bye gets 1/2 point
+        };
+      });
+      
+      // Generate pairings for remaining players
+      let regularPairings = [];
+      if (playersWithoutByes.length >= 2) {
+        const { BBPPairingsDirect } = require('./bbpPairingsDirect');
+        const bbpPairings = new BBPPairingsDirect();
+        
+        // Create tournament object
+        const tournament = {
+          round: this.round,
+          section: this.section,
+          tournamentId: this.tournamentId,
+          colorHistory: this.colorHistory,
+          pointsForWin: this.options.pointsForWin || 1,
+          pointsForDraw: this.options.pointsForDraw || 0.5,
+          pointsForLoss: this.options.pointsForLoss || 0
+        };
 
-      // Generate pairings using bbpPairings
-      const pairings = bbpPairings.generateDutchPairings(this.players, tournament);
+        // Generate pairings using bbpPairings for players without byes
+        regularPairings = bbpPairings.generateDutchPairings(playersWithoutByes, tournament);
+      }
+      
+      // Combine bye pairings and regular pairings
+      const allPairings = [...byePairings, ...regularPairings];
       
       // Add section and board numbers
-      pairings.forEach((pairing, index) => {
+      allPairings.forEach((pairing, index) => {
         pairing.section = this.section;
         pairing.board = index + 1;
         pairing.tournament_id = this.tournamentId;
         pairing.round = this.round;
       });
 
-      console.log(`[EnhancedPairingSystem] Generated ${pairings.length} pairings for section ${this.section}`);
-      return pairings;
+      console.log(`[EnhancedPairingSystem] Generated ${allPairings.length} total pairings for section ${this.section} (${byePairings.length} byes, ${regularPairings.length} regular)`);
+      return allPairings;
 
     } catch (error) {
       console.error(`[EnhancedPairingSystem] Section pairing generation failed:`, error.message);
@@ -381,43 +459,137 @@ class EnhancedPairingSystem {
   generateAdvancedSwissPairings() {
     console.log(`[EnhancedPairingSystem] Using Advanced Swiss Pairing System`);
     
-    const swissSystem = new AdvancedSwissPairingSystem(this.players, {
-      previousPairings: this.previousPairings,
-      colorHistory: this.colorHistory,
-      section: this.section,
-      tournamentId: this.tournamentId,
-      round: this.round,
-      db: this.db
+    // Filter out players with intentional byes for this round
+    const playersWithByes = this.getPlayersWithIntentionalByes();
+    const playersWithoutByes = this.players.filter(player => !playersWithByes.has(player.id));
+    
+    console.log(`[EnhancedPairingSystem] ${playersWithByes.size} players have intentional byes, ${playersWithoutByes.length} players available for pairing`);
+    
+    // Create bye pairings for players with intentional byes
+    const byePairings = Array.from(playersWithByes).map((playerId, index) => {
+      const player = this.players.find(p => p.id === playerId);
+      return {
+        white_player_id: player.id,
+        black_player_id: null,
+        white_name: player.name,
+        black_name: null,
+        white_rating: player.rating,
+        black_rating: null,
+        round: this.round,
+        board: 0, // Will be assigned later
+        section: this.section,
+        tournament_id: this.tournamentId,
+        result: null,
+        is_bye: true,
+        bye_type: 'bye' // Intentional bye gets 1/2 point
+      };
     });
     
-    const pairings = swissSystem.generatePairings();
-    console.log(`[EnhancedPairingSystem] Advanced Swiss generated ${pairings.length} pairings`);
+    // Generate pairings for remaining players
+    let regularPairings = [];
+    if (playersWithoutByes.length >= 2) {
+      const swissSystem = new AdvancedSwissPairingSystem(playersWithoutByes, {
+        previousPairings: this.previousPairings,
+        colorHistory: this.colorHistory,
+        section: this.section,
+        tournamentId: this.tournamentId,
+        round: this.round,
+        db: this.db
+      });
+      
+      regularPairings = swissSystem.generatePairings();
+    }
     
-    return pairings;
+    // Combine bye pairings and regular pairings
+    const allPairings = [...byePairings, ...regularPairings];
+    
+    // Assign proper board numbers
+    allPairings.forEach((pairing, index) => {
+      pairing.board = index + 1;
+    });
+    
+    console.log(`[EnhancedPairingSystem] Advanced Swiss generated ${allPairings.length} total pairings (${byePairings.length} byes, ${regularPairings.length} regular)`);
+    
+    return allPairings;
   }
 
   /**
    * Generate pairings based on selected system
    */
   async generatePairings() {
-    switch (this.options.pairingSystem) {
-      case 'fide_dutch':
-        return await this.generateFideDutchPairings();
-      case 'burstein':
-        return await this.generateBursteinPairings();
-      case 'accelerated_swiss':
-        return this.generateAcceleratedPairings();
-      case 'round_robin':
-        return this.generateRoundRobinPairings();
-      case 'single_elimination':
-        return this.generateSingleEliminationPairings();
-      case 'quad':
-        return this.generateQuadPairings();
-      case 'advanced_swiss':
-        return this.generateAdvancedSwissPairings();
-      default:
-        return await this.generateFideDutchPairings();
+    // Filter out players with intentional byes for this round
+    const playersWithByes = this.getPlayersWithIntentionalByes();
+    const playersWithoutByes = this.players.filter(player => !playersWithByes.has(player.id));
+    
+    console.log(`[EnhancedPairingSystem] ${playersWithByes.size} players have intentional byes, ${playersWithoutByes.length} players available for pairing`);
+    
+    // Create bye pairings for players with intentional byes
+    const byePairings = Array.from(playersWithByes).map((playerId, index) => {
+      const player = this.players.find(p => p.id === playerId);
+      return {
+        white_player_id: player.id,
+        black_player_id: null,
+        white_name: player.name,
+        black_name: null,
+        white_rating: player.rating,
+        black_rating: null,
+        round: this.round,
+        board: 0, // Will be assigned later
+        section: this.section,
+        tournament_id: this.tournamentId,
+        result: null,
+        is_bye: true,
+        bye_type: 'bye' // Intentional bye gets 1/2 point
+      };
+    });
+    
+    // Generate pairings for remaining players
+    let regularPairings = [];
+    if (playersWithoutByes.length >= 2) {
+      // Temporarily replace players array for pairing generation
+      const originalPlayers = this.players;
+      this.players = playersWithoutByes;
+      
+      switch (this.options.pairingSystem) {
+        case 'fide_dutch':
+          regularPairings = await this.generateFideDutchPairings();
+          break;
+        case 'burstein':
+          regularPairings = await this.generateBursteinPairings();
+          break;
+        case 'accelerated_swiss':
+          regularPairings = this.generateAcceleratedPairings();
+          break;
+        case 'round_robin':
+          regularPairings = this.generateRoundRobinPairings();
+          break;
+        case 'single_elimination':
+          regularPairings = this.generateSingleEliminationPairings();
+          break;
+        case 'quad':
+          regularPairings = this.generateQuadPairings();
+          break;
+        case 'advanced_swiss':
+          regularPairings = this.generateAdvancedSwissPairings();
+          break;
+        default:
+          regularPairings = await this.generateFideDutchPairings();
+      }
+      
+      // Restore original players array
+      this.players = originalPlayers;
     }
+    
+    // Combine bye pairings and regular pairings
+    const allPairings = [...byePairings, ...regularPairings];
+    
+    // Assign proper board numbers
+    allPairings.forEach((pairing, index) => {
+      pairing.board = index + 1;
+    });
+    
+    console.log(`[EnhancedPairingSystem] Generated ${allPairings.length} total pairings (${byePairings.length} byes, ${regularPairings.length} regular)`);
+    return allPairings;
   }
 
   /**
@@ -1942,12 +2114,7 @@ class EnhancedPairingSystem {
     if (lastColors1 === 'BB') return player1;
     if (lastColors2 === 'BB') return player2;
     
-    // Rule 3: Higher rated player gets due color
-    if ((player1.rating || 0) !== (player2.rating || 0)) {
-      return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
-    }
-    
-    // Rule 4: Final tiebreaker
+    // Rule 3: Final tiebreaker - consistent ordering (color equalization takes precedence)
     return player1.id < player2.id ? player1 : player2;
   }
 
@@ -1997,8 +2164,19 @@ class EnhancedPairingSystem {
       return player2; // player2 gets white
     }
     
-    // Equal balance: use rating
-    return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
+    // Equal balance: Check for repeated colors
+    const lastColors1 = this.getLastTwoColors(player1.id);
+    const lastColors2 = this.getLastTwoColors(player2.id);
+    
+    if (lastColors1 === 'WW' || lastColors2 === 'BB') {
+      return player2;
+    }
+    if (lastColors2 === 'WW' || lastColors1 === 'BB') {
+      return player1;
+    }
+    
+    // Final tiebreaker: consistent ordering (not rating)
+    return player1.id < player2.id ? player1 : player2;
   }
 
   /**
@@ -2025,13 +2203,7 @@ class EnhancedPairingSystem {
     if (lastColors1 === 'BB') return player1; // player1 had BB, give white to player1
     if (lastColors2 === 'BB') return player2; // player2 had BB, give white to player2
     
-    // Rule 3: Higher rated player gets due color (if significantly different)
-    const ratingDiff = Math.abs((player1.rating || 0) - (player2.rating || 0));
-    if (ratingDiff >= 50) {
-      return (player1.rating || 0) > (player2.rating || 0) ? player1 : player2;
-    }
-    
-    // Rule 4: Final tiebreaker - consistent ordering
+    // Rule 3: Final tiebreaker - consistent ordering (color equalization takes precedence)
     return player1.id < player2.id ? player1 : player2;
   }
 

@@ -48,7 +48,7 @@ const CreateTournament: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    format: 'swiss' as 'swiss' | 'round-robin' | 'knockout' | 'team-swiss' | 'team-round-robin' | 'individual-team-swiss' | 'blitz' | 'rapid' | 'simultaneous' | 'multi-day' | 'quad',
+    format: 'swiss' as 'swiss' | 'online' | 'quad' | 'team-swiss',
     rounds: 5,
     time_control: '',
     start_date: '',
@@ -521,12 +521,9 @@ const CreateTournament: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
               >
                 <option value="swiss">Swiss System</option>
-                <option value="round-robin">Round Robin</option>
-                <option value="knockout">Knockout</option>
+                <option value="online">Online (Lichess)</option>
+                <option value="quad">Quad Tournament</option>
                 <option value="team-swiss">Team Swiss</option>
-                <option value="team-round-robin">Team Round Robin</option>
-                <option value="individual-team-swiss">Individual Swiss with Team Scoring</option>
-                <option value="quad">Quad System</option>
               </select>
             </div>
 
@@ -927,7 +924,8 @@ const CreateTournament: React.FC = () => {
                 name="settings.pairing_method"
                 value={formData.settings.pairing_method}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
+                disabled={formData.format === 'online' || formData.format === 'quad'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="fide_dutch">FIDE Dutch System</option>
                 <option value="round_robin">Round Robin</option>
@@ -951,7 +949,8 @@ const CreateTournament: React.FC = () => {
                 name="settings.pairing_type"
                 value={formData.settings.pairing_type}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
+                disabled={formData.format === 'online' || formData.format === 'quad'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="standard">Standard Swiss</option>
                 <option value="accelerated">Accelerated Swiss</option>

@@ -99,7 +99,7 @@ const TournamentDetail: React.FC = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<{id: string, name: string} | null>(null);
   const [playerToEdit, setPlayerToEdit] = useState<any>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
-  const [printView, setPrintView] = useState<'pairings' | 'standings' | 'report' | null>(null);
+  const [printView, setPrintView] = useState<'pairings' | 'standings' | 'report' | 'team-standings' | null>(null);
   const [displayOptions, setDisplayOptions] = useState({
     showRatings: true,
     showUscfIds: false,
@@ -642,11 +642,44 @@ const TournamentDetail: React.FC = () => {
         throw new Error('No tournament data available');
       }
 
-      // Include all required fields for the update
+      // Ensure all required fields are present for the update
       const updateData = {
-        ...state.currentTournament,
-        settings: settings
+        name: state.currentTournament.name || '',
+        format: state.currentTournament.format || 'swiss',
+        rounds: typeof state.currentTournament.rounds === 'number' ? state.currentTournament.rounds : parseInt(state.currentTournament.rounds) || 5,
+        settings: settings,
+        // Include other fields that might be needed
+        organization_id: state.currentTournament.organization_id,
+        time_control: state.currentTournament.time_control,
+        start_date: state.currentTournament.start_date,
+        end_date: state.currentTournament.end_date,
+        status: state.currentTournament.status,
+        city: state.currentTournament.city,
+        state: state.currentTournament.state,
+        location: state.currentTournament.location,
+        chief_td_name: state.currentTournament.chief_td_name,
+        chief_td_uscf_id: state.currentTournament.chief_td_uscf_id,
+        chief_arbiter_name: state.currentTournament.chief_arbiter_name,
+        chief_arbiter_fide_id: state.currentTournament.chief_arbiter_fide_id,
+        chief_organizer_name: state.currentTournament.chief_organizer_name,
+        chief_organizer_fide_id: state.currentTournament.chief_organizer_fide_id,
+        expected_players: state.currentTournament.expected_players,
+        website: state.currentTournament.website,
+        fide_rated: state.currentTournament.fide_rated,
+        uscf_rated: state.currentTournament.uscf_rated,
+        allow_registration: state.currentTournament.allow_registration,
+        is_public: state.currentTournament.is_public,
+        public_url: state.currentTournament.public_url,
+        logo_url: state.currentTournament.logo_url
       };
+      
+      // Debug logging
+      console.log('Updating tournament with data:', {
+        rounds: updateData.rounds,
+        roundsType: typeof updateData.rounds,
+        hasName: !!updateData.name,
+        hasFormat: !!updateData.format
+      });
       
       await tournamentApi.update(id!, updateData);
       // Refresh tournament data
@@ -2860,28 +2893,7 @@ const TournamentDetail: React.FC = () => {
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center space-x-4">
                   <h2 className="text-lg font-semibold">Team Standings</h2>
-                  {tournament.format === 'individual-team-swiss' && (
-                    <div className="flex items-center space-x-2">
-                      <select
-                        value={teamScoringMethod}
-                        onChange={(e) => setTeamScoringMethod(e.target.value as 'all_players' | 'top_players')}
-                        className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-                      >
-                        <option value="all_players">All Players</option>
-                        <option value="top_players">Top N Players</option>
-                      </select>
-                      {teamScoringMethod === 'top_players' && (
-                        <input
-                          type="number"
-                          value={teamTopN}
-                          onChange={(e) => setTeamTopN(parseInt(e.target.value) || 4)}
-                          min="1"
-                          max="10"
-                          className="px-3 py-1 border border-gray-300 rounded-md text-sm w-20"
-                        />
-                      )}
-                    </div>
-                  )}
+                  {/* Team format functionality removed - only swiss and online formats supported now */}
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -2903,23 +2915,20 @@ const TournamentDetail: React.FC = () => {
                     <span>Tiebreakers</span>
                   </button>
                   <button
-                    onClick={() => setPrintView('standings')}
+                    onClick={() => setPrintView('team-standings')}
                     className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                   >
                     <Printer className="h-4 w-4" />
-                    <span>Print</span>
+                    <span>Print Team Standings</span>
                   </button>
                 </div>
               </div>
               
-              <TeamStandingsTable
-                standings={teamStandings}
-                tournamentFormat={tournament.format as 'team-swiss' | 'team-round-robin' | 'individual-team-swiss'}
-                scoringMethod={teamScoringMethod}
-                topN={teamScoringMethod === 'top_players' ? teamTopN : undefined}
-                showTiebreakers={showTiebreakers}
-                totalRounds={tournament.rounds}
-              />
+              {/* Team standings not available for swiss/online formats */}
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Team standings are not available for Swiss or Online tournaments</p>
+              </div>
             </div>
           )}
 
@@ -2952,19 +2961,10 @@ const TournamentDetail: React.FC = () => {
                 </div>
               </div>
               
-              {teamPairings.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No team pairings available for this round</p>
-                </div>
-              ) : (
-                <TeamPairingsTable
-                  pairings={teamPairings}
-                  round={currentRound}
-                  tournamentFormat={tournament.format as 'team-swiss' | 'team-round-robin' | 'individual-team-swiss'}
-                  showResults={false}
-                />
-              )}
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Team pairings are not available for Swiss or Online tournaments</p>
+              </div>
             </div>
           )}
 
@@ -3067,6 +3067,7 @@ const TournamentDetail: React.FC = () => {
               <h2 className="text-2xl font-bold">
                 {printView === 'pairings' && `Round ${currentRound} Pairings`}
                 {printView === 'standings' && 'Tournament Standings'}
+                {printView === 'team-standings' && 'Team Standings'}
                 {printView === 'report' && 'Tournament Report'}
               </h2>
               <div className="flex space-x-2">
@@ -3121,7 +3122,7 @@ const TournamentDetail: React.FC = () => {
                   rank: s.rank
                 })) : []}
                 currentRound={currentRound}
-                viewType={printView as 'pairings' | 'standings' | 'report'}
+                viewType={printView as 'pairings' | 'standings' | 'report' | 'team-standings'}
               />
             )}
           </div>
@@ -3314,8 +3315,8 @@ const TournamentDetail: React.FC = () => {
         tournamentId={id || ''}
       />
 
-      {/* Lichess Integration - Always visible in overview tab */}
-      {activeTab === 'overview' && state.currentTournament && (
+      {/* Lichess Integration - Only for online tournaments */}
+      {activeTab === 'overview' && state.currentTournament && state.currentTournament.format === 'online' && (
         <div className="mt-6">
           <LichessIntegration
             tournamentId={id || ''}

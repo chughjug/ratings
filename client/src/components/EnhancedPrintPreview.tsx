@@ -8,7 +8,7 @@ interface EnhancedPrintPreviewProps {
   pairings?: PairingData[];
   standings?: StandingData[];
   currentRound?: number;
-  viewType: 'pairings' | 'standings' | 'report';
+  viewType: 'pairings' | 'standings' | 'report' | 'team-standings';
   onClose: () => void;
 }
 
@@ -25,6 +25,7 @@ const EnhancedPrintPreview: React.FC<EnhancedPrintPreviewProps> = ({
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'modern' | 'elegant' | 'minimal'>('classic');
 
   // Get available sections
   const getAvailableSections = () => {
@@ -128,6 +129,20 @@ const EnhancedPrintPreview: React.FC<EnhancedPrintPreviewProps> = ({
               Separate Pages
             </label>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium">Template:</label>
+            <select
+              value={selectedTemplate}
+              onChange={(e) => setSelectedTemplate(e.target.value as 'classic' | 'modern' | 'elegant' | 'minimal')}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="classic">Classic</option>
+              <option value="modern">Modern</option>
+              <option value="elegant">Elegant</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </div>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -228,6 +243,7 @@ const EnhancedPrintPreview: React.FC<EnhancedPrintPreviewProps> = ({
           viewType={viewType}
           selectedSection={currentSection}
           separatePages={separatePages}
+          template={selectedTemplate}
         />
       </div>
     );

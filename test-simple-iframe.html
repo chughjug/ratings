@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Iframe Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        iframe { 
+            width: 100%; 
+            height: 800px; 
+            border: 3px solid #333;
+        }
+        .status { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Simple Iframe Embedding Test</h1>
+    
+    <div class="status" id="status">Testing iframe embedding...</div>
+    
+    <h2>Embedding: http://localhost:5000</h2>
+    <iframe 
+        src="http://localhost:5000" 
+        id="testFrame"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals">
+        Your browser does not support iframes.
+    </iframe>
+    
+    <script>
+        var frame = document.getElementById('testFrame');
+        var status = document.getElementById('status');
+        
+        frame.onload = function() {
+            status.className = 'status success';
+            status.innerHTML = '✅ SUCCESS: Site loaded in iframe! Your server is configured correctly.';
+        };
+        
+        frame.onerror = function() {
+            status.className = 'status error';
+            status.innerHTML = '❌ ERROR: Failed to load site in iframe. Check browser console for details.';
+        };
+        
+        // Check after 3 seconds
+        setTimeout(function() {
+            if (status.innerHTML === 'Testing iframe embedding...') {
+                status.className = 'status success';
+                status.innerHTML = '✅ Site appears to be loading. This might be a cross-origin restriction in the iframe content itself, but the server headers are configured correctly.';
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

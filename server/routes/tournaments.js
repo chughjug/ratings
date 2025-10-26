@@ -181,59 +181,112 @@ router.post('/', (req, res) => {
 // Update tournament
 router.put('/:id', (req, res) => {
   const { id } = req.params;
-  const {
-    organization_id,
-    name,
-    format,
-    rounds,
-    time_control,
-    start_date,
-    end_date,
-    status,
-    settings,
-    city,
-    state,
-    location,
-    chief_td_name,
-    chief_td_uscf_id,
-    chief_arbiter_name,
-    chief_arbiter_fide_id,
-    chief_organizer_name,
-    chief_organizer_fide_id,
-    expected_players,
-    website,
-    fide_rated,
-    uscf_rated,
-    allow_registration,
-    is_public,
-    public_url,
-    logo_url
-  } = req.body;
+  
+  // First, get the existing tournament to support partial updates
+  db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, existingTournament) => {
+    if (err) {
+      console.error('Error fetching existing tournament:', err);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Failed to fetch tournament' 
+      });
+    }
+    
+    if (!existingTournament) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Tournament not found' 
+      });
+    }
+    
+    // Merge existing data with update data
+    const {
+      organization_id = existingTournament.organization_id,
+      name = existingTournament.name,
+      format = existingTournament.format,
+      rounds = existingTournament.rounds,
+      time_control = existingTournament.time_control,
+      start_date = existingTournament.start_date,
+      end_date = existingTournament.end_date,
+      status = existingTournament.status,
+      settings = existingTournament.settings,
+      city = existingTournament.city,
+      state = existingTournament.state,
+      location = existingTournament.location,
+      chief_td_name = existingTournament.chief_td_name,
+      chief_td_uscf_id = existingTournament.chief_td_uscf_id,
+      chief_arbiter_name = existingTournament.chief_arbiter_name,
+      chief_arbiter_fide_id = existingTournament.chief_arbiter_fide_id,
+      chief_organizer_name = existingTournament.chief_organizer_name,
+      chief_organizer_fide_id = existingTournament.chief_organizer_fide_id,
+      expected_players = existingTournament.expected_players,
+      website = existingTournament.website,
+      fide_rated = existingTournament.fide_rated,
+      uscf_rated = existingTournament.uscf_rated,
+      allow_registration = existingTournament.allow_registration,
+      is_public = existingTournament.is_public,
+      public_url = existingTournament.public_url,
+      logo_url = existingTournament.logo_url
+    } = req.body;
 
-  // Validate required fields
-  if (!name || !format || !rounds) {
-    return res.status(400).json({ 
-      success: false,
-      error: 'Name, format, and rounds are required' 
+    // Debug logging for tournament updates
+    console.log('Tournament update request:', {
+      id,
+      name: name ? 'present' : 'missing',
+      format: format ? 'present' : 'missing', 
+      rounds: rounds ? 'present' : 'missing',
+      roundsType: typeof rounds,
+      roundsValue: rounds
     });
-  }
 
-  const settingsJson = JSON.stringify(settings || {});
+    // Validate required fields
+    if (!name || !format || rounds === undefined || rounds === null) {
+      const missingFields = [];
+      if (!name) missingFields.push('name');
+      if (!format) missingFields.push('format');
+      if (rounds === undefined || rounds === null) missingFields.push('rounds');
+      
+      console.error('Missing required fields:', missingFields);
+      return res.status(400).json({ 
+        success: false,
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+        missingFields: missingFields
+      });
+    }
 
-  db.run(
-    `UPDATE tournaments 
-     SET organization_id = ?, name = ?, format = ?, rounds = ?, time_control = ?, 
-         start_date = ?, end_date = ?, status = ?, settings = ?,
-         city = ?, state = ?, location = ?, chief_td_name = ?, chief_td_uscf_id = ?,
-         chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
-         chief_organizer_fide_id = ?, expected_players = ?, website = ?,
-         fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?
-     WHERE id = ?`,
-    [organization_id || null, name, format, rounds, time_control, start_date, end_date, status, settingsJson,
-     city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
-     chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
-     expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, 
-     allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null, id],
+    // Additional validation - convert rounds to number if it's a string
+    const roundsNum = typeof rounds === 'string' ? parseInt(rounds, 10) : rounds;
+    if (typeof roundsNum !== 'number' || isNaN(roundsNum) || roundsNum < 1) {
+      console.error('Invalid rounds value:', rounds, 'as number:', roundsNum);
+      return res.status(400).json({ 
+        success: false,
+        error: 'Rounds must be a positive number' 
+      });
+    }
+
+    if (!['swiss', 'online', 'quad'].includes(format)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Format must be one of: swiss, online, quad' 
+      });
+    }
+
+    const settingsJson = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
+
+    db.run(
+      `UPDATE tournaments 
+       SET organization_id = ?, name = ?, format = ?, rounds = ?, time_control = ?, 
+           start_date = ?, end_date = ?, status = ?, settings = ?,
+           city = ?, state = ?, location = ?, chief_td_name = ?, chief_td_uscf_id = ?,
+           chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
+           chief_organizer_fide_id = ?, expected_players = ?, website = ?,
+           fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?
+       WHERE id = ?`,
+      [organization_id || null, name, format, roundsNum, time_control, start_date, end_date, status, settingsJson,
+       city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
+       chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
+       expected_players, website, fide_rated ? 1 : 0, uscf_rated ? 1 : 0, 
+       allow_registration !== false ? 1 : 0, is_public ? 1 : 0, public_url || null, logo_url || null, id],
     function(err) {
       if (err) {
         console.error('Error updating tournament:', err);
@@ -264,7 +317,8 @@ router.put('/:id', (req, res) => {
         });
       });
     }
-  );
+    );
+  }); // Close the outer db.get callback
 });
 
 // Delete tournament

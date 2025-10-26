@@ -95,16 +95,92 @@ class AdvancedSwissPairingSystem {
   }
 
   /**
+   * Get players who have intentional byes for the current round
+   */
+  getPlayersWithIntentionalByes() {
+    const playersWithByes = new Set();
+    
+    for (const player of this.players) {
+      // Check both bye_rounds and intentional_bye_rounds columns
+      const byeRounds = player.bye_rounds || player.intentional_bye_rounds;
+      
+      if (byeRounds && byeRounds.trim() !== '') {
+        try {
+          // Parse comma-separated round numbers
+          const rounds = byeRounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+          
+          if (rounds.includes(this.round)) {
+            playersWithByes.add(player.id);
+            console.log(`[AdvancedSwissPairingSystem] Player ${player.name} has intentional bye for round ${this.round}`);
+          }
+        } catch (error) {
+          console.warn(`[AdvancedSwissPairingSystem] Error parsing bye rounds for player ${player.name}: ${error.message}`);
+        }
+      }
+    }
+    
+    return playersWithByes;
+  }
+
+  /**
    * Generate pairings using advanced Swiss system
    */
   generatePairings() {
     console.log(`[AdvancedSwissPairingSystem] Generating pairings for round ${this.round}`);
     
-    if (this.round === 1) {
-      return this.pairFirstRound();
-    } else {
-      return this.pairSwissRound();
+    // Filter out players with intentional byes for this round
+    const playersWithByes = this.getPlayersWithIntentionalByes();
+    const playersWithoutByes = this.players.filter(player => !playersWithByes.has(player.id));
+    
+    console.log(`[AdvancedSwissPairingSystem] ${playersWithByes.size} players have intentional byes, ${playersWithoutByes.length} players available for pairing`);
+    
+    // Create bye pairings for players with intentional byes
+    const byePairings = Array.from(playersWithByes).map((playerId, index) => {
+      const player = this.players.find(p => p.id === playerId);
+      return {
+        white_player_id: player.id,
+        black_player_id: null,
+        white_name: player.name,
+        black_name: null,
+        white_rating: player.rating,
+        black_rating: null,
+        round: this.round,
+        board: 0, // Will be assigned later
+        section: this.section,
+        tournament_id: this.tournamentId,
+        result: null,
+        is_bye: true,
+        bye_type: 'bye' // Intentional bye gets 1/2 point
+      };
+    });
+    
+    // Generate pairings for remaining players
+    let regularPairings = [];
+    if (playersWithoutByes.length >= 2) {
+      // Temporarily replace players array for pairing generation
+      const originalPlayers = this.players;
+      this.players = playersWithoutByes;
+      
+      if (this.round === 1) {
+        regularPairings = this.pairFirstRound();
+      } else {
+        regularPairings = this.pairSwissRound();
+      }
+      
+      // Restore original players array
+      this.players = originalPlayers;
     }
+    
+    // Combine bye pairings and regular pairings
+    const allPairings = [...byePairings, ...regularPairings];
+    
+    // Assign proper board numbers
+    allPairings.forEach((pairing, index) => {
+      pairing.board = index + 1;
+    });
+    
+    console.log(`[AdvancedSwissPairingSystem] Generated ${allPairings.length} total pairings (${byePairings.length} byes, ${regularPairings.length} regular)`);
+    return allPairings;
   }
 
   /**
@@ -269,6 +345,7 @@ class AdvancedSwissPairingSystem {
     if (n === 1) return pairings; // Single player will be handled as downfloater
     
     // Sort players by color balance first, then by rating
+    // ENHANCED: Prioritize color equalization even for top players
     const sortedPlayers = players.sort((a, b) => {
       const colorPrefA = this.getColorPreference(this.playerInfo[a]);
       const colorPrefB = this.getColorPreference(this.playerInfo[b]);
@@ -277,6 +354,7 @@ class AdvancedSwissPairingSystem {
       const colorPriorityA = Math.abs(colorPrefA);
       const colorPriorityB = Math.abs(colorPrefB);
       
+      // STRONG color equalization priority - even top players must swap colors
       if (colorPriorityA !== colorPriorityB) {
         return colorPriorityB - colorPriorityA; // Higher priority first
       }
@@ -357,16 +435,13 @@ class AdvancedSwissPairingSystem {
       return assignment2;
     }
     
-    // If equal, use rating as tiebreaker
-    if ((info1.rating || 0) >= (info2.rating || 0)) {
-      return assignment1;
-    } else {
-      return assignment2;
-    }
+    // If equal, use consistent ordering (color equalization takes precedence)
+    return playerId1 < playerId2 ? assignment1 : assignment2;
   }
 
   /**
    * Calculate color equalization score for a pairing assignment
+   * ENHANCED: More aggressive color equalization scoring
    */
   calculateColorEqualizationScore(assignment) {
     const whiteInfo = this.playerInfo[assignment.white];
@@ -377,24 +452,32 @@ class AdvancedSwissPairingSystem {
     
     let score = 0;
     
+    // ENHANCED: More aggressive rewards for color equalization
     // Reward giving white to players who prefer white (negative preference)
     if (whitePref < 0) {
-      score += Math.abs(whitePref) * 2; // Double weight for color preference
+      score += Math.abs(whitePref) * 3; // Increased weight for color preference
     }
     
     // Reward giving black to players who prefer black (positive preference)
     if (blackPref > 0) {
-      score += Math.abs(blackPref) * 2; // Double weight for color preference
+      score += Math.abs(blackPref) * 3; // Increased weight for color preference
     }
     
+    // ENHANCED: Stronger penalties for poor color assignments
     // Penalize giving white to players who strongly prefer black
     if (whitePref > 1) {
-      score -= whitePref;
+      score -= whitePref * 2; // Increased penalty
     }
     
     // Penalize giving black to players who strongly prefer white
     if (blackPref < -1) {
-      score -= Math.abs(blackPref);
+      score -= Math.abs(blackPref) * 2; // Increased penalty
+    }
+    
+    // ENHANCED: Additional bonus for perfect color equalization
+    // If both players get their preferred color, give extra bonus
+    if (whitePref < 0 && blackPref > 0) {
+      score += 5; // Bonus for perfect color equalization
     }
     
     return score;
@@ -436,12 +519,9 @@ class AdvancedSwissPairingSystem {
       return { white: playerId2, black: playerId1 };
     }
     
-    // Default: higher rated player gets white
-    if ((info1.rating || 0) >= (info2.rating || 0)) {
-      return { white: playerId1, black: playerId2 };
-    } else {
-      return { white: playerId2, black: playerId1 };
-    }
+    // Equal color balance: use consistent ordering (not rating)
+    // Color equalization takes precedence over higher seed getting white
+    return playerId1 < playerId2 ? { white: playerId1, black: playerId2 } : { white: playerId2, black: playerId1 };
   }
 
   /**
@@ -463,6 +543,7 @@ class AdvancedSwissPairingSystem {
     let boardNumber = startBoardNumber;
     
     // Sort by color priority first, then by rating
+    // ENHANCED: Strong color equalization priority for remaining players including top scorers
     const sortedPlayers = players.sort((a, b) => {
       const playerA = this.playerInfo[a];
       const playerB = this.playerInfo[b];
@@ -473,6 +554,7 @@ class AdvancedSwissPairingSystem {
       const colorPriorityA = Math.abs(colorPrefA);
       const colorPriorityB = Math.abs(colorPrefB);
       
+      // STRONG color equalization priority - even top players must swap colors
       if (colorPriorityA !== colorPriorityB) {
         return colorPriorityB - colorPriorityA;
       }
@@ -565,6 +647,7 @@ class AdvancedSwissPairingSystem {
     const used = new Set();
     
     // Sort players by color priority first, then by rating
+    // ENHANCED: Strong color equalization priority for all players including top scorers
     const sortedPlayers = players.sort((a, b) => {
       const colorPrefA = this.getColorPreference(this.playerInfo[a]);
       const colorPrefB = this.getColorPreference(this.playerInfo[b]);
@@ -572,6 +655,7 @@ class AdvancedSwissPairingSystem {
       const colorPriorityA = Math.abs(colorPrefA);
       const colorPriorityB = Math.abs(colorPrefB);
       
+      // STRONG color equalization priority - even top players must swap colors
       if (colorPriorityA !== colorPriorityB) {
         return colorPriorityB - colorPriorityA;
       }

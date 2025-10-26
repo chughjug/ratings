@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iframe Embedding Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .iframe-container {
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+        .test-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .failure {
+            color: red;
+            font-weight: bold;
+        }
+        h1 {
+            color: #333;
+        }
+        input {
+            padding: 8px;
+            font-size: 14px;
+            width: 300px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            font-size: 14px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Iframe Embedding Test</h1>
+    
+    <div class="test-info">
+        <h3>Test Your Chess Tournament Director Site Embedding</h3>
+        <p>Enter your Heroku app URL below to test iframe embedding:</p>
+        
+        <div>
+            <input type="text" id="embedUrl" placeholder="https://your-app.herokuapp.com" value="http://localhost:5000">
+            <button onclick="embedSite()">Embed Site</button>
+        </div>
+        
+        <div id="status"></div>
+    </div>
+    
+    <div class="iframe-container">
+        <iframe id="embedFrame" src="http://localhost:5000"></iframe>
+    </div>
+    
+    <div class="test-info">
+        <h3>✅ What to Look For</h3>
+        <ul>
+            <li><strong>Success:</strong> The iframe should load and display your application</li>
+            <li><strong>If you see an error:</strong> This indicates the site is blocking iframe embedding</li>
+            <li><strong>Cross-origin message:</strong> This is normal and doesn't prevent embedding</li>
+        </ul>
+        
+        <h3>Security Headers Being Tested</h3>
+        <ul>
+            <li><code>Content-Security-Policy: frame-ancestors *</code> - Should be set to allow embedding</li>
+            <li><code>X-Frame-Options</code> - Should NOT be set to DENY or SAMEORIGIN</li>
+        </ul>
+    </div>
+    
+    <script>
+        function embedSite() {
+            const url = document.getElementById('embedUrl').value.trim();
+            const frame = document.getElementById('embedFrame');
+            const status = document.getElementById('status');
+            
+            if (!url) {
+                status.innerHTML = '<p class="failure">Please enter a URL</p>';
+                return;
+            }
+            
+            // Validate URL
+            try {
+                new URL(url);
+            } catch (e) {
+                status.innerHTML = '<p class="failure">Invalid URL format</p>';
+                return;
+            }
+            
+            status.innerHTML = '<p>Loading...</p>';
+            
+            // Try to load the iframe
+            frame.src = url;
+            
+            // Check if it loads successfully
+            frame.onload = function() {
+                status.innerHTML = '<p class="success">✅ SUCCESS: Site can be embedded in iframes!</p>';
+            };
+            
+            frame.onerror = function() {
+                status.innerHTML = '<p class="failure">❌ ERROR: Unable to embed site. It may be blocking iframe embedding.</p>';
+            };
+        }
+        
+        // Auto-check on page load
+        window.addEventListener('load', function() {
+            embedSite();
+        });
+    </script>
+</body>
+</html>
