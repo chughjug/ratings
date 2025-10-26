@@ -251,6 +251,7 @@ const liveStandingsService = require('./services/liveStandingsService');
 const paymentRoutes = require('./routes/payments');
 const chessIntegrationRoutes = require('./routes/chessIntegrations');
 const lichessRoutes = require('./routes/lichess');
+const chess2playerRoutes = require('./routes/chess2player');
 const trfExportRoutes = require('./routes/trfExport');
 const uscfExportRoutes = require('./routes/uscfExport');
 
@@ -323,6 +324,7 @@ app.use('/api/live-standings', liveStandingsRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/chess', chessIntegrationRoutes);
 app.use('/api/lichess', lichessRoutes);
+app.use('/api/chess2player', chess2playerRoutes);
 app.use('/api/export', trfExportRoutes);
 app.use('/api/export', uscfExportRoutes);
 
