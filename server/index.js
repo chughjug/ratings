@@ -171,7 +171,32 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '../client/build')));
+
+// Serve static files with cache control
+app.use(express.static(path.join(__dirname, '../client/build'), {
+  maxAge: 0, // Don't cache HTML, CSS, JS to ensure latest version
+  etag: true,
+  lastModified: true,
+  // Add Cache-Control headers
+  setHeaders: (res, filePath) => {
+    // For service worker, always prevent caching
+    if (filePath.endsWith('sw.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    // For index.html, prevent aggressive caching
+    else if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    // For static assets, allow short-term caching
+    else if (filePath.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+    }
+  }
+}));
 
 // Serve 2PlayerChess static files
 app.use('/2playerchess', express.static(path.join(__dirname, '../2PlayerChess-master/views')));

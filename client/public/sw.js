@@ -1,7 +1,9 @@
 // Service Worker for Chess Tournament Management PWA
-const CACHE_NAME = 'chess-tournament-v1.0.0';
-const STATIC_CACHE = 'chess-tournament-static-v1.0.0';
-const DYNAMIC_CACHE = 'chess-tournament-dynamic-v1.0.0';
+// Use timestamp-based version to ensure fresh cache on each deployment
+const BUILD_TIMESTAMP = '2024-12-27T00:00:00.000Z';
+const CACHE_NAME = `chess-tournament-${BUILD_TIMESTAMP}`;
+const STATIC_CACHE = `chess-tournament-static-${BUILD_TIMESTAMP}`;
+const DYNAMIC_CACHE = `chess-tournament-dynamic-${BUILD_TIMESTAMP}`;
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -56,7 +58,8 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
+            // Delete ALL old caches to force fresh cache
+            if (!cacheName.includes(BUILD_TIMESTAMP)) {
               console.log('Service Worker: Deleting old cache', cacheName);
               return caches.delete(cacheName);
             }
@@ -64,7 +67,7 @@ self.addEventListener('activate', (event) => {
         );
       })
       .then(() => {
-        console.log('Service Worker: Activated successfully');
+        console.log('Service Worker: Activated successfully with fresh cache');
         return self.clients.claim();
       })
   );
