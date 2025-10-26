@@ -1,3 +1,351 @@
+/* Custom Properties for Theme Colors */
+:root {
+    --primary-bg: #ffffff;
+    --secondary-bg: #f9fafb;
+    --chess-board: #8b4513;
+    --chess-light: #f0d9b5;
+    --chess-dark: #b58863;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-red: #ef4444;
+    --border-color: #e5e7eb;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Reset and Base Styles */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    background-color: var(--secondary-bg);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
+.chess-bgd {
+    background: var(--secondary-bg) !important;
+}
+
+/* Title Styling */
+.title-container {
+    background: var(--primary-bg);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+}
+
+#title {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+    font-size: 1.25rem;
+    padding: 1rem;
+}
+
+.hr-show {
+    color: var(--chess-board);
+}
+
+/* Button Styling */
+.btn {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-success {
+    background-color: var(--accent-green);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-danger {
+    background-color: var(--accent-red);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+    background-color: var(--text-secondary);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #4b5563;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+/* Controls Container */
+#game-controls-container {
+    background: var(--primary-bg);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Reorder controls: clocks first, then moves, then game buttons */
+#game-controls-container > * {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Username Display */
+.user {
+    color: var(--text-primary);
+    font-weight: 500;
+    padding: 0.5rem;
+    background: var(--secondary-bg);
+    border-radius: 0.5rem;
+}
+
+.icon-w, .icon-b {
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+}
+
+.icon-w {
+    color: var(--chess-light);
+}
+
+.icon-b {
+    color: var(--chess-dark);
+}
+
+.online {
+    color: var(--accent-green);
+}
+
+.offline {
+    color: var(--text-secondary);
+}
+
+/* Room Code Display */
+#copylink {
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+}
+
+#copylink:hover {
+    background: var(--primary-bg);
+    box-shadow: var(--shadow);
+}
+
+#gameroom-id-code {
+    color: var(--chess-board);
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+}
+
+/* Chat Styling */
+.chatbox {
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.chatbox li {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Clock Styling - Now in right panel */
+#whiteclock, #blackclock {
+    font-weight: 700;
+    font-size: 2rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    min-width: 120px;
+}
+
+#whiteclock {
+    color: var(--chess-light);
+    background: linear-gradient(135deg, rgba(240, 217, 181, 0.2), rgba(240, 217, 181, 0.4));
+    border: 2px solid var(--chess-light);
+    margin-bottom: 1rem;
+}
+
+#blackclock {
+    color: var(--chess-dark);
+    background: linear-gradient(135deg, rgba(181, 136, 99, 0.2), rgba(181, 136, 99, 0.4));
+    border: 2px solid var(--chess-dark);
+}
+
+/* Clock Container - Position in right panel */
+#game-controls-container #whiteclockrow, 
+#game-controls-container #blackclockrow {
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: 0.5rem 0;
+}
+
+#game-controls-container #whiteclockrow {
+    order: -2;
+}
+
+#game-controls-container #blackclockrow {
+    order: -1;
+}
+
+/* Hide old clocks next to board */
+#clock #whiteclockrow,
+#clock #blackclockrow {
+    display: none !important;
+}
+
+/* Notation Styling - Better styled moves */
+#notation-container {
+    background: var(--primary-bg);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    order: 2;
+}
+
+#white-moves, #black-moves {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+#white-moves li, #black-moves li {
+    padding: 0.5rem 0.75rem;
+    margin: 0.25rem 0;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+    background: var(--secondary-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#white-moves li:hover, #black-moves li:hover {
+    background: var(--primary-bg);
+    border-left-color: var(--accent-blue);
+    transform: translateX(4px);
+    box-shadow: var(--shadow);
+}
+
+#white-moves li::before {
+    content: counter(move-counter) ".";
+    counter-increment: move-counter;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+#black-moves li::before {
+    content: counter(move-counter) "...";
+    counter-increment: move-counter;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+/* Modal Styling */
+.modal-box {
+    background: var(--primary-bg);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+}
+
+.x-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.x-button:hover {
+    color: var(--text-primary);
+}
+
+/* Input Styling */
+input[type="text"], input[type="number"] {
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+input[type="text"]:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Board Styling - Make smaller when inputs are shown */
+#gameboard-column {
+    border: 2px solid var(--chess-board);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s ease;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Make board smaller when inputs are visible */
+#start-join:not([style*="display: none"]) ~ * #gameboard-column,
+body:has(input:focus) #gameboard-column {
+    max-width: 400px;
+    opacity: 0.8;
+}
+
+/* Piece Styling */
+.chesspieceW {
+    color: var(--chess-light);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.chesspieceB {
+    color: var(--chess-dark);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile Responsive */
 @media only screen and (max-device-width: 969px) {
 
     h4{
