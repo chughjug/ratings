@@ -524,6 +524,37 @@ db.serialize(() => {
     )
   `);
 
+  // Add branding fields to organizations table
+  db.run(`
+    ALTER TABLE organizations ADD COLUMN branding_logo TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE organizations ADD COLUMN branding_primary_color TEXT DEFAULT '#3b82f6'
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE organizations ADD COLUMN branding_secondary_color TEXT DEFAULT '#8b5cf6'
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE organizations ADD COLUMN branding_accent_color TEXT DEFAULT '#10b981'
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE organizations ADD COLUMN branding_settings TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
   // Organization members table
   db.run(`
     CREATE TABLE IF NOT EXISTS organization_members (

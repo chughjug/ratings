@@ -190,7 +190,45 @@ router.post('/', (req, res) => {
 // Update tournament
 router.put('/:id', (req, res) => {
   const { id } = req.params;
+  const updateFields = req.body;
   
+  console.log('Update fields received:', Object.keys(updateFields));
+  
+  // If only a single field is being updated (like tournament_information), use dynamic SQL
+  if (Object.keys(updateFields).length === 1 && updateFields.tournament_information !== undefined) {
+    return db.run(
+      'UPDATE tournaments SET tournament_information = ? WHERE id = ?',
+      [updateFields.tournament_information, id],
+      function(err) {
+        if (err) {
+          console.error('Error updating tournament:', err);
+          return res.status(500).json({ 
+            success: false,
+            error: 'Failed to update tournament',
+            details: err.message 
+          });
+        }
+        
+        // Return the updated tournament data
+        db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, tournament) => {
+          if (err) {
+            console.error('Error fetching updated tournament:', err);
+            return res.json({ 
+              success: true,
+              message: 'Tournament updated successfully' 
+            });
+          }
+          res.json({ 
+            success: true,
+            data: tournament,
+            message: 'Tournament updated successfully' 
+          });
+        });
+      }
+    );
+  }
+  
+  // For updates with multiple fields or the name/format/rounds, proceed with full update
   // First, get the existing tournament to support partial updates
   db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, existingTournament) => {
     if (err) {
@@ -209,36 +247,33 @@ router.put('/:id', (req, res) => {
     }
     
     // Merge existing data with update data - only use new values if they exist
-    const updateData = req.body;
-    
-    // For partial updates, merge with existing values
-    const organization_id = updateData.organization_id !== undefined ? updateData.organization_id : existingTournament.organization_id;
-    const name = updateData.name !== undefined ? updateData.name : existingTournament.name;
-    const format = updateData.format !== undefined ? updateData.format : existingTournament.format;
-    const rounds = updateData.rounds !== undefined ? updateData.rounds : existingTournament.rounds;
-    const time_control = updateData.time_control !== undefined ? updateData.time_control : existingTournament.time_control;
-    const start_date = updateData.start_date !== undefined ? updateData.start_date : existingTournament.start_date;
-    const end_date = updateData.end_date !== undefined ? updateData.end_date : existingTournament.end_date;
-    const status = updateData.status !== undefined ? updateData.status : existingTournament.status;
-    const settings = updateData.settings !== undefined ? updateData.settings : existingTournament.settings;
-    const city = updateData.city !== undefined ? updateData.city : existingTournament.city;
-    const state = updateData.state !== undefined ? updateData.state : existingTournament.state;
-    const location = updateData.location !== undefined ? updateData.location : existingTournament.location;
-    const chief_td_name = updateData.chief_td_name !== undefined ? updateData.chief_td_name : existingTournament.chief_td_name;
-    const chief_td_uscf_id = updateData.chief_td_uscf_id !== undefined ? updateData.chief_td_uscf_id : existingTournament.chief_td_uscf_id;
-    const chief_arbiter_name = updateData.chief_arbiter_name !== undefined ? updateData.chief_arbiter_name : existingTournament.chief_arbiter_name;
-    const chief_arbiter_fide_id = updateData.chief_arbiter_fide_id !== undefined ? updateData.chief_arbiter_fide_id : existingTournament.chief_arbiter_fide_id;
-    const chief_organizer_name = updateData.chief_organizer_name !== undefined ? updateData.chief_organizer_name : existingTournament.chief_organizer_name;
-    const chief_organizer_fide_id = updateData.chief_organizer_fide_id !== undefined ? updateData.chief_organizer_fide_id : existingTournament.chief_organizer_fide_id;
-    const expected_players = updateData.expected_players !== undefined ? updateData.expected_players : existingTournament.expected_players;
-    const website = updateData.website !== undefined ? updateData.website : existingTournament.website;
-    const fide_rated = updateData.fide_rated !== undefined ? updateData.fide_rated : existingTournament.fide_rated;
-    const uscf_rated = updateData.uscf_rated !== undefined ? updateData.uscf_rated : existingTournament.uscf_rated;
-    const allow_registration = updateData.allow_registration !== undefined ? updateData.allow_registration : existingTournament.allow_registration;
-    const is_public = updateData.is_public !== undefined ? updateData.is_public : existingTournament.is_public;
-    const public_url = updateData.public_url !== undefined ? updateData.public_url : existingTournament.public_url;
-    const logo_url = updateData.logo_url !== undefined ? updateData.logo_url : existingTournament.logo_url;
-    const tournament_information = updateData.tournament_information !== undefined ? updateData.tournament_information : existingTournament.tournament_information;
+    const organization_id = updateFields.organization_id !== undefined ? updateFields.organization_id : existingTournament.organization_id;
+    const name = updateFields.name !== undefined ? updateFields.name : existingTournament.name;
+    const format = updateFields.format !== undefined ? updateFields.format : existingTournament.format;
+    const rounds = updateFields.rounds !== undefined ? updateFields.rounds : existingTournament.rounds;
+    const time_control = updateFields.time_control !== undefined ? updateFields.time_control : existingTournament.time_control;
+    const start_date = updateFields.start_date !== undefined ? updateFields.start_date : existingTournament.start_date;
+    const end_date = updateFields.end_date !== undefined ? updateFields.end_date : existingTournament.end_date;
+    const status = updateFields.status !== undefined ? updateFields.status : existingTournament.status;
+    const settings = updateFields.settings !== undefined ? updateFields.settings : existingTournament.settings;
+    const city = updateFields.city !== undefined ? updateFields.city : existingTournament.city;
+    const state = updateFields.state !== undefined ? updateFields.state : existingTournament.state;
+    const location = updateFields.location !== undefined ? updateFields.location : existingTournament.location;
+    const chief_td_name = updateFields.chief_td_name !== undefined ? updateFields.chief_td_name : existingTournament.chief_td_name;
+    const chief_td_uscf_id = updateFields.chief_td_uscf_id !== undefined ? updateFields.chief_td_uscf_id : existingTournament.chief_td_uscf_id;
+    const chief_arbiter_name = updateFields.chief_arbiter_name !== undefined ? updateFields.chief_arbiter_name : existingTournament.chief_arbiter_name;
+    const chief_arbiter_fide_id = updateFields.chief_arbiter_fide_id !== undefined ? updateFields.chief_arbiter_fide_id : existingTournament.chief_arbiter_fide_id;
+    const chief_organizer_name = updateFields.chief_organizer_name !== undefined ? updateFields.chief_organizer_name : existingTournament.chief_organizer_name;
+    const chief_organizer_fide_id = updateFields.chief_organizer_fide_id !== undefined ? updateFields.chief_organizer_fide_id : existingTournament.chief_organizer_fide_id;
+    const expected_players = updateFields.expected_players !== undefined ? updateFields.expected_players : existingTournament.expected_players;
+    const website = updateFields.website !== undefined ? updateFields.website : existingTournament.website;
+    const fide_rated = updateFields.fide_rated !== undefined ? updateFields.fide_rated : existingTournament.fide_rated;
+    const uscf_rated = updateFields.uscf_rated !== undefined ? updateFields.uscf_rated : existingTournament.uscf_rated;
+    const allow_registration = updateFields.allow_registration !== undefined ? updateFields.allow_registration : existingTournament.allow_registration;
+    const is_public = updateFields.is_public !== undefined ? updateFields.is_public : existingTournament.is_public;
+    const public_url = updateFields.public_url !== undefined ? updateFields.public_url : existingTournament.public_url;
+    const logo_url = updateFields.logo_url !== undefined ? updateFields.logo_url : existingTournament.logo_url;
+    const tournament_information = updateFields.tournament_information !== undefined ? updateFields.tournament_information : existingTournament.tournament_information;
 
     // Debug logging for tournament updates
     console.log('Tournament update request:', {
@@ -307,6 +342,7 @@ router.put('/:id', (req, res) => {
      allowReg, isPublic, public_url || null, logo_url || null, tournament_information || null, id];
     
     console.log('Parameters count:', params.length);
+    console.log('Updating tournament information:', tournament_information?.substring(0, 50) || 'null');
 
     db.run(
       `UPDATE tournaments 

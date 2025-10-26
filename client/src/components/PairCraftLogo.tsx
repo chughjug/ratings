@@ -31,7 +31,7 @@ const PairCraftLogo: React.FC<PairCraftLogoProps> = ({
       <div className="relative group">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
         <img 
-          src="/paircraft-logo.png" 
+          src="/new-logo.png" 
           alt="PairCraft Logo" 
           className={`${sizeClasses[size]} object-contain relative z-10 drop-shadow-lg transition-transform group-hover:scale-105`}
         />

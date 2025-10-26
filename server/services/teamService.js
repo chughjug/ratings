@@ -552,46 +552,67 @@ async function addTeamTiebreakers(db, tournamentId, teamStandings) {
         buchholzMap[row.team_id] = row.team_buchholz;
       });
       
-      // Add tiebreakers to standings
-      const enhancedStandings = teamStandings.map(team => ({
-        ...team,
-        team_buchholz: buchholzMap[team.team_id] || 0,
-        team_performance_rating: calculateTeamPerformanceRating(team),
-        team_sonneborn_berger: 0 // TODO: Implement team Sonneborn-Berger
-      }));
-      
-      // Re-sort with tiebreakers
-      enhancedStandings.sort((a, b) => {
-        // Primary: Total game points
-        if (a.total_game_points !== b.total_game_points) {
-          return b.total_game_points - a.total_game_points;
-        }
+      // Calculate team Sonneborn-Berger
+      calculateTeamSonnebornBerger(db, tournamentId, teamStandings).then(sonnebornMap => {
+        // Add tiebreakers to standings
+        const enhancedStandings = teamStandings.map(team => ({
+          ...team,
+          team_buchholz: buchholzMap[team.team_id] || 0,
+          team_performance_rating: calculateTeamPerformanceRating(team),
+          team_sonneborn_berger: sonnebornMap[team.team_id] || 0
+        }));
         
-        // Secondary: Average game points
-        if (a.avg_game_points !== b.avg_game_points) {
-          return b.avg_game_points - a.avg_game_points;
-        }
+        // Re-sort with tiebreakers
+        enhancedStandings.sort((a, b) => {
+          // Primary: Total game points
+          if (a.total_game_points !== b.total_game_points) {
+            return b.total_game_points - a.total_game_points;
+          }
+          
+          // Secondary: Average game points
+          if (a.avg_game_points !== b.avg_game_points) {
+            return b.avg_game_points - a.avg_game_points;
+          }
+          
+          // Tertiary: Team Buchholz
+          if (a.team_buchholz !== b.team_buchholz) {
+            return b.team_buchholz - a.team_buchholz;
+          }
+          
+          // Quaternary: Wins
+          if (a.wins !== b.wins) {
+            return b.wins - a.wins;
+          }
+          
+          // Quinary: Team performance rating
+          if (a.team_performance_rating !== b.team_performance_rating) {
+            return b.team_performance_rating - a.team_performance_rating;
+          }
+          
+          // Final: Team name (alphabetical)
+          return a.team_name.localeCompare(b.team_name);
+        });
         
-        // Tertiary: Team Buchholz
-        if (a.team_buchholz !== b.team_buchholz) {
-          return b.team_buchholz - a.team_buchholz;
-        }
+        resolve(enhancedStandings);
+      }).catch(err => {
+        console.error('Error calculating team Sonneborn-Berger:', err);
+        // Fallback without Sonneborn-Berger
+        const enhancedStandings = teamStandings.map(team => ({
+          ...team,
+          team_buchholz: buchholzMap[team.team_id] || 0,
+          team_performance_rating: calculateTeamPerformanceRating(team),
+          team_sonneborn_berger: 0
+        }));
         
-        // Quaternary: Wins
-        if (a.wins !== b.wins) {
-          return b.wins - a.wins;
-        }
+        enhancedStandings.sort((a, b) => {
+          if (a.total_game_points !== b.total_game_points) {
+            return b.total_game_points - a.total_game_points;
+          }
+          return a.team_name.localeCompare(b.team_name);
+        });
         
-        // Quinary: Team performance rating
-        if (a.team_performance_rating !== b.team_performance_rating) {
-          return b.team_performance_rating - a.team_performance_rating;
-        }
-        
-        // Final: Team name (alphabetical)
-        return a.team_name.localeCompare(b.team_name);
+        resolve(enhancedStandings);
       });
-      
-      resolve(enhancedStandings);
     });
   });
 }
@@ -612,6 +633,62 @@ function calculateTeamPerformanceRating(team) {
   const performanceRating = 1200 + (winPercentage - 0.5) * 400;
   
   return Math.round(performanceRating);
+}
+
+/**
+ * Calculate team Sonneborn-Berger score
+ * For teams, this is the sum of defeated opponents' scores plus half of drawn opponents' scores
+ */
+function calculateTeamSonnebornBerger(db, tournamentId, teamStandings) {
+  return new Promise((resolve, reject) => {
+    // Get all team match results
+    const query = `
+      SELECT 
+        tr.team_id,
+        tr.opponent_team_id,
+        tr.team_score,
+        tr.opponent_score,
+        t.total_game_points as opponent_total_score
+      FROM team_results tr
+      JOIN (
+        SELECT 
+          team_id,
+          SUM(team_score) as total_game_points
+        FROM team_results
+        WHERE tournament_id = ?
+        GROUP BY team_id
+      ) t ON tr.opponent_team_id = t.team_id
+      WHERE tr.tournament_id = ?
+    `;
+    
+    db.all(query, [tournamentId, tournamentId], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      // Calculate Sonneborn-Berger for each team
+      const sonnebornMap = {};
+      
+      rows.forEach(row => {
+        if (!sonnebornMap[row.team_id]) {
+          sonnebornMap[row.team_id] = 0;
+        }
+        
+        // Sonneborn-Berger = sum of opponent scores for wins + half of opponent scores for draws
+        if (row.team_score > row.opponent_score) {
+          // Win: add full opponent score
+          sonnebornMap[row.team_id] += row.opponent_total_score;
+        } else if (row.team_score === row.opponent_score) {
+          // Draw: add half of opponent score
+          sonnebornMap[row.team_id] += row.opponent_total_score * 0.5;
+        }
+        // Loss: nothing added
+      });
+      
+      resolve(sonnebornMap);
+    });
+  });
 }
 
 /**

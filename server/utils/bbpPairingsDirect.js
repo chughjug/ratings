@@ -249,16 +249,47 @@ class BBPPairingsDirect {
   /**
    * Check if two players can be paired
    */
-  canBePaired(player1, player2, tournament) {
-    // For now, allow all pairings (we'll implement proper opponent checking later)
-    // This is a simplified version that just ensures players aren't paired with themselves
+  async canBePaired(player1, player2, tournament, db = null) {
+    // Ensure players aren't paired with themselves
     if (player1.id === player2.id) {
       return false;
     }
     
-    // TODO: Implement proper opponent checking using database queries
-    // For now, return true to allow all valid pairings
-    return true;
+    // If no database provided, use simplified checking
+    if (!db) {
+      return true;
+    }
+    
+    // Check if players have already met in this tournament
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT COUNT(*) as count 
+        FROM pairings 
+        WHERE tournament_id = ? 
+        AND (
+          (white_player_id = ? AND black_player_id = ?) 
+          OR (white_player_id = ? AND black_player_id = ?)
+        )
+      `;
+      
+      db.get(query, [
+        tournament.id || tournament.tournament_id,
+        player1.id,
+        player2.id,
+        player2.id,
+        player1.id
+      ], (err, row) => {
+        if (err) {
+          console.error('Error checking pairing history:', err);
+          // Default to allowing the pairing if we can't check
+          resolve(true);
+          return;
+        }
+        
+        // Players haven't met if count is 0
+        resolve(row.count === 0);
+      });
+    });
   }
 
   /**

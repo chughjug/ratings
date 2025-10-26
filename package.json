@@ -13,7 +13,8 @@
     "install-all": "npm install && cd client && npm install",
     "setup": "node server/scripts/create-admin.js",
     "start": "node server/index.js",
-    "stop": "./stop-dev.sh"
+    "stop": "./stop-dev.sh",
+    "install-redis": "npm install redis"
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",

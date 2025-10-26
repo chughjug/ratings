@@ -45,8 +45,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [selectedBlackPlayer, setSelectedBlackPlayer] = useState<string>('');
   const [availablePlayers, setAvailablePlayers] = useState<any[]>([]);
   
-  // Board number offset
-  const [boardNumberOffset, setBoardNumberOffset] = useState(0);
+  // Board number offset (removed - using manualFirstBoardNumber directly instead)
 
   // Filter pairings by section to ensure only current section's pairings are shown
   const sectionPairings = pairings.filter(p => p.section === sectionName);
@@ -682,7 +681,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     <div className="flex items-center space-x-2">
                       <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
-                      <span>{pairing.board || (index + 1 + boardNumberOffset)}</span>
+                      <span>{pairing.board || (index + 1 + (parseInt(manualFirstBoardNumber) - 1))}</span>
                     </div>
                   </td>
                   <td 
@@ -877,11 +876,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             <input
               type="number"
               value={manualFirstBoardNumber}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 1;
-                setManualFirstBoardNumber(value.toString());
-                setBoardNumberOffset(value - 1);
-              }}
+              onChange={(e) => setManualFirstBoardNumber(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-20"
               min="1"
             />

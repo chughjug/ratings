@@ -1,6 +1,6 @@
 // Service Worker for Chess Tournament Management PWA
 // Use timestamp-based version to ensure fresh cache on each deployment
-const BUILD_TIMESTAMP = '2024-12-27T00:00:00.000Z';
+const BUILD_TIMESTAMP = '2025-10-26T19:21:59.600Z';
 const CACHE_NAME = `chess-tournament-${BUILD_TIMESTAMP}`;
 const STATIC_CACHE = `chess-tournament-static-${BUILD_TIMESTAMP}`;
 const DYNAMIC_CACHE = `chess-tournament-dynamic-${BUILD_TIMESTAMP}`;

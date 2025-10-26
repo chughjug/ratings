@@ -1,5 +1,5 @@
 {
-  "short_name": "Chess Tournament",
+  "short_name": "Chess Tour-1761506519",
   "name": "Chess Tournament Management System",
   "description": "Professional chess tournament management with live standings, pairings, and player profiles",
   "icons": [
@@ -29,7 +29,11 @@
   "scope": "/",
   "lang": "en-US",
   "dir": "ltr",
-  "categories": ["games", "sports", "productivity"],
+  "categories": [
+    "games",
+    "sports",
+    "productivity"
+  ],
   "screenshots": [
     {
       "src": "screenshot-mobile.png",
@@ -102,8 +106,12 @@
     {
       "action": "/import-tournament",
       "accept": {
-        "text/csv": [".csv"],
-        "application/json": [".json"]
+        "text/csv": [
+          ".csv"
+        ],
+        "application/json": [
+          ".json"
+        ]
       }
     }
   ],
@@ -118,7 +126,10 @@
       "files": [
         {
           "name": "tournament-file",
-          "accept": ["text/csv", "application/json"]
+          "accept": [
+            "text/csv",
+            "application/json"
+          ]
         }
       ]
     }
@@ -133,5 +144,6 @@
     "fast",
     "simple"
   ],
-  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7"
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "version": "1761506519"
 }

@@ -27,6 +27,7 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
   const [generatingStructure, setGeneratingStructure] = useState(false);
   const [prizeFund, setPrizeFund] = useState<number>(0);
   const [availableSections, setAvailableSections] = useState<string[]>([]);
+  const [calculatingPrizes, setCalculatingPrizes] = useState(false);
 
   // Fetch available sections from API when modal opens
   useEffect(() => {
@@ -57,6 +58,8 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
     }
   };
 
+  const [calculatingPrizes, setCalculatingPrizes] = useState(false);
+
   const handleSave = async () => {
     try {
       setLoading(true);
@@ -68,6 +71,24 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
       alert('Failed to save prize settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCalculatePrizes = async () => {
+    try {
+      setCalculatingPrizes(true);
+      const response = await tournamentApi.calculatePrizes(tournamentId);
+      if (response.data.success) {
+        alert(`Successfully calculated and distributed ${response.data.data.length} prizes!`);
+        onUpdate(settings); // Refresh display
+      } else {
+        alert('Failed to calculate prizes: ' + (response.data.error || 'Unknown error'));
+      }
+    } catch (error: any) {
+      console.error('Error calculating prizes:', error);
+      alert('Failed to calculate prizes: ' + (error.message || 'Unknown error'));
+    } finally {
+      setCalculatingPrizes(false);
     }
   };
 
@@ -395,6 +416,23 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
         </div>
 
         <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50">
+          <button
+            onClick={handleCalculatePrizes}
+            disabled={calculatingPrizes || !settings.enabled}
+            className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            {calculatingPrizes ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Calculating...
+              </>
+            ) : (
+              <>
+                <Trophy className="w-4 h-4" />
+                Calculate Prizes
+              </>
+            )}
+          </button>
           <button
             onClick={onClose}
             className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
