@@ -2549,10 +2549,10 @@ const TournamentDetail: React.FC = () => {
                             id: p.id,
                             white_player_id: p.white_player_id,
                             black_player_id: p.black_player_id,
-                            white_player_name: p.white_player_name || '',
-                            black_player_name: p.black_player_name || '',
-                            white_player_uscf_id: p.white_player_uscf_id,
-                            black_player_uscf_id: p.black_player_uscf_id
+                            white_player_name: p.white_name || '',
+                            black_player_name: p.black_name || '',
+                            white_player_uscf_id: p.white_uscf_id,
+                            black_player_uscf_id: p.black_uscf_id
                           }))}
                         onGameCreated={(pairingId, gameUrl, links) => {
                           console.log('Game created:', pairingId, gameUrl, links);
