@@ -171,17 +171,23 @@ const PublicViewCustomization: React.FC<PublicViewCustomizationProps> = ({ tourn
 
   const handleEditPage = (page: CustomPage) => {
     setEditingPage(page);
+    const defaultEmbedSettings = {
+      minHeight: 400,
+      maxHeight: 1200,
+      allowFullscreen: true,
+      responsive: true
+    };
     setPageForm({
       name: page.name,
       slug: page.slug,
       content: page.content,
       isEmbeddable: page.isEmbeddable,
-      embedSettings: page.embedSettings || {
-        minHeight: 400,
-        maxHeight: 1200,
-        allowFullscreen: true,
-        responsive: true
-      }
+      embedSettings: page.embedSettings ? {
+        minHeight: page.embedSettings.minHeight || 400,
+        maxHeight: page.embedSettings.maxHeight || 1200,
+        allowFullscreen: page.embedSettings.allowFullscreen !== undefined ? page.embedSettings.allowFullscreen : true,
+        responsive: page.embedSettings.responsive !== undefined ? page.embedSettings.responsive : true
+      } : defaultEmbedSettings
     });
     setNewPage(true);
   };
