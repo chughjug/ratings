@@ -100,12 +100,17 @@ async function searchUSChessPlayers(searchTerm, maxResults = 10) {
 
     console.log(`Searching for: ${searchTerm}...`);
     
-    // 2. Try Puppeteer first (requires browser but gets real results)
+    // 2. Try Puppeteer first (local only - not available on Heroku)
     let players = [];
-    try {
-      players = await searchWithPuppeteer(searchTerm, maxResults);
-    } catch (puppeteerError) {
-      console.log(`Puppeteer unavailable: ${puppeteerError.message}`);
+    if (!process.env.DYNO) {
+      // Only use Puppeteer on local development where we have Chrome
+      try {
+        players = await searchWithPuppeteer(searchTerm, maxResults);
+      } catch (puppeteerError) {
+        console.log(`Puppeteer unavailable: ${puppeteerError.message}`);
+      }
+    } else {
+      console.log('Running on Heroku - skipping Puppeteer for player search');
     }
 
     if (players && players.length > 0) {
@@ -115,7 +120,7 @@ async function searchUSChessPlayers(searchTerm, maxResults = 10) {
       return filteredPlayers;
     }
 
-    // 3. Fallback to HTTP-based search
+    // 3. Fallback to HTTP-based search (works on Heroku but returns empty results)
     try {
       const httpPlayers = await searchViaMultipleEndpoints(searchTerm, maxResults);
       if (httpPlayers && httpPlayers.length > 0) {
