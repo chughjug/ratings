@@ -36,6 +36,7 @@ import PWAStatus from '../components/PWAStatus';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
 import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
 import LichessIntegration from '../components/LichessIntegration';
+import OnlineGameIntegration from '../components/OnlineGameIntegration';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -2533,23 +2534,51 @@ const TournamentDetail: React.FC = () => {
               </div>
 
               {selectedSection ? (
-                <SectionPairingManager
-                  tournamentId={id || ''}
-                  sectionName={selectedSection}
-                  currentRound={getCurrentRoundForSection(selectedSection)}
-                  pairings={state.pairings || []}
-                  onRoundComplete={(nextRound) => {
-                    setCurrentRoundForSection(selectedSection, nextRound);
-                    fetchPairings(nextRound, selectedSection);
-                  }}
-                  onPairingsUpdate={(newPairings) => {
-                    dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
-                  }}
-                  onRoundChange={(round) => {
-                    setCurrentRoundForSection(selectedSection, round);
-                    fetchPairings(round, selectedSection);
-                  }}
-                />
+                <>
+                  {/* Online Game Generation - Only for online tournaments */}
+                  {state.currentTournament && state.currentTournament.format === 'online' && (
+                    <div className="mb-6">
+                      <OnlineGameIntegration
+                        tournamentId={id || ''}
+                        tournamentName={state.currentTournament.name}
+                        timeControl={state.currentTournament.time_control || 'G/45+15'}
+                        round={getCurrentRoundForSection(selectedSection)}
+                        pairings={state.pairings
+                          .filter(p => p.section === selectedSection && p.round === getCurrentRoundForSection(selectedSection))
+                          .map(p => ({
+                            id: p.id,
+                            white_player_id: p.white_player_id,
+                            black_player_id: p.black_player_id,
+                            white_player_name: p.white_player_name || '',
+                            black_player_name: p.black_player_name || '',
+                            white_player_uscf_id: p.white_player_uscf_id,
+                            black_player_uscf_id: p.black_player_uscf_id
+                          }))}
+                        onGameCreated={(pairingId, gameUrl, links) => {
+                          console.log('Game created:', pairingId, gameUrl, links);
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  <SectionPairingManager
+                    tournamentId={id || ''}
+                    sectionName={selectedSection}
+                    currentRound={getCurrentRoundForSection(selectedSection)}
+                    pairings={state.pairings || []}
+                    onRoundComplete={(nextRound) => {
+                      setCurrentRoundForSection(selectedSection, nextRound);
+                      fetchPairings(nextRound, selectedSection);
+                    }}
+                    onPairingsUpdate={(newPairings) => {
+                      dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
+                    }}
+                    onRoundChange={(round) => {
+                      setCurrentRoundForSection(selectedSection, round);
+                      fetchPairings(round, selectedSection);
+                    }}
+                  />
+                </>
               ) : (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
                   <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />

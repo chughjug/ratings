@@ -20,7 +20,7 @@
         <div id="controls-column" class="col m-0 p-0">
         <div class="container-fluid w-100 h-100 ml-2 p-0">
             
-            <h4 style="margin-bottom:-7px; padding-top:8px;" id="title" class="text-center title-container"> <span class="hr-show">&lt;</span> 2-Player Chess <span class="hr-show">&gt;</span></h4>
+            <h4 style="margin-bottom:-7px; padding-top:8px;" id="title" class="text-center title-container">Chess</h4>
         <div id="notation-float" ><!--Start DIV-->
          
             
@@ -2285,9 +2285,6 @@
                         whiteToMove=false
                 } else(whiteToMove=true)
 
-                findCheckMate()
-                //findStaleMate()
-                
                 removePieceClicks()
                 if(server|!activeGame){assignPieceClicks()}
 
@@ -2295,8 +2292,10 @@
                 
                 check=false;
                 promote=false
-                checkmate=false;
                 stalemate=false
+                
+                findCheckMate()
+                //findStaleMate()
                 enpassant_true=false
                 populatePosObj()
                 socket.emit("send-current-position",moveObj,moveCount)
