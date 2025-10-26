@@ -126,8 +126,6 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
       setError(null);
       const response = await tournamentApi.getPublic(id);
       if (response.data.success) {
-        console.log('Public tournament data received:', response.data.data);
-        console.log('Standings data:', response.data.data.standings);
         setData(response.data.data);
         setLastUpdated(new Date());
         
@@ -728,146 +726,117 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
 
           {activeTab === 'standings' && (
             <div className="space-y-6">
-              {/* Standings Table */}
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                 <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-slate-600">
                   <h3 className="text-lg font-semibold text-white">Tournament Standings</h3>
                 </div>
-                <div className="overflow-x-auto">
-                  {standings && standings.length > 0 ? (
-                    (() => {
-                      try {
-                        // Group standings by section
-                        const standingsBySection = standings.reduce((acc: any, player: any) => {
-                          if (!player || typeof player !== 'object') {
-                            console.warn('Invalid player data:', player);
-                            return acc;
-                          }
-                          const section = player.section || 'Open';
-                          if (!acc[section]) {
-                            acc[section] = [];
-                          }
-                          acc[section].push(player);
-                          return acc;
-                        }, {});
+                <div className="p-6">
+                  {(() => {
+                    // Simple, safe standings rendering
+                    if (!standings || !Array.isArray(standings) || standings.length === 0) {
+                      return (
+                        <div className="text-center py-12">
+                          <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No Standings Available</h3>
+                          <p className="text-gray-600">Standings will appear once games are played.</p>
+                        </div>
+                      );
+                    }
 
-                        return (
-                          <div className="space-y-8">
-                            {Object.keys(standingsBySection).sort().map((sectionName) => (
-                              <div key={sectionName} className="p-6">
-                                <div className="mb-4">
-                                  <h4 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
-                                    {sectionName} Section ({standingsBySection[sectionName].length} players)
-                                  </h4>
-                                </div>
-                                
-                                <div className="overflow-x-auto">
-                                  <table className="w-full border-collapse text-sm">
-                                    <thead>
-                                      <tr className="bg-gray-50">
-                                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          No.
-                                        </th>
-                                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          Player's Name
-                                        </th>
-                                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          USCF
-                                        </th>
-                                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          Rating
-                                        </th>
-                                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          Pts
-                                        </th>
-                                        {Array.from({ length: tournament?.rounds || 5 }, (_, i) => (
-                                          <th key={i} className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                            Rnd{i + 1}
-                                          </th>
-                                        ))}
-                                        <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          BH
-                                        </th>
-                                        <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          SB
-                                        </th>
-                                        <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          Perf
-                                        </th>
-                                        <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
-                                          Prize
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                      {standingsBySection[sectionName].map((player: any, index: number) => {
-                                        if (!player || typeof player !== 'object') {
-                                          console.warn('Invalid player in standings:', player);
-                                          return null;
-                                        }
-                                        return (
-                                          <tr key={player.id || index} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                              {index + 1}.
-                                            </td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                              {player.name || 'Unknown Player'}
-                                            </td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                              {player.uscf_id || '-'}
-                                            </td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                              {player.rating || '-'}
-                                            </td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                              {player.total_points || 0}
-                                            </td>
-                                            {Array.from({ length: tournament?.rounds || 5 }, (_, i) => (
-                                              <td key={i} className="px-2 py-2 text-center text-sm text-gray-500">
-                                                {player.roundResults && player.roundResults[i] ? player.roundResults[i] : '-'}
-                                              </td>
-                                            ))}
-                                            <td className="px-2 py-2 text-center text-sm text-gray-500">
-                                              {player.tiebreakers?.buchholz || '0.0'}
-                                            </td>
-                                            <td className="px-2 py-2 text-center text-sm text-gray-500">
-                                              {player.tiebreakers?.sonneborn_berger || '0.0'}
-                                            </td>
-                                            <td className="px-2 py-2 text-center text-sm text-gray-500">
-                                              {player.performance_rating || '0.0'}
-                                            </td>
-                                            <td className="px-2 py-2 text-center text-sm text-gray-500">
-                                              -
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      } catch (error) {
-                        console.error('Error rendering standings:', error);
-                        return (
-                          <div className="px-6 py-12 text-center text-red-500">
-                            <Trophy className="h-16 w-16 mx-auto mb-4 text-red-300" />
-                            <h3 className="text-lg font-medium text-red-900 mb-2">Error Loading Standings</h3>
-                            <p className="text-red-600">There was an error processing the standings data.</p>
-                            <p className="text-sm text-red-500 mt-2">Error: {error instanceof Error ? error.message : 'Unknown error'}</p>
-                          </div>
-                        );
+                    // Group players by section safely
+                    const sections: { [key: string]: any[] } = {};
+                    standings.forEach((player, index) => {
+                      if (player && typeof player === 'object') {
+                        const section = player.section || 'Open';
+                        if (!sections[section]) {
+                          sections[section] = [];
+                        }
+                        sections[section].push({ ...player, index });
                       }
-                    })()
-                  ) : (
-                    <div className="px-6 py-12 text-center text-gray-500">
-                      <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Standings Available</h3>
-                      <p className="text-gray-600">Standings will appear once games are played.</p>
-                    </div>
-                  )}
+                    });
+
+                    const sectionNames = Object.keys(sections).sort();
+
+                    return (
+                      <div className="space-y-8">
+                        {sectionNames.map((sectionName) => {
+                          const sectionPlayers = sections[sectionName];
+                          if (!sectionPlayers || sectionPlayers.length === 0) return null;
+
+                          return (
+                            <div key={sectionName} className="space-y-4">
+                              <h4 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
+                                {sectionName} Section ({sectionPlayers.length} players)
+                              </h4>
+                              
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        No.
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Player's Name
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        USCF
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Rating
+                                      </th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Pts
+                                      </th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        BH
+                                      </th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        SB
+                                      </th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">
+                                        Perf
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200">
+                                    {sectionPlayers.map((player, index) => (
+                                      <tr key={player.id || index} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {index + 1}.
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {player.name || 'Unknown Player'}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                          {player.uscf_id || '-'}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                          {player.rating || '-'}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                          {player.total_points || 0}
+                                        </td>
+                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
+                                          {player.tiebreakers?.buchholz || '0.0'}
+                                        </td>
+                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
+                                          {player.tiebreakers?.sonneborn_berger || '0.0'}
+                                        </td>
+                                        <td className="px-2 py-2 text-center text-sm text-gray-500">
+                                          {player.performance_rating || '0.0'}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
