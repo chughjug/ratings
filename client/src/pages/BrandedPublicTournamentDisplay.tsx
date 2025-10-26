@@ -530,15 +530,40 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               {/* Current Round Pairings */}
               <div className="card-brand">
                 <h3 className="text-lg font-semibold mb-4 brand-text">Current Round Pairings</h3>
-                {pairings && pairings.length > 0 ? (
-                  <ChessStandingsTable
-                    pairings={pairings}
-                    showRatings={displayOptions.showRatings}
-                    showUscfIds={displayOptions.showUscfIds}
-                    boardNumbers={displayOptions.boardNumbers}
-                    displayFormat={displayOptions.displayFormat}
-                  />
-                ) : (
+                    {pairings && pairings.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b brand-border">
+                              <th className="text-left py-2 brand-text">Board</th>
+                              <th className="text-left py-2 brand-text">White</th>
+                              <th className="text-left py-2 brand-text">Black</th>
+                              <th className="text-left py-2 brand-text">Result</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pairings.map((pairing, index) => (
+                              <tr key={index} className="border-b brand-border">
+                                <td className="py-2 brand-text">{pairing.board || index + 1}</td>
+                                <td className="py-2 brand-text">
+                                  {pairing.white_player?.name || 'TBD'}
+                                  {displayOptions.showRatings && pairing.white_player?.rating && (
+                                    <span className="text-sm brand-secondary ml-2">({pairing.white_player.rating})</span>
+                                  )}
+                                </td>
+                                <td className="py-2 brand-text">
+                                  {pairing.black_player?.name || 'TBD'}
+                                  {displayOptions.showRatings && pairing.black_player?.rating && (
+                                    <span className="text-sm brand-secondary ml-2">({pairing.black_player.rating})</span>
+                                  )}
+                                </td>
+                                <td className="py-2 brand-text">{pairing.result || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                     <p>No pairings available for current round</p>
@@ -568,9 +593,11 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                 {standings && standings.length > 0 ? (
                   <ChessStandingsTable
                     standings={getFilteredStandings(standings)}
-                    showRatings={displayOptions.showRatings}
-                    showUscfIds={displayOptions.showUscfIds}
-                    displayFormat={displayOptions.displayFormat}
+                    tournament={{
+                      rounds: tournament.rounds,
+                      name: tournament.name
+                    }}
+                    tournamentId={tournament.id}
                   />
                 ) : (
                   <div className="text-center py-8 text-gray-500">
@@ -607,15 +634,40 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   </div>
                 </div>
                 
-                {allRoundsData[selectedRound] && allRoundsData[selectedRound].length > 0 ? (
-                  <ChessStandingsTable
-                    pairings={allRoundsData[selectedRound]}
-                    showRatings={displayOptions.showRatings}
-                    showUscfIds={displayOptions.showUscfIds}
-                    boardNumbers={displayOptions.boardNumbers}
-                    displayFormat={displayOptions.displayFormat}
-                  />
-                ) : (
+                        {allRoundsData[selectedRound] && allRoundsData[selectedRound].length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="border-b brand-border">
+                                  <th className="text-left py-2 brand-text">Board</th>
+                                  <th className="text-left py-2 brand-text">White</th>
+                                  <th className="text-left py-2 brand-text">Black</th>
+                                  <th className="text-left py-2 brand-text">Result</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {allRoundsData[selectedRound].map((pairing, index) => (
+                                  <tr key={index} className="border-b brand-border">
+                                    <td className="py-2 brand-text">{pairing.board || index + 1}</td>
+                                    <td className="py-2 brand-text">
+                                      {pairing.white_player?.name || 'TBD'}
+                                      {displayOptions.showRatings && pairing.white_player?.rating && (
+                                        <span className="text-sm brand-secondary ml-2">({pairing.white_player.rating})</span>
+                                      )}
+                                    </td>
+                                    <td className="py-2 brand-text">
+                                      {pairing.black_player?.name || 'TBD'}
+                                      {displayOptions.showRatings && pairing.black_player?.rating && (
+                                        <span className="text-sm brand-secondary ml-2">({pairing.black_player.rating})</span>
+                                      )}
+                                    </td>
+                                    <td className="py-2 brand-text">{pairing.result || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                     <p>No pairings available for round {selectedRound}</p>
