@@ -500,6 +500,58 @@ const OrganizationBrandingSettings: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    {/* Tournament Information Settings */}
+                    <div className="border-t border-gray-200 pt-6 mt-6">
+                      <h4 className="text-md font-semibold text-gray-900 mb-4">Tournament Information Customization</h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Customize the default information displayed on tournament pages for your organization.
+                      </p>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Default Tournament Information Template
+                          </label>
+                          <textarea
+                            value={brandingState.content.defaultTournamentInfo || ''}
+                            onChange={(e) => setContent({ defaultTournamentInfo: e.target.value })}
+                            rows={8}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Enter default tournament information that will be used for all tournaments..."
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            This template will be pre-filled when creating new tournaments
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Tournament Information Sections
+                          </label>
+                          <div className="space-y-2">
+                            {[
+                              { key: 'showSchedule', label: 'Show Schedule Information' },
+                              { key: 'showLocation', label: 'Show Location Details' },
+                              { key: 'showOfficials', label: 'Show Tournament Officials' },
+                              { key: 'showRating', label: 'Show Rating Information' },
+                              { key: 'showRegistration', label: 'Show Registration Links' },
+                              { key: 'showStats', label: 'Show Tournament Statistics' },
+                            ].map((option) => (
+                              <label key={option.key} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={brandingState.content[option.key as keyof typeof brandingState.content] as boolean}
+                                  onChange={(e) => setContent({ [option.key]: e.target.checked })}
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-700">{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

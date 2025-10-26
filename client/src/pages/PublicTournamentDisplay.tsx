@@ -6,7 +6,8 @@ import {
   Crown, Award, BarChart3, TrendingUp, Activity, Star, MapPin, 
   UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield,
   Settings, Filter, ChevronDown, ChevronUp, Maximize2, 
-  Minimize2, Smartphone, Monitor, Tablet, Wifi, WifiOff, X
+  Minimize2, Smartphone, Monitor, Tablet, Wifi, WifiOff, X,
+  FileText
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
@@ -37,7 +38,7 @@ const PublicTournamentDisplay: React.FC = () => {
   const [data, setData] = useState<PublicDisplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'pairings' | 'standings' | 'teams' | 'prizes' | 'analytics' | 'preregistered'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'pairings' | 'standings' | 'teams' | 'prizes' | 'analytics' | 'preregistered'>('overview');
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [allRoundsData, setAllRoundsData] = useState<{ [round: number]: any[] }>({});
@@ -800,6 +801,23 @@ const PublicTournamentDisplay: React.FC = () => {
               </button>
               
               <button
+                onClick={() => setActiveTab('info')}
+                className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'info'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+                }`}
+                role="tab"
+                aria-selected={activeTab === 'info'}
+                aria-label="Tournament information"
+              >
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4" />
+                  <span>Info</span>
+                </div>
+              </button>
+              
+              <button
                 onClick={() => setActiveTab('pairings')}
                 className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
                   activeTab === 'pairings'
@@ -1075,6 +1093,236 @@ const PublicTournamentDisplay: React.FC = () => {
                     </a>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'info' && (
+              <div className="space-y-6">
+                {/* Enhanced Tournament Information Display */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-200 mb-6">
+                  <div className="flex items-center mb-4">
+                    <FileText className="h-6 w-6 mr-3 text-blue-600" />
+                    <h2 className="text-2xl font-bold text-gray-900">Tournament Information</h2>
+                  </div>
+                  
+                  {tournament.tournament_information ? (
+                    <div className="prose max-w-none">
+                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 whitespace-pre-wrap text-gray-700">
+                        {tournament.tournament_information}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <FileText className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                      <p className="text-gray-500 text-lg">No additional information provided.</p>
+                      <p className="text-gray-400 text-sm mt-2">Tournament organizers can add detailed information here.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Detailed Tournament Information Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Schedule Information */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                    <div className="flex items-center mb-4">
+                      <Calendar className="h-5 w-5 mr-2 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Schedule</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Start Date:</span>
+                        <span className="text-black font-medium">
+                          {tournament.start_date 
+                            ? new Date(tournament.start_date).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              })
+                            : 'To be determined'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">End Date:</span>
+                        <span className="text-black font-medium">
+                          {tournament.end_date 
+                            ? new Date(tournament.end_date).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              })
+                            : 'To be determined'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Rounds:</span>
+                        <span className="text-black font-medium">{tournament.rounds} rounds</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600">Time Control:</span>
+                        <span className="text-black font-medium">{tournament.time_control || 'TBD'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Location Information */}
+                  {(tournament.city || tournament.state || tournament.location) && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                      <div className="flex items-center mb-4">
+                        <MapPin className="h-5 w-5 mr-2 text-green-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Location</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {tournament.city && tournament.state && (
+                          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span className="text-gray-600">Location:</span>
+                            <span className="text-black font-medium">{tournament.city}, {tournament.state}</span>
+                          </div>
+                        )}
+                        {tournament.location && (
+                          <div className="py-2">
+                            <span className="text-gray-600 block mb-1">Venue:</span>
+                            <span className="text-black font-medium">{tournament.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Officials */}
+                  {(tournament.chief_td_name || tournament.chief_arbiter_name || tournament.chief_organizer_name) && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                      <div className="flex items-center mb-4">
+                        <Shield className="h-5 w-5 mr-2 text-purple-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Officials</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {tournament.chief_td_name && (
+                          <div className="py-2 border-b border-gray-100">
+                            <span className="text-gray-600 text-sm">Chief Tournament Director:</span>
+                            <p className="text-black font-medium">{tournament.chief_td_name}</p>
+                            {tournament.chief_td_uscf_id && (
+                              <p className="text-gray-500 text-xs mt-1">USCF ID: {tournament.chief_td_uscf_id}</p>
+                            )}
+                          </div>
+                        )}
+                        {tournament.chief_arbiter_name && (
+                          <div className="py-2 border-b border-gray-100">
+                            <span className="text-gray-600 text-sm">Chief Arbiter:</span>
+                            <p className="text-black font-medium">{tournament.chief_arbiter_name}</p>
+                            {tournament.chief_arbiter_fide_id && (
+                              <p className="text-gray-500 text-xs mt-1">FIDE ID: {tournament.chief_arbiter_fide_id}</p>
+                            )}
+                          </div>
+                        )}
+                        {tournament.chief_organizer_name && (
+                          <div className="py-2">
+                            <span className="text-gray-600 text-sm">Organizer:</span>
+                            <p className="text-black font-medium">{tournament.chief_organizer_name}</p>
+                            {tournament.chief_organizer_fide_id && (
+                              <p className="text-gray-500 text-xs mt-1">FIDE ID: {tournament.chief_organizer_fide_id}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rating Information */}
+                  {(tournament.uscf_rated || tournament.fide_rated) && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                      <div className="flex items-center mb-4">
+                        <Star className="h-5 w-5 mr-2 text-yellow-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Rating</h3>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-gray-600">USCF Rated:</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            tournament.uscf_rated ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {tournament.uscf_rated ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-gray-600">FIDE Rated:</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            tournament.fide_rated ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {tournament.fide_rated ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Registration & Contact */}
+                  {tournament.website && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                      <div className="flex items-center mb-4">
+                        <Globe className="h-5 w-5 mr-2 text-blue-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Registration & Contact</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {tournament.allow_registration && (
+                          <div className="py-2 border-b border-gray-100">
+                            <span className="text-gray-600 text-sm block mb-2">Registration:</span>
+                            <a 
+                              href={`/register/${tournament.id}`}
+                              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                            >
+                              <Users className="h-4 w-4 mr-2" />
+                              Register Now
+                            </a>
+                          </div>
+                        )}
+                        {tournament.website && (
+                          <div className="py-2">
+                            <span className="text-gray-600 text-sm block mb-2">Website:</span>
+                            <a 
+                              href={tournament.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              <Globe className="h-4 w-4 mr-2" />
+                              <span>{tournament.website}</span>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats Section */}
+                {getTournamentStats() && (
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                    <div className="flex items-center mb-4">
+                      <Activity className="h-5 w-5 mr-2 text-purple-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Tournament Statistics</h3>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.totalPlayers || 0}</div>
+                        <div className="text-sm text-gray-600 mt-1">Players</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.totalGames || 0}</div>
+                        <div className="text-sm text-gray-600 mt-1">Games</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.completionRate || 0}%</div>
+                        <div className="text-sm text-gray-600 mt-1">Complete</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
+                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.averageRating || 0}</div>
+                        <div className="text-sm text-gray-600 mt-1">Avg Rating</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

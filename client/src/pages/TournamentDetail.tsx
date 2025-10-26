@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -38,6 +38,7 @@ import ChessPlatformIntegration from '../components/ChessPlatformIntegration';
 import LichessIntegration from '../components/LichessIntegration';
 import OnlineGameIntegration from '../components/OnlineGameIntegration';
 import ByeManagementModal from '../components/ByeManagementModal';
+import PublicViewCustomization from '../components/PublicViewCustomization';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -121,6 +122,7 @@ const TournamentDetail: React.FC = () => {
   const [teamTopN, setTeamTopN] = useState<number>(4);
   const [showPrizeConfiguration, setShowPrizeConfiguration] = useState(false);
   const [prizeSettings, setPrizeSettings] = useState<any>(null);
+  const [showPublicViewCustomization, setShowPublicViewCustomization] = useState(false);
   
   // New feature modals
   const [showSMSManager, setShowSMSManager] = useState(false);
@@ -2976,6 +2978,25 @@ const TournamentDetail: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Public View Customization */}
+                <div className="mb-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-md font-medium text-gray-900">Public View Customization</h4>
+                    <button
+                      onClick={() => setShowPublicViewCustomization(true)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>Customize Public View</span>
+                    </button>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <p className="text-sm text-purple-800">
+                      Customize the overlay, branding, and create embeddable custom pages for your tournament's public view.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Prizes Section */}
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-4">
@@ -3498,6 +3519,22 @@ const TournamentDetail: React.FC = () => {
             }}
           />
         </div>
+      )}
+
+      {/* Public View Customization Modal */}
+      {showPublicViewCustomization && tournament && (
+        <PublicViewCustomization
+          tournament={tournament}
+          onSave={async (config) => {
+            try {
+              await handleTournamentUpdate('public_display_config', config.public_display_config);
+              setShowPublicViewCustomization(false);
+            } catch (error) {
+              console.error('Failed to save configuration:', error);
+            }
+          }}
+          onClose={() => setShowPublicViewCustomization(false)}
+        />
       )}
 
       {/* Section Manager Modal */}

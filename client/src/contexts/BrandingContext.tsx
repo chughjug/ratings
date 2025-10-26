@@ -46,6 +46,13 @@ interface BrandingState {
     customFooter?: string;
     welcomeMessage?: string;
     aboutSection?: string;
+    defaultTournamentInfo?: string;
+    showSchedule?: boolean;
+    showLocation?: boolean;
+    showOfficials?: boolean;
+    showRating?: boolean;
+    showRegistration?: boolean;
+    showStats?: boolean;
   };
   social: {
     facebook?: string;
@@ -136,6 +143,12 @@ const defaultContent = {
   showCalendar: true,
   showNews: true,
   showContactInfo: true,
+  showSchedule: true,
+  showLocation: true,
+  showOfficials: true,
+  showRating: true,
+  showRegistration: true,
+  showStats: true,
 };
 
 const defaultSocial = {};

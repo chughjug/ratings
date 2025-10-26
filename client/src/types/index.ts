@@ -672,6 +672,13 @@ export interface OrganizationSettings {
     customFooter?: string;
     welcomeMessage?: string;
     aboutSection?: string;
+    defaultTournamentInfo?: string;
+    showSchedule?: boolean;
+    showLocation?: boolean;
+    showOfficials?: boolean;
+    showRating?: boolean;
+    showRegistration?: boolean;
+    showStats?: boolean;
     customWidgets?: CustomWidget[];
   };
   social?: {

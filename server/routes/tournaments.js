@@ -323,6 +323,7 @@ router.put('/:id', (req, res) => {
     const public_url = updateFields.public_url !== undefined ? updateFields.public_url : existingTournament.public_url;
     const logo_url = updateFields.logo_url !== undefined ? updateFields.logo_url : existingTournament.logo_url;
     const tournament_information = updateFields.tournament_information !== undefined ? updateFields.tournament_information : existingTournament.tournament_information;
+    const public_display_config = updateFields.public_display_config !== undefined ? updateFields.public_display_config : existingTournament.public_display_config;
 
     // Debug logging for tournament updates
     console.log('Tournament update request:', {
@@ -388,7 +389,7 @@ router.put('/:id', (req, res) => {
      city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
      chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
      expected_players, website, fideRated, uscfRated, 
-     allowReg, isPublic, public_url || null, logo_url || null, tournament_information || null, id];
+     allowReg, isPublic, public_url || null, logo_url || null, tournament_information || null, public_display_config || null, id];
     
     console.log('Parameters count:', params.length);
     console.log('Updating tournament information:', tournament_information?.substring(0, 50) || 'null');
@@ -400,7 +401,7 @@ router.put('/:id', (req, res) => {
            city = ?, state = ?, location = ?, chief_td_name = ?, chief_td_uscf_id = ?,
            chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
            chief_organizer_fide_id = ?, expected_players = ?, website = ?,
-           fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?, tournament_information = ?
+           fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?, tournament_information = ?, public_display_config = ?
        WHERE id = ?`,
       params,
     function(err) {

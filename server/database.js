@@ -64,6 +64,7 @@ db.serialize(() => {
       public_url TEXT,
       logo_url TEXT,
       tournament_information TEXT,
+      public_display_config TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (organization_id) REFERENCES organizations (id)
     )
@@ -91,6 +92,13 @@ db.serialize(() => {
   // Add expiration_date column if it doesn't exist (for existing databases)
   db.run(`
     ALTER TABLE players ADD COLUMN expiration_date TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Add public_display_config column if it doesn't exist (for existing databases)
+  db.run(`
+    ALTER TABLE tournaments ADD COLUMN public_display_config TEXT
   `, (err) => {
     // Ignore error if column already exists
   });
