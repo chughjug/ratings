@@ -130,7 +130,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
         setLastUpdated(new Date());
         
         // Load all rounds data asynchronously (don't wait for it)
-        fetchAllRoundsData(response.data.data.tournament.rounds).catch(err => {
+        fetchAllRoundsData(response.data.data.tournament.rounds, response.data.data.standings).catch(err => {
           console.warn('Failed to fetch all rounds data:', err);
         });
       } else {
@@ -161,11 +161,18 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     };
   }, [autoRefresh, id, fetchPublicData]);
 
-  const fetchAllRoundsData = async (totalRounds: number) => {
+  const fetchAllRoundsData = async (totalRounds: number, currentStandings?: any[]) => {
     if (!id) return;
     
     try {
       const roundsData: { [round: number]: any[] } = {};
+      
+      // Helper function to get player points from standings
+      const getPlayerPointsForRound = (playerId: string) => {
+        if (!currentStandings) return 0;
+        const player = currentStandings.find((p: any) => p.id === playerId);
+        return player ? player.total_points || 0 : 0;
+      };
       
       // Fetch data for all rounds
       for (let round = 1; round <= totalRounds; round++) {
@@ -183,13 +190,13 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                 id: pairing.white_player_id,
                 name: pairing.white_name || pairing.white_player_name || 'TBD',
                 rating: pairing.white_rating || pairing.white_player_rating,
-                points: getPlayerPoints(pairing.white_player_id)
+                points: getPlayerPointsForRound(pairing.white_player_id)
               },
               black_player: {
                 id: pairing.black_player_id,
                 name: pairing.black_name || pairing.black_player_name || 'TBD',
                 rating: pairing.black_rating || pairing.black_player_rating,
-                points: getPlayerPoints(pairing.black_player_id)
+                points: getPlayerPointsForRound(pairing.black_player_id)
               },
               white_player_id: pairing.white_player_id,
               black_player_id: pairing.black_player_id
@@ -322,6 +329,13 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const { tournament, pairings, standings, currentRound, organization } = data;
   const stats = getTournamentStats();
   
+  // Helper function to get player points from standings
+  const getPlayerPoints = (playerId: string) => {
+    if (!standings) return 0;
+    const player = standings.find((p: any) => p.id === playerId);
+    return player ? player.total_points || 0 : 0;
+  };
+  
   // Transform current round pairings data and group by section
   const transformedPairings = pairings ? pairings.map((pairing: any) => ({
     id: pairing.id,
@@ -344,13 +358,6 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     white_player_id: pairing.white_player_id,
     black_player_id: pairing.black_player_id
   })) : [];
-
-  // Helper function to get player points from standings
-  const getPlayerPoints = (playerId: string) => {
-    if (!standings) return 0;
-    const player = standings.find((p: any) => p.id === playerId);
-    return player ? player.total_points || 0 : 0;
-  };
 
   // Group pairings by section
   const pairingsBySection = transformedPairings.reduce((acc: any, pairing: any) => {
