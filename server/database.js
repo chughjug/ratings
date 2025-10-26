@@ -734,6 +734,24 @@ db.serialize(() => {
     )
   `);
 
+  // Custom pages table for public tournament display
+  db.run(`
+    CREATE TABLE IF NOT EXISTS custom_pages (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      content TEXT NOT NULL,
+      order_index INTEGER DEFAULT 0,
+      is_active BOOLEAN DEFAULT 1,
+      icon TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      UNIQUE(tournament_id, slug)
+    )
+  `);
+
   // Migration: Add missing prize_id column to prize_distributions if it doesn't exist
   db.run(`
     ALTER TABLE prize_distributions ADD COLUMN prize_id TEXT

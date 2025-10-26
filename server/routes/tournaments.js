@@ -938,6 +938,23 @@ router.get('/:id/public', async (req, res) => {
       );
     });
 
+    // Get custom pages
+    let customPages = [];
+    try {
+      customPages = await new Promise((resolve, reject) => {
+        db.all(
+          'SELECT * FROM custom_pages WHERE tournament_id = ? AND is_active = 1 ORDER BY order_index, created_at',
+          [id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+    } catch (error) {
+      console.warn('Could not fetch custom pages:', error);
+    }
+
     res.json({
       success: true,
       data: {
@@ -946,6 +963,7 @@ router.get('/:id/public', async (req, res) => {
         standings: sortedStandings,
         currentRound,
         activePlayersList,
+        customPages,
         prizes: prizes.map(prize => ({
           ...prize,
           amount: prize.amount ? parseFloat(prize.amount) : undefined,
@@ -1846,6 +1864,23 @@ router.get('/:id/embed', async (req, res) => {
       }
     }
 
+    // Get custom pages
+    let customPages = [];
+    try {
+      customPages = await new Promise((resolve, reject) => {
+        db.all(
+          'SELECT * FROM custom_pages WHERE tournament_id = ? AND is_active = 1 ORDER BY order_index, created_at',
+          [id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+    } catch (error) {
+      console.warn('Could not fetch custom pages:', error);
+    }
+
     // Calculate current round
     const currentRound = allPairings.length > 0 
       ? Math.max(...allPairings.map(p => p.round))
@@ -1891,6 +1926,7 @@ router.get('/:id/embed', async (req, res) => {
       standings: Object.values(standingsBySection).flat(),
       standingsBySection,
       prizes,
+      customPages,
       organization: organization ? {
         id: organization.id,
         name: organization.name,

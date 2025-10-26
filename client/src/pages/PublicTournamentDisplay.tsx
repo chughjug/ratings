@@ -24,6 +24,7 @@ interface PublicDisplayData {
   prizes?: any[];
   analytics?: any;
   activePlayersList?: any[];
+  customPages?: any[];
 }
 
 interface DisplayOptions {
@@ -38,7 +39,8 @@ const PublicTournamentDisplay: React.FC = () => {
   const [data, setData] = useState<PublicDisplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'pairings' | 'standings' | 'teams' | 'prizes' | 'analytics' | 'preregistered'>('overview');
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [customPages, setCustomPages] = useState<any[]>([]);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [allRoundsData, setAllRoundsData] = useState<{ [round: number]: any[] }>({});
@@ -128,6 +130,7 @@ const PublicTournamentDisplay: React.FC = () => {
       const response = await tournamentApi.getPublic(id);
       if (response.data.success) {
         setData(response.data.data);
+        setCustomPages(response.data.data.customPages || []);
         setLastUpdated(new Date());
         
         // Load all rounds data asynchronously (don't wait for it)
@@ -886,6 +889,27 @@ const PublicTournamentDisplay: React.FC = () => {
                   </div>
                 </button>
               )}
+              
+              {/* Custom Pages Tabs */}
+              {customPages.map((page) => (
+                <button
+                  key={page.id}
+                  onClick={() => setActiveTab(page.slug)}
+                  className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    activeTab === page.slug
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+                  }`}
+                  role="tab"
+                  aria-selected={activeTab === page.slug}
+                  aria-label={page.title}
+                >
+                  <div className="flex items-center space-x-2">
+                    {page.icon && <span>{page.icon}</span>}
+                    <span>{page.title}</span>
+                  </div>
+                </button>
+              ))}
               
               {data?.activePlayersList && data?.activePlayersList.length > 0 && (
                 <button
@@ -1844,6 +1868,21 @@ const PublicTournamentDisplay: React.FC = () => {
                 )}
               </div>
             )}
+
+            {/* Custom Pages Content */}
+            {customPages.map((page) => (
+              activeTab === page.slug && (
+                <div key={page.id}>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-black">{page.title}</h2>
+                  </div>
+                  <div 
+                    className="prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: page.content }}
+                  />
+                </div>
+              )
+            ))}
 
             {activeTab === 'preregistered' && data?.activePlayersList && data?.activePlayersList.length > 0 && (
               <div>

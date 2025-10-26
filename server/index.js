@@ -299,6 +299,7 @@ const lichessRoutes = require('./routes/lichess');
 const chess2playerRoutes = require('./routes/chess2player');
 const trfExportRoutes = require('./routes/trfExport');
 const uscfExportRoutes = require('./routes/uscfExport');
+const customPagesRoutes = require('./routes/customPages');
 
 // Use routes
 console.log('Setting up routes...');
@@ -372,6 +373,7 @@ app.use('/api/lichess', lichessRoutes);
 app.use('/api/chess2player', chess2playerRoutes);
 app.use('/api/export', trfExportRoutes);
 app.use('/api/export', uscfExportRoutes);
+app.use('/api/custom-pages', customPagesRoutes);
 
 console.log('Routes set up successfully');
 
