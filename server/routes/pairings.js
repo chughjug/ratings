@@ -3395,7 +3395,7 @@ router.delete('/:pairingId', async (req, res) => {
  * Create a manual pairing
  */
 router.post('/manual', async (req, res) => {
-  const { tournamentId, sectionName, round, boardNumber } = req.body;
+  const { tournamentId, sectionName, round, boardNumber, whitePlayerId, blackPlayerId } = req.body;
 
   if (!tournamentId || !sectionName || !round || !boardNumber) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -3414,13 +3414,37 @@ router.post('/manual', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Tournament not found' });
     }
 
+    let whiteName = 'TBD';
+    let blackName = 'TBD';
+
+    // If players are provided, fetch their names
+    if (whitePlayerId) {
+      const whitePlayer = await new Promise((resolve, reject) => {
+        db.get('SELECT name FROM players WHERE id = ?', [whitePlayerId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      if (whitePlayer) whiteName = whitePlayer.name;
+    }
+
+    if (blackPlayerId) {
+      const blackPlayer = await new Promise((resolve, reject) => {
+        db.get('SELECT name FROM players WHERE id = ?', [blackPlayerId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      if (blackPlayer) blackName = blackPlayer.name;
+    }
+
     // Create manual pairing
     const pairingId = uuidv4();
     await new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO pairings (id, tournament_id, round, board_number, section, white_player_id, black_player_id, white_name, black_name, result, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-        [pairingId, tournamentId, round, boardNumber, sectionName, null, null, 'TBD', 'TBD', null],
+        [pairingId, tournamentId, round, boardNumber, sectionName, whitePlayerId || null, blackPlayerId || null, whiteName, blackName, null],
         (err) => {
           if (err) reject(err);
           else resolve();
@@ -3434,10 +3458,10 @@ router.post('/manual', async (req, res) => {
       round: round,
       board_number: boardNumber,
       section: sectionName,
-      white_player_id: null,
-      black_player_id: null,
-      white_name: 'TBD',
-      black_name: 'TBD',
+      white_player_id: whitePlayerId || null,
+      black_player_id: blackPlayerId || null,
+      white_name: whiteName,
+      black_name: blackName,
       result: null
     };
 
@@ -3450,6 +3474,76 @@ router.post('/manual', async (req, res) => {
   } catch (error) {
     console.error('Error creating manual pairing:', error);
     res.status(500).json({ success: false, message: 'Failed to create manual pairing' });
+  }
+});
+
+/**
+ * Swap two pairings (exchange players between boards)
+ */
+router.post('/swap', async (req, res) => {
+  const { pairingId1, pairingId2 } = req.body;
+
+  if (!pairingId1 || !pairingId2) {
+    return res.status(400).json({ success: false, message: 'Both pairing IDs are required' });
+  }
+
+  try {
+    // Get both pairings
+    const [pairing1, pairing2] = await Promise.all([
+      new Promise((resolve, reject) => {
+        db.get('SELECT * FROM pairings WHERE id = ?', [pairingId1], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      }),
+      new Promise((resolve, reject) => {
+        db.get('SELECT * FROM pairings WHERE id = ?', [pairingId2], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      })
+    ]);
+
+    if (!pairing1 || !pairing2) {
+      return res.status(404).json({ success: false, message: 'One or both pairings not found' });
+    }
+
+    // Swap all data between the two pairings
+    await Promise.all([
+      new Promise((resolve, reject) => {
+        db.run(
+          `UPDATE pairings 
+           SET white_player_id = ?, black_player_id = ?, white_name = ?, black_name = ?
+           WHERE id = ?`,
+          [pairing2.white_player_id, pairing2.black_player_id, pairing2.white_name, pairing2.black_name, pairingId1],
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      }),
+      new Promise((resolve, reject) => {
+        db.run(
+          `UPDATE pairings 
+           SET white_player_id = ?, black_player_id = ?, white_name = ?, black_name = ?
+           WHERE id = ?`,
+          [pairing1.white_player_id, pairing1.black_player_id, pairing1.white_name, pairing1.black_name, pairingId2],
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      })
+    ]);
+
+    res.json({ 
+      success: true, 
+      message: 'Pairings swapped successfully'
+    });
+
+  } catch (error) {
+    console.error('Error swapping pairings:', error);
+    res.status(500).json({ success: false, message: 'Failed to swap pairings' });
   }
 });
 

@@ -233,8 +233,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
 
   const fetchPlayers = useCallback(async () => {
     try {
-      const response = await playerApi.getAll(tournamentId);
-      setAvailablePlayers(response.data || []);
+      const response = await playerApi.getByTournament(tournamentId);
+      setAvailablePlayers(response.data?.data || response.data || []);
     } catch (error) {
       console.error('Error fetching players:', error);
     }
@@ -828,25 +828,115 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       )}
 
       {/* Add Manual Pairing Button */}
-      <div className="mt-4 flex items-center space-x-4">
-        <div className="flex items-center space-x-2">
-          <input
-            type="number"
-            value={newBoardNumber}
-            onChange={(e) => setNewBoardNumber(e.target.value)}
-            placeholder="Board number"
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            min="1"
-          />
+      <div className="mt-4 flex items-center justify-between bg-gray-50 p-4 rounded-lg">
+        <div className="flex items-center space-x-4">
           <button
-            onClick={addManualPairing}
+            onClick={handleOpenManualPairing}
             className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Manual Pairing</span>
+            <span>Add Pairing (Select Players)</span>
           </button>
+          
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">First Board Number:</label>
+            <input
+              type="number"
+              value={manualFirstBoardNumber}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 1;
+                setManualFirstBoardNumber(value.toString());
+                setBoardNumberOffset(value - 1);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-20"
+              min="1"
+            />
+          </div>
         </div>
       </div>
+
+      {/* Manual Pairing Modal */}
+      {showManualPairingModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Add Manual Pairing</h3>
+              <button
+                onClick={() => setShowManualPairingModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Board Number
+                </label>
+                <input
+                  type="number"
+                  value={manualBoardNumber}
+                  onChange={(e) => setManualBoardNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  White Player
+                </label>
+                <select
+                  value={selectedWhitePlayer}
+                  onChange={(e) => setSelectedWhitePlayer(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select white player...</option>
+                  {availablePlayers.filter(p => p.section === sectionName || !p.section).map(player => (
+                    <option key={player.id} value={player.id}>
+                      {player.name} {player.rating ? `(${player.rating})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Black Player
+                </label>
+                <select
+                  value={selectedBlackPlayer}
+                  onChange={(e) => setSelectedBlackPlayer(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select black player...</option>
+                  {availablePlayers.filter(p => p.section === sectionName || !p.section).map(player => (
+                    <option key={player.id} value={player.id}>
+                      {player.name} {player.rating ? `(${player.rating})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowManualPairingModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addManualPairingWithPlayers}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                Add Pairing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {showEditModal && editingPairing && (

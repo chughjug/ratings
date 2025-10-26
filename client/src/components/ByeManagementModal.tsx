@@ -24,23 +24,23 @@ const ByeManagementModal: React.FC<ByeManagementModalProps> = ({
     if (isOpen && state.players) {
       const initialMap = new Map<string, number[]>();
       state.players.forEach(player => {
-        // Handle both string and array formats
+        // Handle both string and array formats for intentional_bye_rounds
         let byeRounds: number[] = [];
         if (player.intentional_bye_rounds) {
-          if (typeof player.intentional_bye_rounds === 'string') {
-            const byeString = player.intentional_bye_rounds;
+          // Check if it's already an array
+          if (Array.isArray(player.intentional_bye_rounds)) {
+            byeRounds = player.intentional_bye_rounds;
+          } else if (typeof player.intentional_bye_rounds === 'string') {
             // Try to parse as JSON first
             try {
-              byeRounds = JSON.parse(byeString);
+              byeRounds = JSON.parse(player.intentional_bye_rounds);
             } catch {
               // If not JSON, try comma-separated
-              byeRounds = byeString
+              byeRounds = (player.intentional_bye_rounds as unknown as string)
                 .split(',')
                 .map(r => parseInt(r.trim()))
                 .filter(r => !isNaN(r));
             }
-          } else if (Array.isArray(player.intentional_bye_rounds)) {
-            byeRounds = player.intentional_bye_rounds;
           }
         }
         initialMap.set(player.id, byeRounds);

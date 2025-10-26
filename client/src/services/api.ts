@@ -447,6 +447,22 @@ export const pairingApi = {
       round,
       boardNumber
     }),
+  
+  createManualWithPlayers: (tournamentId: string, sectionName: string, round: number, boardNumber: number, whitePlayerId: string, blackPlayerId: string) =>
+    api.post<{success: boolean, message: string, pairing: Pairing}>(`/pairings/manual`, {
+      tournamentId,
+      sectionName,
+      round,
+      boardNumber,
+      whitePlayerId,
+      blackPlayerId
+    }),
+  
+  swapPairings: (pairingId1: string, pairingId2: string) =>
+    api.post<{success: boolean, message: string}>(`/pairings/swap`, {
+      pairingId1,
+      pairingId2
+    }),
 };
 
 // Export API
