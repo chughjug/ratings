@@ -44,7 +44,8 @@ const PublicOrganizationTournament: React.FC = () => {
   const [data, setData] = useState<PublicDisplayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'pairings' | 'standings' | 'teams' | 'prizes' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [customPages, setCustomPages] = useState<any[]>([]);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [allRoundsData, setAllRoundsData] = useState<{ [round: number]: any[] }>({});
@@ -77,8 +78,12 @@ const PublicOrganizationTournament: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await organizationApi.getPublicTournament(orgSlug, tournamentId);
+      console.log('Public API response:', response);
       if (response.success) {
         setData(response.data);
+        const customPagesData = response.data.customPages || [];
+        console.log('Custom pages from API:', customPagesData);
+        setCustomPages(customPagesData);
         setLastUpdated(new Date());
         
         // Load all rounds data asynchronously (don't wait for it)
@@ -330,18 +335,27 @@ const PublicOrganizationTournament: React.FC = () => {
               { id: 'standings', label: 'Standings', icon: BarChart3 },
               ...(data.tournament.format.includes('team') ? [{ id: 'teams', label: 'Teams', icon: Users }] : []),
               ...(data.prizes && data.prizes.length > 0 ? [{ id: 'prizes', label: 'Prizes', icon: Award }] : []),
+              // Custom Pages
+              ...(customPages && customPages.length > 0 ? customPages.map(page => ({
+                id: page.slug,
+                label: page.title,
+                icon: null,
+                isCustom: true,
+                customIcon: page.icon
+              })) : []),
               { id: 'analytics', label: 'Analytics', icon: TrendingUp }
-            ].map((tab) => (
+            ].map((tab: any) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <tab.icon className="h-4 w-4 mr-2 inline" />
+                {tab.customIcon && <span className="mr-2">{tab.customIcon}</span>}
+                {tab.icon && <tab.icon className="h-4 w-4 mr-2 inline" />}
                 {tab.label}
               </button>
             ))}
@@ -481,6 +495,18 @@ const PublicOrganizationTournament: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Custom Pages Content */}
+        {customPages && customPages.length > 0 && customPages.map((page) => (
+          activeTab === page.slug && (
+            <div key={page.id} className="space-y-6">
+              <div 
+                className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-lg shadow`}
+                dangerouslySetInnerHTML={{ __html: page.content }}
+              />
+            </div>
+          )
+        ))}
 
         {activeTab === 'analytics' && (
           <div className="space-y-6">
