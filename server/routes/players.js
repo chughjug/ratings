@@ -250,9 +250,14 @@ router.get('/search', async (req, res) => {
     });
   } catch (error) {
     console.error('Error searching players:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to search players'
+    
+    // Return empty results on error instead of failing completely
+    res.json({
+      success: true,
+      data: {
+        players: [],
+        count: 0
+      }
     });
   }
 });

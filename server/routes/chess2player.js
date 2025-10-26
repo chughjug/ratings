@@ -157,9 +157,8 @@ router.get('/games/:id', (req, res) => {
   );
 });
 
-// In-memory store for 2PlayerChess rooms (replicated from 2PlayerChess-master/index.js)
-// TODO: In production, use Redis or database for persistent room storage
-let chessRooms = {};
+// Use shared rooms service
+const chessRoomsService = require('../services/chessRooms');
 
 /**
  * Create a custom 2PlayerChess room
@@ -175,7 +174,7 @@ router.post('/create-room', (req, res) => {
   }
   
   // Create room with predefined players
-  chessRooms[roomCode] = {
+  chessRoomsService.setRoom(roomCode, {
     first: whitePlayer,
     firstID: whitePlayerId || '',
     second: blackPlayer,
@@ -184,7 +183,7 @@ router.post('/create-room', (req, res) => {
     blackPlayer: blackPlayer,
     timeControl: timeControl || '15',
     customRoom: true
-  };
+  });
   
   console.log(`Custom room created: ${roomCode} for ${whitePlayer} vs ${blackPlayer}`);
   
@@ -200,11 +199,12 @@ router.post('/create-room', (req, res) => {
  */
 router.get('/room/:roomCode', (req, res) => {
   const { roomCode } = req.params;
+  const room = chessRoomsService.getRoom(roomCode);
   
-  if (chessRooms[roomCode]) {
+  if (room) {
     res.json({
       success: true,
-      room: chessRooms[roomCode]
+      room: room
     });
   } else {
     res.status(404).json({

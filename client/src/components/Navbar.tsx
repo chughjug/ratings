@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, Plus, Home, User, LogOut, LogIn } from 'lucide-react';
+import { Trophy, Plus, Home, User, LogOut, LogIn, Gamepad2 } from 'lucide-react';
 import PairCraftLogo from './PairCraftLogo';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
@@ -50,6 +50,18 @@ const Navbar: React.FC = () => {
               >
                 <Trophy className="h-4 w-4" />
                 <span>Tournaments</span>
+              </Link>
+              
+              <Link
+                to="/chess"
+                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive('/chess') 
+                    ? 'bg-chess-board text-white' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <Gamepad2 className="h-4 w-4" />
+                <span>Play Chess</span>
               </Link>
             </div>
           </div>

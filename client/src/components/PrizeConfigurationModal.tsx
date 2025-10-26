@@ -26,18 +26,34 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [generatingStructure, setGeneratingStructure] = useState(false);
   const [prizeFund, setPrizeFund] = useState<number>(0);
+  const [availableSections, setAvailableSections] = useState<string[]>([]);
 
+  // Fetch sections from pairings when modal opens
   useEffect(() => {
-    if (isOpen && currentSettings) {
-      setSettings(currentSettings);
-    } else if (isOpen) {
-      setSettings({
-        enabled: false,
-        autoAssign: false,
-        sections: []
-      });
+    if (isOpen) {
+      fetchSectionsFromPairings();
+      if (currentSettings) {
+        setSettings(currentSettings);
+      } else {
+        setSettings({
+          enabled: false,
+          autoAssign: false,
+          sections: []
+        });
+      }
     }
   }, [isOpen, currentSettings]);
+
+  const fetchSectionsFromPairings = async () => {
+    try {
+      const response = await tournamentApi.getSections(tournamentId);
+      if (response.data.success) {
+        setAvailableSections(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching sections from pairings:', error);
+    }
+  };
 
   const handleSave = async () => {
     try {

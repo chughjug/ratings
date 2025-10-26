@@ -153,6 +153,7 @@ export const tournamentApi = {
   completeTournament: (id: string) => 
     api.post<{success: boolean, message: string, prizeResult?: any, error?: string}>(`/tournaments/${id}/complete`),
   // Prize management
+  getSections: (id: string) => api.get<{success: boolean, data: string[], error?: string}>(`/tournaments/${id}/sections`),
   getPrizes: (id: string) => api.get<{success: boolean, data: any[], error?: string}>(`/tournaments/${id}/prizes`),
   calculatePrizes: (id: string) => api.post<{success: boolean, data: any[], message?: string, error?: string}>(`/tournaments/${id}/prizes/calculate`),
   updatePrizeSettings: (id: string, prizeSettings: any) => 

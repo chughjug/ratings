@@ -60,6 +60,7 @@ db.serialize(() => {
       is_public BOOLEAN DEFAULT 0,
       public_url TEXT,
       logo_url TEXT,
+      tournament_information TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (organization_id) REFERENCES organizations (id)
     )

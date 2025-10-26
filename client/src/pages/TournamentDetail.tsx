@@ -44,7 +44,7 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'settings'>('settings');
   const [currentRound, setCurrentRound] = useState(1);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [sectionRounds, setSectionRounds] = useState<{ [section: string]: number }>({});
@@ -1695,15 +1695,15 @@ const TournamentDetail: React.FC = () => {
           <nav className="flex flex-wrap px-2 sm:px-4 overflow-x-auto scrollbar-hide">
             {/* Core Tabs */}
             <button
-              onClick={() => setActiveTab('overview')}
+              onClick={() => setActiveTab('settings')}
               className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'overview'
+                activeTab === 'settings'
                   ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
-              <Trophy className="h-4 w-4" />
-              <span>Overview</span>
+              <Settings className="h-4 w-4" />
+              <span>INFO</span>
             </button>
             
             <button
@@ -1747,18 +1747,6 @@ const TournamentDetail: React.FC = () => {
             >
               <Trophy className="h-4 w-4" />
               <span>Standings</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
             </button>
 
             <button
@@ -2339,13 +2327,31 @@ const TournamentDetail: React.FC = () => {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {player.bye_rounds ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                {player.bye_rounds}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
+                            {(() => {
+                              // Validate that bye_rounds contains valid round numbers, not dates
+                              if (!player.bye_rounds || player.bye_rounds.trim() === '') {
+                                return <span className="text-gray-400">-</span>;
+                              }
+                              
+                              // Check if it looks like a date (contains slashes or dashes in date format)
+                              const isDatePattern = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(player.bye_rounds.trim());
+                              if (isDatePattern) {
+                                // This is a date, not a bye round - don't display it
+                                return <span className="text-gray-400">-</span>;
+                              }
+                              
+                              // Check if it's "Expired" text
+                              if (player.bye_rounds.trim().toLowerCase() === 'expired') {
+                                return <span className="text-gray-400">-</span>;
+                              }
+                              
+                              // It's a valid bye rounds value
+                              return (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  {player.bye_rounds}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <div className="flex space-x-2">
@@ -2710,22 +2716,23 @@ const TournamentDetail: React.FC = () => {
                   <div className="flex items-start space-x-6">
                     {/* Current Logo Display */}
                     <div className="flex-shrink-0">
-                      <div className="w-32 h-20 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                      <div className="w-32 h-20 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative">
                         {tournament?.logo_url ? (
                           <img 
                             src={tournament.logo_url} 
                             alt="Tournament Logo"
-                            className="max-w-full max-h-full object-contain"
+                            className="absolute inset-0 w-full h-full object-contain p-2"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
-                              ((e.target as HTMLImageElement).nextElementSibling as HTMLElement).style.display = 'flex';
                             }}
                           />
                         ) : null}
-                        <div className={`flex flex-col items-center justify-center text-gray-400 text-xs ${tournament?.logo_url ? 'hidden' : 'flex'}`}>
-                          <Upload className="h-6 w-6 mb-1" />
-                          <span>No Logo</span>
-                        </div>
+                        {!tournament?.logo_url && (
+                          <div className="flex flex-col items-center justify-center text-gray-400 text-xs">
+                            <Upload className="h-6 w-6 mb-1" />
+                            <span>No Logo</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     
@@ -2838,6 +2845,26 @@ const TournamentDetail: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Tournament Information for Public View */}
+                <div className="mb-8">
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Tournament Information (Public View)</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tournament Information (displayed on public view)
+                    </label>
+                    <textarea
+                      value={tournament?.tournament_information || ''}
+                      onChange={(e) => handleTournamentUpdate('tournament_information', e.target.value)}
+                      rows={6}
+                      placeholder="Enter tournament information that will be displayed on the public view..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      This information will be displayed on the public tournament view page
+                    </p>
+                  </div>
+                </div>
+
                 {/* Public Settings */}
                 <div className="mb-8">
                   <h4 className="text-md font-medium text-gray-900 mb-4">Public Settings</h4>
@@ -2868,6 +2895,26 @@ const TournamentDetail: React.FC = () => {
                       </label>
                     </div>
                   </div>
+                </div>
+
+                {/* Prizes Section */}
+                <div className="mb-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-md font-medium text-gray-900">Prize Management</h4>
+                    <button
+                      onClick={() => setShowPrizeConfiguration(true)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>Configure Prizes</span>
+                    </button>
+                  </div>
+                  
+                  <PrizeDisplay
+                    tournamentId={id || ''}
+                    showPrizeSettings={true}
+                    onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
+                  />
                 </div>
 
                 {/* Save Button */}

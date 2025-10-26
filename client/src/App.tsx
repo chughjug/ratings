@@ -25,6 +25,7 @@ import Registration from './pages/Registration';
 import SectionPairingPage from './pages/SectionPairingPage';
 import UserProfile from './pages/UserProfile';
 import LandingPage from './pages/LandingPage';
+import ChessGame from './pages/ChessGame';
 import PlayerPerformance from './components/PlayerPerformance';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/print.css';
@@ -165,6 +166,15 @@ function App() {
                               <OrganizationBrandingSettings />
                             </BrandingProvider>
                           </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/chess" 
+                        element={
+                          <>
+                            <Navbar />
+                            <ChessGame />
+                          </>
                         } 
                       />
                     </Routes>

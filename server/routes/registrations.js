@@ -251,12 +251,18 @@ router.post('/submit', async (req, res) => {
 
     // Insert player record with pending status
     await new Promise((resolve, reject) => {
+      // Convert bye_requests array to intentional_bye_rounds string format (comma-separated)
+      const intentionalByeRounds = bye_requests.length > 0 
+        ? bye_requests.join(',') 
+        : null;
+      
       const playerValues = [playerId, tournament_id, player_name, uscf_id, finalRating, finalSection, 'pending',
          ratingLookupResult?.expirationDate || null,
-         bye_requests.length > 0 ? JSON.stringify(bye_requests) : null, 
+         intentionalByeRounds, 
          notes ? `Registration: ${notes}` : 'Public Registration',
          email, phone];
       
+      console.log('Inserting player with bye requests:', bye_requests, '→ intentional_bye_rounds:', intentionalByeRounds);
       console.log('Inserting player with values:', playerValues);
       
       db.run(

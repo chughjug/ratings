@@ -1,6 +1,5 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const puppeteer = require('puppeteer-core');
 
 // Enhanced cache with LRU eviction
 class LRUCache {
@@ -100,26 +99,17 @@ async function searchUSChessPlayers(searchTerm, maxResults = 10) {
 
     console.log(`Searching for: ${searchTerm}...`);
     
-    // 2. Try Puppeteer search first (gets real data)
-    const players = await searchWithPuppeteer(searchTerm, maxResults);
-    
-    if (players && players.length > 0) {
-      // Filter and sort results by relevance to search term
-      const filteredPlayers = filterSearchResults(players, searchTerm, maxResults);
-      
-      // Cache the results
-      searchCache.set(cacheKey, filteredPlayers);
-      console.log(`Puppeteer search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${filteredPlayers.length} relevant players`);
-      return filteredPlayers;
-    }
-
-    // 3. Fallback to HTTP search
-    const httpPlayers = await searchViaMultipleEndpoints(searchTerm, maxResults);
-    if (httpPlayers && httpPlayers.length > 0) {
-      const filteredPlayers = filterSearchResults(httpPlayers, searchTerm, maxResults);
-      searchCache.set(cacheKey, filteredPlayers);
-      console.log(`HTTP search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${filteredPlayers.length} relevant players`);
-      return filteredPlayers;
+    // 2. Use HTTP-based search (works everywhere including Heroku)
+    try {
+      const httpPlayers = await searchViaMultipleEndpoints(searchTerm, maxResults);
+      if (httpPlayers && httpPlayers.length > 0) {
+        const filteredPlayers = filterSearchResults(httpPlayers, searchTerm, maxResults);
+        searchCache.set(cacheKey, filteredPlayers);
+        console.log(`HTTP search completed for: ${searchTerm} (${Date.now() - startTime}ms) - Found ${filteredPlayers.length} relevant players`);
+        return filteredPlayers;
+      }
+    } catch (httpError) {
+      console.log(`HTTP search failed: ${httpError.message}`);
     }
 
     // 4. All methods failed - return empty array (no mock data)
@@ -205,294 +195,45 @@ function filterSearchResults(players, searchTerm, maxResults) {
 }
 
 /**
- * Search using Puppeteer to execute JavaScript and get real US Chess data
+ * NOTE: Puppeteer-based search removed for Heroku compatibility
+ * We now use HTTP-based scraping exclusively which works everywhere
  */
-async function searchWithPuppeteer(searchTerm, maxResults) {
-  let browser;
-  
-  try {
-    console.log(`Using Puppeteer to search for: ${searchTerm}`);
-    
-    // Launch browser with Heroku-optimized settings
-    let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-    
-    // If no executable path is set, try to find Chrome
-    if (!executablePath) {
-      if (process.platform === 'darwin') {
-        // macOS - use the Chrome we installed earlier
-        executablePath = '/Users/aarushchugh/ratings/.cache/puppeteer/chrome/mac_arm-141.0.7390.122/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
-      } else {
-        // Linux (Heroku) - use system Chrome
-        executablePath = '/usr/bin/google-chrome-stable';
-      }
-    }
-    
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath: executablePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-images',
-        '--disable-plugins',
-        '--disable-extensions',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
-        '--disable-background-networking',
-        '--disable-default-apps',
-        '--disable-sync',
-        '--disable-translate',
-        '--hide-scrollbars',
-        '--mute-audio',
-        '--no-first-run',
-        '--disable-logging',
-        '--disable-permissions-api',
-        '--disable-notifications',
-        '--disable-hang-monitor',
-        '--disable-prompt-on-repost',
-        '--disable-domain-reliability',
-        '--disable-component-extensions-with-background-pages',
-        '--disable-background-mode',
-        '--disable-client-side-phishing-detection',
-        '--disable-sync-preferences',
-        '--disable-web-resources',
-        '--window-size=1920,1080',
-        '--single-process', // Important for Heroku
-        '--no-zygote', // Important for Heroku
-        '--memory-pressure-off',
-        '--max_old_space_size=4096'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    
-    // Set user agent
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    
-    // Navigate to search page
-    const url = `https://beta-ratings.uschess.org/?fuzzy=${encodeURIComponent(searchTerm)}`;
-    await page.goto(url, { 
-      waitUntil: 'networkidle2',
-      timeout: 30000 
-    });
-    
-    // Progressive delay system: check every 1.5 seconds up to 6 seconds total
-    let playerCards = [];
-    let attempts = 0;
-    const maxAttempts = 4; // 1.5s * 4 = 6 seconds total
-    const delayMs = 1500; // 1.5 seconds
-    
-    console.log('Waiting for search results to load...');
-    
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      attempts++;
-      
-      console.log(`Checking for results (attempt ${attempts}/${maxAttempts})...`);
-      
-      try {
-        playerCards = await page.$$('.search-card-player');
-        if (playerCards.length > 0) {
-          console.log(`Found ${playerCards.length} search result cards!`);
-          break;
-        }
-      } catch (e) {
-        console.log(`Attempt ${attempts}: No cards found yet`);
-      }
-    }
-    
-    if (playerCards.length === 0) {
-      console.log('No search results found after 6 seconds');
-      return [];
-    }
-    
-    console.log(`Processing ${playerCards.length} player cards`);
-    
-    const players = [];
-    
-    for (let i = 0; i < Math.min(playerCards.length, maxResults); i++) {
-      try {
-        const card = playerCards[i];
-        
-        // Extract player name
-        const nameElement = await card.$('.font-names');
-        let name = '';
-        if (nameElement) {
-          const nameSpans = await card.$$('.font-names span');
-          if (nameSpans.length >= 2) {
-            // Get all span texts and combine them
-            const nameParts = [];
-            for (let j = 0; j < nameSpans.length; j++) {
-              const text = await nameSpans[j].evaluate(el => el.textContent.trim());
-              if (text && text.length > 0) {
-                nameParts.push(text);
-              }
-            }
-            
-            // Combine first and last name (skip any duplicates)
-            if (nameParts.length >= 2) {
-              const firstName = nameParts[0];
-              const lastName = nameParts[nameParts.length - 1];
-              
-              // Format names properly (Title Case) and validate they're actual names
-              const formatName = (n) => {
-                return n.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-              };
-              
-              // Validate names are not empty or just symbols
-              const formattedFirst = formatName(firstName);
-              const formattedLast = formatName(lastName);
-              
-              if (formattedFirst.length > 1 && formattedLast.length > 1 && 
-                  /^[a-zA-Z\s'-]+$/.test(formattedFirst) && /^[a-zA-Z\s'-]+$/.test(formattedLast)) {
-                name = `${formattedFirst} ${formattedLast}`;
-              } else {
-                // If validation fails, try to use full name from single span
-                const fullName = nameParts.join(' ');
-                if (fullName.length > 2 && /^[a-zA-Z\s'-]+$/.test(fullName)) {
-                  name = formatName(fullName);
-                }
-              }
-            } else if (nameParts.length === 1) {
-              // Format the entire name if we can't split it
-              const formatName = (n) => {
-                return n.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-              };
-              const fullName = formatName(nameParts[0]);
-              if (fullName.length > 2 && /^[a-zA-Z\s'-]+$/.test(fullName)) {
-                name = fullName;
-              }
-            }
-          }
-        }
-        
-        // Skip if name extraction failed or resulted in an invalid name
-        if (!name || name.trim().length < 3 || !/^[a-zA-Z\s'-]+$/.test(name)) {
-          console.log(`Skipping card ${i}: Invalid name extracted`);
-          continue;
-        }
-        
-        // Extract USCF ID
-        const linkElement = await card.$('a[href*="/player/"]');
-        let memberId = null;
-        if (linkElement) {
-          const href = await linkElement.evaluate(el => el.getAttribute('href'));
-          const match = href.match(/\/player\/(\d+)/);
-          if (match) memberId = match[1];
-        }
-        
-        // Extract state
-        const stateElement = await card.$('.font-sans');
-        let state = null;
-        if (stateElement) {
-          state = await stateElement.evaluate(el => el.textContent.trim());
-        }
-        
-        // Extract ratings
-        const ratings = {
-          regular: null,
-          quick: null,
-          blitz: null,
-          online_regular: null,
-          online_quick: null,
-          online_blitz: null
-        };
-        
-        const ratingBadges = await card.$$('.w-13');
-        for (const badge of ratingBadges) {
-          try {
-            const ratingTypeElement = await badge.$('.font-condensed');
-            const ratingValueElement = await badge.$('.font-mono');
-            
-            if (ratingTypeElement && ratingValueElement) {
-              const ratingType = await ratingTypeElement.evaluate(el => el.textContent.trim());
-              const ratingValue = await ratingValueElement.evaluate(el => el.textContent.trim());
-              
-              if (ratingType && ratingValue && !isNaN(ratingValue)) {
-                const value = parseInt(ratingValue);
-                switch (ratingType) {
-                  case 'R': ratings.regular = value; break;
-                  case 'Q': ratings.quick = value; break;
-                  case 'B': ratings.blitz = value; break;
-                  case 'OR': ratings.online_regular = value; break;
-                  case 'OQ': ratings.online_quick = value; break;
-                  case 'OB': ratings.online_blitz = value; break;
-                }
-              }
-            }
-          } catch (e) {
-            // Continue if rating extraction fails
-          }
-        }
-        
-        // Extract expiration date
-        const cardText = await card.evaluate(el => el.textContent);
-        const expMatch = cardText.match(/Exp:\s*([^\s]+)/);
-        const expirationDate = expMatch ? expMatch[1].trim() : null;
-        
-        if (name && memberId) {
-          players.push({
-            name: name.trim(),
-            memberId: memberId.trim(),
-            state: state ? state.trim() : null,
-            ratings,
-            uscf_id: memberId.trim(),
-            rating: ratings.regular || null,
-            expiration_date: expirationDate
-          });
-          
-          console.log(`✅ Extracted: ${name} (ID: ${memberId})`);
-        }
-        
-      } catch (e) {
-        console.log(`Error extracting player ${i}:`, e.message);
-      }
-    }
-    
-    console.log(`Successfully extracted ${players.length} players with Puppeteer`);
-    return players;
-    
-  } catch (error) {
-    console.error('Puppeteer search failed:', error.message);
-    return [];
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-}
 
 /**
  * Search using the US Chess beta ratings URL only
+ * This is the primary fallback method that works everywhere
  */
 async function searchViaMultipleEndpoints(searchTerm, maxResults) {
   try {
-    // Only use the correct US Chess beta ratings URL
-    const url = `https://beta-ratings.uschess.org/?fuzzy=${encodeURIComponent(searchTerm)}`;
+    // Try multiple US Chess endpoints
+    const endpoints = [
+      `https://beta-ratings.uschess.org/?fuzzy=${encodeURIComponent(searchTerm)}`,
+      `https://www.uschess.org/msa/MbrDtlMain.php?` 
+    ];
     
-    console.log(`Searching: ${url}`);
-    const response = await httpClient.get(url, {
-      timeout: 10000 // 10 second timeout
-    });
-    
-    // Wait for dynamic content to load (the 5 seconds you mentioned)
-    console.log('Waiting for page to fully populate...');
-    await new Promise(resolve => setTimeout(resolve, 6000)); // Wait 6 seconds
-    
-    const players = parseAPIResponse(response.data, maxResults);
-    if (players.length > 0) {
-      console.log(`Found ${players.length} players via US Chess`);
-      return players;
+    for (const url of endpoints) {
+      try {
+        console.log(`Searching: ${url}`);
+        const response = await httpClient.get(url, {
+          timeout: 15000 // 15 second timeout for Heroku
+        });
+        
+        // Parse the response
+        const players = parseAPIResponse(response.data, maxResults);
+        if (players.length > 0) {
+          console.log(`Found ${players.length} players via US Chess`);
+          return players;
+        }
+      } catch (endpointError) {
+        console.log(`Endpoint ${url} failed:`, endpointError.message);
+        // Try next endpoint
+        continue;
+      }
     }
     
     return [];
   } catch (error) {
-    console.log(`US Chess search failed:`, error.message);
+    console.log(`All US Chess endpoints failed:`, error.message);
     return [];
   }
 }

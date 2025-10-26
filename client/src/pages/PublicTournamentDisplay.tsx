@@ -944,6 +944,14 @@ const PublicTournamentDisplay: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Tournament Information for Public View */}
+                  {tournament.tournament_information && (
+                    <div className="bg-white border border-gray-200 rounded p-6 col-span-full">
+                      <h3 className="text-lg font-semibold text-black mb-4">Tournament Information</h3>
+                      <div className="text-gray-700 whitespace-pre-wrap">{tournament.tournament_information}</div>
+                    </div>
+                  )}
+
                   {/* Location Info */}
                   {(tournament.city || tournament.state || tournament.location) && (
                     <div className="bg-white border border-gray-200 rounded p-6">

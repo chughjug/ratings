@@ -59,8 +59,17 @@ async function calculateAndDistributePrizes(tournamentId, db) {
 
     const distributions = [];
 
+    // Get sections from pairings (not from player.section)
+    const sectionsFromPairings = await getSectionsFromPairings(tournamentId, db);
+    
     // Process each section's prizes
     for (const sectionConfig of prizeSettings.sections) {
+      // Check if this section exists in pairings
+      if (!sectionsFromPairings.has(sectionConfig.name)) {
+        console.log(`Section ${sectionConfig.name} not found in pairings, skipping...`);
+        continue;
+      }
+      
       const sectionStandings = standings.filter(player => 
         (player.section || 'Open') === sectionConfig.name
       );
@@ -475,6 +484,37 @@ function sortStandingsByTiebreakers(standings, tiebreakCriteria) {
 }
 
 /**
+ * Get sections from pairings (not from players)
+ */
+async function getSectionsFromPairings(tournamentId, db) {
+  const sections = new Set();
+  
+  const pairings = await new Promise((resolve, reject) => {
+    db.all(
+      'SELECT DISTINCT section FROM pairings WHERE tournament_id = ? AND section IS NOT NULL',
+      [tournamentId],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      }
+    );
+  });
+  
+  pairings.forEach(pairing => {
+    if (pairing.section) {
+      sections.add(pairing.section);
+    }
+  });
+  
+  // If no sections found in pairings, add 'Open' as default
+  if (sections.size === 0) {
+    sections.add('Open');
+  }
+  
+  return sections;
+}
+
+/**
  * Get tournament standings with tiebreakers
  */
 async function getTournamentStandings(tournamentId, tournament, db) {
@@ -753,6 +793,7 @@ module.exports = {
   groupStandingsByScore,
   sortStandingsByTiebreakers,
   getTournamentStandings,
+  getSectionsFromPairings,
   isEligibleForRatingPrize,
   getPlayerPosition,
   generateStandardPrizeStructure

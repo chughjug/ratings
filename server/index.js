@@ -4,6 +4,8 @@ const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const db = require('./database');
+const http = require('http');
+const socketIo = require('socket.io');
 require('dotenv').config();
 
 // Increase max listeners to prevent memory leak warning
@@ -23,6 +25,9 @@ process.on('unhandledRejection', (reason, promise) => {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Create HTTP server for Socket.io
+const server = http.createServer(app);
+
 // Trust proxy for rate limiting behind reverse proxy (Heroku)
 app.set('trust proxy', 1);
 
@@ -34,7 +39,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000", "ws://localhost:*", "http:", "https:"],
+      connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000", "ws://localhost:*", "http:", "https:", "ws:", "wss:"],
       frameSrc: ["'self'", "https:"],
       frameAncestors: ["*"], // Allow embedding in iframes from any origin
       fontSrc: ["'self'", "data:", "https:"],
@@ -442,8 +447,235 @@ async function ensureDBFFilesReady() {
 ensureDBFFilesReady();
 setInterval(ensureDBFFilesReady, 5 * 60 * 1000); // 5 minutes
 
+// Initialize Socket.io for 2PlayerChess
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// 2PlayerChess game state (shared with routes)
+const chessRoomsService = require('./services/chessRooms');
+let userCount = 0;
+
+// Initialize Socket.io event handlers for 2PlayerChess
+io.on('connection', (socket) => {
+  let moveCt = 0;
+  socket.emit("this-user", socket.id);
+  console.log("2PlayerChess socket.id:", socket.id);
+  let gameRoomId;
+  userCount++;
+  console.log("2PlayerChess users:", userCount);
+
+  socket.on('disconnect', () => {
+    userCount--;
+    console.log("2PlayerChess users:", userCount);
+  });
+
+  socket.on('newroom', (name) => {
+    let newRoom = Math.random().toString(36).substr(2, 10).toUpperCase();
+    chessRoomsService.setRoom(newRoom, { first: name, firstID: socket.id });
+    gameRoomId = newRoom;
+    socket.room = gameRoomId;
+    socket.name = name;
+    socket.join(newRoom, () => {
+      console.log(`${socket.name} has joined ${newRoom}!`);
+    });
+    io.in(gameRoomId).emit('username', name);
+    io.in(gameRoomId).emit('newroom', newRoom);
+  });
+
+  socket.on('get-current-time', (minsB, minsW, secsB, secsW, zeroB, zeroW) => {
+    const room = chessRoomsService.getRoom(gameRoomId);
+    if (room) {
+      room.time = {
+        minsB: minsB,
+        minsW: minsW,
+        secsB: secsB,
+        secsW: secsW,
+        zeroB: zeroB,
+        zeroW: zeroW
+      };
+      chessRoomsService.setRoom(gameRoomId, room);
+      const updatedRoom = chessRoomsService.getRoom(gameRoomId);
+      console.log(updatedRoom.time);
+      const time = room.time;
+      io.in(gameRoomId).emit("get-current-time",
+        time.minsB,
+        time.minsW,
+        time.secsB,
+        time.secsW,
+        time.zeroB,
+        time.zeroW
+      );
+    }
+  });
+
+  socket.on("game-options", (radioVal, plus5Val, colorVal, rematch, id) => {
+    const room = chessRoomsService.getRoom(gameRoomId);
+    if (radioVal && room) {
+      room.options = {
+        playerOneIsWhite: colorVal,
+        timeControls: radioVal,
+        plus5secs: plus5Val
+      };
+      room.options.playerOneIsWhite;
+      room.options.timeControls;
+      room.options.plus5secs;
+      chessRoomsService.setRoom(gameRoomId, room);
+
+      io.in(gameRoomId).emit("game-options",
+        room.options.timeControls,
+        room.options.plus5secs,
+        room.options.playerOneIsWhite,
+        room.firstID,
+        rematch,
+        id
+      );
+      console.log(room);
+    }
+  });
+
+  socket.on('validate', val => {
+    let roomsKeys = Object.keys(chessRoomsService.getRooms());
+    let valIsTrue = roomsKeys.some((room) => {
+      return room == val;
+    });
+    socket.emit("validate", valIsTrue);
+  });
+
+  socket.on("checkmate", () => {
+    io.in(gameRoomId).emit("checkmate");
+  });
+
+  socket.on("drawn-game", () => {
+    io.in(gameRoomId).emit("drawn-game");
+  });
+
+  socket.on("send-current-position", (moveObj, moveCount) => {
+    const room = chessRoomsService.getRoom(gameRoomId);
+    if (room) {
+      room.moveObj = moveObj;
+      room.moveCount = moveCount;
+      chessRoomsService.setRoom(gameRoomId, room);
+      console.log(room.moveObj, room.moveCount);
+    }
+  });
+
+  socket.on('join', (room, user, restart, moveCtClient, rematch) => {
+    let user1 = "";
+    let opponent = "";
+    let rejoin = false;
+    if (!restart) {
+      moveCt = moveCtClient;
+      console.log(moveCt);
+      const existingRoom = chessRoomsService.getRoom(room);
+      if (existingRoom && existingRoom.firstID != "") {
+        existingRoom.second = user;
+        existingRoom.secondID = socket.id;
+        chessRoomsService.setRoom(room, existingRoom);
+        socket.emit('this-user', existingRoom.secondID);
+        user1 = user;
+        opponent = existingRoom.first;
+      } else {
+        if (!existingRoom) {
+          chessRoomsService.setRoom(room, {});
+        }
+        const newRoom = chessRoomsService.getRoom(room);
+        newRoom.first = user;
+        newRoom.firstID = socket.id;
+        chessRoomsService.setRoom(room, newRoom);
+        user1 = user;
+        socket.emit('this-user', newRoom.firstID);
+        opponent = newRoom.second || '';
+        rejoin = true;
+      }
+
+      socket.name = user;
+      socket.room = room;
+      gameRoomId = room;
+      socket.join(room, () => {
+        console.log(`${socket.name} has joined ${room}!`);
+      });
+    }
+
+    const currentRoom = chessRoomsService.getRoom(gameRoomId);
+    if (io.sockets.adapter.rooms.get(gameRoomId) && io.sockets.adapter.rooms.get(gameRoomId).size == 2 && currentRoom) {
+      io.in(gameRoomId).emit('username2',
+        user1,
+        opponent,
+        room,
+        false,
+        rejoin,
+        currentRoom.moveObj,
+        currentRoom.moveCount.toString()
+      );
+    }
+  });
+
+  socket.on('chat-msg', (msg) => {
+    io.in(gameRoomId).emit('chat-msg', msg, socket.name);
+  });
+
+  socket.on('offer-draw', () => {
+    socket.to(gameRoomId).emit('offer-draw');
+  });
+
+  socket.on("decline-draw", () => {
+    socket.to(gameRoomId).emit("decline-draw");
+  });
+
+  socket.on('move', (piece, pos, color, simulation, atk, server, move, pawnPromote) => {
+    moveCt++;
+    socket.to(gameRoomId).emit('move', piece, pos, color, simulation, atk, true, move, pawnPromote);
+  });
+
+  socket.on('resign', () => {
+    console.log("RESIGNED");
+    socket.to(gameRoomId).emit('resign');
+  });
+
+  socket.on("disable-chat", () => {
+    socket.to(gameRoomId).emit("disable-chat");
+  });
+
+  socket.on("enable-chat", () => {
+    socket.to(gameRoomId).emit("enable-chat");
+  });
+
+  socket.on('request-rematch', (thisUserID) => {
+    socket.to(gameRoomId).emit('request-rematch', thisUserID);
+  });
+
+  socket.on('rematch-response', (val, id) => {
+    socket.to(gameRoomId).emit("rematch-response", val, id);
+  });
+
+  // GAME FUNCTIONS
+  socket.on('disconnect', () => {
+    console.log(`${socket.id} has disconnected!`);
+
+    if (io.sockets.adapter.rooms.get(gameRoomId) == undefined || io.sockets.adapter.rooms.get(gameRoomId).size === 0) {
+      chessRoomsService.deleteRoom(gameRoomId);
+      console.log(chessRoomsService.getRooms());
+    } else {
+      const room = chessRoomsService.getRoom(gameRoomId);
+      let firstPlayerGone = Boolean(room && room.firstID == socket.id);
+      if (firstPlayerGone && room) {
+        room.firstID = "";
+        room.first = "";
+        chessRoomsService.setRoom(gameRoomId, room);
+      }
+      socket.to(gameRoomId).emit("p-disconnected", socket.name, firstPlayerGone);
+    }
+  });
+});
+
+console.log('⚡ 2PlayerChess Socket.io initialized');
+
 // Enhanced server startup with better error handling
-const server = app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 CORS Origin: ${process.env.CORS_ORIGIN || 'not set'}`);
