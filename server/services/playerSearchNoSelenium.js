@@ -256,11 +256,17 @@ async function searchWithPuppeteer(searchTerm, maxResults) {
       }
     }
     
-    browser = await puppeteer.launch({
+    // Only set executablePath if we found a Chrome binary, otherwise let Puppeteer use its bundled Chromium
+    const launchOptions = {
       headless: true,
-      executablePath: executablePath,
       args: puppeteerArgs
-    });
+    };
+    
+    if (executablePath) {
+      launchOptions.executablePath = executablePath;
+    }
+    
+    browser = await puppeteer.launch(launchOptions);
     
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
