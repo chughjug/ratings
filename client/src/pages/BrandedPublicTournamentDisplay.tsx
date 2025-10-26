@@ -178,6 +178,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               board: pairing.board,
               round: pairing.round,
               result: pairing.result || 'TBD',
+              section: pairing.section || 'Open',
               white_player: {
                 id: pairing.white_player_id,
                 name: pairing.white_name || pairing.white_player_name || 'TBD',
@@ -319,12 +320,13 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const { tournament, pairings, standings, currentRound, organization } = data;
   const stats = getTournamentStats();
   
-  // Transform current round pairings data
+  // Transform current round pairings data and group by section
   const transformedPairings = pairings ? pairings.map((pairing: any) => ({
     id: pairing.id,
     board: pairing.board,
     round: pairing.round,
     result: pairing.result || 'TBD',
+    section: pairing.section || 'Open',
     white_player: {
       id: pairing.white_player_id,
       name: pairing.white_name || pairing.white_player_name || 'TBD',
@@ -338,6 +340,16 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     white_player_id: pairing.white_player_id,
     black_player_id: pairing.black_player_id
   })) : [];
+
+  // Group pairings by section
+  const pairingsBySection = transformedPairings.reduce((acc: any, pairing: any) => {
+    const section = pairing.section || 'Open';
+    if (!acc[section]) {
+      acc[section] = [];
+    }
+    acc[section].push(pairing);
+    return acc;
+  }, {});
 
   return (
     <div className={`min-h-screen bg-white ${isEmbedded ? 'embed-mode' : ''}`}>
@@ -612,41 +624,48 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   <h3 className="text-lg font-semibold text-gray-900">Current Round Pairings</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  {transformedPairings && transformedPairings.length > 0 ? (
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {transformedPairings.map((pairing, index) => (
-                          <tr key={pairing.id || index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.board || index + 1}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.white_player?.name || 'TBD'}
-                              {pairing.white_player?.rating && (
-                                <span className="text-sm text-gray-500 ml-2">({pairing.white_player.rating})</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.black_player?.name || 'TBD'}
-                              {pairing.black_player?.rating && (
-                                <span className="text-sm text-gray-500 ml-2">({pairing.black_player.rating})</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.result || '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {Object.keys(pairingsBySection).length > 0 ? (
+                    <div className="space-y-6">
+                      {Object.keys(pairingsBySection).sort().map((sectionName) => (
+                        <div key={sectionName} className="p-6">
+                          <h4 className="text-md font-semibold text-gray-800 mb-4 uppercase">{sectionName} Section</h4>
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {pairingsBySection[sectionName].map((pairing, index) => (
+                                <tr key={pairing.id || index} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {pairing.board || index + 1}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {pairing.white_player?.name || 'TBD'}
+                                    {pairing.white_player?.rating && (
+                                      <span className="text-sm text-gray-500 ml-2">({pairing.white_player.rating})</span>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {pairing.black_player?.name || 'TBD'}
+                                    {pairing.black_player?.rating && (
+                                      <span className="text-sm text-gray-500 ml-2">({pairing.black_player.rating})</span>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {pairing.result || '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <div className="px-6 py-8 text-center text-gray-500">
                       <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -694,48 +713,68 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   <h3 className="text-lg font-semibold text-gray-900">Round {selectedRound} Pairings</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {allRoundsData[selectedRound] && allRoundsData[selectedRound].length > 0 ? (
-                        allRoundsData[selectedRound].map((pairing, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.board || index + 1}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.white_player?.name || 'TBD'}
-                              {pairing.white_player?.rating && (
-                                <span className="text-sm text-gray-500 ml-2">({pairing.white_player.rating})</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.black_player?.name || 'TBD'}
-                              {pairing.black_player?.rating && (
-                                <span className="text-sm text-gray-500 ml-2">({pairing.black_player.rating})</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {pairing.result || '-'}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                            No pairings available for round {selectedRound}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                  {allRoundsData[selectedRound] && allRoundsData[selectedRound].length > 0 ? (
+                    (() => {
+                      // Group pairings by section for this round
+                      const roundPairingsBySection = allRoundsData[selectedRound].reduce((acc: any, pairing: any) => {
+                        const section = pairing.section || 'Open';
+                        if (!acc[section]) {
+                          acc[section] = [];
+                        }
+                        acc[section].push(pairing);
+                        return acc;
+                      }, {});
+
+                      return (
+                        <div className="space-y-6">
+                          {Object.keys(roundPairingsBySection).sort().map((sectionName) => (
+                            <div key={sectionName} className="p-6">
+                              <h4 className="text-md font-semibold text-gray-800 mb-4 uppercase">{sectionName} Section</h4>
+                              <table className="w-full">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {roundPairingsBySection[sectionName].map((pairing, index) => (
+                                    <tr key={pairing.id || index} className="hover:bg-gray-50">
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {pairing.board || index + 1}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {pairing.white_player?.name || 'TBD'}
+                                        {pairing.white_player?.rating && (
+                                          <span className="text-sm text-gray-500 ml-2">({pairing.white_player.rating})</span>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {pairing.black_player?.name || 'TBD'}
+                                        {pairing.black_player?.rating && (
+                                          <span className="text-sm text-gray-500 ml-2">({pairing.black_player.rating})</span>
+                                        )}
+                                      </td>
+                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {pairing.result || '-'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="px-6 py-8 text-center text-gray-500">
+                      <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No pairings available for round {selectedRound}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

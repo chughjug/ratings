@@ -537,7 +537,7 @@ router.get('/:id/public', async (req, res) => {
          WHERE p.tournament_id = ? AND p.round = (
            SELECT MAX(round) FROM pairings WHERE tournament_id = ?
          )
-         ORDER BY p.board`,
+         ORDER BY p.section, p.board`,
         [id, id],
         (err, rows) => {
           if (err) reject(err);
