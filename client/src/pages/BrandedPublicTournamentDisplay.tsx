@@ -639,7 +639,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                              {pairingsBySection[sectionName].map((pairing, index) => (
+                              {pairingsBySection[sectionName].map((pairing: any, index: number) => (
                                 <tr key={pairing.id || index} className="hover:bg-gray-50">
                                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {pairing.board || index + 1}
@@ -740,7 +740,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                  {roundPairingsBySection[sectionName].map((pairing, index) => (
+                                  {roundPairingsBySection[sectionName].map((pairing: any, index: number) => (
                                     <tr key={pairing.id || index} className="hover:bg-gray-50">
                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {pairing.board || index + 1}
