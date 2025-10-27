@@ -1181,7 +1181,7 @@ router.post('/generate/section', async (req, res) => {
                   WHEN pair.bye_type = 'bye' THEN 0.5
                   WHEN pair.bye_type = 'half_point_bye' THEN 0.5
                   WHEN pair.bye_type = 'unpaired' THEN 1.0
-                  ELSE 1.0
+                  ELSE 0.5
                 END
                 ELSE 0
               END as points,
@@ -1980,7 +1980,7 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
                       WHEN pair.bye_type = 'bye' THEN 0.5
                       WHEN pair.bye_type = 'half_point_bye' THEN 0.5
                       WHEN pair.bye_type = 'unpaired' THEN 1.0
-                      ELSE 1.0
+                      ELSE 0.5
                     END
                     ELSE 0
                   END
@@ -2497,7 +2497,8 @@ function calculateByePoints(byeType) {
   } else if (byeType === 'half_point_bye' || byeType === 'bye' || byeType === 'inactive') {
     return 0.5; // Half point bye
   }
-  return 1.0; // Default to full point bye for byes without explicit type
+  // Default to 0.5 for byes without explicit type (intentional byes)
+  return 0.5;
 }
 
 /**
@@ -3249,7 +3250,7 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
                         WHEN pair.bye_type = 'bye' THEN 0.5
                         WHEN pair.bye_type = 'half_point_bye' THEN 0.5
                         WHEN pair.bye_type = 'unpaired' THEN 1.0
-                        ELSE 1.0
+                        ELSE 0.5
                       END
                       ELSE 0
                     END as points,
