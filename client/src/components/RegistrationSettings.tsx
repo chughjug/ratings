@@ -10,10 +10,11 @@ interface RegistrationSettingsProps {
 interface CustomField {
   id: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'email' | 'tel' | 'select';
+  type: 'text' | 'textarea' | 'number' | 'email' | 'tel' | 'select' | 'system_link';
   required: boolean;
   placeholder?: string;
   options?: string[]; // For select fields
+  linkedField?: 'section' | 'team' | 'rating' | 'uscf_id' | 'fide_id'; // Links to existing system fields
 }
 
 interface RegistrationSettingsData {
@@ -70,7 +71,8 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
     type: 'text',
     required: false,
     placeholder: '',
-    options: []
+    options: [],
+    linkedField: undefined
   });
 
   useEffect(() => {
@@ -109,7 +111,8 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
       type: newField.type || 'text',
       required: newField.required || false,
       placeholder: newField.placeholder || '',
-      options: newField.type === 'select' ? [] : undefined
+      options: newField.type === 'select' ? [] : undefined,
+      linkedField: newField.type === 'system_link' ? (newField.linkedField as any) : undefined
     };
     
     setSettings(prev => ({
@@ -122,7 +125,8 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
       type: 'text',
       required: false,
       placeholder: '',
-      options: []
+      options: [],
+      linkedField: undefined
     });
     setShowAddField(false);
   };
@@ -340,7 +344,7 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
                   </label>
                   <select
                     value={newField.type}
-                    onChange={(e) => setNewField({ ...newField, type: e.target.value as CustomField['type'] })}
+                    onChange={(e) => setNewField({ ...newField, type: e.target.value as CustomField['type'], linkedField: undefined })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="text">Text</option>
@@ -349,40 +353,68 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
                     <option value="email">Email</option>
                     <option value="tel">Phone</option>
                     <option value="select">Dropdown</option>
+                    <option value="system_link">Link to System Field</option>
                   </select>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Placeholder (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newField.placeholder}
-                    onChange={(e) => setNewField({ ...newField, placeholder: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter placeholder text..."
-                  />
-                </div>
+                {newField.type === 'system_link' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Link to System Field *
+                    </label>
+                    <select
+                      value={newField.linkedField || ''}
+                      onChange={(e) => setNewField({ ...newField, linkedField: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select a system field...</option>
+                      <option value="section">Section</option>
+                      <option value="team">Team</option>
+                      <option value="rating">Rating</option>
+                      <option value="uscf_id">USCF ID</option>
+                      <option value="fide_id">FIDE ID</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This field will collect data for the selected system field
+                    </p>
+                  </div>
+                )}
                 
-                <div className="flex items-center space-x-2">
-                  <label className="flex items-center space-x-2 cursor-pointer">
+                {newField.type !== 'system_link' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Placeholder (optional)
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={newField.required}
-                      onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      type="text"
+                      value={newField.placeholder}
+                      onChange={(e) => setNewField({ ...newField, placeholder: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter placeholder text..."
                     />
-                    <span className="text-sm text-gray-700">Required</span>
-                  </label>
-                </div>
+                  </div>
+                )}
+                
+                {newField.type !== 'system_link' && (
+                  <div className="flex items-center space-x-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newField.required}
+                        onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">Required</span>
+                    </label>
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center justify-end space-x-2">
                 <button
                   onClick={() => {
                     setShowAddField(false);
-                    setNewField({ label: '', type: 'text', required: false, placeholder: '' });
+                    setNewField({ label: '', type: 'text', required: false, placeholder: '', options: [], linkedField: undefined });
                   }}
                   className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
                 >
@@ -391,7 +423,7 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
                 <button
                   onClick={addCustomField}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  disabled={!newField.label}
+                  disabled={!newField.label || (newField.type === 'system_link' && !newField.linkedField)}
                 >
                   Add Field
                 </button>
@@ -410,6 +442,11 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
                       <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded">
                         {field.type}
                       </span>
+                      {field.type === 'system_link' && field.linkedField && (
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                          → {field.linkedField}
+                        </span>
+                      )}
                       {field.required && (
                         <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
                           Required
@@ -418,6 +455,11 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
                     </div>
                     {field.placeholder && (
                       <p className="text-xs text-gray-500 mt-1">{field.placeholder}</p>
+                    )}
+                    {field.type === 'system_link' && field.linkedField && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Links to: {field.linkedField}
+                      </p>
                     )}
                   </div>
                   <button

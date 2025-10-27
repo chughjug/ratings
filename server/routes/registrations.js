@@ -145,8 +145,11 @@ router.post('/submit', async (req, res) => {
       email,
       phone,
       section,
+      team_name, // Add team_name support
+      fide_id, // Add fide_id support
       bye_requests = [],
-      notes
+      notes,
+      custom_fields // Add custom fields support
     } = req.body;
 
     // Validate required fields
@@ -235,13 +238,22 @@ router.post('/submit', async (req, res) => {
     // Store registration data
     const registrationId = uuidv4();
     
+    // Combine notes with custom fields data
+    let finalNotes = notes || '';
+    if (custom_fields && Array.isArray(custom_fields) && custom_fields.length > 0) {
+      const customFieldsData = custom_fields.map(f => 
+        `${f.label}: ${f.value}${f.linkedField ? ` (→ ${f.linkedField})` : ''}`
+      ).join('; ');
+      finalNotes = finalNotes ? `${finalNotes}. Custom Fields: ${customFieldsData}` : `Custom Fields: ${customFieldsData}`;
+    }
+    
     // Insert registration record
     await new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO registrations (id, tournament_id, player_name, uscf_id, email, phone, section, bye_requests, notes, status, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
         [registrationId, tournament_id, player_name, uscf_id, email, phone, finalSection, 
-         JSON.stringify(bye_requests), notes, 'pending'],
+         JSON.stringify(bye_requests), finalNotes, 'pending'],
         function(err) {
           if (err) reject(err);
           else resolve();
@@ -249,6 +261,24 @@ router.post('/submit', async (req, res) => {
       );
     });
 
+    // Map custom linked fields to their database columns
+    let mappedSection = finalSection;
+    let mappedTeamName = team_name;
+    
+    // Process custom fields to map linked fields
+    if (custom_fields && Array.isArray(custom_fields)) {
+      for (const customField of custom_fields) {
+        if (customField.linkedField && customField.value) {
+          // Map linked fields to database columns
+          if (customField.linkedField === 'section') {
+            mappedSection = customField.value;
+          } else if (customField.linkedField === 'team') {
+            mappedTeamName = customField.value;
+          }
+        }
+      }
+    }
+    
     // Insert player record with pending status
     await new Promise((resolve, reject) => {
       // Convert bye_requests array to intentional_bye_rounds string format (comma-separated)
@@ -256,7 +286,7 @@ router.post('/submit', async (req, res) => {
         ? bye_requests.join(',') 
         : null;
       
-      const playerValues = [playerId, tournament_id, player_name, uscf_id, finalRating, finalSection, 'pending',
+      const playerValues = [playerId, tournament_id, player_name, uscf_id, fide_id, finalRating, mappedSection, mappedTeamName, 'pending',
          ratingLookupResult?.expirationDate || null,
          intentionalByeRounds, 
          notes ? `Registration: ${notes}` : 'Public Registration',
@@ -266,8 +296,8 @@ router.post('/submit', async (req, res) => {
       console.log('Inserting player with values:', playerValues);
       
       db.run(
-        `INSERT INTO players (id, tournament_id, name, uscf_id, rating, section, status, expiration_date, intentional_bye_rounds, notes, email, phone)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO players (id, tournament_id, name, uscf_id, fide_id, rating, section, team_name, status, expiration_date, intentional_bye_rounds, notes, email, phone)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         playerValues,
         function(err) {
           if (err) {

@@ -98,35 +98,34 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
       setConnecting('stripe');
       setError(null);
 
-      // Save keys to organization settings
-      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/organizations/${organizationId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify({
-          payment_settings: JSON.stringify({
-            stripe: {
-              publishableKey: stripeKeys.publishableKey,
-              secretKey: stripeKeys.secretKey,
-              connected: true,
-              testMode: true,
-              connectedAt: new Date().toISOString()
-            }
-          })
-        })
+      // Get current organization data
+      const orgResponse = await organizationApi.getOrganization(organizationId);
+      const currentOrg = orgResponse.data.organization || orgResponse.data;
+      
+      // Update payment settings
+      const updatedPaymentSettings = {
+        ...(currentOrg.payment_settings ? (typeof currentOrg.payment_settings === 'string' ? JSON.parse(currentOrg.payment_settings) : currentOrg.payment_settings) : {}),
+        stripe: {
+          publishableKey: stripeKeys.publishableKey,
+          secretKey: stripeKeys.secretKey,
+          connected: true,
+          testMode: true,
+          connectedAt: new Date().toISOString()
+        }
+      };
+
+      // Save to organization
+      const response = await organizationApi.updateOrganization(organizationId, {
+        ...currentOrg,
+        payment_settings: JSON.stringify(updatedPaymentSettings)
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSuccess('Stripe account connected successfully!');
-          setShowStripeKeyInput(false);
-          setStripeKeys({ publishableKey: '', secretKey: '' });
-          loadPaymentConfig();
-          setTimeout(() => setSuccess(null), 3000);
-        }
+      if (response.success) {
+        setSuccess('Stripe account connected successfully!');
+        setShowStripeKeyInput(false);
+        setStripeKeys({ publishableKey: '', secretKey: '' });
+        loadPaymentConfig();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (error: any) {
       setError(error.message || 'Failed to save Stripe keys');
@@ -160,35 +159,34 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
       setConnecting('paypal');
       setError(null);
 
-      // Save keys to organization settings
-      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/organizations/${organizationId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        },
-        body: JSON.stringify({
-          payment_settings: JSON.stringify({
-            paypal: {
-              clientId: paypalKeys.clientId,
-              clientSecret: paypalKeys.clientSecret,
-              connected: true,
-              testMode: true,
-              connectedAt: new Date().toISOString()
-            }
-          })
-        })
+      // Get current organization data
+      const orgResponse = await organizationApi.getOrganization(organizationId);
+      const currentOrg = orgResponse.data.organization || orgResponse.data;
+      
+      // Update payment settings
+      const updatedPaymentSettings = {
+        ...(currentOrg.payment_settings ? (typeof currentOrg.payment_settings === 'string' ? JSON.parse(currentOrg.payment_settings) : currentOrg.payment_settings) : {}),
+        paypal: {
+          clientId: paypalKeys.clientId,
+          clientSecret: paypalKeys.clientSecret,
+          connected: true,
+          testMode: true,
+          connectedAt: new Date().toISOString()
+        }
+      };
+
+      // Save to organization
+      const response = await organizationApi.updateOrganization(organizationId, {
+        ...currentOrg,
+        payment_settings: JSON.stringify(updatedPaymentSettings)
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSuccess('PayPal account connected successfully!');
-          setShowPayPalKeyInput(false);
-          setPaypalKeys({ clientId: '', clientSecret: '' });
-          loadPaymentConfig();
-          setTimeout(() => setSuccess(null), 3000);
-        }
+      if (response.success) {
+        setSuccess('PayPal account connected successfully!');
+        setShowPayPalKeyInput(false);
+        setPaypalKeys({ clientId: '', clientSecret: '' });
+        loadPaymentConfig();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (error: any) {
       setError(error.message || 'Failed to save PayPal keys');
