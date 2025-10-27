@@ -521,10 +521,13 @@ export const registrationApi = {
         description?: string;
       }>;
       custom_fields?: Array<{
-        name: string;
+        id?: string;
+        label?: string;
+        name?: string;  // For backward compatibility
         type: string;
         required: boolean;
         options?: string[];
+        placeholder?: string;
       }>;
       registration_form_settings?: any;
       allow_registration?: boolean;
