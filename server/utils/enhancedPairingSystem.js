@@ -256,7 +256,7 @@ class EnhancedPairingSystem {
           board: 0, // Will be assigned later
           section: this.section,
           tournament_id: this.tournamentId,
-          result: null,
+          result: `bye_${byeType}`,
           is_bye: true,
           bye_type: byeType
         };
@@ -512,7 +512,7 @@ class EnhancedPairingSystem {
           board: 0, // Will be assigned later
           section: this.section,
           tournament_id: this.tournamentId,
-          result: null,
+          result: `bye_${byeType}`,
           is_bye: true,
           bye_type: byeType
         };
@@ -577,7 +577,7 @@ class EnhancedPairingSystem {
           board: 0, // Will be assigned later
           section: this.section,
           tournament_id: this.tournamentId,
-          result: null,
+          result: `bye_${byeType}`,
           is_bye: true,
           bye_type: byeType
         };
