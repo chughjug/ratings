@@ -37,12 +37,14 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://www.paypal.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.paypal.com", "https://js.stripe.com", "https://www.paypalobjects.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.paypal.com", "https://js.stripe.com", "https://www.paypalobjects.com", "https://code.jquery.com"],
       imgSrc: ["'self'", "data:", "https:", "https://www.paypal.com", "https://www.paypalobjects.com"],
       connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000", "ws://localhost:*", "http:", "https:", "ws:", "wss:", "https://api-m.sandbox.paypal.com", "https://api-m.paypal.com"],
-      frameSrc: ["'self'", "https://www.paypal.com", "https://js.stripe.com", "https://hooks.stripe.com"],
+      frameSrc: ["'self'", "https://www.paypal.com", "https://js.stripe.com", "https://hooks.stripe.com", "https://www.paypalobjects.com"],
       frameAncestors: ["*"], // Allow embedding in iframes from any origin
       fontSrc: ["'self'", "data:", "https:", "https://www.paypal.com"],
+      childSrc: ["'self'", "https://www.paypal.com"],
+      objectSrc: ["'none'"],
     },
   },
   crossOriginEmbedderPolicy: false,
