@@ -41,6 +41,7 @@ import OnlineGameIntegration from '../components/OnlineGameIntegration';
 import ByeManagementModal from '../components/ByeManagementModal';
 import PublicViewCustomization from '../components/PublicViewCustomization';
 import RegistrationSettings from '../components/RegistrationSettings';
+import PaymentSettings from '../components/PaymentSettings';
 import SectionsModal from '../components/SectionsModal';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
@@ -3144,6 +3145,30 @@ const TournamentDetail: React.FC = () => {
                   />
                 </div>
 
+                {/* Payment Settings - Separate from Registration Settings */}
+                {id && tournament && (
+                  <div className="mb-8">
+                    <PaymentSettings 
+                      tournamentId={id}
+                      tournament={tournament}
+                      onSave={async (credentials: any) => {
+                        console.log('💳 Saving payment credentials directly:', credentials);
+                        try {
+                          const response = await tournamentApi.update(id, credentials);
+                          console.log('Update response:', response.data);
+                          if (response.data.success) {
+                            dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
+                            console.log('✅ Payment credentials saved successfully');
+                          }
+                        } catch (error: any) {
+                          console.error('Failed to save payment credentials:', error);
+                          alert(`Failed to save payment credentials: ${error.message || error}`);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* Registration Settings */}
                 {id && tournament && (
                   <div className="mb-8">
@@ -3151,38 +3176,47 @@ const TournamentDetail: React.FC = () => {
                       tournamentId={id}
                       tournament={tournament}
                       onSave={async (settingsData: any) => {
-                        console.log('💾 Saving registration settings data:', settingsData);
+                        console.log('💾 Saving registration form settings data:', settingsData);
                         console.log('💾 Registration settings (stringified):', JSON.stringify(settingsData.registration_settings));
                         console.log('💾 Custom fields in settings:', settingsData.registration_settings?.customFields);
                         
-                        // Save ALL registration fields in a single update call
+                        // Save ONLY registration form settings (no payment credentials)
+                        // Payment credentials are handled by PaymentSettings component
+                        const { registration_settings, ...rest } = settingsData;
+                        const registrationFormData = {
+                          allow_registration: registration_settings?.allow_registration,
+                          require_name: registration_settings?.require_name,
+                          require_email: registration_settings?.require_email,
+                          require_uscf_id: registration_settings?.require_uscf_id,
+                          require_rating: registration_settings?.require_rating,
+                          require_phone: registration_settings?.require_phone,
+                          require_section: registration_settings?.require_section,
+                          allow_bye_requests: registration_settings?.allow_bye_requests,
+                          allow_notes: registration_settings?.allow_notes,
+                          auto_approve: registration_settings?.auto_approve,
+                          send_confirmation_email: registration_settings?.send_confirmation_email,
+                          custom_registration_message: registration_settings?.custom_registration_message,
+                          custom_success_message: registration_settings?.custom_success_message,
+                          customFields: registration_settings?.customFields || []
+                        };
+                        
                         const allFields = {
-                          registration_settings: JSON.stringify(settingsData.registration_settings),
-                          entry_fee: settingsData.registration_settings.entry_fee || 0,
-                          payment_method: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.payment_method || 'both') : 'both',
-                          paypal_client_id: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.paypal_client_id || '') : '',
-                          paypal_secret: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.paypal_secret || '') : '',
-                          stripe_publishable_key: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.stripe_publishable_key || '') : '',
-                          stripe_secret_key: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.stripe_secret_key || '') : ''
+                          registration_settings: JSON.stringify(registrationFormData)
                         };
                         
                         // Log what we're sending
-                        console.log('Saving all registration and payment fields:', {
+                        console.log('Saving registration form settings:', {
                           registration_settings_length: allFields.registration_settings.length,
-                          customFields_count: settingsData.registration_settings?.customFields?.length || 0,
-                          entry_fee: allFields.entry_fee,
-                          payment_method: allFields.payment_method,
-                          paypal_client_id: allFields.paypal_client_id ? allFields.paypal_client_id.substring(0, 20) + '...' : 'empty',
-                          stripe_publishable_key: allFields.stripe_publishable_key ? allFields.stripe_publishable_key.substring(0, 20) + '...' : 'empty'
+                          customFields_count: registrationFormData.customFields.length
                         });
                         
-                        // Save all fields in one update call
+                        // Save registration settings only
                         try {
                           const response = await tournamentApi.update(id, allFields as any);
                           console.log('Update response:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
-                            console.log('✅ All registration settings saved successfully');
+                            console.log('✅ Registration form settings saved successfully');
                           }
                         } catch (error: any) {
                           console.error('Failed to save registration settings:', error);
