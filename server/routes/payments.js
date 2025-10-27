@@ -345,7 +345,7 @@ router.post('/paypal/create-order', async (req, res) => {
 
           const request = new paypal.orders.OrdersCreateRequest();
           request.prefer("return=representation");
-          request.requestBody({
+          request.requestBody = {
             intent: "CAPTURE",
             purchase_units: [{
               amount: {
@@ -355,7 +355,7 @@ router.post('/paypal/create-order', async (req, res) => {
               description: description || `Tournament entry fee - ${tournamentId}`,
               custom_id: `tournament_${tournamentId}_player_${playerId}`
             }]
-          });
+          };
 
           const response = await client.execute(request);
           
