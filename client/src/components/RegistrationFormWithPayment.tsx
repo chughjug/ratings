@@ -126,6 +126,11 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           if (data.payment_settings?.paypal_client_id) {
             loadPayPalSDK(data.payment_settings.paypal_client_id);
           }
+
+          // Load Stripe SDK if credentials exist
+          if (data.payment_settings?.stripe_publishable_key) {
+            loadStripeSDK(data.payment_settings.stripe_publishable_key);
+          }
         } else {
           setError(response.data.error || 'Failed to load tournament information');
         }
@@ -160,6 +165,31 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
 
     script.onerror = () => {
       console.error('Failed to load PayPal SDK');
+    };
+
+    document.body.appendChild(script);
+  };
+
+  const loadStripeSDK = (publishableKey: string) => {
+    // Remove old script if exists
+    const oldScript = document.getElementById('stripe-sdk');
+    if (oldScript) {
+      oldScript.remove();
+    }
+
+    // Load Stripe.js
+    const script = document.createElement('script');
+    script.id = 'stripe-sdk';
+    script.src = 'https://js.stripe.com/v3/';
+    script.async = true;
+    
+    script.onload = () => {
+      console.log('Stripe SDK loaded');
+      initializeStripeElements(publishableKey);
+    };
+
+    script.onerror = () => {
+      console.error('Failed to load Stripe SDK');
     };
 
     document.body.appendChild(script);
@@ -222,6 +252,73 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           setPaymentError('Payment failed');
         }
       }).render('#paypal-button-container');
+    }
+  };
+
+  const initializeStripeElements = async (publishableKey: string) => {
+    // @ts-ignore - Stripe types
+    if (window.Stripe) {
+      // @ts-ignore
+      const stripe = window.Stripe(publishableKey);
+
+      // Create payment intent
+      try {
+        const response = await fetch('/api/payments/stripe/create-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: tournamentInfo?.entry_fee || 0,
+            currency: 'usd',
+            tournamentId,
+            playerId: 'pending',
+            description: `Entry fee for ${tournamentInfo?.name}`
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.data.clientSecret) {
+          const elements = stripe.elements({
+            clientSecret: result.data.clientSecret
+          });
+
+          const paymentElement = elements.create('payment');
+          const container = document.getElementById('stripe-payment-element');
+          if (container) {
+            container.innerHTML = '';
+            paymentElement.mount('#stripe-payment-element');
+          }
+
+          // Handle form submission
+          const form = document.getElementById('payment-form');
+          if (form) {
+            form.onsubmit = async (e) => {
+              e.preventDefault();
+              
+              setProcessingPayment(true);
+              
+              const { error } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                  return_url: window.location.href
+                }
+              });
+
+              if (error) {
+                setPaymentError(error.message || 'Payment failed');
+                setProcessingPayment(false);
+              } else {
+                setPaymentIntentId(result.data.paymentIntentId);
+                setPaymentMethod('stripe');
+                setProcessingPayment(false);
+              }
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing Stripe:', error);
+        setPaymentError('Failed to initialize Stripe');
+      }
     }
   };
 
@@ -536,6 +633,14 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             {/* PayPal Button Container */}
             {tournamentInfo?.payment_settings?.paypal_client_id && (
               <div id="paypal-button-container" className="mt-4"></div>
+            )}
+
+            {/* Stripe Payment Elements */}
+            {tournamentInfo?.payment_settings?.stripe_publishable_key && (
+              <div className="mt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Pay with Card</h4>
+                <div id="stripe-payment-element" className="border border-gray-300 rounded-md p-4"></div>
+              </div>
             )}
           </div>
           </div>
