@@ -81,34 +81,62 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
   useEffect(() => {
     if (player) {
       try {
+        const safePlayer: any = player || {};
         setFormData({
-          name: player.name || '',
-          uscf_id: player.uscf_id || '',
-          fide_id: player.fide_id || '',
-          rating: player.rating?.toString() || '',
-          section: player.section || '',
-          team_name: player.team_name || '',
-          school: player.school || '',
-          grade: player.grade || '',
-          email: player.email || '',
-          phone: player.phone || '',
-          state: player.state || '',
-          city: player.city || '',
-          parent_name: player.parent_name || '',
-          parent_email: player.parent_email || '',
-          parent_phone: player.parent_phone || '',
-          emergency_contact: player.emergency_contact || '',
-          emergency_phone: player.emergency_phone || '',
-          tshirt_size: player.tshirt_size || '',
-          dietary_restrictions: player.dietary_restrictions || '',
-          special_needs: player.special_needs || '',
-          notes: player.notes || '',
-          status: player.status || 'active',
-          intentional_bye_rounds: Array.isArray(player.intentional_bye_rounds) ? player.intentional_bye_rounds : [],
-          lichess_username: player.lichess_username || ''
+          name: safePlayer.name || '',
+          uscf_id: safePlayer.uscf_id || '',
+          fide_id: safePlayer.fide_id || '',
+          rating: safePlayer.rating ? String(safePlayer.rating) : '',
+          section: safePlayer.section || '',
+          team_name: safePlayer.team_name || '',
+          school: safePlayer.school || '',
+          grade: safePlayer.grade || '',
+          email: safePlayer.email || '',
+          phone: safePlayer.phone || '',
+          state: safePlayer.state || '',
+          city: safePlayer.city || '',
+          parent_name: safePlayer.parent_name || '',
+          parent_email: safePlayer.parent_email || '',
+          parent_phone: safePlayer.parent_phone || '',
+          emergency_contact: safePlayer.emergency_contact || '',
+          emergency_phone: safePlayer.emergency_phone || '',
+          tshirt_size: safePlayer.tshirt_size || '',
+          dietary_restrictions: safePlayer.dietary_restrictions || '',
+          special_needs: safePlayer.special_needs || '',
+          notes: safePlayer.notes || '',
+          status: safePlayer.status || 'active',
+          intentional_bye_rounds: Array.isArray(safePlayer.intentional_bye_rounds) ? safePlayer.intentional_bye_rounds : [],
+          lichess_username: safePlayer.lichess_username || ''
         });
       } catch (error) {
         console.error('Error updating form data:', error);
+        // Reset form to safe defaults
+        setFormData({
+          name: player?.name || '',
+          uscf_id: '',
+          fide_id: '',
+          rating: '',
+          section: '',
+          team_name: '',
+          school: '',
+          grade: '',
+          email: '',
+          phone: '',
+          state: '',
+          city: '',
+          parent_name: '',
+          parent_email: '',
+          parent_phone: '',
+          emergency_contact: '',
+          emergency_phone: '',
+          tshirt_size: '',
+          dietary_restrictions: '',
+          special_needs: '',
+          notes: '',
+          status: 'active',
+          intentional_bye_rounds: [],
+          lichess_username: ''
+        });
       }
     }
   }, [player]);
@@ -117,7 +145,7 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'rating' ? (value ? parseInt(value) : '') : value
+      [name]: value
     }));
   };
 
@@ -128,32 +156,39 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
     setLoading(true);
 
     try {
-      const playerData = {
+      const playerData: any = {
         name: formData.name,
-        uscf_id: formData.uscf_id || undefined,
-        fide_id: formData.fide_id || undefined,
-        lichess_username: formData.lichess_username || undefined,
-        rating: formData.rating ? parseInt(formData.rating) : undefined,
-        section: formData.section || undefined,
-        team_name: formData.team_name || undefined,
-        school: formData.school || undefined,
-        grade: formData.grade || undefined,
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
-        state: formData.state || undefined,
-        city: formData.city || undefined,
-        parent_name: formData.parent_name || undefined,
-        parent_email: formData.parent_email || undefined,
-        parent_phone: formData.parent_phone || undefined,
-        emergency_contact: formData.emergency_contact || undefined,
-        emergency_phone: formData.emergency_phone || undefined,
-        tshirt_size: formData.tshirt_size || undefined,
-        dietary_restrictions: formData.dietary_restrictions || undefined,
-        special_needs: formData.special_needs || undefined,
-        notes: formData.notes || undefined,
-        status: formData.status,
-        intentional_bye_rounds: Array.isArray(formData.intentional_bye_rounds) && formData.intentional_bye_rounds.length > 0 ? formData.intentional_bye_rounds : undefined
+        status: formData.status
       };
+
+      // Only include fields that have values
+      if (formData.uscf_id) playerData.uscf_id = formData.uscf_id;
+      if (formData.fide_id) playerData.fide_id = formData.fide_id;
+      if (formData.lichess_username) playerData.lichess_username = formData.lichess_username;
+      if (formData.rating && formData.rating.trim() !== '') {
+        const ratingNum = parseInt(formData.rating);
+        if (!isNaN(ratingNum)) playerData.rating = ratingNum;
+      }
+      if (formData.section) playerData.section = formData.section;
+      if (formData.team_name) playerData.team_name = formData.team_name;
+      if (formData.school) playerData.school = formData.school;
+      if (formData.grade) playerData.grade = formData.grade;
+      if (formData.email) playerData.email = formData.email;
+      if (formData.phone) playerData.phone = formData.phone;
+      if (formData.state) playerData.state = formData.state;
+      if (formData.city) playerData.city = formData.city;
+      if (formData.parent_name) playerData.parent_name = formData.parent_name;
+      if (formData.parent_email) playerData.parent_email = formData.parent_email;
+      if (formData.parent_phone) playerData.parent_phone = formData.parent_phone;
+      if (formData.emergency_contact) playerData.emergency_contact = formData.emergency_contact;
+      if (formData.emergency_phone) playerData.emergency_phone = formData.emergency_phone;
+      if (formData.tshirt_size) playerData.tshirt_size = formData.tshirt_size;
+      if (formData.dietary_restrictions) playerData.dietary_restrictions = formData.dietary_restrictions;
+      if (formData.special_needs) playerData.special_needs = formData.special_needs;
+      if (formData.notes) playerData.notes = formData.notes;
+      if (Array.isArray(formData.intentional_bye_rounds) && formData.intentional_bye_rounds.length > 0) {
+        playerData.intentional_bye_rounds = formData.intentional_bye_rounds;
+      }
 
       const response = await playerApi.update(player.id, playerData);
       if (response.data.success) {

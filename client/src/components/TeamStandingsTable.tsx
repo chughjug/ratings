@@ -37,7 +37,7 @@ interface TeamStanding {
 
 interface TeamStandingsTableProps {
   standings: TeamStanding[];
-  tournamentFormat: 'team-swiss' | 'team-round-robin';
+  tournamentFormat: 'team-swiss' | 'team-round-robin' | 'swiss' | 'online' | 'quad';
   scoringMethod?: 'all_players' | 'top_players';
   topN?: number;
   showTiebreakers?: boolean;

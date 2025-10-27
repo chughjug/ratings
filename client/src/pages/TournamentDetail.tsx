@@ -907,15 +907,27 @@ const TournamentDetail: React.FC = () => {
   };
 
   const handleSaveTeamEdit = async (playerId: string) => {
+    if (!playerId) {
+      console.error('No player ID provided');
+      return;
+    }
+    
     try {
-      await playerApi.update(playerId, { team_name: editingTeamName || undefined });
+      const updateData: any = {};
+      if (editingTeamName && editingTeamName.trim() !== '') {
+        updateData.team_name = editingTeamName.trim();
+      } else {
+        updateData.team_name = undefined;
+      }
+      
+      await playerApi.update(playerId, updateData);
       // Refresh players after updating
       await fetchPlayers();
       setEditingPlayerId(null);
       setEditingTeamName('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update team name:', error);
-      alert('Failed to update team name. Please try again.');
+      alert(`Failed to update team name: ${error.message || 'Please try again.'}`);
     }
   };
 
@@ -2358,7 +2370,7 @@ const TournamentDetail: React.FC = () => {
                             {player.rating || 'Unrated'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {player.points !== undefined ? player.points.toFixed(1) : '0.0'}
+                            {player.points !== undefined && player.points !== null ? parseFloat(player.points.toString()).toFixed(1) : '0.0'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {player.uscf_id || '-'}
@@ -2429,24 +2441,30 @@ const TournamentDetail: React.FC = () => {
                               </span>
                               {player.expiration_date && (
                                 (() => {
-                                  const expirationDate = new Date(player.expiration_date);
-                                  const now = new Date();
-                                  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                  
-                                  if (daysUntilExpiration < 0) {
-                                    return (
-                                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                                        ID Expired
-                                      </span>
-                                    );
-                                  } else if (daysUntilExpiration <= 30) {
-                                    return (
-                                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                        Expires in {daysUntilExpiration} days
-                                      </span>
-                                    );
+                                  try {
+                                    const expirationDate = new Date(player.expiration_date);
+                                    if (isNaN(expirationDate.getTime())) return null;
+                                    
+                                    const now = new Date();
+                                    const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                    
+                                    if (daysUntilExpiration < 0) {
+                                      return (
+                                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                          ID Expired
+                                        </span>
+                                      );
+                                    } else if (daysUntilExpiration <= 30) {
+                                      return (
+                                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                          Expires in {daysUntilExpiration} days
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  } catch (error) {
+                                    return null;
                                   }
-                                  return null;
                                 })()
                               )}
                             </div>
@@ -2454,28 +2472,36 @@ const TournamentDetail: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {player.expiration_date ? (
                               (() => {
-                                const expirationDate = new Date(player.expiration_date);
-                                const now = new Date();
-                                const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                
-                                if (daysUntilExpiration < 0) {
-                                  return (
-                                    <span className="text-red-600 font-medium">
-                                      Expired
-                                    </span>
-                                  );
-                                } else if (daysUntilExpiration <= 30) {
-                                  return (
-                                    <span className="text-yellow-600 font-medium">
-                                      {daysUntilExpiration} days
-                                    </span>
-                                  );
-                                } else {
-                                  return (
-                                    <span className="text-gray-600">
-                                      {expirationDate.toLocaleDateString()}
-                                    </span>
-                                  );
+                                try {
+                                  const expirationDate = new Date(player.expiration_date);
+                                  if (isNaN(expirationDate.getTime())) {
+                                    return <span className="text-gray-400">Invalid Date</span>;
+                                  }
+                                  
+                                  const now = new Date();
+                                  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                  
+                                  if (daysUntilExpiration < 0) {
+                                    return (
+                                      <span className="text-red-600 font-medium">
+                                        Expired
+                                      </span>
+                                    );
+                                  } else if (daysUntilExpiration <= 30) {
+                                    return (
+                                      <span className="text-yellow-600 font-medium">
+                                        {daysUntilExpiration} days
+                                      </span>
+                                    );
+                                  } else {
+                                    return (
+                                      <span className="text-gray-600">
+                                        {expirationDate.toLocaleDateString()}
+                                      </span>
+                                    );
+                                  }
+                                } catch (error) {
+                                  return <span className="text-gray-400">-</span>;
                                 }
                               })()
                             ) : (
@@ -2484,29 +2510,38 @@ const TournamentDetail: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {(() => {
-                              // Validate that bye_rounds contains valid round numbers, not dates
-                              if (!player.bye_rounds || player.bye_rounds.trim() === '') {
+                              try {
+                                // Validate that bye_rounds contains valid round numbers, not dates
+                                if (!player.bye_rounds || typeof player.bye_rounds !== 'string') {
+                                  return <span className="text-gray-400">-</span>;
+                                }
+                                
+                                const byeRoundsStr = player.bye_rounds.trim();
+                                if (byeRoundsStr === '') {
+                                  return <span className="text-gray-400">-</span>;
+                                }
+                                
+                                // Check if it looks like a date (contains slashes or dashes in date format)
+                                const isDatePattern = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(byeRoundsStr);
+                                if (isDatePattern) {
+                                  // This is a date, not a bye round - don't display it
+                                  return <span className="text-gray-400">-</span>;
+                                }
+                                
+                                // Check if it's "Expired" text
+                                if (byeRoundsStr.toLowerCase() === 'expired') {
+                                  return <span className="text-gray-400">-</span>;
+                                }
+                                
+                                // It's a valid bye rounds value
+                                return (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    {byeRoundsStr}
+                                  </span>
+                                );
+                              } catch (error) {
                                 return <span className="text-gray-400">-</span>;
                               }
-                              
-                              // Check if it looks like a date (contains slashes or dashes in date format)
-                              const isDatePattern = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(player.bye_rounds.trim());
-                              if (isDatePattern) {
-                                // This is a date, not a bye round - don't display it
-                                return <span className="text-gray-400">-</span>;
-                              }
-                              
-                              // Check if it's "Expired" text
-                              if (player.bye_rounds.trim().toLowerCase() === 'expired') {
-                                return <span className="text-gray-400">-</span>;
-                              }
-                              
-                              // It's a valid bye rounds value
-                              return (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                  {player.bye_rounds}
-                                </span>
-                              );
                             })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -3169,7 +3204,6 @@ const TournamentDetail: React.FC = () => {
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center space-x-4">
                   <h2 className="text-lg font-semibold">Team Standings</h2>
-                  {/* Team format functionality removed - only swiss and online formats supported now */}
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -3190,21 +3224,42 @@ const TournamentDetail: React.FC = () => {
                     <Trophy className="h-4 w-4" />
                     <span>Tiebreakers</span>
                   </button>
-                  <button
-                    onClick={() => {/* Print functionality moved to Print tab */}}
-                    className="flex items-center space-x-2 bg-gray-400 text-white px-4 py-2 rounded-lg cursor-not-allowed opacity-60"
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span>Print Team Standings</span>
-                  </button>
                 </div>
               </div>
               
-              {/* Team standings not available for swiss/online formats */}
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Team standings are not available for Swiss or Online tournaments</p>
-              </div>
+              {teamStandings && teamStandings.length > 0 ? (
+                <TeamStandingsTable
+                  standings={teamStandings.map((team: any, index: number) => ({
+                    team_name: team?.team_name || 'Unnamed Team',
+                    team_id: team?.team_name || 'unnamed',
+                    rank: index + 1,
+                    score: team?.team_total_points || 0,
+                    team_total_points: team?.team_total_points || 0,
+                    total_members: team?.total_members || 0,
+                    counted_players: team?.counted_players || 0,
+                    progressive_scores: team?.progressive_scores || [],
+                    top_player_score: team?.top_player_score || 0,
+                    top_2_sum: team?.top_2_sum || 0,
+                    top_3_sum: team?.top_3_sum || 0,
+                    players: team?.players || [],
+                    section: team?.section || 'Open',
+                    buchholz: team?.buchholz || 0,
+                    sonneborn_berger: team?.sonneborn_berger || 0,
+                    team_performance_rating: team?.team_performance_rating || 0
+                  }))}
+                  tournamentFormat={tournament?.format || 'swiss'}
+                  scoringMethod={teamScoringMethod}
+                  topN={teamTopN}
+                  showTiebreakers={showTiebreakers}
+                  totalRounds={tournament?.rounds}
+                />
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-2">No team standings available</p>
+                  <p className="text-sm text-gray-500">Assign players to teams to see team standings</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -3860,9 +3915,13 @@ const TournamentDetail: React.FC = () => {
       {/* Edit Player Modal */}
       <EditPlayerModal
         isOpen={showEditPlayer}
-        onClose={() => {
+        onClose={async () => {
           setShowEditPlayer(false);
           setPlayerToEdit(null);
+          // Refresh players after closing the modal
+          if (id) {
+            await fetchPlayers();
+          }
         }}
         player={playerToEdit}
         tournamentId={id || ''}
