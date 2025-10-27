@@ -105,7 +105,7 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
       stripe_publishable_key: payment_settings.stripe_publishable_key ? 'SET (length: ' + payment_settings.stripe_publishable_key.length + ')' : 'EMPTY'
     });
     
-    // Parse registration settings for custom fields
+    // Parse registration settings for custom fields AND payment credentials fallback
     let custom_fields = [];
     let registration_form_settings = {};
     
@@ -117,6 +117,21 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
         custom_fields = regSettings.customFields || regSettings.custom_fields || [];
         console.log('📋 Custom fields extracted:', custom_fields.length, custom_fields);
         registration_form_settings = regSettings.form_settings || {};
+        
+        // Fallback: If tournament columns are empty, try to get payment credentials from registration_settings
+        if (!payment_settings.paypal_client_id && !payment_settings.stripe_publishable_key) {
+          console.log('🔄 Tournament columns empty, checking registration_settings for payment credentials...');
+          if (regSettings.paypal_client_id || regSettings.stripe_publishable_key) {
+            payment_settings = {
+              payment_method: regSettings.payment_method || payment_settings.payment_method,
+              paypal_client_id: regSettings.paypal_client_id || payment_settings.paypal_client_id || '',
+              paypal_secret: regSettings.paypal_secret || payment_settings.paypal_secret || '',
+              stripe_publishable_key: regSettings.stripe_publishable_key || payment_settings.stripe_publishable_key || '',
+              stripe_secret_key: regSettings.stripe_secret_key || payment_settings.stripe_secret_key || ''
+            };
+            console.log('✅ Using payment credentials from registration_settings!');
+          }
+        }
       } catch (parseError) {
         console.error('Error parsing registration settings:', parseError);
         console.log('Raw registration_settings value:', tournament.registration_settings);
