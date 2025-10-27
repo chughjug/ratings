@@ -62,14 +62,14 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
     custom_registration_message: '',
     custom_success_message: 'Thank you for registering! Your registration is now pending approval.',
     customFields: [],
-    // Payment settings
-    require_payment: false,
-    entry_fee: tournament?.settings?.entry_fee || 0,
-    payment_method: 'both',
-    paypal_client_id: '',
-    paypal_secret: '',
-    stripe_publishable_key: '',
-    stripe_secret_key: ''
+    // Payment settings - loaded from tournament database columns
+    require_payment: Boolean(tournament?.entry_fee && tournament.entry_fee > 0),
+    entry_fee: tournament?.entry_fee || 0,
+    payment_method: tournament?.payment_method || 'both',
+    paypal_client_id: tournament?.paypal_client_id || '',
+    paypal_secret: tournament?.paypal_secret || '',
+    stripe_publishable_key: tournament?.stripe_publishable_key || '',
+    stripe_secret_key: tournament?.stripe_secret_key || ''
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -96,24 +96,19 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
       }
     }
     
-    // Load entry_fee and payment credentials from database columns directly
-    if (tournament) {
-      setSettings(prev => ({
-        ...prev,
-        entry_fee: tournament.entry_fee || 0,
-        payment_method: tournament.payment_method || 'both',
-        paypal_client_id: tournament.paypal_client_id || '',
-        paypal_secret: tournament.paypal_secret || '',
-        stripe_publishable_key: tournament.stripe_publishable_key || '',
-        stripe_secret_key: tournament.stripe_secret_key || '',
-        require_payment: Boolean(tournament.entry_fee && tournament.entry_fee > 0)
-      }));
-    }
+    // Payment fields are already loaded in initial state from tournament columns
   }, [tournament]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      console.log('RegistrationSettings: Saving with data:', {
+        entry_fee: settings.entry_fee,
+        payment_method: settings.payment_method,
+        require_payment: settings.require_payment,
+        paypal_client_id: settings.paypal_client_id ? settings.paypal_client_id.substring(0, 20) + '...' : 'empty'
+      });
+      
       // Save all settings (onSave handler will extract payment settings to settings field)
       await onSave({ registration_settings: settings });
       setSaved(true);

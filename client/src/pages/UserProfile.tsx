@@ -121,7 +121,16 @@ const UserProfile: React.FC = () => {
 
     setOrgLoading(true);
     try {
-      const newOrg = await createOrgFromContext(orgFormData);
+      // Generate slug from organization name
+      const slug = orgFormData.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      
+      const newOrg = await createOrgFromContext({
+        ...orgFormData,
+        slug: slug
+      });
       alert('Organization created successfully!');
       setOrgFormData({
         name: '',
