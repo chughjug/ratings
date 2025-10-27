@@ -528,7 +528,9 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-2">
-              <PairCraftLogo size="md" showText={true} />
+              <div className="inline-block p-3 bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-white/20 shadow-lg">
+                <PairCraftLogo size="md" showText={true} />
+              </div>
               <p className="mt-4 text-neutral-400 max-w-md mb-6">
                 The most powerful chess tournament management platform. 
                 Built for directors who demand perfection.
