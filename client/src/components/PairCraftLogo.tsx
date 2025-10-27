@@ -29,7 +29,7 @@ const PairCraftLogo: React.FC<PairCraftLogoProps> = ({
     <div className={`flex items-center space-x-3 ${className}`}>
       {/* Logo Image with Modern Styling */}
       <div className="relative group">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-800 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
         <img 
           src="/new-logo.png" 
           alt="PairCraft Logo" 
@@ -40,7 +40,7 @@ const PairCraftLogo: React.FC<PairCraftLogoProps> = ({
       {/* Text with Modern Typography */}
       {showText && (
         <div className="flex flex-col">
-          <span className={`bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent ${textSizeClasses[size]}`}>
+          <span className={`bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent ${textSizeClasses[size]}`}>
             PairCraft
           </span>
           <span className={`text-gray-600 font-semibold tracking-wide ${size === 'sm' || size === 'md' ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-base'}`}>

@@ -34,8 +34,8 @@ const Navbar: React.FC = () => {
                 to="/dashboard"
                 className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isActive('/dashboard') 
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
+                    ? 'bg-gradient-to-r from-orange-700 to-orange-800 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-orange-800'
                 }`}
               >
                 <Home className="h-4 w-4" />
@@ -46,8 +46,8 @@ const Navbar: React.FC = () => {
                 to="/tournaments"
                 className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isActive('/tournaments') 
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
+                    ? 'bg-gradient-to-r from-orange-700 to-orange-800 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-orange-800'
                 }`}
               >
                 <Trophy className="h-4 w-4" />
@@ -58,8 +58,8 @@ const Navbar: React.FC = () => {
                 to="/chess"
                 className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   isActive('/chess') 
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
+                    ? 'bg-gradient-to-r from-orange-700 to-orange-800 text-white shadow-md' 
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-orange-800'
                 }`}
               >
                 <Gamepad2 className="h-4 w-4" />
@@ -75,8 +75,8 @@ const Navbar: React.FC = () => {
                   to="/profile"
                   className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     isActive('/profile') 
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
+                      ? 'bg-gradient-to-r from-orange-700 to-orange-800 text-white shadow-md' 
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-orange-800'
                   }`}
                 >
                   <User className="h-4 w-4" />
@@ -85,7 +85,7 @@ const Navbar: React.FC = () => {
                 
                 <Link
                   to="/tournaments/new"
-                  className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                  className="flex items-center space-x-2 bg-gradient-to-r from-orange-700 to-orange-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:from-orange-800 hover:to-orange-900 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
                 >
                   <Plus className="h-4 w-4" />
                   <span>New Tournament</span>
@@ -102,7 +102,7 @@ const Navbar: React.FC = () => {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                className="flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-orange-700 to-orange-800 text-white rounded-lg text-sm font-semibold hover:from-orange-800 hover:to-orange-900 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Login / Sign Up</span>
