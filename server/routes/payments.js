@@ -228,16 +228,65 @@ router.post('/stripe/create-intent', async (req, res) => {
       });
     }
 
-    const result = await paymentService.createStripePaymentIntent({
-      amount: parseFloat(amount),
-      currency,
-      tournamentId,
-      playerId,
-      description,
-      metadata
-    });
+    // Get tournament with payment credentials
+    const db = require('../database');
+    db.get(
+      `SELECT stripe_publishable_key, stripe_secret_key FROM tournaments WHERE id = ?`,
+      [tournamentId],
+      async (err, tournament) => {
+        if (err || !tournament) {
+          console.error('Tournament not found or error:', err);
+          return res.status(404).json({
+            success: false,
+            error: 'Tournament not found'
+          });
+        }
 
-    res.json(result);
+        // Check if tournament has Stripe credentials
+        if (!tournament.stripe_secret_key) {
+          return res.status(400).json({
+            success: false,
+            error: 'Stripe not configured for this tournament'
+          });
+        }
+
+        try {
+          // Create Stripe client with tournament-specific credentials
+          const stripe = require('stripe')(tournament.stripe_secret_key);
+          
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(parseFloat(amount) * 100), // Convert to cents
+            currency,
+            description: description || `Tournament entry fee - ${tournamentId}`,
+            metadata: {
+              tournamentId,
+              playerId,
+              ...metadata
+            },
+            automatic_payment_methods: {
+              enabled: true,
+            },
+          });
+
+          res.json({
+            success: true,
+            data: {
+              clientSecret: paymentIntent.client_secret,
+              paymentIntentId: paymentIntent.id,
+              amount: paymentIntent.amount,
+              currency: paymentIntent.currency,
+              status: paymentIntent.status
+            }
+          });
+        } catch (error) {
+          console.error('Stripe intent creation error:', error);
+          res.status(500).json({
+            success: false,
+            error: error.message
+          });
+        }
+      }
+    );
   } catch (error) {
     console.error('Stripe intent creation error:', error);
     res.status(500).json({
@@ -263,15 +312,71 @@ router.post('/paypal/create-order', async (req, res) => {
       });
     }
 
-    const result = await paymentService.createPayPalOrder({
-      amount: parseFloat(amount),
-      currency,
-      tournamentId,
-      playerId,
-      description
-    });
+    // Get tournament with payment credentials
+    const db = require('../database');
+    db.get(
+      `SELECT paypal_client_id, paypal_secret FROM tournaments WHERE id = ?`,
+      [tournamentId],
+      async (err, tournament) => {
+        if (err || !tournament) {
+          console.error('Tournament not found or error:', err);
+          return res.status(404).json({
+            success: false,
+            error: 'Tournament not found'
+          });
+        }
 
-    res.json(result);
+        // Check if tournament has PayPal credentials
+        if (!tournament.paypal_client_id || !tournament.paypal_secret) {
+          return res.status(400).json({
+            success: false,
+            error: 'PayPal not configured for this tournament'
+          });
+        }
+
+        try {
+          // Create PayPal order using tournament-specific credentials
+          const paypal = require('@paypal/checkout-server-sdk');
+          const environment = new paypal.core.SandboxEnvironment(
+            tournament.paypal_client_id,
+            tournament.paypal_secret
+          );
+          const client = new paypal.core.PayPalHttpClient(environment);
+
+          const request = new paypal.orders.OrdersCreateRequest();
+          request.prefer("return=representation");
+          request.requestBody({
+            intent: "CAPTURE",
+            purchase_units: [{
+              amount: {
+                currency_code: currency,
+                value: parseFloat(amount).toFixed(2)
+              },
+              description: description || `Tournament entry fee - ${tournamentId}`,
+              custom_id: `tournament_${tournamentId}_player_${playerId}`
+            }]
+          });
+
+          const response = await client.execute(request);
+          
+          res.json({
+            success: true,
+            data: {
+              orderId: response.result.id,
+              status: response.result.status,
+              amount: response.result.purchase_units[0].amount.value,
+              currency: response.result.purchase_units[0].amount.currency_code
+            }
+          });
+        } catch (error) {
+          console.error('PayPal order creation error:', error);
+          res.status(500).json({
+            success: false,
+            error: error.message
+          });
+        }
+      }
+    );
   } catch (error) {
     console.error('PayPal order creation error:', error);
     res.status(500).json({
