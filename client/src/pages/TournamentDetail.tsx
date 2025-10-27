@@ -3154,8 +3154,9 @@ const TournamentDetail: React.FC = () => {
                         // Save registration settings
                         await handleTournamentUpdate('registration_settings', JSON.stringify(settingsData.registration_settings));
                         
-                        // Save payment fields directly to database columns (not in settings JSON)
+                        // Prepare all payment fields to update in one API call
                         const paymentFields = {
+                          registration_settings: JSON.stringify(settingsData.registration_settings),
                           entry_fee: settingsData.registration_settings.entry_fee || 0,
                           payment_method: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.payment_method || 'both') : 'both',
                           paypal_client_id: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.paypal_client_id || '') : '',
@@ -3164,15 +3165,16 @@ const TournamentDetail: React.FC = () => {
                           stripe_secret_key: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.stripe_secret_key || '') : ''
                         };
                         
-                        // Save each payment field separately
-                        await Promise.all([
-                          handleTournamentUpdate('entry_fee', paymentFields.entry_fee),
-                          handleTournamentUpdate('payment_method', paymentFields.payment_method),
-                          handleTournamentUpdate('paypal_client_id', paymentFields.paypal_client_id),
-                          handleTournamentUpdate('paypal_secret', paymentFields.paypal_secret),
-                          handleTournamentUpdate('stripe_publishable_key', paymentFields.stripe_publishable_key),
-                          handleTournamentUpdate('stripe_secret_key', paymentFields.stripe_secret_key)
-                        ]);
+                        // Save all fields in one update call
+                        try {
+                          const response = await tournamentApi.update(id, paymentFields);
+                          if (response.data.success) {
+                            dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
+                          }
+                        } catch (error: any) {
+                          console.error('Failed to save payment settings:', error);
+                          alert(`Failed to save payment settings: ${error.message || error}`);
+                        }
                       }}
                     />
                   </div>
