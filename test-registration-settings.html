@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registration Settings Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 20px 0; }
+        .step { padding: 10px; margin: 10px 0; background: #e8f4f8; border-left: 4px solid #2196F3; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+        .success { color: #4CAF50; font-weight: bold; }
+        .warning { color: #FF9800; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Registration Settings - Link to System Field Feature</h1>
+    
+    <div class="box">
+        <h2>✅ Feature Status</h2>
+        <p class="success">✓ Code is properly saved in <code>client/src/components/RegistrationSettings.tsx</code></p>
+        <p class="success">✓ Interface includes <code>'system_link'</code> type</p>
+        <p class="success">✓ Dropdown option "Link to System Field" added to line 356</p>
+        <p class="success">✓ Conditional rendering for linked fields (lines 360-381)</p>
+    </div>
+
+    <div class="box">
+        <h2>📍 How to Access the Feature</h2>
+        <div class="step">
+            <strong>Step 1:</strong> Navigate to a tournament (any tournament in your system)
+        </div>
+        <div class="step">
+            <strong>Step 2:</strong> Click the <strong>"Settings"</strong> tab at the top
+        </div>
+        <div class="step">
+            <strong>Step 3:</strong> Scroll down to find the <strong>"Registration Form Settings"</strong> section
+        </div>
+        <div class="step">
+            <strong>Step 4:</strong> Click the <strong>"Add Custom Field"</strong> button (gray button with plus icon)
+        </div>
+        <div class="step">
+            <strong>Step 5:</strong> In the "Field Type" dropdown, scroll to the bottom and select <strong>"Link to System Field"</strong>
+        </div>
+        <div class="step">
+            <strong>Step 6:</strong> A new dropdown will appear: <strong>"Link to System Field *"</strong> with options:
+            <ul>
+                <li>Section</li>
+                <li>Team</li>
+                <li>Rating</li>
+                <li>USCF ID</li>
+                <li>FIDE ID</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="box">
+        <h2>🔄 If You Don't See the Option</h2>
+        <div class="step">
+            <strong>Hard Refresh:</strong> Press <code>Cmd+Shift+R</code> (Mac) or <code>Ctrl+Shift+R</code> (Windows)
+        </div>
+        <div class="step">
+            <strong>Wait for Hot Reload:</strong> The dev server should automatically reload. Wait 30 seconds.
+        </div>
+        <div class="step">
+            <strong>Clear Cache:</strong> Open DevTools (F12), right-click the refresh button, select "Empty Cache and Hard Reload"
+        </div>
+        <div class="step">
+            <strong>Check Browser Console:</strong> Press F12 and look for any TypeScript or React errors
+        </div>
+    </div>
+
+    <div class="box">
+        <h2>🔍 Verification</h2>
+        <p>To verify the code is there, run this command:</p>
+        <pre style="background: #f4f4f4; padding: 10px; border-radius: 5px;">grep -n "Link to System Field" client/src/components/RegistrationSettings.tsx</pre>
+    </div>
+
+    <script>
+        console.log('✅ Test page loaded. The feature is implemented in:');
+        console.log('📁 File: client/src/components/RegistrationSettings.tsx');
+        console.log('📍 Line 356: <option value="system_link">Link to System Field</option>');
+    </script>
+</body>
+</html>
+

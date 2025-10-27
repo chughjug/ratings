@@ -207,9 +207,26 @@ router.get('/tournament/:tournamentId', (req, res) => {
           error: 'Failed to fetch players' 
         });
       }
+      // Parse intentional_bye_rounds from JSON string to array for all players
+      const processedRows = rows.map(player => {
+        if (player.intentional_bye_rounds) {
+          try {
+            player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
+          } catch (e) {
+            // If parsing fails, try comma-separated string or leave as empty array
+            if (typeof player.intentional_bye_rounds === 'string') {
+              const parsed = player.intentional_bye_rounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+              player.intentional_bye_rounds = parsed;
+            } else {
+              player.intentional_bye_rounds = [];
+            }
+          }
+        }
+        return player;
+      });
       res.json({ 
         success: true,
-        data: rows 
+        data: processedRows 
       });
     }
   );
