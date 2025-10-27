@@ -3151,7 +3151,29 @@ const TournamentDetail: React.FC = () => {
                       tournamentId={id}
                       tournament={tournament}
                       onSave={async (settings: any) => {
+                        // Save registration settings
                         await handleTournamentUpdate('registration_settings', JSON.stringify(settings.registration_settings));
+                        
+                        // Also save payment credentials to tournament settings
+                        if (settings.registration_settings.require_payment) {
+                          const currentSettings = tournament?.settings ? JSON.parse(tournament.settings) : {};
+                          const paymentSettings = {
+                            entry_fee: settings.registration_settings.entry_fee || 0,
+                            payment_method: settings.registration_settings.payment_method || 'both',
+                            paypal_client_id: settings.registration_settings.paypal_client_id || '',
+                            paypal_secret: settings.registration_settings.paypal_secret || '',
+                            stripe_publishable_key: settings.registration_settings.stripe_publishable_key || '',
+                            stripe_secret_key: settings.registration_settings.stripe_secret_key || ''
+                          };
+                          
+                          const updatedSettings = {
+                            ...currentSettings,
+                            entry_fee: settings.registration_settings.entry_fee || 0,
+                            payment_settings: paymentSettings
+                          };
+                          
+                          await handleTournamentUpdate('settings', JSON.stringify(updatedSettings));
+                        }
                       }}
                     />
                   </div>

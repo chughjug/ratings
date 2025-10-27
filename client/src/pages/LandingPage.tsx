@@ -617,81 +617,119 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section id="testimonials" className="py-20 bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 text-white">
+      <section id="testimonials" className="py-20 text-white" style={{ background: 'radial-gradient(ellipse at center, #2d1b13 0%, #1a0f0a 100%)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-6">
+            <h2 className="text-4xl font-bold mb-6 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
               Trusted by Tournament Directors
             </h2>
-            <p className="text-xl text-stone-300 max-w-3xl mx-auto">
+            <p className="text-xl text-amber-300/90 max-w-3xl mx-auto" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
               Join hundreds of chess clubs and organizations using PairCraft 
               to run their tournaments every week.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-white/5 backdrop-blur rounded-xl p-6 border border-amber-500/20 hover:border-amber-500/40 transition-all">
+            <div className="p-6" style={{ 
+              background: 'rgba(139, 69, 19, 0.3)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.2), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 flex items-center justify-center text-white font-bold" style={{ 
+                  background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                  border: '3px solid #d4af37',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+                }}>
                   JD
                 </div>
                 <div className="ml-4">
-                  <div className="font-bold">John Davis</div>
-                  <div className="text-sm text-stone-400">Chess Club Director</div>
+                  <div className="font-bold font-serif text-amber-200">John Davis</div>
+                  <div className="text-sm text-amber-300/70">Chess Club Director</div>
                 </div>
               </div>
-              <p className="text-stone-200 italic">
+              <p className="text-amber-200 italic" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                 "PairCraft has completely transformed how we run tournaments. 
                 What used to take hours now takes minutes. Our players love 
                 the real-time updates."
               </p>
             </div>
 
-            <div className="bg-white/5 backdrop-blur rounded-xl p-6 border border-amber-500/20 hover:border-amber-500/40 transition-all">
+            <div className="p-6" style={{ 
+              background: 'rgba(139, 69, 19, 0.3)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.2), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 flex items-center justify-center text-white font-bold" style={{ 
+                  background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                  border: '3px solid #d4af37',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+                }}>
                   SM
                 </div>
                 <div className="ml-4">
-                  <div className="font-bold">Sarah Martinez</div>
-                  <div className="text-sm text-stone-400">Tournament Organizer</div>
+                  <div className="font-bold font-serif text-amber-200">Sarah Martinez</div>
+                  <div className="text-sm text-amber-300/70">Tournament Organizer</div>
                 </div>
               </div>
-              <p className="text-stone-200 italic">
+              <p className="text-amber-200 italic" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                 "The Swiss pairing algorithm is flawless. I no longer worry 
                 about pairing mistakes. Everything is automated and perfect 
                 every time."
               </p>
             </div>
 
-            <div className="bg-white/5 backdrop-blur rounded-xl p-6 border border-amber-500/20 hover:border-amber-500/40 transition-all">
+            <div className="p-6" style={{ 
+              background: 'rgba(139, 69, 19, 0.3)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.2), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 flex items-center justify-center text-white font-bold" style={{ 
+                  background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                  border: '3px solid #d4af37',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+                }}>
                   MR
                 </div>
                 <div className="ml-4">
-                  <div className="font-bold">Michael Rodriguez</div>
-                  <div className="text-sm text-stone-400">Chess School Founder</div>
+                  <div className="font-bold font-serif text-amber-200">Michael Rodriguez</div>
+                  <div className="text-sm text-amber-300/70">Chess School Founder</div>
                 </div>
               </div>
-              <p className="text-stone-200 italic">
+              <p className="text-amber-200 italic" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                 "The public tournament pages are a game-changer. Parents can 
                 follow their kids' games in real-time. Highly recommended!"
               </p>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur rounded-2xl p-8 text-center border border-amber-500/30">
-            <h3 className="text-3xl font-bold mb-4">
+          <div className="p-8 text-center" style={{ 
+            background: 'rgba(139, 69, 19, 0.2)',
+            border: '6px double #d4af37',
+            boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.3), 0 8px 16px rgba(0,0,0,0.6)',
+            clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+          }}>
+            <h3 className="text-3xl font-bold mb-4 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
               Ready to Transform Your Tournaments?
             </h3>
-            <p className="text-xl text-stone-300 mb-8">
+            <p className="text-xl text-amber-300/90 mb-8" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
               Join the tournament directors who have already made the switch.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-amber-700 hover:to-orange-700 transition-all inline-flex items-center justify-center shadow-xl hover:shadow-2xl transform hover:scale-105"
+                className="text-white px-8 py-4 text-lg font-bold transition-all inline-flex items-center justify-center shadow-xl transform hover:scale-105"
+                style={{ 
+                  background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                  border: '3px double #d4af37',
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.6)'
+                }}
               >
                 <LogIn className="mr-3 h-6 w-6" />
                 Start Running Tournaments Today
@@ -699,13 +737,18 @@ const LandingPage: React.FC = () => {
               </button>
               <Link
                 to="/public/tournaments"
-                className="bg-white/10 border-2 border-white/30 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/20 transition-all inline-flex items-center justify-center"
+                className="text-amber-200 px-8 py-4 text-lg font-bold transition-all inline-flex items-center justify-center border-2"
+                style={{ 
+                  background: 'rgba(139, 69, 19, 0.3)',
+                  borderColor: '#d4af37',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                }}
               >
                 View Live Tournaments
                 <ArrowRight className="ml-3 h-6 w-6" />
               </Link>
             </div>
-            <p className="mt-6 text-stone-400 text-sm">
+            <p className="mt-6 text-amber-300/80 text-sm font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
               ✓ Free forever • ✓ No credit card • ✓ Setup in 5 minutes
             </p>
           </div>
@@ -713,7 +756,10 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 text-white py-12 border-t border-stone-800">
+      <footer className="text-white py-12" style={{ 
+        background: 'linear-gradient(to bottom, #1a0f0a, #0a0503)',
+        borderTop: '3px double #c9a961'
+      }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-2">
@@ -724,17 +770,17 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-amber-500">Resources</h3>
+              <h3 className="text-lg font-semibold mb-4 font-serif" style={{ color: '#d4af37', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>Resources</h3>
               <ul className="space-y-2">
-                <li><Link to="/public/tournaments" className="text-stone-400 hover:text-amber-400 transition-colors">Tournaments</Link></li>
-                <li><Link to="/public/organizations" className="text-stone-400 hover:text-amber-400 transition-colors">Organizations</Link></li>
-                <li><Link to="/register" className="text-stone-400 hover:text-amber-400 transition-colors">Player Registration</Link></li>
-                <li><Link to="/chess" className="text-stone-400 hover:text-amber-400 transition-colors">Play Chess</Link></li>
+                <li><Link to="/public/tournaments" className="text-amber-300/70 hover:text-amber-200 transition-colors font-semibold">Tournaments</Link></li>
+                <li><Link to="/public/organizations" className="text-amber-300/70 hover:text-amber-200 transition-colors font-semibold">Organizations</Link></li>
+                <li><Link to="/register" className="text-amber-300/70 hover:text-amber-200 transition-colors font-semibold">Player Registration</Link></li>
+                <li><Link to="/chess" className="text-amber-300/70 hover:text-amber-200 transition-colors font-semibold">Play Chess</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-amber-500">Features</h3>
-              <ul className="space-y-2 text-stone-400">
+              <h3 className="text-lg font-semibold mb-4 font-serif" style={{ color: '#d4af37', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>Features</h3>
+              <ul className="space-y-2 text-amber-300/70 font-semibold">
                 <li>Swiss System Pairings</li>
                 <li>Real-time Standings</li>
                 <li>Player Management</li>
@@ -743,8 +789,8 @@ const LandingPage: React.FC = () => {
               </ul>
             </div>
           </div>
-          <div className="border-t border-stone-800 mt-8 pt-8 text-center">
-            <p className="text-stone-500">&copy; 2024 PairCraft. All rights reserved.</p>
+          <div className="border-t-2 mt-8 pt-8 text-center" style={{ borderColor: '#c9a961' }}>
+            <p className="text-amber-300/70 font-semibold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>&copy; 2024 PairCraft. All rights reserved.</p>
           </div>
         </div>
       </footer>

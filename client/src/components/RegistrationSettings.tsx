@@ -36,6 +36,10 @@ interface RegistrationSettingsData {
   require_payment: boolean;
   entry_fee: number | undefined;
   payment_method: 'stripe' | 'paypal' | 'both';
+  paypal_client_id?: string;
+  paypal_secret?: string;
+  stripe_publishable_key?: string;
+  stripe_secret_key?: string;
 }
 
 const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({ 
@@ -61,7 +65,11 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
     // Payment settings
     require_payment: false,
     entry_fee: tournament?.settings?.entry_fee || 0,
-    payment_method: 'both'
+    payment_method: 'both',
+    paypal_client_id: '',
+    paypal_secret: '',
+    stripe_publishable_key: '',
+    stripe_secret_key: ''
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -537,13 +545,64 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
                     Select which payment gateways to offer to players
                   </p>
                 </div>
-                
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-xs text-yellow-800">
-                    <strong>Note:</strong> You must connect your Stripe and/or PayPal accounts 
-                    in Organization Settings → Payment Settings before payment will work.
-                  </p>
-                </div>
+
+                {/* PayPal Credentials */}
+                {(settings.payment_method === 'paypal' || settings.payment_method === 'both') && (
+                  <div className="border-t border-blue-300 pt-4 mt-4">
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">PayPal Configuration</label>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">PayPal Client ID</label>
+                        <input
+                          type="text"
+                          value={settings.paypal_client_id || ''}
+                          onChange={(e) => setSettings({ ...settings, paypal_client_id: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter PayPal Client ID"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">PayPal Client Secret</label>
+                        <input
+                          type="password"
+                          value={settings.paypal_secret || ''}
+                          onChange={(e) => setSettings({ ...settings, paypal_secret: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter PayPal Client Secret"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Stripe Credentials */}
+                {(settings.payment_method === 'stripe' || settings.payment_method === 'both') && (
+                  <div className="border-t border-blue-300 pt-4 mt-4">
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">Stripe Configuration</label>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Stripe Publishable Key</label>
+                        <input
+                          type="text"
+                          value={settings.stripe_publishable_key || ''}
+                          onChange={(e) => setSettings({ ...settings, stripe_publishable_key: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="pk_test_..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Stripe Secret Key</label>
+                        <input
+                          type="password"
+                          value={settings.stripe_secret_key || ''}
+                          onChange={(e) => setSettings({ ...settings, stripe_secret_key: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="sk_test_..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
