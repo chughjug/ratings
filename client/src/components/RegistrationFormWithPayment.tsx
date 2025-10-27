@@ -643,7 +643,6 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
               </div>
             )}
           </div>
-          </div>
         )}
 
         {/* Payment Confirmed Notice */}
