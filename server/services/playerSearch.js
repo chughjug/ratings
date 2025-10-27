@@ -1410,9 +1410,67 @@ async function getPlayerDetails(uscfId) {
 // Import the Puppeteer-based version as the main search method
 const { searchUSChessPlayers: searchUSChessPlayersPuppeteer, getPlayerDetails: getPlayerDetailsPuppeteer } = require('./playerSearchNoSelenium');
 
+/**
+ * Search for players using the Heroku API (NEW - Fast and reliable)
+ * @param {string} searchTerm - Name or partial name to search for
+ * @param {number} maxResults - Maximum number of results to return (default: 10)
+ * @returns {Promise<Array>} Array of player objects
+ */
+async function searchUSChessPlayersHerokuAPI(searchTerm, maxResults = 10) {
+  const cacheKey = `${searchTerm.toLowerCase()}_${maxResults}`;
+  
+  try {
+    // Check cache first
+    const cached = searchCache.get(cacheKey);
+    if (cached) {
+      console.log(`Heroku API cache hit for: ${searchTerm}`);
+      return cached;
+    }
+    
+    console.log(`Searching via Heroku API for: ${searchTerm}`);
+    
+    // Call the Heroku API
+    const apiUrl = 'https://player-search-api-60b22a3031bd.herokuapp.com/api/search';
+    const response = await httpPool.get(apiUrl, {
+      params: {
+        name: searchTerm,
+        max: maxResults
+      },
+      timeout: 30000 // 30 second timeout
+    });
+    
+    if (response.data && response.data.players) {
+      const players = response.data.players;
+      
+      // Cache the results
+      searchCache.set(cacheKey, players);
+      
+      console.log(`Heroku API found ${players.length} players for: ${searchTerm}`);
+      return players;
+    }
+    
+    // If no results from API, try fallback
+    console.log(`Heroku API returned no results for: ${searchTerm}, trying fallback`);
+    return await searchUSChessPlayersPuppeteer(searchTerm, maxResults);
+    
+  } catch (error) {
+    console.error(`Heroku API search failed for "${searchTerm}":`, error.message);
+    
+    // Fallback to Puppeteer if API fails
+    console.log(`Falling back to Puppeteer for: ${searchTerm}`);
+    try {
+      return await searchUSChessPlayersPuppeteer(searchTerm, maxResults);
+    } catch (fallbackError) {
+      console.error(`Both Heroku API and fallback failed:`, fallbackError.message);
+      return [];
+    }
+  }
+}
+
 module.exports = {
-  searchUSChessPlayers: searchUSChessPlayersPuppeteer, // Use Puppeteer search by default (real data)
-  searchUSChessPlayersPuppeteer: searchUSChessPlayersPuppeteer, // Puppeteer version (primary)
+  searchUSChessPlayers: searchUSChessPlayersHerokuAPI, // Use Heroku API as default (fastest and most reliable)
+  searchUSChessPlayersHerokuAPI: searchUSChessPlayersHerokuAPI, // Heroku API version (primary)
+  searchUSChessPlayersPuppeteer: searchUSChessPlayersPuppeteer, // Puppeteer version (fallback)
   searchUSChessPlayersNoSelenium: searchUSChessPlayersPuppeteer, // Alias for Puppeteer version
   searchUSChessPlayersSubSecond: searchUSChessPlayersSubSecond, // Sub-second version with Selenium
   searchUSChessPlayersUltraFast: searchUSChessPlayersUltraFast, // Ultra-fast version with Selenium
