@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit, Save, Users } from 'lucide-react';
+import { X, Plus, Trash2, Edit, Save, Users, ArrowRight } from 'lucide-react';
 import { Section, Player } from '../types';
+import { tournamentApi } from '../services/api';
 
 interface SectionsModalProps {
   isOpen: boolean;
@@ -26,6 +27,9 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
   const [newSection, setNewSection] = useState<Partial<Section>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [playerSectionAssignments, setPlayerSectionAssignments] = useState<{ [playerId: string]: string }>({});
+  const [mergingSection, setMergingSection] = useState<string | null>(null);
+  const [targetSection, setTargetSection] = useState<string>('');
+  const [isMerging, setIsMerging] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -125,6 +129,73 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
 
   const getAvailableSections = () => {
     return ['Open', ...sections.map(s => s.name)];
+  };
+
+  const handleMergeSections = async () => {
+    if (!mergingSection || !targetSection) {
+      alert('Please select both source and target sections');
+      return;
+    }
+
+    if (mergingSection === targetSection) {
+      alert('Source and target sections must be different');
+      return;
+    }
+
+    if (!window.confirm(
+      `Are you sure you want to merge "${mergingSection}" into "${targetSection}"?\n\n` +
+      `This will move all players and pairings from "${mergingSection}" to "${targetSection}".\n\n` +
+      `Players: ${getPlayersInSection(mergingSection).length} → ${targetSection}\n\n` +
+      `This action cannot be undone.`
+    )) {
+      return;
+    }
+
+    try {
+      setIsMerging(true);
+      const response = await tournamentApi.mergeSections(
+        tournamentId,
+        mergingSection,
+        targetSection,
+        true // Remove source section
+      );
+
+      if (response.data.success) {
+        alert(response.data.message);
+        
+        // Reload sections
+        const updatedSections = sections.filter(s => s.name !== mergingSection);
+        setSections(updatedSections);
+        
+        // Update tournament settings
+        if (onUpdateTournamentSettings) {
+          await onUpdateTournamentSettings({
+            ...tournamentSettings,
+            sections: updatedSections
+          });
+        }
+        
+        // Move players in state
+        const updatedAssignments = { ...playerSectionAssignments };
+        Object.keys(updatedAssignments).forEach(playerId => {
+          if (updatedAssignments[playerId] === mergingSection) {
+            updatedAssignments[playerId] = targetSection;
+          }
+        });
+        setPlayerSectionAssignments(updatedAssignments);
+        
+        // Close merge modal
+        setMergingSection(null);
+        setTargetSection('');
+      } else {
+        throw new Error(response.data.error || 'Failed to merge sections');
+      }
+    } catch (error: any) {
+      console.error('Failed to merge sections:', error);
+      alert(`Failed to merge sections: ${error.message}`);
+    } finally {
+      setIsMerging(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -287,6 +358,16 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
                           <h4 className="font-medium text-gray-900">{section.name}</h4>
                           <div className="flex space-x-2">
                             <button
+                              onClick={() => {
+                                setMergingSection(section.name);
+                                setTargetSection('');
+                              }}
+                              className="text-purple-600 hover:text-purple-800"
+                              title="Merge section"
+                            >
+                              <ArrowRight className="h-4 w-4" />
+                            </button>
+                            <button
                               onClick={() => setEditingSection(section.name)}
                               className="text-blue-600 hover:text-blue-800"
                             >
@@ -356,6 +437,60 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Merge Section Modal */}
+      {mergingSection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Merge Sections</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Merge <strong>{mergingSection}</strong> into another section. This will move all players and pairings from <strong>{mergingSection}</strong> to the target section.
+              </p>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Target Section
+                </label>
+                <select
+                  value={targetSection}
+                  onChange={(e) => setTargetSection(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board"
+                >
+                  <option value="">Select a target section...</option>
+                  {getAvailableSections()
+                    .filter(s => s !== mergingSection)
+                    .map(sectionName => (
+                      <option key={sectionName} value={sectionName}>
+                        {sectionName} ({getPlayersInSection(sectionName).length} players)
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setMergingSection(null);
+                    setTargetSection('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={isMerging}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMergeSections}
+                  disabled={!targetSection || isMerging}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isMerging ? 'Merging...' : 'Merge'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

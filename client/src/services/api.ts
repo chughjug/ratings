@@ -160,6 +160,12 @@ export const tournamentApi = {
     api.put<{success: boolean, message: string, error?: string}>(`/tournaments/${id}/prize-settings`, { prizeSettings }),
   generatePrizeStructure: (id: string, prizeFund?: number) => 
     api.post<{success: boolean, data: any, message?: string, error?: string}>(`/tournaments/${id}/generate-prize-structure`, { prizeFund }),
+  // Section management
+  mergeSections: (id: string, sourceSection: string, targetSection: string, removeSourceSection?: boolean) =>
+    api.post<{success: boolean, message: string, data: {playersUpdated: number, pairingsUpdated: number, sourceSectionRemoved: boolean}, error?: string}>(
+      `/tournaments/${id}/merge-sections`,
+      { sourceSection, targetSection, removeSourceSection: removeSourceSection ?? false }
+    ),
   // Team-related endpoints
   getTeamStandings: (id: string, params?: {type?: string, scoring_method?: string, top_n?: number}) => {
     const queryParams = new URLSearchParams();
