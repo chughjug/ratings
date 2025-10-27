@@ -2275,8 +2275,8 @@ router.put('/:id/result', async (req, res) => {
   const { id } = req.params;
   const { result } = req.body;
 
-  const validResults = ['1-0', '0-1', '1/2-1/2', '1-0F', '0-1F', '1/2-1/2F'];
-  if (!validResults.includes(result)) {
+  const validResults = ['1-0', '0-1', '1/2-1/2', '1-0F', '0-1F', '1/2-1/2F', 'bye', 'bye_bye', 'bye_unpaired', 'bye_inactive', 'bye_half_point_bye'];
+  if (!validResults.includes(result) && !result.startsWith('bye_')) {
     res.status(400).json({ error: 'Invalid result format' });
     return;
   }

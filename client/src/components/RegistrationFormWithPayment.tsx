@@ -42,12 +42,21 @@ interface TournamentInfo {
   end_date?: string;
   entry_fee?: number;
   payment_enabled?: boolean;
+  payment_settings?: any;
   sections?: Array<{
     name: string;
     min_rating?: number;
     max_rating?: number;
     description?: string;
   }>;
+  custom_fields?: Array<{
+    name: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+  }>;
+  registration_form_settings?: any;
+  allow_registration?: boolean;
 }
 
 const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = ({ tournamentId }) => {
@@ -94,23 +103,24 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         if (response.data.success) {
           const data: any = response.data.data;
           
-          // Handle both flat structure (data.id) and nested structure (data.tournament.id)
-          const tournament = data.tournament || data;
-          const entryFee = tournament.entry_fee || data.entry_fee || 0;
-          
           setTournamentInfo({
-            id: tournament.id || data.id,
-            name: tournament.name || data.name,
-            format: tournament.format || data.format,
-            rounds: tournament.rounds || data.rounds,
-            start_date: tournament.start_date || data.start_date,
-            end_date: tournament.end_date || data.end_date,
-            entry_fee: entryFee,
-            payment_enabled: entryFee > 0
+            id: data.id,
+            name: data.name,
+            format: data.format,
+            rounds: data.rounds,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            entry_fee: data.entry_fee,
+            payment_enabled: data.payment_enabled,
+            payment_settings: data.payment_settings,
+            sections: data.sections,
+            custom_fields: data.custom_fields,
+            registration_form_settings: data.registration_form_settings,
+            allow_registration: data.allow_registration
           });
           
           // Check if payment is required
-          if (entryFee > 0) {
+          if (data.entry_fee > 0) {
             setShowPayment(true);
           }
         } else {

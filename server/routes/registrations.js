@@ -55,7 +55,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
 router.get('/tournament/:tournamentId/info', (req, res) => {
   const { tournamentId } = req.params;
   
-  db.get('SELECT id, name, format, rounds, start_date, end_date, settings, allow_registration FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
+  db.get('SELECT id, name, format, rounds, start_date, end_date, settings, allow_registration, registration_settings FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
     if (err) {
       console.error('Error fetching tournament info:', err);
       return res.status(500).json({ 
@@ -71,14 +71,35 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
       });
     }
     
-    // Parse settings to extract sections
+    // Parse settings to extract sections, entry_fee, payment settings
     let sections = [];
+    let entry_fee = 0;
+    let payment_enabled = false;
+    let payment_settings = {};
+    
     if (tournament.settings) {
       try {
         const settings = JSON.parse(tournament.settings);
         sections = settings.sections || [];
+        entry_fee = settings.entry_fee || 0;
+        payment_enabled = Boolean(entry_fee > 0);
+        payment_settings = settings.payment_settings || {};
       } catch (parseError) {
         console.error('Error parsing tournament settings:', parseError);
+      }
+    }
+    
+    // Parse registration settings for custom fields
+    let custom_fields = [];
+    let registration_form_settings = {};
+    
+    if (tournament.registration_settings) {
+      try {
+        const regSettings = JSON.parse(tournament.registration_settings);
+        custom_fields = regSettings.custom_fields || [];
+        registration_form_settings = regSettings.form_settings || {};
+      } catch (parseError) {
+        console.error('Error parsing registration settings:', parseError);
       }
     }
     
@@ -91,7 +112,12 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
         rounds: tournament.rounds,
         start_date: tournament.start_date,
         end_date: tournament.end_date,
+        entry_fee: entry_fee,
+        payment_enabled: payment_enabled,
+        payment_settings: payment_settings,
         sections: sections,
+        custom_fields: custom_fields,
+        registration_form_settings: registration_form_settings,
         allow_registration: Boolean(tournament.allow_registration)
       }
     });
@@ -149,7 +175,11 @@ router.post('/submit', async (req, res) => {
       fide_id, // Add fide_id support
       bye_requests = [],
       notes,
-      custom_fields // Add custom fields support
+      custom_fields, // Add custom fields support
+      payment_amount, // Payment amount
+      payment_method, // Payment method (stripe, paypal, etc.)
+      payment_intent_id, // Payment intent/transaction ID
+      payment_status = 'pending' // Payment status
     } = req.body;
 
     // Validate required fields
@@ -247,13 +277,14 @@ router.post('/submit', async (req, res) => {
       finalNotes = finalNotes ? `${finalNotes}. Custom Fields: ${customFieldsData}` : `Custom Fields: ${customFieldsData}`;
     }
     
-    // Insert registration record
+    // Insert registration record with payment information
     await new Promise((resolve, reject) => {
       db.run(
-        `INSERT INTO registrations (id, tournament_id, player_name, uscf_id, email, phone, section, bye_requests, notes, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        `INSERT INTO registrations (id, tournament_id, player_name, uscf_id, email, phone, section, bye_requests, notes, status, created_at, payment_amount, payment_method, payment_id, payment_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?)`,
         [registrationId, tournament_id, player_name, uscf_id, email, phone, finalSection, 
-         JSON.stringify(bye_requests), finalNotes, 'pending'],
+         JSON.stringify(bye_requests), finalNotes, 'pending',
+         payment_amount || null, payment_method || null, payment_intent_id || null, payment_status],
         function(err) {
           if (err) reject(err);
           else resolve();

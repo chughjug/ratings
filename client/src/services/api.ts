@@ -549,6 +549,11 @@ export const registrationApi = {
     section?: string;
     bye_requests?: number[];
     notes?: string;
+    payment_amount?: number;
+    payment_method?: string;
+    payment_intent_id?: string;
+    payment_status?: string;
+    custom_fields?: any[];
   }) =>
     api.post<{success: boolean, data: {
       registration_id: string;

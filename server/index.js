@@ -308,46 +308,9 @@ console.log('Setting up routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/registrations', registrationRoutes);
 
-// Registration form route
-app.get('/register/:tournamentId', (req, res) => {
-  const { tournamentId } = req.params;
-  
-  // Verify tournament exists
-  db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
-    if (err) {
-      console.error('Error fetching tournament:', err);
-      return res.status(500).send('Internal server error');
-    }
-    
-    if (!tournament) {
-      return res.status(404).send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Tournament Not Found</title>
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-            .error { color: #e74c3c; }
-          </style>
-        </head>
-        <body>
-          <h1 class="error">Tournament Not Found</h1>
-          <p>The tournament you're looking for doesn't exist or has been removed.</p>
-        </body>
-        </html>
-      `);
-    }
-    
-    // Serve the registration form with tournament data
-    const registrationFormPath = path.join(__dirname, '../registration-form-example.html');
-    res.sendFile(registrationFormPath, (err) => {
-      if (err) {
-        console.error('Error serving registration form:', err);
-        res.status(500).send('Error loading registration form');
-      }
-    });
-  });
-});
+// Registration form route - moved to React Router
+// The /register/:tournamentId route is now handled by React Router in App.tsx
+// This allows the Registration component to use RegistrationFormWithPayment with payment and custom form support
 
 // All routes are now public (authentication disabled)
 app.use('/api/users', userRoutes);

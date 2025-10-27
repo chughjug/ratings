@@ -65,6 +65,7 @@ db.serialize(() => {
       logo_url TEXT,
       tournament_information TEXT,
       public_display_config TEXT,
+      registration_settings TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (organization_id) REFERENCES organizations (id)
     )
@@ -212,6 +213,11 @@ db.serialize(() => {
   
   db.run(`
     ALTER TABLE registrations ADD COLUMN payment_id TEXT
+  `, (err) => {});
+
+  // Add registration_settings column to tournaments table if it doesn't exist
+  db.run(`
+    ALTER TABLE tournaments ADD COLUMN registration_settings TEXT
   `, (err) => {});
 
   // Add US Chess specific columns to tournaments table (for existing databases)
