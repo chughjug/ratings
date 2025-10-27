@@ -423,6 +423,16 @@ router.put('/:id', (req, res) => {
      allowReg, isPublic, public_url || null, logo_url || null, tournament_information || null, public_display_config || null,
      registrationSettingsJson, entry_fee, paypal_client_id || null, paypal_secret || null, 
      stripe_publishable_key || null, stripe_secret_key || null, payment_method || 'both', id];
+     
+    console.log('💳 Saving payment credentials to tournament:', {
+      tournament_id: id,
+      entry_fee: entry_fee,
+      payment_method: payment_method || 'both',
+      paypal_client_id: paypal_client_id ? '***SET***' : 'EMPTY',
+      paypal_secret: paypal_secret ? '***SET***' : 'EMPTY',
+      stripe_publishable_key: stripe_publishable_key ? '***SET***' : 'EMPTY',
+      stripe_secret_key: stripe_secret_key ? '***SET***' : 'EMPTY'
+    });
     
     console.log('Parameters count:', params.length);
     console.log('Updating tournament information:', tournament_information?.substring(0, 50) || 'null');

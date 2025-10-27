@@ -97,10 +97,12 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
       stripe_secret_key: tournament.stripe_secret_key || ''
     };
     
-    console.log('🔍 Tournament payment settings:', {
+    console.log('🔍 Reading tournament payment settings from database:', {
+      tournament_id: tournament.id,
       payment_method: payment_settings.payment_method,
-      paypal_client_id: payment_settings.paypal_client_id ? 'SET' : 'EMPTY',
-      stripe_publishable_key: payment_settings.stripe_publishable_key ? 'SET' : 'EMPTY'
+      entry_fee: entry_fee,
+      paypal_client_id: payment_settings.paypal_client_id ? 'SET (length: ' + payment_settings.paypal_client_id.length + ')' : 'EMPTY',
+      stripe_publishable_key: payment_settings.stripe_publishable_key ? 'SET (length: ' + payment_settings.stripe_publishable_key.length + ')' : 'EMPTY'
     });
     
     // Parse registration settings for custom fields
@@ -122,6 +124,12 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
     } else {
       console.log('⚠️ No registration_settings found in database');
     }
+    
+    console.log('📤 Sending response with payment_settings:', {
+      paypal_client_id: payment_settings.paypal_client_id ? 'SET (length: ' + payment_settings.paypal_client_id.length + ')' : 'EMPTY',
+      stripe_publishable_key: payment_settings.stripe_publishable_key ? 'SET (length: ' + payment_settings.stripe_publishable_key.length + ')' : 'EMPTY',
+      custom_fields_count: custom_fields.length
+    });
     
     res.json({ 
       success: true,
