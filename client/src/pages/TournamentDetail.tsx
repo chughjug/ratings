@@ -2511,29 +2511,39 @@ const TournamentDetail: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {(() => {
                               try {
-                                // Validate that bye_rounds contains valid round numbers, not dates
-                                if (!player.bye_rounds || typeof player.bye_rounds !== 'string') {
+                                // Check intentional_bye_rounds first (preferred), then bye_rounds
+                                let byeRounds: number[] = [];
+                                
+                                if (player.intentional_bye_rounds) {
+                                  // Handle array, JSON string, or comma-separated string
+                                  if (Array.isArray(player.intentional_bye_rounds)) {
+                                    byeRounds = player.intentional_bye_rounds;
+                                  } else if (typeof player.intentional_bye_rounds === 'string') {
+                                    try {
+                                      byeRounds = JSON.parse(player.intentional_bye_rounds);
+                                    } catch {
+                                      byeRounds = player.intentional_bye_rounds.split(',').map((r: string) => parseInt(r.trim())).filter((r: number) => !isNaN(r));
+                                    }
+                                  }
+                                } else if (player.bye_rounds && typeof player.bye_rounds === 'string') {
+                                  const byeRoundsStr = player.bye_rounds.trim();
+                                  
+                                  // Check if it looks like a date
+                                  const isDatePattern = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(byeRoundsStr);
+                                  if (isDatePattern || byeRoundsStr.toLowerCase() === 'expired') {
+                                    return <span className="text-gray-400">-</span>;
+                                  }
+                                  
+                                  if (byeRoundsStr !== '') {
+                                    byeRounds = byeRoundsStr.split(',').map((r: string) => parseInt(r.trim())).filter((r: number) => !isNaN(r));
+                                  }
+                                }
+                                
+                                if (byeRounds.length === 0) {
                                   return <span className="text-gray-400">-</span>;
                                 }
                                 
-                                const byeRoundsStr = player.bye_rounds.trim();
-                                if (byeRoundsStr === '') {
-                                  return <span className="text-gray-400">-</span>;
-                                }
-                                
-                                // Check if it looks like a date (contains slashes or dashes in date format)
-                                const isDatePattern = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(byeRoundsStr);
-                                if (isDatePattern) {
-                                  // This is a date, not a bye round - don't display it
-                                  return <span className="text-gray-400">-</span>;
-                                }
-                                
-                                // Check if it's "Expired" text
-                                if (byeRoundsStr.toLowerCase() === 'expired') {
-                                  return <span className="text-gray-400">-</span>;
-                                }
-                                
-                                // It's a valid bye rounds value
+                                const byeRoundsStr = byeRounds.join(', ');
                                 return (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                     {byeRoundsStr}
