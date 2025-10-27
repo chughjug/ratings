@@ -420,7 +420,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
     }));
   };
 
-  // Handle payment with Stripe (opens a simple modal for now)
+  // Handle payment with Stripe - redirects to Stripe Checkout
   const handleStripePayment = async () => {
     if (!tournamentInfo?.entry_fee) {
       setPaymentError('Entry fee is not set');
@@ -430,10 +430,10 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
     try {
       setPaymentError(null);
       setProcessingPayment(true);
-      console.log('💳 Starting Stripe payment flow...');
+      console.log('💳 Starting Stripe checkout redirect...');
 
-      // Create payment intent
-      const response = await fetch('/api/payments/stripe/create-intent', {
+      // Create checkout session
+      const response = await fetch('/api/payments/stripe/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -442,27 +442,25 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           currency: 'usd',
           tournamentId,
           playerId: 'pending',
-          description: `Entry fee for ${tournamentInfo.name}`
+          description: `Entry fee for ${tournamentInfo.name}`,
+          successUrl: `${window.location.origin}/registration/${tournamentId}?success=true&method=stripe`,
+          cancelUrl: `${window.location.origin}/registration/${tournamentId}?canceled=true`
         })
       });
 
       const data = await response.json();
-      console.log('Stripe intent response:', data);
+      console.log('Stripe checkout response:', data);
       
-      if (data.success) {
-        // For now, mark payment as successful
-        // In a full implementation, you would integrate Stripe Elements here
-        setPaymentIntentId(data.data.paymentIntentId);
-        setPaymentMethod('stripe');
-        setPaymentError(null);
-        alert('Stripe payment integration is in progress. For now, payment will be processed manually.');
+      if (data.success && data.data.checkoutUrl) {
+        // Redirect to Stripe Checkout (opens in new tab or same window)
+        window.location.href = data.data.checkoutUrl;
       } else {
-        setPaymentError(data.error || 'Failed to create payment intent');
+        setPaymentError(data.error || 'Failed to create checkout session');
+        setProcessingPayment(false);
       }
     } catch (error: any) {
       console.error('Stripe payment error:', error);
       setPaymentError(error.message || 'Payment failed');
-    } finally {
       setProcessingPayment(false);
     }
   };

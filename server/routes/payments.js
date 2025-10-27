@@ -217,9 +217,9 @@ router.get('/config', authenticate, async (req, res) => {
  * @desc Create Stripe payment intent
  * @access Private
  */
-router.post('/stripe/create-intent', async (req, res) => {
+router.post('/stripe/create-checkout', async (req, res) => {
   try {
-    const { amount, currency = 'usd', tournamentId, playerId, description, metadata = {} } = req.body;
+    const { amount, currency = 'usd', tournamentId, playerId, description, successUrl, cancelUrl } = req.body;
 
     if (!amount || !tournamentId || !playerId) {
       return res.status(400).json({
@@ -254,32 +254,37 @@ router.post('/stripe/create-intent', async (req, res) => {
           // Create Stripe client with tournament-specific credentials
           const stripe = require('stripe')(tournament.stripe_secret_key);
           
-          const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(parseFloat(amount) * 100), // Convert to cents
-            currency,
-            description: description || `Tournament entry fee - ${tournamentId}`,
+          // Create a Checkout Session (hosted by Stripe, redirects user)
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+              price_data: {
+                currency,
+                product_data: {
+                  name: description || `Entry fee for tournament ${tournamentId}`,
+                },
+                unit_amount: Math.round(parseFloat(amount) * 100), // Convert to cents
+              },
+              quantity: 1,
+            }],
+            mode: 'payment',
+            success_url: successUrl || `${req.protocol}://${req.get('host')}/registration/${tournamentId}?success=true`,
+            cancel_url: cancelUrl || `${req.protocol}://${req.get('host')}/registration/${tournamentId}?canceled=true`,
             metadata: {
               tournamentId,
               playerId,
-              ...metadata
-            },
-            automatic_payment_methods: {
-              enabled: true,
-            },
+            }
           });
 
           res.json({
             success: true,
             data: {
-              clientSecret: paymentIntent.client_secret,
-              paymentIntentId: paymentIntent.id,
-              amount: paymentIntent.amount,
-              currency: paymentIntent.currency,
-              status: paymentIntent.status
+              checkoutUrl: session.url,
+              sessionId: session.id,
             }
           });
         } catch (error) {
-          console.error('Stripe intent creation error:', error);
+          console.error('Stripe checkout creation error:', error);
           res.status(500).json({
             success: false,
             error: error.message
@@ -288,7 +293,7 @@ router.post('/stripe/create-intent', async (req, res) => {
       }
     );
   } catch (error) {
-    console.error('Stripe intent creation error:', error);
+    console.error('Stripe checkout creation error:', error);
     res.status(500).json({
       success: false,
       error: error.message
