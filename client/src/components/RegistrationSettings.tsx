@@ -95,11 +95,41 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
         console.error('Error loading registration settings:', error);
       }
     }
+    
+    // Load entry_fee and payment settings from tournament.settings
+    if (tournament?.settings) {
+      try {
+        const tournamentSettings = typeof tournament.settings === 'string'
+          ? JSON.parse(tournament.settings)
+          : tournament.settings;
+          
+        if (tournamentSettings.entry_fee !== undefined) {
+          setSettings(prev => ({ 
+            ...prev, 
+            entry_fee: tournamentSettings.entry_fee 
+          }));
+        }
+        
+        if (tournamentSettings.payment_settings) {
+          setSettings(prev => ({
+            ...prev,
+            payment_method: tournamentSettings.payment_settings.payment_method || 'both',
+            paypal_client_id: tournamentSettings.payment_settings.paypal_client_id || '',
+            paypal_secret: tournamentSettings.payment_settings.paypal_secret || '',
+            stripe_publishable_key: tournamentSettings.payment_settings.stripe_publishable_key || '',
+            stripe_secret_key: tournamentSettings.payment_settings.stripe_secret_key || ''
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading tournament payment settings:', error);
+      }
+    }
   }, [tournament]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Save all settings (onSave handler will extract payment settings to settings field)
       await onSave({ registration_settings: settings });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);

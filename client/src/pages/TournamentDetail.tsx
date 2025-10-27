@@ -3154,27 +3154,28 @@ const TournamentDetail: React.FC = () => {
                         // Save registration settings
                         await handleTournamentUpdate('registration_settings', JSON.stringify(settings.registration_settings));
                         
-                        // Also save payment credentials to tournament settings
+                        // Always save entry_fee to tournament settings
+                        const currentSettingsStr = tournament?.settings as string;
+                        const currentSettings = currentSettingsStr ? JSON.parse(currentSettingsStr) : {};
+                        
+                        // Save entry_fee and payment settings
+                        const updatedSettings = {
+                          ...currentSettings,
+                          entry_fee: settings.registration_settings.entry_fee || 0
+                        };
+                        
+                        // Only add payment_settings if payment is configured
                         if (settings.registration_settings.require_payment) {
-                          const currentSettingsStr = tournament?.settings as string;
-                          const currentSettings = currentSettingsStr ? JSON.parse(currentSettingsStr) : {};
-                          const paymentSettings = {
-                            entry_fee: settings.registration_settings.entry_fee || 0,
+                          updatedSettings.payment_settings = {
                             payment_method: settings.registration_settings.payment_method || 'both',
                             paypal_client_id: settings.registration_settings.paypal_client_id || '',
                             paypal_secret: settings.registration_settings.paypal_secret || '',
                             stripe_publishable_key: settings.registration_settings.stripe_publishable_key || '',
                             stripe_secret_key: settings.registration_settings.stripe_secret_key || ''
                           };
-                          
-                          const updatedSettings = {
-                            ...currentSettings,
-                            entry_fee: settings.registration_settings.entry_fee || 0,
-                            payment_settings: paymentSettings
-                          };
-                          
-                          await handleTournamentUpdate('settings', JSON.stringify(updatedSettings));
                         }
+                        
+                        await handleTournamentUpdate('settings', JSON.stringify(updatedSettings));
                       }}
                     />
                   </div>
