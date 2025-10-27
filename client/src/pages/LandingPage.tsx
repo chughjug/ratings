@@ -171,33 +171,29 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Highlights Section */}
       <section className="py-16 bg-white border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
-                500+
-              </div>
-              <div className="text-neutral-600 font-medium">Active Organizations</div>
+              <div className="text-4xl mb-3">⚡</div>
+              <div className="text-xl font-bold text-neutral-900 mb-1">Zero Configuration</div>
+              <div className="text-neutral-600 text-sm">Works out of the box</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
-                50K+
-              </div>
-              <div className="text-neutral-600 font-medium">Tournaments Managed</div>
+              <div className="text-4xl mb-3">🎯</div>
+              <div className="text-xl font-bold text-neutral-900 mb-1">Perfect Accuracy</div>
+              <div className="text-neutral-600 text-sm">USCF-approved algorithms</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
-                2M+
-              </div>
-              <div className="text-neutral-600 font-medium">Players Registered</div>
+              <div className="text-4xl mb-3">🚀</div>
+              <div className="text-xl font-bold text-neutral-900 mb-1">Lightning Fast</div>
+              <div className="text-neutral-600 text-sm">Instant results</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
-                99.9%
-              </div>
-              <div className="text-neutral-600 font-medium">Uptime Guarantee</div>
+              <div className="text-4xl mb-3">🔒</div>
+              <div className="text-xl font-bold text-neutral-900 mb-1">Always Secure</div>
+              <div className="text-neutral-600 text-sm">Enterprise-grade security</div>
             </div>
           </div>
         </div>
@@ -448,77 +444,66 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section id="testimonials" className="py-24 bg-neutral-900 text-white">
+      {/* Features Showcase Section */}
+      <section className="py-24 bg-neutral-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+          <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Trusted by Tournament Directors
+              Why Tournament Directors Choose PairCraft
             </h2>
             <p className="text-xl text-neutral-300 max-w-3xl mx-auto">
-              Join hundreds of chess clubs and organizations using PairCraft 
-              to run their tournaments every week.
+              Cutting-edge features that make tournament management effortless
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-neutral-600 transition-all">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-700 to-orange-800 rounded-full flex items-center justify-center text-white font-bold">
-                  JD
-                </div>
-                <div className="ml-4">
-                  <div className="font-bold">John Davis</div>
-                  <div className="text-sm text-neutral-400">Chess Club Director</div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+                <Trophy className="h-6 w-6 text-white" />
               </div>
-              <p className="text-neutral-300 italic">
-                "PairCraft has completely transformed how we run tournaments. 
-                What used to take hours now takes minutes. Our players love 
-                the real-time updates."
+              <h3 className="text-xl font-bold mb-2">Swiss Pairings</h3>
+              <p className="text-neutral-400">
+                Advanced pairing algorithms with Burstein method, color balancing, and bye handling
               </p>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-neutral-600 transition-all">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-700 to-orange-800 rounded-full flex items-center justify-center text-white font-bold">
-                  SM
-                </div>
-                <div className="ml-4">
-                  <div className="font-bold">Sarah Martinez</div>
-                  <div className="text-sm text-neutral-400">Tournament Organizer</div>
-                </div>
+            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+                <BarChart3 className="h-6 w-6 text-white" />
               </div>
-              <p className="text-neutral-300 italic">
-                "The Swiss pairing algorithm is flawless. I no longer worry 
-                about pairing mistakes. Everything is automated and perfect 
-                every time."
+              <h3 className="text-xl font-bold mb-2">Live Standings</h3>
+              <p className="text-neutral-400">
+                Real-time updates with Buchholz, Sonneborn-Berger, and Koya tiebreakers
               </p>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-neutral-600 transition-all">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-700 to-orange-800 rounded-full flex items-center justify-center text-white font-bold">
-                  MR
-                </div>
-                <div className="ml-4">
-                  <div className="font-bold">Michael Rodriguez</div>
-                  <div className="text-sm text-neutral-400">Chess School Founder</div>
-                </div>
+            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+                <Bell className="h-6 w-6 text-white" />
               </div>
-              <p className="text-neutral-300 italic">
-                "The public tournament pages are a game-changer. Parents can 
-                follow their kids' games in real-time. Highly recommended!"
+              <h3 className="text-xl font-bold mb-2">Smart Notifications</h3>
+              <p className="text-neutral-400">
+                Automated email alerts for pairings, results, and standings updates
+              </p>
+            </div>
+
+            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+                <Globe className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Public Pages</h3>
+              <p className="text-neutral-400">
+                Embeddable tournament widgets and branded public registration
               </p>
             </div>
           </div>
 
           <div className="bg-gradient-to-br from-orange-700/10 to-orange-500/10 backdrop-blur rounded-2xl p-12 text-center border border-orange-700/20">
             <h3 className="text-3xl font-bold mb-4">
-              Ready to Transform Your Tournaments?
+              Get Started in Under 5 Minutes
             </h3>
             <p className="text-xl text-neutral-300 mb-8">
-              Join the tournament directors who have already made the switch.
+              Create your account and run your first tournament today
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -526,7 +511,7 @@ const LandingPage: React.FC = () => {
                 className="bg-white text-neutral-900 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-neutral-100 transition-all inline-flex items-center justify-center shadow-xl hover:shadow-2xl"
               >
                 <LogIn className="mr-3 h-6 w-6" />
-                Start Running Tournaments Today
+                Start Running Tournaments
                 <ArrowRight className="ml-3 h-6 w-6" />
               </button>
               <Link
@@ -537,46 +522,89 @@ const LandingPage: React.FC = () => {
                 <ArrowRight className="ml-3 h-6 w-6" />
               </Link>
             </div>
-            <p className="mt-6 text-neutral-400 text-sm">
-              ✓ Free forever • ✓ No credit card • ✓ Setup in 5 minutes
-            </p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-neutral-950 text-white py-12 border-t border-neutral-800">
+      <footer className="bg-neutral-950 text-white py-16 border-t border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-2">
               <PairCraftLogo size="md" showText={true} />
-              <p className="mt-4 text-neutral-400 max-w-md">
-                The complete platform for chess tournament directors. 
-                Professional tournament management made simple.
+              <p className="mt-4 text-neutral-400 max-w-md mb-6">
+                The most powerful chess tournament management platform. 
+                Built for directors who demand perfection.
               </p>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-orange-600" />
+                  <span className="text-neutral-300">Free Forever</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-orange-600" />
+                  <span className="text-neutral-300">Zero Setup Time</span>
+                </div>
+              </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-orange-700">Resources</h3>
-              <ul className="space-y-2">
-                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-orange-700 transition-colors">Tournaments</Link></li>
-                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-orange-700 transition-colors">Organizations</Link></li>
-                <li><Link to="/register" className="text-neutral-400 hover:text-orange-700 transition-colors">Player Registration</Link></li>
-                <li><Link to="/chess" className="text-neutral-400 hover:text-orange-700 transition-colors">Play Chess</Link></li>
+              <h3 className="text-lg font-semibold mb-4 text-white">Platform</h3>
+              <ul className="space-y-3">
+                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                  <ArrowRight className="h-3 w-3" />
+                  Browse Tournaments
+                </Link></li>
+                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                  <ArrowRight className="h-3 w-3" />
+                  Find Organizations
+                </Link></li>
+                <li><Link to="/register" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                  <ArrowRight className="h-3 w-3" />
+                  Register as Player
+                </Link></li>
+                <li><Link to="/chess" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                  <ArrowRight className="h-3 w-3" />
+                  Play Chess Online
+                </Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-orange-700">Features</h3>
-              <ul className="space-y-2 text-neutral-400">
-                <li>Swiss System Pairings</li>
-                <li>Real-time Standings</li>
-                <li>Player Management</li>
-                <li>Email Notifications</li>
-                <li>Public Tournament Pages</li>
+              <h3 className="text-lg font-semibold mb-4 text-white">Power Features</h3>
+              <ul className="space-y-3 text-neutral-400">
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <span>Burstein & Accelerated Pairings</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <span>USCF Rating Integration</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <span>Export to PDF & Print</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <span>Team Tournament Support</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <span>Embeddable Widgets</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <span>White-Label Branding</span>
+                </li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-neutral-800 mt-8 pt-8 text-center">
-            <p className="text-neutral-500">&copy; 2024 PairCraft. All rights reserved.</p>
+          <div className="border-t border-neutral-800 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-neutral-500">&copy; 2024 PairCraft. All rights reserved.</p>
+              <div className="flex items-center gap-6 text-neutral-500 text-sm">
+                <span>Made for tournament directors</span>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
