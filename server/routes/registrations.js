@@ -55,7 +55,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
 router.get('/tournament/:tournamentId/info', (req, res) => {
   const { tournamentId } = req.params;
   
-  db.get('SELECT id, name, format, rounds, start_date, end_date, settings, allow_registration, registration_settings, entry_fee, paypal_client_id, paypal_secret, stripe_publishable_key, stripe_secret_key, payment_method FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
+  db.get('SELECT id, name, format, rounds, start_date, end_date, settings, allow_registration, registration_settings, entry_fee, paypal_client_id, paypal_secret, stripe_publishable_key, stripe_secret_key, payment_method, organization_id FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
     if (err) {
       console.error('Error fetching tournament info:', err);
       return res.status(500).json({ 
@@ -83,10 +83,13 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
       }
     }
     
-    // Get entry fee and payment credentials from database columns (not from settings JSON)
+    // Get entry fee and payment credentials from tournament (TD) level first
+    // Then fall back to organization level if empty
     const entry_fee = tournament.entry_fee || 0;
     const payment_enabled = Boolean(entry_fee > 0);
-    const payment_settings = {
+    
+    // Start with tournament-level credentials
+    let payment_settings = {
       payment_method: tournament.payment_method || 'both',
       paypal_client_id: tournament.paypal_client_id || '',
       paypal_secret: tournament.paypal_secret || '',
@@ -94,13 +97,10 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
       stripe_secret_key: tournament.stripe_secret_key || ''
     };
     
-    // Debug: Log what we're returning
-    console.log('🔍 Returning payment_settings for tournament:', tournament.id, {
+    console.log('🔍 Tournament payment settings:', {
       payment_method: payment_settings.payment_method,
-      paypal_client_id: payment_settings.paypal_client_id ? payment_settings.paypal_client_id.substring(0, 20) + '...' : 'EMPTY',
-      paypal_secret: payment_settings.paypal_secret ? '***SET***' : 'EMPTY',
-      stripe_publishable_key: payment_settings.stripe_publishable_key ? payment_settings.stripe_publishable_key.substring(0, 20) + '...' : 'EMPTY',
-      stripe_secret_key: payment_settings.stripe_secret_key ? '***SET***' : 'EMPTY'
+      paypal_client_id: payment_settings.paypal_client_id ? 'SET' : 'EMPTY',
+      stripe_publishable_key: payment_settings.stripe_publishable_key ? 'SET' : 'EMPTY'
     });
     
     // Parse registration settings for custom fields
