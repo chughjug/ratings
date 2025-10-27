@@ -135,7 +135,7 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSignup }) 
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center space-x-2">
-            <UserPlus className="h-6 w-6 text-amber-600" />
+            <UserPlus className="h-6 w-6 text-orange-600" />
             <h2 className="text-xl font-bold text-gray-800">Create Account</h2>
           </div>
           <button
@@ -161,7 +161,7 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSignup }) 
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                     validationErrors.firstName ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="John"
@@ -184,7 +184,7 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSignup }) 
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  className={`w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                     validationErrors.lastName ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Doe"
@@ -326,7 +326,7 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSignup }) 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-neutral-900 text-white py-2 px-4 rounded-md hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-neutral-900 text-white py-2 px-4 rounded-md hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
@@ -338,7 +338,7 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSignup }) 
             <button
               type="button"
               onClick={onClose}
-              className="text-amber-600 hover:text-amber-700 font-medium"
+              className="text-orange-600 hover:text-orange-700 font-medium"
             >
               Sign in instead
             </button>

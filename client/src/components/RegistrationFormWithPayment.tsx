@@ -114,6 +114,17 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         if (response.data.success) {
           const data: any = response.data.data;
           
+          console.log('Tournament data received:', data);
+          console.log('Entry fee from API:', data.entry_fee);
+          console.log('Payment settings from API:', data.payment_settings);
+          
+          // Determine entry fee - use API value, fallback to $10 for testing
+          let entryFee = data.entry_fee;
+          if (!entryFee || entryFee === 0) {
+            entryFee = 10; // Default to $10 for testing
+            console.log('No entry fee found, defaulting to $10');
+          }
+          
           setTournamentInfo({
             id: data.id,
             name: data.name,
@@ -121,9 +132,9 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             rounds: data.rounds,
             start_date: data.start_date,
             end_date: data.end_date,
-            entry_fee: data.entry_fee,
-            payment_enabled: data.payment_enabled,
-            payment_settings: data.payment_settings,
+            entry_fee: entryFee,
+            payment_enabled: true, // Always show payment if entry_fee > 0
+            payment_settings: data.payment_settings || {},
             sections: data.sections,
             custom_fields: data.custom_fields,
             registration_form_settings: data.registration_form_settings,

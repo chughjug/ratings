@@ -56,7 +56,7 @@ const LandingPage: React.FC = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-full text-sm font-medium border border-amber-200">
+              <div className="inline-flex items-center gap-2 bg-orange-200 text-orange-700 px-4 py-2 rounded-full text-sm font-medium border border-orange-300">
                 <Sparkles className="h-4 w-4" />
                 <span>Trusted by 500+ Tournament Directors</span>
               </div>
@@ -64,7 +64,7 @@ const LandingPage: React.FC = () => {
               <h1 className="text-6xl md:text-7xl font-bold leading-tight tracking-tight">
                 <span className="text-neutral-900">The Complete</span>
                 <br />
-                <span className="bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent" style={{ fontFamily: 'serif' }}>
+                <span className="bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent" style={{ fontFamily: 'serif' }}>
                   Tournament Platform
                 </span>
               </h1>
@@ -138,14 +138,14 @@ const LandingPage: React.FC = () => {
                       <div className="text-xs text-neutral-600 mt-1">Complete</div>
                     </div>
                     <div className="text-center p-4 bg-neutral-50 rounded-xl border border-neutral-200">
-                      <div className="text-2xl font-bold text-amber-600">$2.5K</div>
+                      <div className="text-2xl font-bold text-orange-800">$2.5K</div>
                       <div className="text-xs text-neutral-600 mt-1">Prize Fund</div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-50 to-orange-50 rounded-xl border border-orange-300">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-amber-600 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
                         P1
                       </div>
                       <div>
@@ -176,25 +176,25 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
                 500+
               </div>
               <div className="text-neutral-600 font-medium">Active Organizations</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
                 50K+
               </div>
               <div className="text-neutral-600 font-medium">Tournaments Managed</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
                 2M+
               </div>
               <div className="text-neutral-600 font-medium">Players Registered</div>
             </div>
             <div className="text-center">
-              <div className="text-5xl font-bold bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent mb-2">
                 99.9%
               </div>
               <div className="text-neutral-600 font-medium">Uptime Guarantee</div>
@@ -218,8 +218,8 @@ const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-6">
-                <Trophy className="h-6 w-6 text-amber-600" />
+              <div className="w-12 h-12 bg-orange-200 rounded-xl flex items-center justify-center mb-6">
+                <Trophy className="h-6 w-6 text-orange-800" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Automated Swiss Pairings
@@ -272,8 +272,8 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-6">
-                <BarChart3 className="h-6 w-6 text-amber-600" />
+              <div className="w-12 h-12 bg-orange-200 rounded-xl flex items-center justify-center mb-6">
+                <BarChart3 className="h-6 w-6 text-orange-800" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Real-Time Standings & Analytics
@@ -299,8 +299,8 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-6">
-                <Bell className="h-6 w-6 text-amber-600" />
+              <div className="w-12 h-12 bg-orange-200 rounded-xl flex items-center justify-center mb-6">
+                <Bell className="h-6 w-6 text-orange-800" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Automated Email Notifications
@@ -396,7 +396,7 @@ const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 1
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Sign Up</h3>
@@ -406,7 +406,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 2
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Create Tournament</h3>
@@ -416,7 +416,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 3
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Generate Pairings</h3>
@@ -426,7 +426,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-600 to-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 4
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Run Tournament</h3>
@@ -464,7 +464,7 @@ const LandingPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-neutral-600 transition-all">
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-700 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-700 to-orange-800 rounded-full flex items-center justify-center text-white font-bold">
                   JD
                 </div>
                 <div className="ml-4">
@@ -481,7 +481,7 @@ const LandingPage: React.FC = () => {
 
             <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-neutral-600 transition-all">
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-700 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-700 to-orange-800 rounded-full flex items-center justify-center text-white font-bold">
                   SM
                 </div>
                 <div className="ml-4">
@@ -498,7 +498,7 @@ const LandingPage: React.FC = () => {
 
             <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-neutral-600 transition-all">
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-700 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-700 to-orange-800 rounded-full flex items-center justify-center text-white font-bold">
                   MR
                 </div>
                 <div className="ml-4">
@@ -513,7 +513,7 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur rounded-2xl p-12 text-center border border-amber-500/20">
+          <div className="bg-gradient-to-br from-orange-700/10 to-orange-500/10 backdrop-blur rounded-2xl p-12 text-center border border-orange-700/20">
             <h3 className="text-3xl font-bold mb-4">
               Ready to Transform Your Tournaments?
             </h3>
@@ -556,16 +556,16 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-amber-500">Resources</h3>
+              <h3 className="text-lg font-semibold mb-4 text-orange-700">Resources</h3>
               <ul className="space-y-2">
-                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-amber-500 transition-colors">Tournaments</Link></li>
-                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-amber-500 transition-colors">Organizations</Link></li>
-                <li><Link to="/register" className="text-neutral-400 hover:text-amber-500 transition-colors">Player Registration</Link></li>
-                <li><Link to="/chess" className="text-neutral-400 hover:text-amber-500 transition-colors">Play Chess</Link></li>
+                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-orange-700 transition-colors">Tournaments</Link></li>
+                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-orange-700 transition-colors">Organizations</Link></li>
+                <li><Link to="/register" className="text-neutral-400 hover:text-orange-700 transition-colors">Player Registration</Link></li>
+                <li><Link to="/chess" className="text-neutral-400 hover:text-orange-700 transition-colors">Play Chess</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-amber-500">Features</h3>
+              <h3 className="text-lg font-semibold mb-4 text-orange-700">Features</h3>
               <ul className="space-y-2 text-neutral-400">
                 <li>Swiss System Pairings</li>
                 <li>Real-time Standings</li>

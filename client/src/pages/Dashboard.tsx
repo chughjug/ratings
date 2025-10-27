@@ -171,7 +171,7 @@ const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
                 Welcome back, {user?.firstName || user?.username || 'User'}! 👋
               </h1>
               <p className="text-gray-600 mt-2 text-lg">Manage your chess tournaments and organizations</p>
@@ -179,9 +179,9 @@ const Dashboard: React.FC = () => {
             
             <div className="flex items-center gap-3 flex-wrap">
               {orgState.currentOrganization && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-50 to-amber-50 rounded-xl border border-amber-200">
-                  <Building2 className="h-5 w-5 text-amber-600" />
-                  <span className="text-sm font-semibold text-amber-900">
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-50 to-orange-50 rounded-xl border border-orange-200">
+                  <Building2 className="h-5 w-5 text-orange-800" />
+                  <span className="text-sm font-semibold text-orange-900">
                     {orgState.currentOrganization.name}
                   </span>
                 </div>
@@ -219,8 +219,8 @@ const Dashboard: React.FC = () => {
                 <p className="text-3xl font-bold text-gray-900 mt-2">{state.tournaments.length}</p>
                 <p className="text-xs text-gray-500 mt-1">Tournaments</p>
               </div>
-              <div className="p-4 bg-amber-100 rounded-xl">
-                <Trophy className="h-8 w-8 text-amber-600" />
+              <div className="p-4 bg-orange-200 rounded-xl">
+                <Trophy className="h-8 w-8 text-orange-800" />
               </div>
             </div>
           </div>
@@ -255,13 +255,13 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Completed</p>
-                <p className="text-3xl font-bold text-orange-600 mt-2">
+                <p className="text-3xl font-bold text-orange-800 mt-2">
                   {state.tournaments.filter(t => t.status === 'completed').length}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">Finished</p>
               </div>
-              <div className="p-4 bg-orange-100 rounded-xl">
-                <TrendingUp className="h-8 w-8 text-orange-600" />
+              <div className="p-4 bg-orange-200 rounded-xl">
+                <TrendingUp className="h-8 w-8 text-orange-800" />
               </div>
             </div>
           </div>
@@ -271,7 +271,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Link
             to="/tournaments/new"
-            className="group relative bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] overflow-hidden"
+            className="group relative bg-gradient-to-br from-orange-700 to-orange-800 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
             <div className="relative z-10">
@@ -282,7 +282,7 @@ const Dashboard: React.FC = () => {
                 <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
               </div>
               <h3 className="text-xl font-bold mb-2">Create Tournament</h3>
-              <p className="text-amber-100">Start organizing your chess event</p>
+              <p className="text-orange-100">Start organizing your chess event</p>
             </div>
           </Link>
 
@@ -331,7 +331,7 @@ const Dashboard: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search tournaments by name..."
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
               {searchQuery && (
                 <button
@@ -348,7 +348,7 @@ const Dashboard: React.FC = () => {
                 onClick={() => setFilterStatus('all')}
                 className={`px-4 py-2 rounded-xl font-medium transition-all ${
                   filterStatus === 'all'
-                    ? 'bg-amber-600 text-white shadow-md'
+                    ? 'bg-orange-800 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -368,7 +368,7 @@ const Dashboard: React.FC = () => {
                 onClick={() => setFilterStatus('completed')}
                 className={`px-4 py-2 rounded-xl font-medium transition-all ${
                   filterStatus === 'completed'
-                    ? 'bg-orange-600 text-white shadow-md'
+                    ? 'bg-orange-800 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -389,10 +389,10 @@ const Dashboard: React.FC = () => {
 
         {/* Tournaments Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-amber-50 border-b border-gray-200 flex justify-between items-center">
+          <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-orange-50 border-b border-gray-200 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Trophy className="h-6 w-6 text-amber-600" />
+                <Trophy className="h-6 w-6 text-orange-800" />
                 Your Tournaments
               </h2>
               <p className="text-sm text-gray-600 mt-1">
@@ -401,7 +401,7 @@ const Dashboard: React.FC = () => {
             </div>
             <Link
               to="/tournaments"
-              className="text-sm font-semibold text-amber-600 hover:text-amber-700 transition-colors flex items-center gap-2"
+              className="text-sm font-semibold text-orange-800 hover:text-orange-700 transition-colors flex items-center gap-2"
             >
               View All
               <ArrowRight className="h-4 w-4" />
@@ -411,13 +411,13 @@ const Dashboard: React.FC = () => {
           <div className="p-6">
             {state.loading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
                 <p className="mt-4 text-gray-600">Loading tournaments...</p>
               </div>
             ) : filteredTournaments.length === 0 ? (
               <div className="text-center py-12">
-                <div className="p-4 bg-gradient-to-br from-amber-100 to-amber-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                  <Trophy className="h-10 w-10 text-amber-600" />
+                <div className="p-4 bg-gradient-to-br from-orange-100 to-orange-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                  <Trophy className="h-10 w-10 text-orange-800" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   {searchQuery || filterStatus !== 'all' || filterOrganization !== 'all' 
@@ -444,7 +444,7 @@ const Dashboard: React.FC = () => {
                 ) : (
                   <Link
                     to="/tournaments/new"
-                    className="inline-flex items-center px-6 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 font-semibold transition-colors"
+                    className="inline-flex items-center px-6 py-3 bg-orange-800 text-white rounded-xl hover:bg-orange-900 font-semibold transition-colors"
                   >
                     <Plus className="h-5 w-5 mr-2" />
                     Create Tournament
@@ -457,10 +457,10 @@ const Dashboard: React.FC = () => {
                   <Link
                     key={tournament.id}
                     to={`/tournaments/${tournament.id}`}
-                    className="group block p-6 bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 hover:border-amber-400 hover:shadow-lg transition-all"
+                    className="group block p-6 bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 hover:border-orange-400 hover:shadow-lg transition-all"
                   >
                     <div className="flex items-start justify-between mb-4">
-                      <h3 className="font-bold text-gray-900 group-hover:text-amber-600 transition-colors flex-1 text-lg">
+                      <h3 className="font-bold text-gray-900 group-hover:text-orange-800 transition-colors flex-1 text-lg">
                         {tournament.name}
                       </h3>
                       <span
@@ -468,7 +468,7 @@ const Dashboard: React.FC = () => {
                           tournament.status === 'active'
                             ? 'bg-green-100 text-green-800'
                             : tournament.status === 'completed'
-                            ? 'bg-amber-100 text-amber-800'
+                            ? 'bg-orange-200 text-orange-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}
                       >
@@ -491,7 +491,7 @@ const Dashboard: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <div className="mt-4 flex items-center text-amber-600 group-hover:text-amber-700 font-medium">
+                    <div className="mt-4 flex items-center text-orange-800 group-hover:text-orange-700 font-medium">
                       <span>View Details</span>
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -572,12 +572,12 @@ const Dashboard: React.FC = () => {
                     }}
                     className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                       filterOrganization === 'all'
-                        ? 'border-amber-500 bg-amber-50'
+                        ? 'border-orange-500 bg-orange-200'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <Building2 className="h-6 w-6 text-amber-600" />
+                      <Building2 className="h-6 w-6 text-orange-800" />
                       <div>
                         <div className="font-semibold text-gray-900">All Organizations</div>
                         <div className="text-sm text-gray-600">Show tournaments from all organizations</div>
@@ -594,7 +594,7 @@ const Dashboard: React.FC = () => {
                       }}
                       className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                         filterOrganization === org.id
-                          ? 'border-amber-500 bg-amber-50'
+                          ? 'border-orange-500 bg-orange-200'
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
