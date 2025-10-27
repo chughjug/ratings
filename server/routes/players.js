@@ -5,7 +5,7 @@ const path = require('path');
 const db = require('../database');
 const { lookupAndUpdatePlayer } = require('../services/ratingLookup');
 const { searchUSChessPlayers, getPlayerDetails } = require('../services/playerSearch');
-const { searchUSChessPlayersSubSecond } = require('../services/playerSearch');
+const { searchUSChessPlayersHerokuAPI } = require('../services/playerSearch');
 const { getUSCFInfo } = require('../services/ratingLookup');
 const { parseCSVFile, validateCSVData, importPlayersFromCSV, generateCSVTemplate } = require('../services/csvImport');
 const { parseExcelFile, validateExcelData, importPlayersFromExcel, generateExcelTemplate } = require('../services/excelImport');
@@ -16,8 +16,8 @@ async function findUSCFInfoByName(playerName, playerId) {
   try {
     console.log(`Searching for USCF info for: ${playerName}`);
     
-    // Search for the player by name
-    const searchResults = await searchUSChessPlayersSubSecond(playerName, 5);
+    // Search for the player by name using Heroku API
+    const searchResults = await searchUSChessPlayersHerokuAPI(playerName, 5);
     
     if (!searchResults || searchResults.length === 0) {
       console.log(`No USCF search results found for: ${playerName}`);
