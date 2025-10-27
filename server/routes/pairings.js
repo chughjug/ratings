@@ -1974,11 +1974,12 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
                          (pair.black_player_id = p.id AND pair.result = '1/2-1/2') OR
                          (pair.black_player_id = p.id AND pair.result = '1/2-1/2F')
                     THEN 0.5
-                    WHEN (pair.white_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%')) OR
-                         (pair.black_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%'))
+                    WHEN (pair.white_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%' OR pair.is_bye = 1)) OR
+                         (pair.black_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%' OR pair.is_bye = 1))
                     THEN CASE 
                       WHEN pair.bye_type = 'bye' THEN 0.5
                       WHEN pair.bye_type = 'half_point_bye' THEN 0.5
+                      WHEN pair.bye_type = 'inactive' THEN 0.5
                       WHEN pair.bye_type = 'unpaired' THEN 1.0
                       ELSE 0.5
                     END
