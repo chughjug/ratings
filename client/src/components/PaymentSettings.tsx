@@ -2,26 +2,34 @@ import React, { useState } from 'react';
 import { CreditCard, DollarSign, Save, CheckCircle } from 'lucide-react';
 
 interface PaymentSettingsProps {
-  tournamentId: string;
-  tournament: any;
+  tournamentId?: string;
+  tournament?: any;
+  organizationId?: string;
+  organization?: any;
   onSave: (credentials: any) => void;
 }
 
 const PaymentSettings: React.FC<PaymentSettingsProps> = ({ 
   tournamentId, 
   tournament,
+  organizationId,
+  organization,
   onSave 
 }) => {
+  // Support both tournament and organization contexts
+  const entityId = tournamentId || organizationId!;
+  const entity = tournament || organization;
+  const isOrganization = !!organization;
   const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'stripe' | 'both'>(
-    (tournament?.payment_method as any) || 'both'
+    (entity?.payment_method as any) || 'both'
   );
   
   const [credentials, setCredentials] = useState({
-    entry_fee: tournament?.entry_fee || 0,
-    paypal_client_id: tournament?.paypal_client_id || '',
-    paypal_secret: tournament?.paypal_secret || '',
-    stripe_publishable_key: tournament?.stripe_publishable_key || '',
-    stripe_secret_key: tournament?.stripe_secret_key || ''
+    entry_fee: entity?.entry_fee || 0,
+    paypal_client_id: entity?.paypal_client_id || '',
+    paypal_secret: entity?.paypal_secret || '',
+    stripe_publishable_key: entity?.stripe_publishable_key || '',
+    stripe_secret_key: entity?.stripe_secret_key || ''
   });
   
   const [saving, setSaving] = useState(false);
