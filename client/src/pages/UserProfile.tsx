@@ -309,7 +309,7 @@ const UserProfile: React.FC = () => {
                               org.role === 'owner'
                                 ? 'bg-purple-100 text-purple-800'
                                 : org.role === 'admin'
-                                ? 'bg-orange-100 text-orange-900'
+                                ? 'bg-orange-200 text-orange-900'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
                               {org.role ? org.role.charAt(0).toUpperCase() + org.role.slice(1) : 'Member'}
