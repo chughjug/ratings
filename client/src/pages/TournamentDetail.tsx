@@ -3468,7 +3468,7 @@ const TournamentDetail: React.FC = () => {
                                         </div>
                                       </td>
                                       <td className="py-2 px-4 text-center font-semibold">
-                                        W {pairing.board || idx + 1}
+                                        {pairing.is_bye ? '-' : `W ${pairing.board || idx + 1}`}
                                       </td>
                                       <td className="py-2 px-4">
                                         {blackPlayer && blackPlayer.name && blackPlayer.name !== 'TBD' ? (
