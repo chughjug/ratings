@@ -11,9 +11,19 @@ const LandingPage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-50">
+    <div className="min-h-screen" style={{
+      background: 'linear-gradient(to bottom, #1a0f0a, #2d1b13, #1a0f0a)',
+      backgroundImage: `
+        repeating-linear-gradient(0deg, transparent 0px, rgba(101, 67, 33, 0.03) 1px, transparent 2px, transparent 29px),
+        repeating-linear-gradient(90deg, transparent 0px, rgba(101, 67, 33, 0.03) 1px, transparent 2px, transparent 29px)
+      `
+    }}>
       {/* Header */}
-      <header className="bg-white/95 shadow-lg border-b border-stone-200 sticky top-0 z-50 backdrop-blur-sm">
+      <header className="sticky top-0 z-50" style={{ 
+        background: 'linear-gradient(135deg, #3d2415 0%, #2d1b13 100%)',
+        borderBottom: '4px double #c9a961',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+      }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center group">
@@ -21,25 +31,31 @@ const LandingPage: React.FC = () => {
                 <PairCraftLogo size="md" showText={true} />
               </div>
             </div>
-            <div className="hidden md:flex items-center space-x-1">
-              <a href="#features" className="text-stone-700 hover:text-amber-600 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:bg-amber-50">
+            <div className="hidden md:flex items-center space-x-2">
+              <a href="#features" className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30" style={{ border: '2px solid transparent' }}>
                 Features
               </a>
-              <a href="#how-it-works" className="text-stone-700 hover:text-amber-600 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:bg-amber-50">
+              <a href="#how-it-works" className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30" style={{ border: '2px solid transparent' }}>
                 How It Works
               </a>
-              <a href="#testimonials" className="text-stone-700 hover:text-amber-600 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:bg-amber-50">
+              <a href="#testimonials" className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30" style={{ border: '2px solid transparent' }}>
                 Testimonials
               </a>
               <Link
                 to="/public/tournaments"
-                className="text-stone-700 hover:text-amber-600 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:bg-amber-50"
+                className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30"
+                style={{ border: '2px solid transparent' }}
               >
                 View Tournaments
               </Link>
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center space-x-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:from-amber-700 hover:to-orange-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                className="flex items-center space-x-2 text-white px-6 py-2.5 text-sm font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                style={{ 
+                  background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                  border: '2px solid #d4af37',
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                }}
               >
                 <LogIn className="h-4 w-4" />
                 <span>Sign In</span>
@@ -50,30 +66,37 @@ const LandingPage: React.FC = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 -left-40 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 -right-40 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"></div>
-        </div>
+      <section className="relative py-24 overflow-hidden" style={{
+        background: 'radial-gradient(ellipse at center, #2d1b13 0%, #1a0f0a 100%)'
+      }}>
+        {/* Decorative border elements */}
+        <div className="absolute inset-x-0 top-0 h-1 opacity-30" style={{
+          background: 'repeating-linear-gradient(90deg, #c9a961 0px, #c9a961 10px, transparent 10px, transparent 20px)'
+        }}></div>
+        <div className="absolute inset-x-0 bottom-0 h-1 opacity-30" style={{
+          background: 'repeating-linear-gradient(90deg, #c9a961 0px, #c9a961 10px, transparent 10px, transparent 20px)'
+        }}></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 bg-amber-500/10 backdrop-blur border border-amber-500/20 rounded-full px-4 py-2 text-amber-300 text-sm font-medium">
+              <div className="inline-flex items-center gap-2 text-amber-300 px-4 py-2 text-sm font-bold"
+                   style={{ 
+                     background: 'rgba(139, 69, 19, 0.3)',
+                     border: '2px solid #d4af37',
+                     boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4)'
+                   }}>
                 <Sparkles className="h-4 w-4" />
                 <span>Trusted by 500+ Tournament Directors</span>
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-                <span className="text-white">The Complete</span>
+              <h1 className="text-5xl md:text-7xl font-bold leading-tight" style={{ fontFamily: 'serif', textShadow: '3px 3px 6px rgba(0,0,0,0.8)' }}>
+                <span className="text-amber-200">The Complete</span>
                 <br />
-                <span className="bg-gradient-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">
-                  Tournament Platform
-                </span>
+                <span className="text-yellow-400">Tournament Platform</span>
               </h1>
               
-              <p className="text-xl text-stone-300 leading-relaxed max-w-lg">
+              <p className="text-xl text-amber-300/90 leading-relaxed max-w-lg" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
                 Organize world-class chess tournaments with automated Swiss pairings, 
                 real-time standings, and everything you need to run successful tournaments.
               </p>
@@ -81,7 +104,13 @@ const LandingPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="group bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-amber-700 hover:to-orange-700 transition-all inline-flex items-center justify-center shadow-2xl hover:shadow-3xl transform hover:scale-105"
+                  className="group text-white px-8 py-4 text-lg font-bold transition-all inline-flex items-center justify-center transform hover:scale-105"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                    border: '3px double #d4af37',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.6)',
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                  }}
                 >
                   <LogIn className="mr-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
                   Start Running Tournaments
@@ -89,112 +118,132 @@ const LandingPage: React.FC = () => {
                 </button>
                 <Link
                   to="/public/tournaments"
-                  className="bg-white/10 backdrop-blur border-2 border-white/20 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-white/20 transition-all inline-flex items-center justify-center"
+                  className="text-amber-200 px-8 py-4 text-lg font-bold transition-all inline-flex items-center justify-center"
+                  style={{ 
+                    background: 'rgba(139, 69, 19, 0.2)',
+                    border: '2px solid #d4af37',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+                  }}
                 >
                   View Live Demo
                   <ArrowRight className="ml-3 h-6 w-6" />
                 </Link>
               </div>
               
-              <div className="flex flex-wrap items-center gap-8 text-stone-300">
+              <div className="flex flex-wrap items-center gap-8 text-amber-300">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-amber-700 flex items-center justify-center" style={{ border: '2px solid #d4af37' }}>
                     <Check className="h-5 w-5 text-white" />
                   </div>
-                  <span className="font-medium">Free Forever</span>
+                  <span className="font-bold">Free Forever</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-amber-700 flex items-center justify-center" style={{ border: '2px solid #d4af37' }}>
                     <Check className="h-5 w-5 text-white" />
                   </div>
-                  <span className="font-medium">No Credit Card</span>
+                  <span className="font-bold">No Credit Card</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-amber-700 flex items-center justify-center" style={{ border: '2px solid #d4af37' }}>
                     <Check className="h-5 w-5 text-white" />
                   </div>
-                  <span className="font-medium">5-Minute Setup</span>
+                  <span className="font-bold">5-Minute Setup</span>
                 </div>
               </div>
             </div>
             
             <div className="hidden lg:block relative">
-              <div className="relative bg-white rounded-3xl shadow-2xl p-8 transform hover:scale-105 transition-transform duration-300">
-                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2">
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <div className="relative transform hover:scale-105 transition-transform duration-300" 
+                   style={{ 
+                     background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
+                     padding: '2rem',
+                     border: '6px double #8b4513',
+                     boxShadow: '0 12px 32px rgba(0,0,0,0.8), inset 0 1px 3px rgba(255,255,255,0.5)',
+                     clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+                   }}>
+                <div className="absolute -top-6 -right-6 text-white px-4 py-2 text-sm font-bold shadow-2xl flex items-center gap-2"
+                     style={{ 
+                       background: 'linear-gradient(135deg, #2d5016, #1a5c1a)',
+                       border: '3px double #d4af37',
+                       boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+                     }}>
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" style={{ boxShadow: '0 0 8px #d4af37' }}></div>
                   Live Tournament
                 </div>
                 
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 mb-6 border border-amber-100">
+                <div className="mb-6 p-6" style={{ background: 'rgba(139, 69, 19, 0.2)', border: '3px double #8b4513' }}>
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h3 className="font-bold text-gray-900 text-xl">Spring Championship 2024</h3>
-                      <p className="text-sm text-stone-600">March 15-17, San Francisco</p>
+                      <h3 className="font-bold text-3xl mb-2" style={{ color: '#3d2415', fontFamily: 'serif' }}>Spring Championship 2024</h3>
+                      <p className="text-sm text-stone-700 font-semibold">March 15-17, San Francisco</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-amber-700">156</div>
-                      <div className="text-xs text-stone-600">Players</div>
+                      <div className="text-3xl font-bold text-amber-900 font-serif">156</div>
+                      <div className="text-xs text-stone-700 font-semibold">Players</div>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center p-3 bg-white rounded-lg border border-amber-100">
-                      <div className="text-xl font-bold text-amber-700">Round 4</div>
-                      <div className="text-xs text-stone-600 mt-1">Current</div>
+                    <div className="text-center p-3 font-bold" style={{ background: '#f4e4bc', border: '2px solid #8b4513' }}>
+                      <div className="text-xl text-amber-900 font-serif">Round 4</div>
+                      <div className="text-xs text-stone-700 mt-1">Current</div>
                     </div>
-                    <div className="text-center p-3 bg-white rounded-lg border border-amber-100">
-                      <div className="text-xl font-bold text-green-600">89%</div>
-                      <div className="text-xs text-stone-600 mt-1">Complete</div>
+                    <div className="text-center p-3 font-bold" style={{ background: '#f4e4bc', border: '2px solid #8b4513' }}>
+                      <div className="text-xl text-amber-900 font-serif">89%</div>
+                      <div className="text-xs text-stone-700 mt-1">Complete</div>
                     </div>
-                    <div className="text-center p-3 bg-white rounded-lg border border-amber-100">
-                      <div className="text-xl font-bold text-orange-600">$2.5K</div>
-                      <div className="text-xs text-stone-600 mt-1">Prize Fund</div>
+                    <div className="text-center p-3 font-bold" style={{ background: '#f4e4bc', border: '2px solid #8b4513' }}>
+                      <div className="text-xl text-amber-900 font-serif">$2.5K</div>
+                      <div className="text-xs text-stone-700 mt-1">Prize Fund</div>
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+                  <div className="flex items-center justify-between p-4 font-semibold" style={{ background: 'rgba(139, 69, 19, 0.2)', border: '2px solid #8b4513' }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-amber-600 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-10 h-10 flex items-center justify-center text-white font-bold text-sm"
+                           style={{ background: 'linear-gradient(135deg, #8b4513, #a0522d)', border: '2px solid #d4af37' }}>
                         P1
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-900">Alexander Smith</div>
-                        <div className="text-xs text-stone-600">2450 FIDE</div>
+                        <div className="font-bold text-gray-900 font-serif">Alexander Smith</div>
+                        <div className="text-xs text-stone-700">2450 FIDE</div>
                       </div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-stone-600 text-sm">vs</div>
-                    </div>
+                    <div className="text-center text-stone-600 font-bold">vs</div>
                     <div className="flex items-center gap-3">
                       <div>
-                        <div className="font-semibold text-gray-900 text-right">Emma Johnson</div>
-                        <div className="text-xs text-stone-600 text-right">2410 FIDE</div>
+                        <div className="font-bold text-gray-900 text-right font-serif">Emma Johnson</div>
+                        <div className="text-xs text-stone-700 text-right">2410 FIDE</div>
                       </div>
-                      <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-10 h-10 flex items-center justify-center text-white font-bold text-sm"
+                           style={{ background: 'linear-gradient(135deg, #2d5016, #1a5c1a)', border: '2px solid #d4af37' }}>
                         P2
                       </div>
                     </div>
-                    <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold">
+                    <div className="text-white px-3 py-1.5 text-sm font-bold"
+                         style={{ background: 'linear-gradient(135deg, #8b4513, #a0522d)', border: '2px solid #d4af37' }}>
                       Board 1
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 bg-stone-50 rounded-xl">
-                    <span className="font-semibold text-gray-900">Player 3</span>
-                    <span className="text-stone-600">vs</span>
-                    <span className="font-semibold text-gray-900">Player 4</span>
-                    <span className="bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-semibold">
+                  <div className="flex items-center justify-between p-4" style={{ background: 'rgba(139, 69, 19, 0.1)', border: '2px solid #8b4513' }}>
+                    <span className="font-bold text-gray-900 font-serif">Player 3</span>
+                    <span className="text-stone-600 font-bold">vs</span>
+                    <span className="font-bold text-gray-900 font-serif">Player 4</span>
+                    <span className="px-3 py-1.5 text-sm font-bold text-amber-900"
+                          style={{ background: '#f4e4bc', border: '2px solid #8b4513' }}>
                       Board 2
                     </span>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 bg-stone-50 rounded-xl">
-                    <span className="font-semibold text-gray-900">Player 5</span>
-                    <span className="text-stone-600">vs</span>
-                    <span className="font-semibold text-gray-900">Player 6</span>
-                    <span className="bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-semibold">
+                  <div className="flex items-center justify-between p-4" style={{ background: 'rgba(139, 69, 19, 0.1)', border: '2px solid #8b4513' }}>
+                    <span className="font-bold text-gray-900 font-serif">Player 5</span>
+                    <span className="text-stone-600 font-bold">vs</span>
+                    <span className="font-bold text-gray-900 font-serif">Player 6</span>
+                    <span className="px-3 py-1.5 text-sm font-bold text-amber-900"
+                          style={{ background: '#f4e4bc', border: '2px solid #8b4513' }}>
                       Board 3
                     </span>
                   </div>
@@ -206,45 +255,45 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 bg-white border-b border-stone-200">
+      <section className="py-12" style={{ background: 'rgba(139, 69, 19, 0.1)', borderTop: '3px double #c9a961', borderBottom: '3px double #c9a961' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold mb-2 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
                 500+
               </div>
-              <div className="text-stone-600 font-medium">Active Organizations</div>
+              <div className="text-amber-300 font-bold">Active Organizations</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold mb-2 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
                 50K+
               </div>
-              <div className="text-stone-600 font-medium">Tournaments Managed</div>
+              <div className="text-amber-300 font-bold">Tournaments Managed</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold mb-2 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
                 2M+
               </div>
-              <div className="text-stone-600 font-medium">Players Registered</div>
+              <div className="text-amber-300 font-bold">Players Registered</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-2">
+              <div className="text-5xl font-bold mb-2 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
                 99.9%
               </div>
-              <div className="text-stone-600 font-medium">Uptime Guarantee</div>
+              <div className="text-amber-300 font-bold">Uptime Guarantee</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
+      <section id="features" className="py-20" style={{ background: 'linear-gradient(to bottom, #2d1b13, #1a0f0a)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl font-bold mb-4 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
               Everything You Need to Run Successful Tournaments
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-amber-300/90 max-w-3xl mx-auto" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
               Powerful tools designed specifically for chess tournament directors 
               to save time, eliminate errors, and provide exceptional player experiences.
             </p>
@@ -252,168 +301,222 @@ const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <div className="bg-blue-50 rounded-xl p-8 border border-blue-100 hover:shadow-xl transition-all">
-              <div className="bg-blue-600 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
+            <div className="p-8 transition-all hover:scale-105" style={{ 
+              background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.5), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
+              <div className="w-14 h-14 flex items-center justify-center mb-6" style={{ 
+                background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                border: '3px solid #d4af37',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+              }}>
                 <Trophy className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+              <h3 className="text-xl font-bold mb-3 font-serif" style={{ color: '#3d2415' }}>
                 Automated Swiss Pairings
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="leading-relaxed text-stone-800" style={{ textShadow: '0 1px 2px rgba(255,255,255,0.3)' }}>
                 Advanced algorithms for perfect Swiss system pairings with USCF compliance. 
                 Automatic bye handling, color equalization, and top player protection.
               </p>
-              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+              <ul className="mt-4 space-y-2 text-sm text-stone-700">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Burstein pairing algorithm
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Quad tournament support
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Team Swiss format
                 </li>
               </ul>
             </div>
 
             {/* Feature 2 */}
-            <div className="bg-green-50 rounded-xl p-8 border border-green-100 hover:shadow-xl transition-all">
-              <div className="bg-green-600 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
+            <div className="p-8 transition-all hover:scale-105" style={{ 
+              background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.5), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
+              <div className="w-14 h-14 flex items-center justify-center mb-6" style={{ 
+                background: 'linear-gradient(135deg, #2d5016, #1a5c1a)',
+                border: '3px solid #d4af37',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+              }}>
                 <Users className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+              <h3 className="text-xl font-bold mb-3 font-serif" style={{ color: '#3d2415' }}>
                 Comprehensive Player Management
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="leading-relaxed text-stone-800" style={{ textShadow: '0 1px 2px rgba(255,255,255,0.3)' }}>
                 Import players from CSV, Google Forms, or manage manually. 
                 Automatic USCF rating lookup, player profiles, and registration management.
               </p>
-              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+              <ul className="mt-4 space-y-2 text-sm text-stone-700">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   CSV & Google Forms import
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   USCF rating lookup
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Player analytics & stats
                 </li>
               </ul>
             </div>
 
             {/* Feature 3 */}
-            <div className="bg-purple-50 rounded-xl p-8 border border-purple-100 hover:shadow-xl transition-all">
-              <div className="bg-purple-600 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
+            <div className="p-8 transition-all hover:scale-105" style={{ 
+              background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.5), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
+              <div className="w-14 h-14 flex items-center justify-center mb-6" style={{ 
+                background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                border: '3px solid #d4af37',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+              }}>
                 <BarChart3 className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+              <h3 className="text-xl font-bold mb-3 font-serif" style={{ color: '#3d2415' }}>
                 Real-Time Standings & Analytics
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="leading-relaxed text-stone-800" style={{ textShadow: '0 1px 2px rgba(255,255,255,0.3)' }}>
                 Live tournament standings with multiple tiebreaker systems. 
                 Detailed analytics, performance tracking, and printable reports.
               </p>
-              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+              <ul className="mt-4 space-y-2 text-sm text-stone-700">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Live score updates
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Multiple tiebreakers
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Export to PDF
                 </li>
               </ul>
             </div>
 
             {/* Feature 4 */}
-            <div className="bg-orange-50 rounded-xl p-8 border border-orange-100 hover:shadow-xl transition-all">
-              <div className="bg-orange-600 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
+            <div className="p-8 transition-all hover:scale-105" style={{ 
+              background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.5), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
+              <div className="w-14 h-14 flex items-center justify-center mb-6" style={{ 
+                background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                border: '3px solid #d4af37',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+              }}>
                 <Bell className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+              <h3 className="text-xl font-bold mb-3 font-serif" style={{ color: '#3d2415' }}>
                 Automated Email Notifications
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="leading-relaxed text-stone-800" style={{ textShadow: '0 1px 2px rgba(255,255,255,0.3)' }}>
                 Send automated pairing announcements, results, and standings 
                 to all players. White-label email support with custom branding.
               </p>
-              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+              <ul className="mt-4 space-y-2 text-sm text-stone-700">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Custom email templates
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Webhook integration
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Bulk notifications
                 </li>
               </ul>
             </div>
 
             {/* Feature 5 */}
-            <div className="bg-indigo-50 rounded-xl p-8 border border-indigo-100 hover:shadow-xl transition-all">
-              <div className="bg-indigo-600 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
+            <div className="p-8 transition-all hover:scale-105" style={{ 
+              background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.5), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
+              <div className="w-14 h-14 flex items-center justify-center mb-6" style={{ 
+                background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                border: '3px solid #d4af37',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+              }}>
                 <Globe className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+              <h3 className="text-xl font-bold mb-3 font-serif" style={{ color: '#3d2415' }}>
                 Public Tournament Pages
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="leading-relaxed text-stone-800" style={{ textShadow: '0 1px 2px rgba(255,255,255,0.3)' }}>
                 Branded public pages for your organization. Embed tournaments 
                 in your website with iframes. Professional player registration.
               </p>
-              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+              <ul className="mt-4 space-y-2 text-sm text-stone-700">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Custom branding
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Embedded tournament widgets
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Public registration
                 </li>
               </ul>
             </div>
 
             {/* Feature 6 */}
-            <div className="bg-red-50 rounded-xl p-8 border border-red-100 hover:shadow-xl transition-all">
-              <div className="bg-red-600 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
+            <div className="p-8 transition-all hover:scale-105" style={{ 
+              background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
+              border: '4px solid #8b4513',
+              boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.5), 0 8px 16px rgba(0,0,0,0.6)',
+              clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
+            }}>
+              <div className="w-14 h-14 flex items-center justify-center mb-6" style={{ 
+                background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                border: '3px solid #d4af37',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+              }}>
                 <Lock className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+              <h3 className="text-xl font-bold mb-3 font-serif" style={{ color: '#3d2415' }}>
                 Secure & Reliable
               </h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="leading-relaxed text-stone-800" style={{ textShadow: '0 1px 2px rgba(255,255,255,0.3)' }}>
                 Enterprise-grade security with automated backups, data encryption, 
                 and GDPR compliance. Your tournament data is always safe.
               </p>
-              <ul className="mt-4 space-y-2 text-sm text-gray-600">
+              <ul className="mt-4 space-y-2 text-sm text-stone-700">
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   Automatic backups
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   SSL encryption
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4" style={{ color: '#2d5016' }} />
                   99.9% uptime guarantee
                 </li>
               </ul>
@@ -423,54 +526,74 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-gradient-to-b from-stone-50 to-white">
+      <section id="how-it-works" className="py-20" style={{ background: 'linear-gradient(to bottom, #1a0f0a, #2d1b13)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl font-bold mb-4 font-serif" style={{ color: '#d4af37', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
               Get Started in Minutes
             </h2>
-            <p className="text-xl text-stone-600">
+            <p className="text-xl text-amber-300/90" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
               Running tournaments has never been easier
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="bg-gradient-to-br from-amber-600 to-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-2xl"
+                   style={{ 
+                     background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                     border: '4px solid #d4af37',
+                     boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+                   }}>
                 1
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Sign Up</h3>
-              <p className="text-stone-600">
+              <h3 className="text-xl font-bold mb-3 font-serif text-amber-300">Sign Up</h3>
+              <p className="text-amber-300/80" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                 Create your account in seconds. No credit card required.
               </p>
             </div>
 
             <div className="text-center">
-              <div className="bg-gradient-to-br from-amber-600 to-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-2xl"
+                   style={{ 
+                     background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                     border: '4px solid #d4af37',
+                     boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+                   }}>
                 2
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Create Tournament</h3>
-              <p className="text-stone-600">
+              <h3 className="text-xl font-bold mb-3 font-serif text-amber-300">Create Tournament</h3>
+              <p className="text-amber-300/80" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                 Set up your tournament, import players, and configure settings.
               </p>
             </div>
 
             <div className="text-center">
-              <div className="bg-gradient-to-br from-amber-600 to-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-2xl"
+                   style={{ 
+                     background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                     border: '4px solid #d4af37',
+                     boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+                   }}>
                 3
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Generate Pairings</h3>
-              <p className="text-stone-600">
+              <h3 className="text-xl font-bold mb-3 font-serif text-amber-300">Generate Pairings</h3>
+              <p className="text-amber-300/80" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                 Click one button to generate perfect Swiss pairings automatically.
               </p>
             </div>
 
             <div className="text-center">
-              <div className="bg-gradient-to-br from-amber-600 to-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-2xl"
+                   style={{ 
+                     background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                     border: '4px solid #d4af37',
+                     boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+                   }}>
                 4
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Run Tournament</h3>
-              <p className="text-stone-600">
+              <h3 className="text-xl font-bold mb-3 font-serif text-amber-300">Run Tournament</h3>
+              <p className="text-amber-300/80" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                 Record results, update standings, and let players follow along.
               </p>
             </div>
@@ -479,7 +602,12 @@ const LandingPage: React.FC = () => {
           <div className="mt-12 text-center">
             <button
               onClick={() => setShowAuthModal(true)}
-              className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-amber-700 hover:to-orange-700 transition-all inline-flex items-center shadow-xl"
+              className="text-white px-8 py-4 text-lg font-bold transition-all inline-flex items-center shadow-xl transform hover:scale-105"
+              style={{ 
+                background: 'linear-gradient(135deg, #8b4513, #a0522d)',
+                border: '3px double #d4af37',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+              }}
             >
               Get Started Now - It's Free
               <ArrowRight className="ml-3 h-6 w-6" />
@@ -630,3 +758,4 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+

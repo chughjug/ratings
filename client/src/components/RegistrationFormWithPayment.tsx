@@ -90,7 +90,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
     phone: '',
     section: '',
     bye_requests: [] as number[],
-    notes: ''
+    notes: '',
+    custom_fields: {} as Record<string, any>
   });
 
   // Load tournament information
@@ -470,7 +471,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         phone: formData.phone,
         section: formData.section,
         bye_requests: formData.bye_requests,
-        notes: formData.notes
+        notes: formData.notes,
+        custom_fields: formData.custom_fields
       };
 
       // Add payment info if applicable
@@ -878,6 +880,77 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             ))}
           </div>
         </div>
+
+        {/* Custom Fields */}
+        {tournamentInfo.custom_fields && tournamentInfo.custom_fields.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded p-6">
+            <h3 className="text-lg font-semibold text-black mb-4">Additional Information</h3>
+            
+            <div className="space-y-4">
+              {tournamentInfo.custom_fields.map((field, index) => (
+                <div key={index}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {field.name} {field.required && <span className="text-red-500">*</span>}
+                  </label>
+                  
+                  {field.type === 'textarea' ? (
+                    <textarea
+                      required={field.required}
+                      value={formData.custom_fields[field.name] || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        custom_fields: { ...prev.custom_fields, [field.name]: e.target.value }
+                      }))}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                      placeholder={`Enter ${field.name.toLowerCase()}`}
+                    />
+                  ) : field.type === 'select' && field.options ? (
+                    <select
+                      required={field.required}
+                      value={formData.custom_fields[field.name] || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        custom_fields: { ...prev.custom_fields, [field.name]: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                    >
+                      <option value="">- select -</option>
+                      {field.options.map((option, optIndex) => (
+                        <option key={optIndex} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  ) : field.type === 'checkbox' ? (
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.custom_fields[field.name] || false}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          custom_fields: { ...prev.custom_fields, [field.name]: e.target.checked }
+                        }))}
+                        className="rounded border-gray-300 text-black focus:ring-black"
+                      />
+                      <span className="text-sm text-gray-700">I agree</span>
+                    </label>
+                  ) : (
+                    <input
+                      type={field.type || 'text'}
+                      required={field.required}
+                      value={formData.custom_fields[field.name] || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        custom_fields: { ...prev.custom_fields, [field.name]: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                      placeholder={`Enter ${field.name.toLowerCase()}`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Additional Notes */}
         <div className="bg-white border border-gray-200 rounded p-6">
