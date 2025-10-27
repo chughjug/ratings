@@ -687,12 +687,211 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             </button>
           </div>
 
-          {/* Search results and selected player display - keep existing implementation */}
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <div className="mt-3 border border-gray-200 rounded bg-white max-h-48 overflow-y-auto">
+              {searchResults.map((player, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      player_name: player.name,
+                      uscf_id: player.uscf_id || player.memberId || '',
+                      rating: player.rating ? Number(player.rating) : '',
+                      email: player.email || prev.email,
+                      phone: player.phone || prev.phone
+                    }));
+                  }}
+                  className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="font-medium text-black">{player.name}</div>
+                  <div className="text-sm text-gray-600">
+                    USCF ID: {player.uscf_id || player.memberId || 'N/A'} • 
+                    {player.state && ` ${player.state} •`}
+                    {player.rating && ` Rating: ${player.rating}`}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Selected Player Display */}
+          {formData.player_name && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-green-800 text-sm">Selected Player:</p>
+                  <p className="text-sm text-green-700">
+                    {formData.player_name}
+                    {formData.uscf_id && ` • USCF ID: ${formData.uscf_id}`}
+                    {formData.rating && ` • Rating: ${formData.rating}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, player_name: '', uscf_id: '', rating: '' }))}
+                  className="text-green-600 hover:text-green-800"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
           
         </div>
 
-        {/* Rest of the form fields - Player Information, Contact Information, etc. */}
-        {/* (Keeping the same structure as the original form) */}
+        {/* Player Information */}
+        <div className="bg-white border border-gray-200 rounded p-6">
+          <h3 className="text-lg font-semibold text-black mb-4">Player Information</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Player Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.player_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, player_name: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                placeholder="Enter your full name"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                US Chess ID
+              </label>
+              <input
+                type="text"
+                value={formData.uscf_id}
+                onChange={(e) => setFormData(prev => ({ ...prev, uscf_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                placeholder="Enter your USCF ID"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rating
+              </label>
+              <input
+                type="number"
+                value={formData.rating || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value ? parseInt(e.target.value) : '' }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                placeholder="Enter your rating"
+                min="0"
+                max="3000"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Information */}
+        <div className="bg-white border border-gray-200 rounded p-6">
+          <h3 className="text-lg font-semibold text-black mb-4">Contact Information</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address *
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                placeholder="your.email@example.com"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+                placeholder="(555) 123-4567"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Playing Section */}
+        {tournamentInfo.sections && tournamentInfo.sections.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded p-6">
+            <h3 className="text-lg font-semibold text-black mb-3">Playing Section</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select your preferred section. The Tournament Director reserves the right to adjust section assignments.
+            </p>
+            
+            <select
+              value={formData.section}
+              onChange={(e) => setFormData(prev => ({ ...prev, section: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+            >
+              <option value="">- select one -</option>
+              {tournamentInfo.sections.map((section, index) => (
+                <option key={index} value={section.name}>
+                  {section.name}
+                  {section.min_rating && section.max_rating && 
+                    ` (${section.min_rating} - ${section.max_rating})`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Bye Requests */}
+        <div className="bg-white border border-gray-200 rounded p-6">
+          <h3 className="text-lg font-semibold text-black mb-3">Request BYE(s)</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            A "bye" is a request to skip a round. Do not select a bye if you intend to be present for all games.
+          </p>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+            {Array.from({ length: tournamentInfo.rounds }, (_, i) => i + 1).map((round) => (
+              <label key={round} className="flex items-center space-x-2 p-2 border border-gray-200 rounded hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.bye_requests.includes(round)}
+                  onChange={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      bye_requests: prev.bye_requests.includes(round)
+                        ? prev.bye_requests.filter(r => r !== round)
+                        : [...prev.bye_requests, round]
+                    }));
+                  }}
+                  className="rounded border-gray-300 text-black focus:ring-black"
+                />
+                <span className="text-sm font-medium">Rd. {round}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Additional Notes */}
+        <div className="bg-white border border-gray-200 rounded p-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Additional Notes
+          </label>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
+            placeholder="Any additional information or special requests..."
+          />
+        </div>
 
         {/* Submit Button */}
         <div className="pt-4">
