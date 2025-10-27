@@ -3165,11 +3165,23 @@ const TournamentDetail: React.FC = () => {
                           stripe_secret_key: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.stripe_secret_key || '') : ''
                         };
                         
+                        // Log what we're sending
+                        console.log('Saving payment fields:', {
+                          entry_fee: paymentFields.entry_fee,
+                          payment_method: paymentFields.payment_method,
+                          paypal_client_id: paymentFields.paypal_client_id ? paymentFields.paypal_client_id.substring(0, 20) + '...' : 'empty',
+                          paypal_secret: paymentFields.paypal_secret ? '***' : 'empty',
+                          stripe_publishable_key: paymentFields.stripe_publishable_key ? paymentFields.stripe_publishable_key.substring(0, 20) + '...' : 'empty',
+                          stripe_secret_key: paymentFields.stripe_secret_key ? '***' : 'empty'
+                        });
+                        
                         // Save all fields in one update call
                         try {
                           const response = await tournamentApi.update(id, paymentFields);
+                          console.log('Update response:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
+                            console.log('Payment settings saved successfully');
                           }
                         } catch (error: any) {
                           console.error('Failed to save payment settings:', error);

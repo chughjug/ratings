@@ -343,6 +343,16 @@ router.put('/:id', (req, res) => {
       roundsType: typeof rounds,
       roundsValue: rounds
     });
+    
+    // Log payment field updates
+    console.log('Payment fields being updated:', {
+      entry_fee: entry_fee,
+      payment_method: payment_method,
+      paypal_client_id: paypal_client_id ? paypal_client_id.substring(0, 20) + '...' : 'empty',
+      paypal_secret: paypal_secret ? '***' : 'empty',
+      stripe_publishable_key: stripe_publishable_key ? stripe_publishable_key.substring(0, 20) + '...' : 'empty',
+      stripe_secret_key: stripe_secret_key ? '***' : 'empty'
+    });
 
     // Validate required fields
     if (!name || !format || rounds === undefined || rounds === null) {
