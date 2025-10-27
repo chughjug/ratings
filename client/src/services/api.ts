@@ -306,8 +306,8 @@ export const pairingApi = {
       roundStatus: any;
     }>('/pairings/generate', { tournamentId, round, clearExisting }),
   
-  generateForSection: (tournamentId: string, round: number, sectionName: string) => 
-    api.post('/pairings/generate/section', { tournamentId, round, sectionName }),
+  generateForSection: (tournamentId: string, round: number, sectionName: string, startingBoardNumber: number = 1) => 
+    api.post('/pairings/generate/section', { tournamentId, round, sectionName, startingBoardNumber }),
   
   generateQuad: (tournamentId: string) =>
     api.post<{

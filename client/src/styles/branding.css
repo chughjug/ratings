@@ -453,51 +453,68 @@
 
 /* Print styles */
 @media print {
-  /* Hide navigation and controls that shouldn't print */
-  .no-print,
-  header,
-  nav,
-  .header-brand,
-  .footer-brand,
-  .btn-brand,
-  .social-brand,
-  button,
-  .bg-gray-50 {
+  /* Hide EVERYTHING by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show ONLY print-view elements */
+  .print-view,
+  .print-view * {
+    visibility: visible !important;
+  }
+
+  /* Position print-view at the top */
+  .print-view {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: block !important;
+  }
+
+  /* Hide all controls */
+  .no-print {
     display: none !important;
   }
 
-  /* Show print-view content */
-  .print-view {
-    display: block !important;
-    position: relative;
-    visibility: visible;
-    page-break-inside: avoid;
-  }
-  
-  /* Ensure print-view children are visible */
-  .print-view * {
-    visibility: visible !important;
-    color: #000 !important;
-  }
-  
-  .card-brand {
-    box-shadow: none;
-    border: 1px solid #000;
-  }
-
-  /* Print view specific styles */
-  .print-view {
-    font-family: 'Courier New', monospace;
-    font-size: 10pt;
+  /* Hide standard UI elements */
+  button,
+  nav,
+  header,
+  .header-brand,
+  .footer-brand,
+  .btn-brand,
+  .social-brand {
+    display: none !important;
   }
 
   /* Page setup */
   @page {
-    margin: 0.75in;
+    margin: 0.5in;
     size: letter;
   }
 
-  /* Table styles for print */
+  /* Print view typography */
+  .print-view {
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    color: #000 !important;
+  }
+
+  /* All text in print-view should be black */
+  .print-view,
+  .print-view h1,
+  .print-view h2,
+  .print-view h3,
+  .print-view p,
+  .print-view span,
+  .print-view td,
+  .print-view th {
+    color: #000 !important;
+  }
+
+  /* Table styles */
   .print-view table {
     width: 100%;
     border-collapse: collapse;
@@ -509,6 +526,7 @@
     border: 1px solid #000;
     padding: 4px 8px;
     text-align: left;
+    color: #000 !important;
   }
 
   .print-view th {
@@ -518,6 +536,7 @@
     print-color-adjust: exact;
   }
 
+  /* Page breaks */
   .print-view h1,
   .print-view h2,
   .print-view h3 {
@@ -525,21 +544,11 @@
     page-break-inside: avoid;
   }
 
-  .print-view .mb-8 {
-    page-break-inside: avoid;
-  }
-
-  /* Page break between sections */
   .print-view .page-break-inside-avoid {
     page-break-inside: avoid;
   }
 
   .print-view .mb-8:not(:first-child) {
     page-break-before: auto;
-  }
-
-  /* Ensure text is black */
-  .print-view * {
-    color: #000 !important;
   }
 }

@@ -45,6 +45,10 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [selectedBlackPlayer, setSelectedBlackPlayer] = useState<string>('');
   const [availablePlayers, setAvailablePlayers] = useState<any[]>([]);
   
+  // Generate pairings options state
+  const [showGeneratePairingsModal, setShowGeneratePairingsModal] = useState(false);
+  const [startingBoardNumber, setStartingBoardNumber] = useState('1');
+  
   // Board number offset (removed - using manualFirstBoardNumber directly instead)
 
   // Filter pairings by section to ensure only current section's pairings are shown
@@ -550,29 +554,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
         <div className="mt-6 flex space-x-3">
           {sectionPairings.length === 0 && (
             <button
-              onClick={async () => {
-                if (!window.confirm(`Generate pairings for ${sectionName} section Round ${currentRound}?`)) return;
-                
-                try {
-                  setIsLoading(true);
-                  const response = await pairingApi.generateForSection(tournamentId, currentRound, sectionName);
-                  
-                  if (response.data.success) {
-                    alert(`Successfully generated pairings for ${sectionName} section in Round ${currentRound}`);
-                    await fetchSectionData();
-                    await fetchAvailableRounds();
-                    // Refresh pairings from parent
-                    const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
-                    onPairingsUpdate?.(pairingsResponse.data || []);
-                  } else {
-                    throw new Error(response.data.message || 'Failed to generate pairings');
-                  }
-                } catch (error: any) {
-                  alert(`Failed to generate pairings: ${error.message}`);
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
+              onClick={() => setShowGeneratePairingsModal(true)}
               disabled={isLoading}
               className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
@@ -1011,6 +993,84 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generate Pairings Options Modal */}
+      {showGeneratePairingsModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Generate Pairings Options</h3>
+              <button
+                onClick={() => setShowGeneratePairingsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Starting Board Number
+                </label>
+                <input
+                  type="number"
+                  value={startingBoardNumber}
+                  onChange={(e) => setStartingBoardNumber(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  placeholder="1"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Board numbers will start from this number (e.g., enter 10 for boards 10, 11, 12...)
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowGeneratePairingsModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setIsLoading(true);
+                    const response = await pairingApi.generateForSection(
+                      tournamentId, 
+                      currentRound, 
+                      sectionName,
+                      parseInt(startingBoardNumber) || 1
+                    );
+                    
+                    if (response.data.success) {
+                      alert(`Successfully generated pairings for ${sectionName} section in Round ${currentRound} starting from board ${startingBoardNumber}`);
+                      await fetchSectionData();
+                      await fetchAvailableRounds();
+                      // Refresh pairings from parent
+                      const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+                      onPairingsUpdate?.(pairingsResponse.data || []);
+                      setShowGeneratePairingsModal(false);
+                    } else {
+                      throw new Error(response.data.message || 'Failed to generate pairings');
+                    }
+                  } catch (error: any) {
+                    alert(`Failed to generate pairings: ${error.message}`);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                disabled={isLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Generate
               </button>
             </div>
           </div>

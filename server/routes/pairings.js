@@ -1088,7 +1088,7 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
  * Generate pairings for a specific section
  */
 router.post('/generate/section', async (req, res) => {
-  const { tournamentId, round, sectionName, clearExisting = false } = req.body;
+  const { tournamentId, round, sectionName, clearExisting = false, startingBoardNumber = 1 } = req.body;
 
   try {
     // Get tournament info
@@ -1283,8 +1283,9 @@ router.post('/generate/section', async (req, res) => {
     }
     
     // Assign board numbers and section info
+    const startBoard = parseInt(startingBoardNumber) || 1;
     generatedPairings.forEach((pairing, index) => {
-      pairing.board = index + 1;
+      pairing.board = startBoard + index;
       pairing.section = sectionName;
       pairing.round = currentRound;
       pairing.tournament_id = tournamentId;

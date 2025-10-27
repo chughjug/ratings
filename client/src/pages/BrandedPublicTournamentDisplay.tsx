@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import RegistrationForm from '../components/RegistrationForm';
 import { 
   Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
@@ -1354,127 +1355,13 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           ))}
 
           {/* Registration Tab */}
-          {activeTab === 'register' && tournament.allow_registration && (
+          {activeTab === 'register' && tournament.allow_registration && id && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                <div className="px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600">
-                  <h3 className="text-lg font-semibold text-white">Tournament Registration</h3>
-                </div>
-                <div className="p-6">
-                  {formSubmitted ? (
-                    <div className="text-center py-8">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-                        <CheckCircle className="w-8 h-8 text-green-600" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Registration Submitted!</h3>
-                      <p className="text-gray-600">Thank you for registering. We'll send you a confirmation email shortly.</p>
-                      <button
-                        onClick={() => {
-                          setFormSubmitted(false);
-                          setRegistrationForm({
-                            name: '',
-                            email: '',
-                            uscf_id: '',
-                            rating: '',
-                            phone: ''
-                          });
-                        }}
-                        className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-                      >
-                        Submit Another Registration
-                      </button>
-                    </div>
-                  ) : (
-                    <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      setFormSubmitting(true);
-                      try {
-                        // TODO: Implement API call to submit registration
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        setFormSubmitted(true);
-                      } catch (error) {
-                        console.error('Registration error:', error);
-                      } finally {
-                        setFormSubmitting(false);
-                      }
-                    }} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Full Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={registrationForm.name}
-                          onChange={(e) => setRegistrationForm({ ...registrationForm, name: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="Enter your full name"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={registrationForm.email}
-                          onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="your.email@example.com"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            USCF ID
-                          </label>
-                          <input
-                            type="text"
-                            value={registrationForm.uscf_id}
-                            onChange={(e) => setRegistrationForm({ ...registrationForm, uscf_id: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                            placeholder="USCF ID"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Rating
-                          </label>
-                          <input
-                            type="text"
-                            value={registrationForm.rating}
-                            onChange={(e) => setRegistrationForm({ ...registrationForm, rating: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                            placeholder="Rating"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Phone Number
-                        </label>
-                        <input
-                          type="tel"
-                          value={registrationForm.phone}
-                          onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="(555) 123-4567"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={formSubmitting}
-                        className="w-full px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {formSubmitting ? 'Submitting...' : 'Submit Registration'}
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </div>
+              <RegistrationForm tournamentId={id} />
             </div>
           )}
+
+
 
           {/* Contact Tab */}
           {activeTab === 'contact' && (
