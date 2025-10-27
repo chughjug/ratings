@@ -53,20 +53,40 @@ Payment credentials are stored in **tournament settings** (not organization sett
 │                                      │
 │  [Pay with Stripe]                  │
 │                                      │
-│  [🅿 PayPal]  ← PayPal SDK Button   │
+│  ┌────────────────────────────────┐ │
+│  │ [🅿 PayPal]                    │ │
+│  │  ← PayPal SDK Button           │ │
+│  └────────────────────────────────┘ │
+│                                      │
+│  Pay with Card                       │
+│  ┌────────────────────────────────┐ │
+│  │ [Card Number]                  │ │
+│  │ [Expiry] [CVC] [ZIP]           │ │
+│  │  ← Stripe Elements              │ │
+│  └────────────────────────────────┘ │
 └──────────────────────────────────────┘
 ```
 
 ## 📝 Configuration Steps
 
-### Step 1: Add PayPal Credentials to Tournament
+### Step 1: Add Payment Credentials to Tournament
 
+**PayPal:**
 ```javascript
-// In the tournament settings JSON
 {
   "payment_settings": {
     "paypal_client_id": "YOUR_CLIENT_ID",
     "paypal_secret": "YOUR_SECRET"
+  }
+}
+```
+
+**Stripe:**
+```javascript
+{
+  "payment_settings": {
+    "stripe_publishable_key": "pk_test_...",
+    "stripe_secret_key": "sk_test_..."
   }
 }
 ```
@@ -82,8 +102,9 @@ Payment credentials are stored in **tournament settings** (not organization sett
 ### Step 3: Enable Registration
 
 The registration form will automatically:
-- Load PayPal SDK if credentials exist
-- Show PayPal button
+- Load PayPal SDK if PayPal credentials exist
+- Load Stripe.js if Stripe credentials exist
+- Show appropriate payment options
 - Handle payment flow
 
 ## 🔧 Code Structure
@@ -93,7 +114,9 @@ The registration form will automatically:
 **New Functions:**
 1. `loadPayPalSDK(clientId)` - Dynamically loads PayPal SDK
 2. `initializePayPalButton(clientId)` - Renders PayPal button
-3. Auto-loads when tournament has PayPal credentials
+3. `loadStripeSDK(publishableKey)` - Dynamically loads Stripe.js
+4. `initializeStripeElements(publishableKey)` - Creates Stripe Payment Element
+5. Auto-loads when tournament has payment credentials
 
 **Payment Flow:**
 ```typescript
@@ -106,9 +129,10 @@ onError() → Shows error message
 
 1. **Tournament-Specific** - Each tournament can have different credentials
 2. **Easy Setup** - Just add credentials to tournament settings
-3. **Official SDK** - Uses PayPal's official Smart Buttons
-4. **Automatic** - SDK loads when credentials are present
+3. **Official SDKs** - Uses PayPal's Smart Buttons & Stripe Elements
+4. **Automatic** - SDKs load when credentials are present
 5. **No Hardcoding** - Credentials stored in database
+6. **Multiple Options** - Both PayPal and Stripe in one form
 
 ## 🎯 Usage
 
@@ -119,6 +143,6 @@ onError() → Shows error message
 
 ---
 
-**Status:** ✅ PayPal integration embedded and ready!
-**Client ID:** `AazRC_i2xdF__MU_m_qFHsypNKktktCbUbBh9drb40409ApWHq2WW7Ico9WtEIoCEdCQsSNn4P0fb26-`
+**Status:** ✅ PayPal & Stripe integration embedded and ready!
+**PayPal Client ID:** `AazRC_i2xdF__MU_m_qFHsypNKktktCbUbBh9drb40409ApWHq2WW7Ico9WtEIoCEdCQsSNn4P0fb26-`
 
