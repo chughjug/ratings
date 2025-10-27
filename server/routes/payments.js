@@ -217,7 +217,7 @@ router.get('/config', authenticate, async (req, res) => {
  * @desc Create Stripe payment intent
  * @access Private
  */
-router.post('/stripe/create-intent', authenticate, async (req, res) => {
+router.post('/stripe/create-intent', async (req, res) => {
   try {
     const { amount, currency = 'usd', tournamentId, playerId, description, metadata = {} } = req.body;
 
@@ -252,7 +252,7 @@ router.post('/stripe/create-intent', authenticate, async (req, res) => {
  * @desc Create PayPal order
  * @access Private
  */
-router.post('/paypal/create-order', authenticate, async (req, res) => {
+router.post('/paypal/create-order', async (req, res) => {
   try {
     const { amount, currency = 'USD', tournamentId, playerId, description } = req.body;
 
@@ -286,7 +286,7 @@ router.post('/paypal/create-order', authenticate, async (req, res) => {
  * @desc Capture PayPal order
  * @access Private
  */
-router.post('/paypal/capture-order', authenticate, async (req, res) => {
+router.post('/paypal/capture-order', async (req, res) => {
   try {
     const { orderId } = req.body;
 
