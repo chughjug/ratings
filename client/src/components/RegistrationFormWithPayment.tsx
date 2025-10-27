@@ -121,6 +121,11 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           
           // Always show payment form
           setShowPayment(true);
+
+          // Load PayPal SDK if credentials exist
+          if (data.payment_settings?.paypal_client_id) {
+            loadPayPalSDK(data.payment_settings.paypal_client_id);
+          }
         } else {
           setError(response.data.error || 'Failed to load tournament information');
         }
@@ -134,6 +139,91 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
 
     loadTournamentInfo();
   }, [tournamentId]);
+
+  const loadPayPalSDK = (clientId: string) => {
+    // Remove old script if exists
+    const oldScript = document.getElementById('paypal-sdk');
+    if (oldScript) {
+      oldScript.remove();
+    }
+
+    // Load PayPal SDK
+    const script = document.createElement('script');
+    script.id = 'paypal-sdk';
+    script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`;
+    script.async = true;
+    
+    script.onload = () => {
+      console.log('PayPal SDK loaded');
+      initializePayPalButton(clientId);
+    };
+
+    script.onerror = () => {
+      console.error('Failed to load PayPal SDK');
+    };
+
+    document.body.appendChild(script);
+  };
+
+  const initializePayPalButton = async (clientId: string) => {
+    // @ts-ignore - PayPal SDK types
+    if (window.paypal && (window as any).paypal.Buttons) {
+      // Remove any existing PayPal buttons
+      const container = document.getElementById('paypal-button-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+
+      // Initialize PayPal button
+      // @ts-ignore
+      (window as any).paypal.Buttons({
+        createOrder: async (data: any, actions: any) => {
+          try {
+            const response = await fetch('/api/payments/paypal/create-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                amount: tournamentInfo?.entry_fee || 0,
+                currency: 'USD',
+                tournamentId,
+                playerId: 'pending',
+                description: `Entry fee for ${tournamentInfo?.name}`
+              })
+            });
+
+            const result = await response.json();
+            
+            if (result.success && result.data.orderId) {
+              return result.data.orderId;
+            } else {
+              throw new Error(result.error || 'Failed to create order');
+            }
+          } catch (error) {
+            console.error('Error creating PayPal order:', error);
+            throw error;
+          }
+        },
+        onApprove: async (data: any, actions: any) => {
+          try {
+            const details = await actions.order.capture();
+            
+            setPaymentMethod('paypal');
+            setPaymentIntentId(details.id);
+            setPaymentError(null);
+            
+            console.log('Payment captured:', details);
+          } catch (error: any) {
+            console.error('Error capturing payment:', error);
+            setPaymentError(error.message || 'Failed to capture payment');
+          }
+        },
+        onError: (err: any) => {
+          console.error('PayPal Error:', err);
+          setPaymentError('Payment failed');
+        }
+      }).render('#paypal-button-container');
+    }
+  };
 
   // Search for players
   const searchPlayers = async () => {
@@ -441,26 +531,13 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
                   </>
                 )}
               </button>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentMethod('paypal');
-                  handlePayPalPayment();
-                }}
-                disabled={processingPayment}
-                className="flex-1 flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              >
-                {processingPayment ? (
-                  <Loader className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Pay with PayPal
-                  </>
-                )}
-              </button>
             </div>
+            
+            {/* PayPal Button Container */}
+            {tournamentInfo?.payment_settings?.paypal_client_id && (
+              <div id="paypal-button-container" className="mt-4"></div>
+            )}
+          </div>
           </div>
         )}
 
