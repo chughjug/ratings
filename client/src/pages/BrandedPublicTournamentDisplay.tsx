@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import RegistrationForm from '../components/RegistrationForm';
+import RegistrationFormWithPayment from '../components/RegistrationFormWithPayment';
 import { 
   Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
@@ -1357,7 +1357,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           {/* Registration Tab */}
           {activeTab === 'register' && tournament.allow_registration && id && (
             <div className="space-y-6">
-              <RegistrationForm tournamentId={id} />
+              <RegistrationFormWithPayment tournamentId={id} />
             </div>
           )}
 
