@@ -3151,11 +3151,12 @@ const TournamentDetail: React.FC = () => {
                       tournamentId={id}
                       tournament={tournament}
                       onSave={async (settingsData: any) => {
-                        // Save registration settings
-                        await handleTournamentUpdate('registration_settings', JSON.stringify(settingsData.registration_settings));
+                        console.log('💾 Saving registration settings data:', settingsData);
+                        console.log('💾 Registration settings (stringified):', JSON.stringify(settingsData.registration_settings));
+                        console.log('💾 Custom fields in settings:', settingsData.registration_settings?.customFields);
                         
-                        // Prepare all payment fields to update in one API call
-                        const paymentFields = {
+                        // Save ALL registration fields in a single update call
+                        const allFields = {
                           registration_settings: JSON.stringify(settingsData.registration_settings),
                           entry_fee: settingsData.registration_settings.entry_fee || 0,
                           payment_method: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.payment_method || 'both') : 'both',
@@ -3166,26 +3167,26 @@ const TournamentDetail: React.FC = () => {
                         };
                         
                         // Log what we're sending
-                        console.log('Saving payment fields:', {
-                          entry_fee: paymentFields.entry_fee,
-                          payment_method: paymentFields.payment_method,
-                          paypal_client_id: paymentFields.paypal_client_id ? paymentFields.paypal_client_id.substring(0, 20) + '...' : 'empty',
-                          paypal_secret: paymentFields.paypal_secret ? '***' : 'empty',
-                          stripe_publishable_key: paymentFields.stripe_publishable_key ? paymentFields.stripe_publishable_key.substring(0, 20) + '...' : 'empty',
-                          stripe_secret_key: paymentFields.stripe_secret_key ? '***' : 'empty'
+                        console.log('Saving all registration and payment fields:', {
+                          registration_settings_length: allFields.registration_settings.length,
+                          customFields_count: settingsData.registration_settings?.customFields?.length || 0,
+                          entry_fee: allFields.entry_fee,
+                          payment_method: allFields.payment_method,
+                          paypal_client_id: allFields.paypal_client_id ? allFields.paypal_client_id.substring(0, 20) + '...' : 'empty',
+                          stripe_publishable_key: allFields.stripe_publishable_key ? allFields.stripe_publishable_key.substring(0, 20) + '...' : 'empty'
                         });
                         
                         // Save all fields in one update call
                         try {
-                          const response = await tournamentApi.update(id, paymentFields as any);
+                          const response = await tournamentApi.update(id, allFields as any);
                           console.log('Update response:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
-                            console.log('Payment settings saved successfully');
+                            console.log('✅ All registration settings saved successfully');
                           }
                         } catch (error: any) {
-                          console.error('Failed to save payment settings:', error);
-                          alert(`Failed to save payment settings: ${error.message || error}`);
+                          console.error('Failed to save registration settings:', error);
+                          alert(`Failed to save registration settings: ${error.message || error}`);
                         }
                       }}
                     />
