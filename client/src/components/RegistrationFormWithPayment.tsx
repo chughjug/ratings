@@ -402,17 +402,25 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Payment Section */}
-        {showPayment && tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 && !paymentIntentId && (
+        {/* Payment Section - ALWAYS SHOW */}
+        {showPayment && !paymentIntentId && (
           <div className="bg-yellow-50 border border-yellow-200 rounded p-6">
             <div className="flex items-center mb-4">
               <DollarSign className="h-6 w-6 text-yellow-600 mr-2" />
-              <h3 className="text-lg font-semibold text-yellow-900">Entry Fee Required</h3>
+              <h3 className="text-lg font-semibold text-yellow-900">
+                {tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 ? 'Entry Fee Required' : 'Payment Options'}
+              </h3>
             </div>
-            <p className="text-sm text-yellow-800 mb-4">
-              This tournament requires an entry fee of ${tournamentInfo.entry_fee.toFixed(2)}.
-              Please complete your payment to finish registration.
-            </p>
+            {tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 ? (
+              <p className="text-sm text-yellow-800 mb-4">
+                This tournament requires an entry fee of ${tournamentInfo.entry_fee.toFixed(2)}.
+                Please complete your payment to finish registration.
+              </p>
+            ) : (
+              <p className="text-sm text-yellow-800 mb-4">
+                Select your payment method below.
+              </p>
+            )}
             
             <div className="flex space-x-3">
               <button
@@ -509,7 +517,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         <div className="pt-4">
           <button
             type="submit"
-            disabled={submitting || !formData.player_name || !formData.email || (showPayment && !paymentIntentId)}
+            disabled={submitting || !formData.player_name || !formData.email || (showPayment && tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 && !paymentIntentId)}
             className="w-full bg-black text-white py-3 px-6 rounded font-medium hover:bg-gray-800 focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? (
