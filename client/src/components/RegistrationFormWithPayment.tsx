@@ -68,8 +68,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
   const [error, setError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   
-  // Payment states
-  const [showPayment, setShowPayment] = useState(false);
+  // Payment states - always show payment form by default
+  const [showPayment, setShowPayment] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal' | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -119,10 +119,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             allow_registration: data.allow_registration
           });
           
-          // Check if payment is required
-          if (data.entry_fee > 0) {
-            setShowPayment(true);
-          }
+          // Always show payment form
+          setShowPayment(true);
         } else {
           setError(response.data.error || 'Failed to load tournament information');
         }
