@@ -86,10 +86,22 @@ class EnhancedPairingSystem {
       // Check both bye_rounds and intentional_bye_rounds columns
       const byeRounds = player.bye_rounds || player.intentional_bye_rounds;
       
-      if (byeRounds && byeRounds.trim() !== '') {
+      if (byeRounds) {
         try {
-          // Parse comma-separated round numbers
-          const rounds = byeRounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+          let rounds = [];
+          
+          // Handle different formats: JSON array, comma-separated string, or already an array
+          if (typeof byeRounds === 'string') {
+            // Try parsing as JSON first
+            try {
+              rounds = JSON.parse(byeRounds);
+            } catch {
+              // If not JSON, try comma-separated string
+              rounds = byeRounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+            }
+          } else if (Array.isArray(byeRounds)) {
+            rounds = byeRounds;
+          }
           
           if (rounds.includes(this.round)) {
             playersWithByes.add(player.id);

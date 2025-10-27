@@ -66,6 +66,16 @@ router.get('/:tournamentId/info', (req, res) => {
     
     const baseUrl = req.protocol + '://' + req.get('host');
     
+    // Parse tournament settings to get entry fee
+    let settings = {};
+    if (tournament.settings) {
+      try {
+        settings = JSON.parse(tournament.settings);
+      } catch (e) {
+        console.error('Error parsing tournament settings:', e);
+      }
+    }
+    
     res.json({
       success: true,
       data: {
@@ -79,7 +89,8 @@ router.get('/:tournamentId/info', (req, res) => {
           city: tournament.city,
           state: tournament.state,
           location: tournament.location,
-          allow_registration: tournament.allow_registration
+          allow_registration: tournament.allow_registration,
+          entry_fee: settings.entry_fee || 0
         },
         registration_url: `${baseUrl}/register/${tournamentId}`,
         api_endpoints: {

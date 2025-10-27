@@ -1141,7 +1141,18 @@ router.post('/generate/section', async (req, res) => {
               bye_rounds: p.bye_rounds,
               intentional_bye_rounds: p.intentional_bye_rounds
             })));
-            resolve(rows);
+            // Parse intentional_bye_rounds from JSON string to array
+            const processedRows = rows.map(player => {
+              if (player.intentional_bye_rounds) {
+                try {
+                  player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
+                } catch (e) {
+                  player.intentional_bye_rounds = [];
+                }
+              }
+              return player;
+            });
+            resolve(processedRows);
           }
         }
       );
@@ -2617,7 +2628,20 @@ router.post('/generate/quad', async (req, res) => {
         [tournamentId],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows || []);
+          else {
+            // Parse intentional_bye_rounds from JSON string to array
+            const processedRows = (rows || []).map(player => {
+              if (player.intentional_bye_rounds) {
+                try {
+                  player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
+                } catch (e) {
+                  player.intentional_bye_rounds = [];
+                }
+              }
+              return player;
+            });
+            resolve(processedRows);
+          }
         }
       );
     });
@@ -2772,7 +2796,20 @@ router.get('/quad/:tournamentId/assignments', async (req, res) => {
         [tournamentId],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows || []);
+          else {
+            // Parse intentional_bye_rounds from JSON string to array
+            const processedRows = (rows || []).map(player => {
+              if (player.intentional_bye_rounds) {
+                try {
+                  player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
+                } catch (e) {
+                  player.intentional_bye_rounds = [];
+                }
+              }
+              return player;
+            });
+            resolve(processedRows);
+          }
         }
       );
     });
@@ -3168,7 +3205,20 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
               [tournamentId, sectionName],
               (err, rows) => {
                 if (err) reject(err);
-                else resolve(rows);
+                else {
+                  // Parse intentional_bye_rounds from JSON string to array
+                  const processedRows = rows.map(player => {
+                    if (player.intentional_bye_rounds) {
+                      try {
+                        player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
+                      } catch (e) {
+                        player.intentional_bye_rounds = [];
+                      }
+                    }
+                    return player;
+                  });
+                  resolve(processedRows);
+                }
               }
             );
           });

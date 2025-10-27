@@ -375,7 +375,8 @@ router.put('/:id', authenticate, async (req, res) => {
       state,
       zipCode,
       country,
-      settings
+      settings,
+      payment_settings
     } = req.body;
 
     // Check if user has admin/owner role
@@ -455,13 +456,15 @@ router.put('/:id', authenticate, async (req, res) => {
          zip_code = COALESCE(?, zip_code),
          country = COALESCE(?, country),
          settings = COALESCE(?, settings),
+         payment_settings = COALESCE(?, payment_settings),
          updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
         [
           name || null, slug || null, description || null, website || null,
           logoUrl || null, contactEmail || null, contactPhone || null,
           address || null, city || null, state || null, zipCode || null,
-          country || null, settings ? JSON.stringify(settings) : null, id
+          country || null, settings ? JSON.stringify(settings) : null, 
+          payment_settings || null, id
         ],
         (err) => {
           if (err) reject(err);
