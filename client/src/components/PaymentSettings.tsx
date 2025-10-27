@@ -73,74 +73,125 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
     }
   };
 
+  const [showStripeKeyInput, setShowStripeKeyInput] = useState(false);
+  const [stripeKeys, setStripeKeys] = useState({
+    publishableKey: '',
+    secretKey: ''
+  });
+
   const connectStripe = async (mode: 'test' | 'live' = 'test') => {
+    try {
+      setShowStripeKeyInput(true);
+    } catch (error: any) {
+      console.error('Stripe connection error:', error);
+      setError(error.message || 'Failed to connect Stripe account');
+    }
+  };
+
+  const saveStripeKeys = async () => {
+    if (!stripeKeys.publishableKey || !stripeKeys.secretKey) {
+      setError('Please enter both Publishable Key and Secret Key');
+      return;
+    }
+
     try {
       setConnecting('stripe');
       setError(null);
 
-      // Create OAuth URL for Stripe Connect
-      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/payments/connect/stripe?organizationId=${organizationId}&mode=${mode}`, {
-        method: 'GET',
+      // Save keys to organization settings
+      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/organizations/${organizationId}`, {
+        method: 'PUT',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        }
+        },
+        body: JSON.stringify({
+          payment_settings: JSON.stringify({
+            stripe: {
+              publishableKey: stripeKeys.publishableKey,
+              secretKey: stripeKeys.secretKey,
+              connected: true,
+              testMode: true,
+              connectedAt: new Date().toISOString()
+            }
+          })
+        })
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.oauthUrl) {
-          // Redirect to Stripe OAuth
-          window.location.href = data.oauthUrl;
-        } else {
-          throw new Error(data.error || 'Failed to connect Stripe');
+        if (data.success) {
+          setSuccess('Stripe account connected successfully!');
+          setShowStripeKeyInput(false);
+          setStripeKeys({ publishableKey: '', secretKey: '' });
+          loadPaymentConfig();
+          setTimeout(() => setSuccess(null), 3000);
         }
-      } else {
-        throw new Error('Failed to initiate Stripe connection');
       }
     } catch (error: any) {
-      console.error('Stripe connection error:', error);
-      setError(error.message || 'Failed to connect Stripe account');
+      setError(error.message || 'Failed to save Stripe keys');
     } finally {
       setConnecting(null);
     }
   };
 
+  const [showPayPalKeyInput, setShowPayPalKeyInput] = useState(false);
+  const [paypalKeys, setPaypalKeys] = useState({
+    clientId: '',
+    clientSecret: ''
+  });
+
   const connectPayPal = async (mode: 'test' | 'live' = 'test') => {
+    try {
+      setShowPayPalKeyInput(true);
+    } catch (error: any) {
+      console.error('PayPal connection error:', error);
+      setError(error.message || 'Failed to connect PayPal account');
+    }
+  };
+
+  const savePayPalKeys = async () => {
+    if (!paypalKeys.clientId || !paypalKeys.clientSecret) {
+      setError('Please enter both Client ID and Client Secret');
+      return;
+    }
+
     try {
       setConnecting('paypal');
       setError(null);
 
-      // Create OAuth URL for PayPal
-      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/payments/connect/paypal?organizationId=${organizationId}&mode=${mode}`, {
-        method: 'GET',
+      // Save keys to organization settings
+      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/organizations/${organizationId}`, {
+        method: 'PUT',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-        }
+        },
+        body: JSON.stringify({
+          payment_settings: JSON.stringify({
+            paypal: {
+              clientId: paypalKeys.clientId,
+              clientSecret: paypalKeys.clientSecret,
+              connected: true,
+              testMode: true,
+              connectedAt: new Date().toISOString()
+            }
+          })
+        })
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.oauthUrl) {
-          // Open PayPal auth in popup
-          const width = 500;
-          const height = 600;
-          const left = window.screen.width / 2 - width / 2;
-          const top = window.screen.height / 2 - height / 2;
-          
-          window.open(
-            data.oauthUrl,
-            'PayPalAuth',
-            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
-          );
-        } else {
-          throw new Error(data.error || 'Failed to connect PayPal');
+        if (data.success) {
+          setSuccess('PayPal account connected successfully!');
+          setShowPayPalKeyInput(false);
+          setPaypalKeys({ clientId: '', clientSecret: '' });
+          loadPaymentConfig();
+          setTimeout(() => setSuccess(null), 3000);
         }
-      } else {
-        throw new Error('Failed to initiate PayPal connection');
       }
     } catch (error: any) {
-      console.error('PayPal connection error:', error);
-      setError(error.message || 'Failed to connect PayPal account');
+      setError(error.message || 'Failed to save PayPal keys');
     } finally {
       setConnecting(null);
     }
@@ -251,9 +302,6 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
               <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-green-800">Connected</p>
-                  <p className="text-xs text-green-600 mt-1">
-                    Account ID: {config.stripe.accountId?.substring(0, 20)}...
-                  </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Mode: {config.stripe.testMode ? 'Test' : 'Live'}
                   </p>
@@ -266,28 +314,58 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
                 </button>
               </div>
             </div>
+          ) : showStripeKeyInput ? (
+            <div className="pl-15 space-y-3">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                <h5 className="font-medium text-blue-900">Enter Stripe API Keys</h5>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Publishable Key</label>
+                  <input
+                    type="text"
+                    value={stripeKeys.publishableKey}
+                    onChange={(e) => setStripeKeys({...stripeKeys, publishableKey: e.target.value})}
+                    placeholder="pk_test_..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Secret Key</label>
+                  <input
+                    type="password"
+                    value={stripeKeys.secretKey}
+                    onChange={(e) => setStripeKeys({...stripeKeys, secretKey: e.target.value})}
+                    placeholder="sk_test_..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={saveStripeKeys}
+                    disabled={connecting === 'stripe'}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {connecting === 'stripe' ? <Loader className="h-4 w-4 animate-spin" /> : 'Save Keys'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowStripeKeyInput(false);
+                      setStripeKeys({publishableKey: '', secretKey: ''});
+                    }}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="pl-15 space-y-3">
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => connectStripe('test')}
-                  disabled={connecting === 'stripe'}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center"
-                >
-                  {connecting === 'stripe' ? (
-                    <Loader className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Connect Stripe (Test Mode)'
-                  )}
-                </button>
-                <button
-                  onClick={() => connectStripe('live')}
-                  disabled={connecting === 'stripe'}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center"
-                >
-                  Connect Stripe (Live)
-                </button>
-              </div>
+              <button
+                onClick={() => connectStripe('test')}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Connect Stripe
+              </button>
               <a
                 href="https://stripe.com"
                 target="_blank"
@@ -324,9 +402,6 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
               <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-green-800">Connected</p>
-                  <p className="text-xs text-green-600 mt-1">
-                    Account ID: {config.paypal.accountId?.substring(0, 20)}...
-                  </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Mode: {config.paypal.testMode ? 'Sandbox' : 'Live'}
                   </p>
@@ -339,28 +414,58 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
                 </button>
               </div>
             </div>
+          ) : showPayPalKeyInput ? (
+            <div className="pl-15 space-y-3">
+              <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-3">
+                <h5 className="font-medium text-indigo-900">Enter PayPal API Keys</h5>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                  <input
+                    type="text"
+                    value={paypalKeys.clientId}
+                    onChange={(e) => setPaypalKeys({...paypalKeys, clientId: e.target.value})}
+                    placeholder="Enter PayPal Client ID"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                  <input
+                    type="password"
+                    value={paypalKeys.clientSecret}
+                    onChange={(e) => setPaypalKeys({...paypalKeys, clientSecret: e.target.value})}
+                    placeholder="Enter PayPal Client Secret"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={savePayPalKeys}
+                    disabled={connecting === 'paypal'}
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  >
+                    {connecting === 'paypal' ? <Loader className="h-4 w-4 animate-spin" /> : 'Save Keys'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPayPalKeyInput(false);
+                      setPaypalKeys({clientId: '', clientSecret: ''});
+                    }}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="pl-15 space-y-3">
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => connectPayPal('test')}
-                  disabled={connecting === 'paypal'}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center"
-                >
-                  {connecting === 'paypal' ? (
-                    <Loader className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Connect PayPal (Sandbox)'
-                  )}
-                </button>
-                <button
-                  onClick={() => connectPayPal('live')}
-                  disabled={connecting === 'paypal'}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center"
-                >
-                  Connect PayPal (Live)
-                </button>
-              </div>
+              <button
+                onClick={() => connectPayPal('test')}
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Connect PayPal
+              </button>
               <a
                 href="https://paypal.com"
                 target="_blank"

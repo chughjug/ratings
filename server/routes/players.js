@@ -487,7 +487,10 @@ router.put('/:id', (req, res) => {
     section,
     status,
     intentional_bye_rounds,
-    notes
+    notes,
+    email,
+    phone,
+    team_name
   } = req.body;
 
   // Build dynamic update query based on provided fields
@@ -526,9 +529,17 @@ router.put('/:id', (req, res) => {
     updateFields.push('notes = ?');
     updateValues.push(notes);
   }
-  if (req.body.team_name !== undefined) {
+  if (email !== undefined) {
+    updateFields.push('email = ?');
+    updateValues.push(email);
+  }
+  if (phone !== undefined) {
+    updateFields.push('phone = ?');
+    updateValues.push(phone);
+  }
+  if (team_name !== undefined) {
     updateFields.push('team_name = ?');
-    updateValues.push(req.body.team_name);
+    updateValues.push(team_name);
   }
 
   // Check if at least one field is being updated
@@ -558,9 +569,28 @@ router.put('/:id', (req, res) => {
         error: 'Player not found' 
       });
     }
-    res.json({ 
-      success: true,
-      message: 'Player updated successfully' 
+    // Fetch and return the updated player
+    db.get('SELECT * FROM players WHERE id = ?', [id], (err, player) => {
+      if (err) {
+        console.error('Error fetching updated player:', err);
+        return res.status(500).json({ 
+          success: false,
+          error: 'Failed to fetch updated player' 
+        });
+      }
+      if (player && player.intentional_bye_rounds) {
+        try {
+          player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
+        } catch (e) {
+          // If parsing fails, leave it as string or empty array
+          player.intentional_bye_rounds = [];
+        }
+      }
+      res.json({ 
+        success: true,
+        data: player,
+        message: 'Player updated successfully' 
+      });
     });
   });
 });

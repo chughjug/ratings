@@ -14,24 +14,11 @@ interface Player {
   section?: string;
   team_name?: string;
   status: 'active' | 'withdrawn' | 'bye' | 'inactive';
-  school?: string;
-  grade?: string;
   email?: string;
   phone?: string;
-  state?: string;
-  city?: string;
-  parent_name?: string;
-  parent_email?: string;
-  parent_phone?: string;
-  emergency_contact?: string;
-  emergency_phone?: string;
-  tshirt_size?: string;
-  dietary_restrictions?: string;
-  special_needs?: string;
   notes?: string;
   expiration_date?: string;
   intentional_bye_rounds?: number[];
-  lichess_username?: string;
 }
 
 interface EditPlayerModalProps {
@@ -57,24 +44,11 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
     rating: '',
     section: '',
     team_name: '',
-    school: '',
-    grade: '',
     email: '',
     phone: '',
-    state: '',
-    city: '',
-    parent_name: '',
-    parent_email: '',
-    parent_phone: '',
-    emergency_contact: '',
-    emergency_phone: '',
-    tshirt_size: '',
-    dietary_restrictions: '',
-    special_needs: '',
     notes: '',
     status: 'active' as 'active' | 'withdrawn' | 'bye' | 'inactive',
-    intentional_bye_rounds: [] as number[],
-    lichess_username: ''
+    intentional_bye_rounds: [] as number[]
   });
 
   // Update form data when player changes
@@ -89,24 +63,11 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
           rating: safePlayer.rating ? String(safePlayer.rating) : '',
           section: safePlayer.section || '',
           team_name: safePlayer.team_name || '',
-          school: safePlayer.school || '',
-          grade: safePlayer.grade || '',
           email: safePlayer.email || '',
           phone: safePlayer.phone || '',
-          state: safePlayer.state || '',
-          city: safePlayer.city || '',
-          parent_name: safePlayer.parent_name || '',
-          parent_email: safePlayer.parent_email || '',
-          parent_phone: safePlayer.parent_phone || '',
-          emergency_contact: safePlayer.emergency_contact || '',
-          emergency_phone: safePlayer.emergency_phone || '',
-          tshirt_size: safePlayer.tshirt_size || '',
-          dietary_restrictions: safePlayer.dietary_restrictions || '',
-          special_needs: safePlayer.special_needs || '',
           notes: safePlayer.notes || '',
           status: safePlayer.status || 'active',
-          intentional_bye_rounds: Array.isArray(safePlayer.intentional_bye_rounds) ? safePlayer.intentional_bye_rounds : [],
-          lichess_username: safePlayer.lichess_username || ''
+          intentional_bye_rounds: Array.isArray(safePlayer.intentional_bye_rounds) ? safePlayer.intentional_bye_rounds : []
         });
       } catch (error) {
         console.error('Error updating form data:', error);
@@ -118,24 +79,11 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
           rating: '',
           section: '',
           team_name: '',
-          school: '',
-          grade: '',
           email: '',
           phone: '',
-          state: '',
-          city: '',
-          parent_name: '',
-          parent_email: '',
-          parent_phone: '',
-          emergency_contact: '',
-          emergency_phone: '',
-          tshirt_size: '',
-          dietary_restrictions: '',
-          special_needs: '',
           notes: '',
           status: 'active',
-          intentional_bye_rounds: [],
-          lichess_username: ''
+          intentional_bye_rounds: []
         });
       }
     }
@@ -164,27 +112,14 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
       // Only include fields that have values
       if (formData.uscf_id) playerData.uscf_id = formData.uscf_id;
       if (formData.fide_id) playerData.fide_id = formData.fide_id;
-      if (formData.lichess_username) playerData.lichess_username = formData.lichess_username;
       if (formData.rating && formData.rating.trim() !== '') {
         const ratingNum = parseInt(formData.rating);
         if (!isNaN(ratingNum)) playerData.rating = ratingNum;
       }
       if (formData.section) playerData.section = formData.section;
       if (formData.team_name) playerData.team_name = formData.team_name;
-      if (formData.school) playerData.school = formData.school;
-      if (formData.grade) playerData.grade = formData.grade;
       if (formData.email) playerData.email = formData.email;
       if (formData.phone) playerData.phone = formData.phone;
-      if (formData.state) playerData.state = formData.state;
-      if (formData.city) playerData.city = formData.city;
-      if (formData.parent_name) playerData.parent_name = formData.parent_name;
-      if (formData.parent_email) playerData.parent_email = formData.parent_email;
-      if (formData.parent_phone) playerData.parent_phone = formData.parent_phone;
-      if (formData.emergency_contact) playerData.emergency_contact = formData.emergency_contact;
-      if (formData.emergency_phone) playerData.emergency_phone = formData.emergency_phone;
-      if (formData.tshirt_size) playerData.tshirt_size = formData.tshirt_size;
-      if (formData.dietary_restrictions) playerData.dietary_restrictions = formData.dietary_restrictions;
-      if (formData.special_needs) playerData.special_needs = formData.special_needs;
       if (formData.notes) playerData.notes = formData.notes;
       if (Array.isArray(formData.intentional_bye_rounds) && formData.intentional_bye_rounds.length > 0) {
         playerData.intentional_bye_rounds = formData.intentional_bye_rounds;
@@ -215,9 +150,7 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
       name: selectedPlayer.name || prev.name,
       uscf_id: selectedPlayer.uscf_id || prev.uscf_id,
       fide_id: selectedPlayer.fide_id || prev.fide_id,
-      rating: selectedPlayer.rating?.toString() || prev.rating,
-      state: selectedPlayer.state || prev.state,
-      city: selectedPlayer.city || prev.city
+      rating: selectedPlayer.rating?.toString() || prev.rating
     }));
     setShowSearchModal(false);
   };
@@ -342,21 +275,6 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
               </div>
 
               <div>
-                <label htmlFor="lichess_username" className="block text-sm font-medium text-gray-700 mb-2">
-                  Lichess Username
-                </label>
-                <input
-                  type="text"
-                  id="lichess_username"
-                  name="lichess_username"
-                  value={formData.lichess_username}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter Lichess username (e.g., magnuscarlsen)"
-                />
-              </div>
-
-              <div>
                 <label htmlFor="section" className="block text-sm font-medium text-gray-700 mb-2">
                   Section
                 </label>
@@ -453,162 +371,6 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
                   placeholder="Enter phone number"
                 />
               </div>
-
-              <div>
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                  City
-                </label>
-                <input
-                  type="text"
-                  id="city"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter city"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
-                  State
-                </label>
-                <input
-                  type="text"
-                  id="state"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter state"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* School Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">School Information</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="school" className="block text-sm font-medium text-gray-700 mb-2">
-                  School
-                </label>
-                <input
-                  type="text"
-                  id="school"
-                  name="school"
-                  value={formData.school}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter school name"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
-                  Grade
-                </label>
-                <input
-                  type="text"
-                  id="grade"
-                  name="grade"
-                  value={formData.grade}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter grade"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Parent/Guardian Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Parent/Guardian Information</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="parent_name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Parent/Guardian Name
-                </label>
-                <input
-                  type="text"
-                  id="parent_name"
-                  name="parent_name"
-                  value={formData.parent_name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter parent/guardian name"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="parent_email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Parent/Guardian Email
-                </label>
-                <input
-                  type="email"
-                  id="parent_email"
-                  name="parent_email"
-                  value={formData.parent_email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter parent/guardian email"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="parent_phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Parent/Guardian Phone
-                </label>
-                <input
-                  type="tel"
-                  id="parent_phone"
-                  name="parent_phone"
-                  value={formData.parent_phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter parent/guardian phone"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Emergency Contact */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Emergency Contact</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="emergency_contact" className="block text-sm font-medium text-gray-700 mb-2">
-                  Emergency Contact Name
-                </label>
-                <input
-                  type="text"
-                  id="emergency_contact"
-                  name="emergency_contact"
-                  value={formData.emergency_contact}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter emergency contact name"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="emergency_phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Emergency Contact Phone
-                </label>
-                <input
-                  type="tel"
-                  id="emergency_phone"
-                  name="emergency_phone"
-                  value={formData.emergency_phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                  placeholder="Enter emergency contact phone"
-                />
-              </div>
             </div>
           </div>
 
@@ -616,60 +378,6 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Additional Information</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="tshirt_size" className="block text-sm font-medium text-gray-700 mb-2">
-                  T-Shirt Size
-                </label>
-                <select
-                  id="tshirt_size"
-                  name="tshirt_size"
-                  value={formData.tshirt_size}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                >
-                  <option value="">Select Size</option>
-                  <option value="XS">XS</option>
-                  <option value="S">S</option>
-                  <option value="M">M</option>
-                  <option value="L">L</option>
-                  <option value="XL">XL</option>
-                  <option value="XXL">XXL</option>
-                  <option value="XXXL">XXXL</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="dietary_restrictions" className="block text-sm font-medium text-gray-700 mb-2">
-                Dietary Restrictions
-              </label>
-              <textarea
-                id="dietary_restrictions"
-                name="dietary_restrictions"
-                value={formData.dietary_restrictions}
-                onChange={handleInputChange}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                placeholder="Enter dietary restrictions"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="special_needs" className="block text-sm font-medium text-gray-700 mb-2">
-                Special Needs
-              </label>
-              <textarea
-                id="special_needs"
-                name="special_needs"
-                value={formData.special_needs}
-                onChange={handleInputChange}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chess-board focus:border-transparent"
-                placeholder="Enter special needs or accommodations"
-              />
-            </div>
-
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
                 Notes
