@@ -516,7 +516,10 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         registrationData.payment_intent_id = paymentIntentId;
       }
 
+      console.log('Submitting registration with data:', registrationData);
+      
       const response = await registrationApi.submitRegistration(registrationData);
+      console.log('Registration response:', response);
 
       if (response.data.success) {
         setRegistrationId(response.data.data.registration_id);
@@ -526,7 +529,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       }
     } catch (err: any) {
       console.error('Registration submission error:', err);
-      setError('Failed to submit registration');
+      console.error('Error details:', err.response?.data);
+      setError(err.response?.data?.error || err.message || 'Failed to submit registration');
     } finally {
       setSubmitting(false);
     }
