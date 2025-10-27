@@ -18,7 +18,7 @@ const LandingPage: React.FC = () => {
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center group">
               <div className="transform transition-transform group-hover:scale-105">
-                <PairCraftLogo size="md" showText={true} />
+                <PairCraftLogo size="md" showText={true} textColor="text-neutral-900" knightGlow="bg-gradient-to-r from-orange-700 to-orange-800" />
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-8">
@@ -529,7 +529,7 @@ const LandingPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-2">
               <div className="inline-block p-3 bg-white/10 backdrop-blur-sm rounded-2xl border-2 border-white/20 shadow-lg">
-                <PairCraftLogo size="md" showText={true} />
+                <PairCraftLogo size="md" showText={true} textColor="text-white" knightGlow="bg-white" />
               </div>
               <p className="mt-4 text-neutral-400 max-w-md mb-6">
                 The most powerful chess tournament management platform. 
@@ -537,11 +537,11 @@ const LandingPage: React.FC = () => {
               </p>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-white" />
+                  <Check className="h-5 w-5 text-orange-600" />
                   <span className="text-neutral-300">Free Forever</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-white" />
+                  <Check className="h-5 w-5 text-orange-600" />
                   <span className="text-neutral-300">Zero Setup Time</span>
                 </div>
               </div>
@@ -549,19 +549,19 @@ const LandingPage: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-white">Platform</h3>
               <ul className="space-y-3">
-                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2">
+                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Browse Tournaments
                 </Link></li>
-                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2">
+                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Find Organizations
                 </Link></li>
-                <li><Link to="/register" className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2">
+                <li><Link to="/register" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Register as Player
                 </Link></li>
-                <li><Link to="/chess" className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2">
+                <li><Link to="/chess" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Play Chess Online
                 </Link></li>
@@ -571,27 +571,27 @@ const LandingPage: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4 text-white">Power Features</h3>
               <ul className="space-y-3 text-neutral-400">
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                   <span>Burstein & Accelerated Pairings</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                   <span>USCF Rating Integration</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                   <span>Export to PDF & Print</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                   <span>Team Tournament Support</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                   <span>Embeddable Widgets</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-white mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                   <span>White-Label Branding</span>
                 </li>
               </ul>

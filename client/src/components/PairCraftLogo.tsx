@@ -4,12 +4,16 @@ interface PairCraftLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showText?: boolean;
+  textColor?: string;
+  knightGlow?: string;
 }
 
 const PairCraftLogo: React.FC<PairCraftLogoProps> = ({ 
   className = '', 
   size = 'md',
-  showText = true 
+  showText = true,
+  textColor = 'text-black',
+  knightGlow = 'bg-white'
 }) => {
   const sizeClasses = {
     sm: 'h-8 w-8',
@@ -29,7 +33,7 @@ const PairCraftLogo: React.FC<PairCraftLogoProps> = ({
     <div className={`flex items-center space-x-3 ${className}`}>
       {/* Logo Image with Modern Styling */}
       <div className="relative group">
-        <div className="absolute inset-0 bg-white rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+        <div className={`absolute inset-0 ${knightGlow} rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity`}></div>
         <img 
           src="/new-logo.png" 
           alt="PairCraft Logo" 
@@ -40,7 +44,7 @@ const PairCraftLogo: React.FC<PairCraftLogoProps> = ({
       {/* Text with Modern Typography */}
       {showText && (
         <div className="flex flex-col">
-          <span className={`text-black ${textSizeClasses[size]}`}>
+          <span className={`${textColor} ${textSizeClasses[size]}`}>
             PairCraft
           </span>
           <span className={`text-gray-600 font-semibold tracking-wide ${size === 'sm' || size === 'md' ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-base'}`}>
