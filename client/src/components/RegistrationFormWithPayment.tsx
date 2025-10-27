@@ -208,12 +208,20 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
     script.async = true;
     
     script.onload = () => {
-      console.log('PayPal SDK loaded');
+      console.log('PayPal SDK loaded successfully');
       initializePayPalButton(clientId);
     };
 
-    script.onerror = () => {
-      console.error('Failed to load PayPal SDK');
+    script.onerror = (error) => {
+      console.error('Failed to load PayPal SDK:', error);
+      console.error('⚠️ PayPal SDK Error - Possible causes:');
+      console.error('1. Invalid PayPal Client ID');
+      console.error('2. Network connectivity issues');
+      console.error('3. PayPal service temporarily unavailable');
+      console.error('Client ID being used:', clientId.substring(0, 20) + '...');
+      
+      // Show user-friendly error message
+      setPaymentError('Unable to load PayPal payment system. Please contact the tournament organizer or try again later.');
     };
 
     document.body.appendChild(script);
@@ -716,13 +724,23 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
                       {!tournamentInfo?.payment_settings?.paypal_client_id && !tournamentInfo?.payment_settings?.stripe_publishable_key && (
                         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                           <div className="text-sm text-yellow-800 font-semibold mb-2">
-                            ⚠️ No payment credentials configured
+                            ⚠️ Payment System Not Configured
                           </div>
                           <div className="text-xs text-yellow-700 space-y-1">
-                            <p>Payment method set to: <strong>{tournamentInfo?.payment_settings?.payment_method || 'not set'}</strong></p>
-                            <p>PayPal Client ID: {tournamentInfo?.payment_settings?.paypal_client_id ? '✅ Configured' : '❌ Missing'}</p>
-                            <p>Stripe Key: {tournamentInfo?.payment_settings?.stripe_publishable_key ? '✅ Configured' : '❌ Missing'}</p>
-                            <p className="mt-2 italic">Admin needs to configure payment credentials in tournament settings.</p>
+                            <p>The tournament requires payment, but payment credentials are not set up.</p>
+                            <p className="mt-2 font-medium">Please contact the tournament organizer.</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {paymentError && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg mt-3">
+                          <div className="text-sm text-red-800 font-semibold mb-2 flex items-center">
+                            <AlertCircle className="h-4 w-4 mr-2" />
+                            Payment System Error
+                          </div>
+                          <div className="text-xs text-red-700">
+                            {paymentError}
                           </div>
                         </div>
                       )}
