@@ -77,13 +77,44 @@ db.serialize(() => {
     )
   `);
 
-  // Add payment columns (will fail silently if they already exist - that's OK)
-  db.run(`ALTER TABLE tournaments ADD COLUMN entry_fee REAL DEFAULT 0`, () => {});
-  db.run(`ALTER TABLE tournaments ADD COLUMN paypal_client_id TEXT`, () => {});
-  db.run(`ALTER TABLE tournaments ADD COLUMN paypal_secret TEXT`, () => {});
-  db.run(`ALTER TABLE tournaments ADD COLUMN stripe_publishable_key TEXT`, () => {});
-  db.run(`ALTER TABLE tournaments ADD COLUMN stripe_secret_key TEXT`, () => {});
-  db.run(`ALTER TABLE tournaments ADD COLUMN payment_method TEXT DEFAULT 'both'`, () => {});
+  // Add payment columns if they don't exist
+  db.serialize(() => {
+    db.run(`ALTER TABLE tournaments ADD COLUMN entry_fee REAL DEFAULT 0`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding entry_fee column:', err.message);
+      }
+    });
+    
+    db.run(`ALTER TABLE tournaments ADD COLUMN paypal_client_id TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding paypal_client_id column:', err.message);
+      }
+    });
+    
+    db.run(`ALTER TABLE tournaments ADD COLUMN paypal_secret TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding paypal_secret column:', err.message);
+      }
+    });
+    
+    db.run(`ALTER TABLE tournaments ADD COLUMN stripe_publishable_key TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding stripe_publishable_key column:', err.message);
+      }
+    });
+    
+    db.run(`ALTER TABLE tournaments ADD COLUMN stripe_secret_key TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding stripe_secret_key column:', err.message);
+      }
+    });
+    
+    db.run(`ALTER TABLE tournaments ADD COLUMN payment_method TEXT DEFAULT 'both'`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding payment_method column:', err.message);
+      }
+    });
+  });
 
   // Players table
   db.run(`
