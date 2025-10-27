@@ -3156,7 +3156,8 @@ const TournamentDetail: React.FC = () => {
                         
                         // Also save payment credentials to tournament settings
                         if (settings.registration_settings.require_payment) {
-                          const currentSettings = tournament?.settings ? JSON.parse(tournament.settings) : {};
+                          const currentSettingsStr = tournament?.settings as string;
+                          const currentSettings = currentSettingsStr ? JSON.parse(currentSettingsStr) : {};
                           const paymentSettings = {
                             entry_fee: settings.registration_settings.entry_fee || 0,
                             payment_method: settings.registration_settings.payment_method || 'both',

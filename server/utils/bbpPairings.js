@@ -176,7 +176,7 @@ class BbpPairings {
             white_player_id: byePlayer.id,
             black_player_id: null,
             is_bye: true,
-            bye_type: 'bye'
+            bye_type: 'unpaired' // Full point bye for odd number of opponents
           });
           group.splice(group.indexOf(byePlayer), 1);
           used.add(byePlayer.id);
@@ -256,7 +256,7 @@ class BbpPairings {
             white_player_id: byePlayer.id,
             black_player_id: null,
             is_bye: true,
-            bye_type: 'bye'
+            bye_type: 'unpaired' // Full point bye for odd number of opponents
           });
           group.splice(group.indexOf(byePlayer), 1);
           used.add(byePlayer.id);

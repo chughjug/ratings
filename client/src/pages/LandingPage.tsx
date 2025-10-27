@@ -11,19 +11,9 @@ const LandingPage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   return (
-    <div className="min-h-screen" style={{
-      background: 'linear-gradient(to bottom, #1a0f0a, #2d1b13, #1a0f0a)',
-      backgroundImage: `
-        repeating-linear-gradient(0deg, transparent 0px, rgba(101, 67, 33, 0.03) 1px, transparent 2px, transparent 29px),
-        repeating-linear-gradient(90deg, transparent 0px, rgba(101, 67, 33, 0.03) 1px, transparent 2px, transparent 29px)
-      `
-    }}>
+    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       {/* Header */}
-      <header className="sticky top-0 z-50" style={{ 
-        background: 'linear-gradient(135deg, #3d2415 0%, #2d1b13 100%)',
-        borderBottom: '4px double #c9a961',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
-      }}>
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center group">
@@ -31,31 +21,25 @@ const LandingPage: React.FC = () => {
                 <PairCraftLogo size="md" showText={true} />
               </div>
             </div>
-            <div className="hidden md:flex items-center space-x-2">
-              <a href="#features" className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30" style={{ border: '2px solid transparent' }}>
+            <div className="hidden md:flex items-center space-x-8">
+              <a href="#features" className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors">
                 Features
               </a>
-              <a href="#how-it-works" className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30" style={{ border: '2px solid transparent' }}>
+              <a href="#how-it-works" className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors">
                 How It Works
               </a>
-              <a href="#testimonials" className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30" style={{ border: '2px solid transparent' }}>
+              <a href="#testimonials" className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors">
                 Testimonials
               </a>
               <Link
                 to="/public/tournaments"
-                className="text-amber-300 hover:text-yellow-400 px-4 py-2.5 text-sm font-bold transition-all hover:bg-amber-900/30"
-                style={{ border: '2px solid transparent' }}
+                className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors"
               >
                 View Tournaments
               </Link>
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center space-x-2 text-white px-6 py-2.5 text-sm font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-                style={{ 
-                  background: 'linear-gradient(135deg, #8b4513, #a0522d)',
-                  border: '2px solid #d4af37',
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
-                }}
+                className="flex items-center space-x-2 bg-neutral-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-all shadow-sm hover:shadow-md"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Sign In</span>
@@ -66,37 +50,26 @@ const LandingPage: React.FC = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-24 overflow-hidden" style={{
-        background: 'radial-gradient(ellipse at center, #2d1b13 0%, #1a0f0a 100%)'
-      }}>
-        {/* Decorative border elements */}
-        <div className="absolute inset-x-0 top-0 h-1 opacity-30" style={{
-          background: 'repeating-linear-gradient(90deg, #c9a961 0px, #c9a961 10px, transparent 10px, transparent 20px)'
-        }}></div>
-        <div className="absolute inset-x-0 bottom-0 h-1 opacity-30" style={{
-          background: 'repeating-linear-gradient(90deg, #c9a961 0px, #c9a961 10px, transparent 10px, transparent 20px)'
-        }}></div>
+      <section className="relative py-32 overflow-hidden bg-gradient-to-b from-white to-neutral-50">
+        <div className="absolute inset-0 bg-grid-neutral-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 text-amber-300 px-4 py-2 text-sm font-bold"
-                   style={{ 
-                     background: 'rgba(139, 69, 19, 0.3)',
-                     border: '2px solid #d4af37',
-                     boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4)'
-                   }}>
+              <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-full text-sm font-medium border border-amber-200">
                 <Sparkles className="h-4 w-4" />
                 <span>Trusted by 500+ Tournament Directors</span>
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-bold leading-tight" style={{ fontFamily: 'serif', textShadow: '3px 3px 6px rgba(0,0,0,0.8)' }}>
-                <span className="text-amber-200">The Complete</span>
+              <h1 className="text-6xl md:text-7xl font-bold leading-tight tracking-tight">
+                <span className="text-neutral-900">The Complete</span>
                 <br />
-                <span className="text-yellow-400">Tournament Platform</span>
+                <span className="bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent" style={{ fontFamily: 'serif' }}>
+                  Tournament Platform
+                </span>
               </h1>
               
-              <p className="text-xl text-amber-300/90 leading-relaxed max-w-lg" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.7)' }}>
+              <p className="text-xl text-neutral-600 leading-relaxed max-w-xl">
                 Organize world-class chess tournaments with automated Swiss pairings, 
                 real-time standings, and everything you need to run successful tournaments.
               </p>
@@ -104,13 +77,7 @@ const LandingPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="group text-white px-8 py-4 text-lg font-bold transition-all inline-flex items-center justify-center transform hover:scale-105"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #8b4513, #a0522d)',
-                    border: '3px double #d4af37',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.6)',
-                    textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
-                  }}
+                  className="group bg-neutral-900 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-neutral-800 transition-all inline-flex items-center justify-center shadow-lg hover:shadow-xl"
                 >
                   <LogIn className="mr-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
                   Start Running Tournaments
@@ -118,49 +85,37 @@ const LandingPage: React.FC = () => {
                 </button>
                 <Link
                   to="/public/tournaments"
-                  className="text-amber-200 px-8 py-4 text-lg font-bold transition-all inline-flex items-center justify-center"
-                  style={{ 
-                    background: 'rgba(139, 69, 19, 0.2)',
-                    border: '2px solid #d4af37',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
-                  }}
+                  className="bg-white border-2 border-neutral-300 text-neutral-900 px-8 py-4 rounded-lg text-lg font-semibold hover:border-neutral-400 transition-all inline-flex items-center justify-center shadow-sm hover:shadow-md"
                 >
                   View Live Demo
                   <ArrowRight className="ml-3 h-6 w-6" />
                 </Link>
               </div>
               
-              <div className="flex flex-wrap items-center gap-8 text-amber-300">
+              <div className="flex flex-wrap items-center gap-8 text-neutral-700">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-amber-700 flex items-center justify-center" style={{ border: '2px solid #d4af37' }}>
-                    <Check className="h-5 w-5 text-white" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
+                    <Check className="h-5 w-5 text-green-700" />
                   </div>
-                  <span className="font-bold">Free Forever</span>
+                  <span className="font-semibold">Free Forever</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-amber-700 flex items-center justify-center" style={{ border: '2px solid #d4af37' }}>
-                    <Check className="h-5 w-5 text-white" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
+                    <Check className="h-5 w-5 text-green-700" />
                   </div>
-                  <span className="font-bold">No Credit Card</span>
+                  <span className="font-semibold">No Credit Card</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-amber-700 flex items-center justify-center" style={{ border: '2px solid #d4af37' }}>
-                    <Check className="h-5 w-5 text-white" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
+                    <Check className="h-5 w-5 text-green-700" />
                   </div>
-                  <span className="font-bold">5-Minute Setup</span>
+                  <span className="font-semibold">5-Minute Setup</span>
                 </div>
               </div>
             </div>
             
             <div className="hidden lg:block relative">
-              <div className="relative transform hover:scale-105 transition-transform duration-300" 
-                   style={{ 
-                     background: 'linear-gradient(135deg, #f4e4bc, #e8d5b7)',
-                     padding: '2rem',
-                     border: '6px double #8b4513',
-                     boxShadow: '0 12px 32px rgba(0,0,0,0.8), inset 0 1px 3px rgba(255,255,255,0.5)',
-                     clipPath: 'polygon(2% 0%, 98% 0%, 100% 2%, 100% 98%, 98% 100%, 2% 100%, 0% 98%, 0% 2%)'
-                   }}>
+              <div className="relative transform hover:scale-[1.02] transition-transform duration-300 bg-white rounded-2xl shadow-2xl p-8 border border-neutral-200">
                 <div className="absolute -top-6 -right-6 text-white px-4 py-2 text-sm font-bold shadow-2xl flex items-center gap-2"
                      style={{ 
                        background: 'linear-gradient(135deg, #2d5016, #1a5c1a)',
