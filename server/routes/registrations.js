@@ -110,12 +110,17 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
     if (tournament.registration_settings) {
       try {
         const regSettings = JSON.parse(tournament.registration_settings);
+        console.log('🔍 Parsed registration settings:', JSON.stringify(regSettings, null, 2));
         // Support both camelCase (new) and snake_case (old) for backward compatibility
         custom_fields = regSettings.customFields || regSettings.custom_fields || [];
+        console.log('📋 Custom fields extracted:', custom_fields.length, custom_fields);
         registration_form_settings = regSettings.form_settings || {};
       } catch (parseError) {
         console.error('Error parsing registration settings:', parseError);
+        console.log('Raw registration_settings value:', tournament.registration_settings);
       }
+    } else {
+      console.log('⚠️ No registration_settings found in database');
     }
     
     res.json({ 
