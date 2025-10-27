@@ -37,10 +37,10 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://www.paypal.com", "https://js.stripe.com"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000", "ws://localhost:*", "http:", "https:", "ws:", "wss:"],
-      frameSrc: ["'self'", "https:"],
+      frameSrc: ["'self'", "https://www.paypal.com", "https:", "https://js.stripe.com"],
       frameAncestors: ["*"], // Allow embedding in iframes from any origin
       fontSrc: ["'self'", "data:", "https:"],
     },

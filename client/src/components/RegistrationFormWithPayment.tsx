@@ -145,7 +145,10 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
 
           // Load PayPal SDK if credentials exist
           if (data.payment_settings?.paypal_client_id) {
+            console.log('Loading PayPal SDK with Client ID:', data.payment_settings.paypal_client_id.substring(0, 20) + '...');
             loadPayPalSDK(data.payment_settings.paypal_client_id);
+          } else {
+            console.log('No PayPal Client ID found in payment settings');
           }
 
           // Load Stripe SDK if credentials exist
@@ -693,6 +696,12 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
                       {/* PayPal Button */}
                       {tournamentInfo?.payment_settings?.paypal_client_id && (
                         <div id="paypal-button-container"></div>
+                      )}
+                      
+                      {!tournamentInfo?.payment_settings?.paypal_client_id && !tournamentInfo?.payment_settings?.stripe_publishable_key && (
+                        <div className="text-sm text-red-600 italic">
+                          No payment credentials configured for this tournament.
+                        </div>
                       )}
                       
                       {/* Stripe Payment Elements */}
