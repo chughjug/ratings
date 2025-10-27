@@ -42,7 +42,7 @@ interface TournamentInfo {
   end_date?: string;
   entry_fee?: number;
   payment_enabled?: boolean;
-  sections: Array<{
+  sections?: Array<{
     name: string;
     min_rating?: number;
     max_rating?: number;
