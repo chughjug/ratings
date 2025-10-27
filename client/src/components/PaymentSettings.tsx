@@ -79,9 +79,11 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
       setError(null);
 
       // Create OAuth URL for Stripe Connect
-      const response = await fetch(`/api/payments/connect/stripe?organizationId=${organizationId}&mode=${mode}`, {
+      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/payments/connect/stripe?organizationId=${organizationId}&mode=${mode}`, {
         method: 'GET',
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        }
       });
 
       if (response.ok) {
@@ -109,9 +111,11 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
       setError(null);
 
       // Create OAuth URL for PayPal
-      const response = await fetch(`/api/payments/connect/paypal?organizationId=${organizationId}&mode=${mode}`, {
+      const response = await fetch(`https://chess-tournament-director.herokuapp.com/api/payments/connect/paypal?organizationId=${organizationId}&mode=${mode}`, {
         method: 'GET',
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        }
       });
 
       if (response.ok) {
