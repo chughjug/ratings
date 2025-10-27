@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import RegistrationForm from '../components/RegistrationForm';
+import RegistrationFormWithPayment from '../components/RegistrationFormWithPayment';
 
 const Registration: React.FC = () => {
   const { tournamentId } = useParams<{ tournamentId: string }>();
@@ -15,7 +15,7 @@ const Registration: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <RegistrationForm tournamentId={tournamentId} />
+      <RegistrationFormWithPayment tournamentId={tournamentId} />
     </div>
   );
 };

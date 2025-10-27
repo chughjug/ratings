@@ -1166,11 +1166,17 @@ router.post('/generate/section', async (req, res) => {
                 THEN 0.5
                 WHEN (pair.white_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%')) OR
                      (pair.black_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%'))
-                THEN 1
+                THEN CASE 
+                  WHEN pair.bye_type = 'bye' THEN 0.5
+                  WHEN pair.bye_type = 'half_point_bye' THEN 0.5
+                  WHEN pair.bye_type = 'unpaired' THEN 1.0
+                  ELSE 1.0
+                END
                 ELSE 0
               END as points,
               pair.color,
-              pair.result
+              pair.result,
+              pair.bye_type
              FROM pairings pair
              WHERE (pair.white_player_id = ? OR pair.black_player_id = ?) 
                AND pair.tournament_id = ? 
@@ -1957,6 +1963,14 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
                          (pair.black_player_id = p.id AND pair.result = '1/2-1/2') OR
                          (pair.black_player_id = p.id AND pair.result = '1/2-1/2F')
                     THEN 0.5
+                    WHEN (pair.white_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%')) OR
+                         (pair.black_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%'))
+                    THEN CASE 
+                      WHEN pair.bye_type = 'bye' THEN 0.5
+                      WHEN pair.bye_type = 'half_point_bye' THEN 0.5
+                      WHEN pair.bye_type = 'unpaired' THEN 1.0
+                      ELSE 1.0
+                    END
                     ELSE 0
                   END
                 ), 0) as total_points,
@@ -3181,11 +3195,17 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
                       THEN 0.5
                       WHEN (pair.white_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%')) OR
                            (pair.black_player_id = ? AND (pair.result = 'bye' OR pair.result LIKE 'bye_%'))
-                      THEN 1
+                      THEN CASE 
+                        WHEN pair.bye_type = 'bye' THEN 0.5
+                        WHEN pair.bye_type = 'half_point_bye' THEN 0.5
+                        WHEN pair.bye_type = 'unpaired' THEN 1.0
+                        ELSE 1.0
+                      END
                       ELSE 0
                     END as points,
                     pair.color,
-                    pair.result
+                    pair.result,
+                    pair.bye_type
                    FROM pairings pair
                    WHERE (pair.white_player_id = ? OR pair.black_player_id = ?) 
                      AND pair.tournament_id = ? 
