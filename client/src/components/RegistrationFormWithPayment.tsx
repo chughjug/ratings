@@ -14,6 +14,14 @@ import {
 } from 'lucide-react';
 import { playerApi, registrationApi } from '../services/api';
 
+// Extend Window interface for payment SDKs
+declare global {
+  interface Window {
+    paypal?: any;
+    Stripe?: any;
+  }
+}
+
 interface RegistrationFormWithPaymentProps {
   tournamentId: string;
 }
@@ -68,11 +76,13 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
   const [error, setError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   
-  // Payment states - always show payment form by default
-  const [showPayment, setShowPayment] = useState(true);
+  // Payment states - shopping cart style
+  const [showCheckout, setShowCheckout] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal' | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [stripe, setStripe] = useState<any>(null);
+  const [paypalButtons, setPaypalButtons] = useState<any>(null);
 
   // Player search states
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,8 +130,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             allow_registration: data.allow_registration
           });
           
-          // Always show payment form
-          setShowPayment(true);
+          // Initialize payment SDKs if needed
 
           // Load PayPal SDK if credentials exist
           if (data.payment_settings?.paypal_client_id) {
@@ -145,6 +154,16 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
 
     loadTournamentInfo();
   }, [tournamentId]);
+
+  // Re-initialize payment buttons when checkout is shown
+  useEffect(() => {
+    if (showCheckout && tournamentInfo && tournamentInfo.payment_settings?.paypal_client_id) {
+      // Small delay to ensure container exists
+      setTimeout(() => {
+        initializePayPalButton(tournamentInfo!.payment_settings!.paypal_client_id);
+      }, 100);
+    }
+  }, [showCheckout, tournamentInfo]);
 
   const loadPayPalSDK = (clientId: string) => {
     // Remove old script if exists
@@ -197,8 +216,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
   };
 
   const initializePayPalButton = async (clientId: string) => {
-    // @ts-ignore - PayPal SDK types
-    if (window.paypal && (window as any).paypal.Buttons) {
+    if (window.paypal && window.paypal.Buttons) {
       // Remove any existing PayPal buttons
       const container = document.getElementById('paypal-button-container');
       if (container) {
@@ -206,8 +224,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       }
 
       // Initialize PayPal button
-      // @ts-ignore
-      (window as any).paypal.Buttons({
+      window.paypal.Buttons({
         createOrder: async (data: any, actions: any) => {
           try {
             const response = await fetch('/api/payments/paypal/create-order', {
@@ -241,6 +258,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             setPaymentMethod('paypal');
             setPaymentIntentId(details.id);
             setPaymentError(null);
+            setError(null); // Clear any general errors too
             
             console.log('Payment captured:', details);
           } catch (error: any) {
@@ -257,10 +275,9 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
   };
 
   const initializeStripeElements = async (publishableKey: string) => {
-    // @ts-ignore - Stripe types
     if (window.Stripe) {
-      // @ts-ignore
       const stripe = window.Stripe(publishableKey);
+      setStripe(stripe);
 
       // Create payment intent
       try {
@@ -311,6 +328,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
               } else {
                 setPaymentIntentId(result.data.paymentIntentId);
                 setPaymentMethod('stripe');
+                setPaymentError(null);
+                setError(null); // Clear any general errors too
                 setProcessingPayment(false);
               }
             };
@@ -450,12 +469,27 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
     }
   };
 
-  // Handle form submission
+  // Handle form submission - show checkout
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.player_name || !formData.email) {
       setError('Player name and email are required');
+      return;
+    }
+
+    // Show checkout interface instead of submitting immediately
+    setShowCheckout(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Complete checkout (with or without payment)
+  const handleCheckout = async () => {
+    const entryFee = tournamentInfo?.entry_fee || 0;
+    
+    // If there's an entry fee, require payment
+    if (entryFee > 0 && !paymentIntentId) {
+      setError('Please complete payment to proceed');
       return;
     }
 
@@ -476,8 +510,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       };
 
       // Add payment info if applicable
-      if (showPayment && tournamentInfo?.entry_fee) {
-        registrationData.payment_amount = tournamentInfo.entry_fee;
+      if (entryFee > 0) {
+        registrationData.payment_amount = entryFee;
         registrationData.payment_method = paymentMethod;
         registrationData.payment_intent_id = paymentIntentId;
       }
@@ -518,7 +552,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             <h2 className="text-xl font-semibold text-black mb-2">Registration submitted</h2>
             <p className="text-gray-600 mb-6">
               Thank you for registering for {tournamentInfo?.name}. 
-              {showPayment && paymentIntentId 
+              {paymentIntentId 
                 ? ' Your payment has been processed.' 
                 : 'Your registration has been submitted and is pending approval by the Tournament Director.'
               }
@@ -591,69 +625,112 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Payment Section - ALWAYS SHOW */}
-        {showPayment && !paymentIntentId && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-6">
+        {/* Shopping Cart Checkout Summary */}
+        {showCheckout && (
+          <div className="bg-white border-2 border-black rounded-lg p-6 sticky top-4 z-10">
             <div className="flex items-center mb-4">
-              <DollarSign className="h-6 w-6 text-yellow-600 mr-2" />
-              <h3 className="text-lg font-semibold text-yellow-900">
-                {tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 ? 'Entry Fee Required' : 'Payment Options'}
-              </h3>
+              <Trophy className="h-6 w-6 text-black mr-2" />
+              <h3 className="text-lg font-bold text-black">Checkout</h3>
             </div>
-            {tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 ? (
-              <p className="text-sm text-yellow-800 mb-4">
-                This tournament requires an entry fee of ${tournamentInfo.entry_fee.toFixed(2)}.
-                Please complete your payment to finish registration.
-              </p>
-            ) : (
-              <p className="text-sm text-yellow-800 mb-4">
-                Select your payment method below.
-              </p>
-            )}
-            
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentMethod('stripe');
-                  handleStripePayment();
-                }}
-                disabled={processingPayment}
-                className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                {processingPayment ? (
-                  <Loader className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Pay with Stripe
-                  </>
-                )}
-              </button>
-            </div>
-            
-            {/* PayPal Button Container */}
-            {tournamentInfo?.payment_settings?.paypal_client_id && (
-              <div id="paypal-button-container" className="mt-4"></div>
-            )}
 
-            {/* Stripe Payment Elements */}
-            {tournamentInfo?.payment_settings?.stripe_publishable_key && (
-              <div className="mt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Pay with Card</h4>
-                <div id="stripe-payment-element" className="border border-gray-300 rounded-md p-4"></div>
+            {/* Payment Error Display */}
+            {(error || paymentError) && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+                <p className="text-sm font-medium">{error || paymentError}</p>
               </div>
             )}
-          </div>
-        )}
+            
+            {/* Order Summary */}
+            <div className="border-b border-gray-200 pb-4 mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">Tournament Entry</span>
+                <span className="text-sm font-semibold text-black">
+                  {tournamentInfo?.entry_fee && tournamentInfo.entry_fee > 0 
+                    ? `$${tournamentInfo.entry_fee.toFixed(2)}` 
+                    : 'Free'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-gray-200">
+                <span>Total</span>
+                <span className="text-2xl">
+                  {tournamentInfo?.entry_fee && tournamentInfo.entry_fee > 0 
+                    ? `$${tournamentInfo.entry_fee.toFixed(2)}` 
+                    : '$0.00'}
+                </span>
+              </div>
+            </div>
 
-        {/* Payment Confirmed Notice */}
-        {paymentIntentId && (
-          <div className="bg-green-50 border border-green-200 rounded p-4 flex items-center">
-            <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
-            <p className="text-sm text-green-800">
-              Payment confirmed! Please complete your registration details below.
-            </p>
+            {/* Payment Options or Free Checkout */}
+            {tournamentInfo?.entry_fee && tournamentInfo.entry_fee > 0 ? (
+              <div>
+                {/* Payment Confirmed Notice */}
+                {paymentIntentId ? (
+                  <div className="bg-green-50 border border-green-200 rounded p-4 flex items-center mb-4">
+                    <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
+                    <p className="text-sm text-green-800 flex-1">
+                      Payment confirmed! ({paymentMethod?.toUpperCase()})
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600 mb-4">Select payment method:</p>
+                    <div className="space-y-3">
+                      {/* PayPal Button */}
+                      {tournamentInfo?.payment_settings?.paypal_client_id && (
+                        <div id="paypal-button-container"></div>
+                      )}
+                      
+                      {/* Stripe Payment Elements */}
+                      {tournamentInfo?.payment_settings?.stripe_publishable_key && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentMethod('stripe');
+                              handleStripePayment();
+                            }}
+                            disabled={processingPayment}
+                            className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
+                          >
+                            {processingPayment ? (
+                              <Loader className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <>
+                                <CreditCard className="h-5 w-5 mr-2" />
+                                Pay with Stripe
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 text-center py-2">
+                No payment required for this tournament
+              </p>
+            )}
+
+            {/* Checkout Button */}
+            <button
+              type="button"
+              onClick={handleCheckout}
+              disabled={submitting || Boolean(tournamentInfo?.entry_fee && tournamentInfo.entry_fee > 0 && !paymentIntentId)}
+              className="w-full mt-4 bg-black text-white py-3 px-6 rounded font-bold hover:bg-gray-800 focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
+            >
+              {submitting ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-white mr-2"></div>
+                  Completing Registration...
+                </div>
+              ) : tournamentInfo?.entry_fee && tournamentInfo.entry_fee > 0 ? (
+                paymentIntentId ? 'Complete Registration' : 'Pay to Complete'
+              ) : (
+                'Complete Registration'
+              )}
+            </button>
           </div>
         )}
 
@@ -966,20 +1043,23 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           />
         </div>
 
-        {/* Submit Button */}
+        {/* Continue to Checkout Button */}
         <div className="pt-4">
           <button
             type="submit"
-            disabled={submitting || !formData.player_name || !formData.email || (showPayment && Boolean(tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 && !paymentIntentId))}
-            className="w-full bg-black text-white py-3 px-6 rounded font-medium hover:bg-gray-800 focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={submitting || !formData.player_name || !formData.email}
+            className="w-full bg-black text-white py-3 px-6 rounded font-bold hover:bg-gray-800 focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
           >
-            {submitting ? (
+            {showCheckout ? (
               <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-white mr-2"></div>
-                Submitting Registration...
+                <CheckCircle className="h-5 w-5 mr-2" />
+                View Cart Above
               </div>
             ) : (
-              'Submit Registration'
+              <>
+                <Trophy className="h-5 w-5 inline mr-2" />
+                Review & Checkout
+              </>
             )}
           </button>
         </div>
