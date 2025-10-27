@@ -66,7 +66,7 @@ router.get('/:tournamentId/info', (req, res) => {
     
     const baseUrl = req.protocol + '://' + req.get('host');
     
-    // Parse tournament settings to get entry fee
+    // Parse tournament settings to get entry fee and registration settings
     let settings = {};
     if (tournament.settings) {
       try {
@@ -76,22 +76,46 @@ router.get('/:tournamentId/info', (req, res) => {
       }
     }
     
+    // Parse registration settings for custom fields
+    let registrationSettings = {};
+    if (tournament.registration_settings) {
+      try {
+        registrationSettings = JSON.parse(tournament.registration_settings);
+      } catch (e) {
+        console.error('Error parsing registration settings:', e);
+      }
+    }
+    
     res.json({
       success: true,
       data: {
-        tournament: {
-          id: tournament.id,
-          name: tournament.name,
-          format: tournament.format,
-          rounds: tournament.rounds,
-          start_date: tournament.start_date,
-          end_date: tournament.end_date,
-          city: tournament.city,
-          state: tournament.state,
-          location: tournament.location,
-          allow_registration: tournament.allow_registration,
-          entry_fee: settings.entry_fee || 0
-        },
+        id: tournament.id,
+        name: tournament.name,
+        format: tournament.format,
+        rounds: tournament.rounds,
+        start_date: tournament.start_date,
+        end_date: tournament.end_date,
+        city: tournament.city,
+        state: tournament.state,
+        location: tournament.location,
+        allow_registration: tournament.allow_registration,
+        entry_fee: settings.entry_fee || 0,
+        registration_settings: registrationSettings,
+        sections: tournament.sections ? JSON.parse(tournament.sections) : []
+      },
+      tournament: {
+        id: tournament.id,
+        name: tournament.name,
+        format: tournament.format,
+        rounds: tournament.rounds,
+        start_date: tournament.start_date,
+        end_date: tournament.end_date,
+        city: tournament.city,
+        state: tournament.state,
+        location: tournament.location,
+        allow_registration: tournament.allow_registration,
+        entry_fee: settings.entry_fee || 0
+      },
         registration_url: `${baseUrl}/register/${tournamentId}`,
         api_endpoints: {
           register_player: `${baseUrl}/api/players/register/${tournamentId}`,
