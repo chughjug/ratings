@@ -263,6 +263,19 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
         <PaymentSettings
           organizationId={id!}
           organization={organization}
+          onSave={async (credentials: any) => {
+            console.log('💳 Saving organization payment credentials:', credentials);
+            try {
+              const response = await organizationApi.updateOrganization(id!, credentials);
+              if (response.success) {
+                setOrganization(response.data.organization);
+                console.log('✅ Organization payment credentials saved successfully');
+              }
+            } catch (error: any) {
+              console.error('Failed to save organization payment credentials:', error);
+              alert(`Failed to save payment credentials: ${error.message || error}`);
+            }
+          }}
         />
 
         {/* Quick Actions */}
