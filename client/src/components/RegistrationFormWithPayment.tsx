@@ -93,21 +93,24 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         
         if (response.data.success) {
           const data: any = response.data.data;
-          // The API returns data.tournament, so use that
+          
+          // Handle both flat structure (data.id) and nested structure (data.tournament.id)
           const tournament = data.tournament || data;
+          const entryFee = tournament.entry_fee || data.entry_fee || 0;
+          
           setTournamentInfo({
-            id: tournament.id,
-            name: tournament.name,
-            format: tournament.format,
-            rounds: tournament.rounds,
-            start_date: tournament.start_date,
-            end_date: tournament.end_date,
-            entry_fee: tournament.entry_fee || 0,
-            payment_enabled: tournament.entry_fee > 0
+            id: tournament.id || data.id,
+            name: tournament.name || data.name,
+            format: tournament.format || data.format,
+            rounds: tournament.rounds || data.rounds,
+            start_date: tournament.start_date || data.start_date,
+            end_date: tournament.end_date || data.end_date,
+            entry_fee: entryFee,
+            payment_enabled: entryFee > 0
           });
           
           // Check if payment is required
-          if (tournament.entry_fee && tournament.entry_fee > 0) {
+          if (entryFee > 0) {
             setShowPayment(true);
           }
         } else {
