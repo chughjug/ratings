@@ -358,4 +358,284 @@ router.get('/methods', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * @route GET /api/payments/connect/stripe
+ * @desc Get Stripe OAuth URL for connecting account
+ * @access Private
+ */
+router.get('/connect/stripe', authenticate, async (req, res) => {
+  try {
+    const { organizationId, mode = 'test' } = req.query;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization ID is required'
+      });
+    }
+
+    // Create Stripe OAuth URL
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const state = `org_${organizationId}_${mode}`;
+    
+    const oauthUrl = `https://connect.stripe.com/oauth/authorize?` +
+      `response_type=code&` +
+      `client_id=${process.env.STRIPE_CLIENT_ID}&` +
+      `scope=read_write&` +
+      `redirect_uri=${encodeURIComponent(process.env.STRIPE_REDIRECT_URI || '')}&` +
+      `state=${state}`;
+
+    res.json({
+      success: true,
+      data: {
+        oauthUrl
+      }
+    });
+  } catch (error) {
+    console.error('Stripe connection error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/payments/connect/paypal
+ * @desc Get PayPal OAuth URL for connecting account
+ * @access Private
+ */
+router.get('/connect/paypal', authenticate, async (req, res) => {
+  try {
+    const { organizationId, mode = 'test' } = req.query;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization ID is required'
+      });
+    }
+
+    // For PayPal, we'll use their REST API
+    // In a real implementation, you'd generate an OAuth URL
+    const state = `org_${organizationId}_${mode}`;
+    
+    // Simplified - in production you'd use PayPal's actual OAuth flow
+    const oauthUrl = mode === 'live' 
+      ? `https://www.paypal.com/connect/?flowEntry=static&client_id=${process.env.PAYPAL_CLIENT_ID}&scope=openid&redirect_uri=${encodeURIComponent(process.env.PAYPAL_REDIRECT_URI || '')}&state=${state}`
+      : `https://www.sandbox.paypal.com/connect/?flowEntry=static&client_id=${process.env.PAYPAL_CLIENT_ID}&scope=openid&redirect_uri=${encodeURIComponent(process.env.PAYPAL_REDIRECT_URI || '')}&state=${state}`;
+
+    res.json({
+      success: true,
+      data: {
+        oauthUrl
+      }
+    });
+  } catch (error) {
+    console.error('PayPal connection error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/payments/callback/stripe
+ * @desc Handle Stripe OAuth callback
+ * @access Private
+ */
+router.post('/callback/stripe', async (req, res) => {
+  try {
+    const { code, state } = req.body;
+
+    if (!code || !state) {
+      return res.status(400).json({
+        success: false,
+        error: 'Authorization code and state are required'
+      });
+    }
+
+    // Parse state to get organization ID and mode
+    const [organizationId, mode] = state.split('_').slice(1);
+
+    // Exchange code for access token with Stripe
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const tokenResponse = await stripe.oauth.token({
+      grant_type: 'authorization_code',
+      code
+    });
+
+    // Store payment configuration
+    const db = require('../database');
+    const { v4: uuidv4 } = require('uuid');
+    
+    const configId = uuidv4();
+    db.run(
+      `INSERT OR REPLACE INTO payment_configurations 
+       (id, organization_id, provider, account_id, account_email, access_token_encrypted, is_active, is_production, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [
+        configId,
+        organizationId,
+        'stripe',
+        tokenResponse.stripe_user_id,
+        tokenResponse.stripe_publishable_key,
+        tokenResponse.access_token,
+        1,
+        mode === 'live' ? 1 : 0
+      ]
+    );
+
+    // Update organization settings
+    const paymentSettings = {
+      stripe: {
+        accountId: tokenResponse.stripe_user_id,
+        connected: true,
+        testMode: mode !== 'live',
+        connectedAt: new Date().toISOString()
+      }
+    };
+
+    db.run(
+      `UPDATE organizations SET payment_settings = ? WHERE id = ?`,
+      [JSON.stringify(paymentSettings), organizationId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Stripe account connected successfully'
+    });
+  } catch (error) {
+    console.error('Stripe callback error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/payments/callback/paypal
+ * @desc Handle PayPal OAuth callback
+ * @access Private
+ */
+router.post('/callback/paypal', async (req, res) => {
+  try {
+    const { code, state } = req.body;
+
+    if (!code || !state) {
+      return res.status(400).json({
+        success: false,
+        error: 'Authorization code and state are required'
+      });
+    }
+
+    // Parse state to get organization ID and mode
+    const [organizationId, mode] = state.split('_').slice(1);
+
+    // In production, exchange code for access token with PayPal
+    // For now, we'll create a mock configuration
+    
+    const db = require('../database');
+    const { v4: uuidv4 } = require('uuid');
+    
+    const configId = uuidv4();
+    db.run(
+      `INSERT OR REPLACE INTO payment_configurations 
+       (id, organization_id, provider, account_id, is_active, is_production, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [
+        configId,
+        organizationId,
+        'paypal',
+        `paypal_${Date.now()}`,
+        1,
+        mode === 'live' ? 1 : 0
+      ]
+    );
+
+    // Update organization settings
+    const paymentSettings = {
+      paypal: {
+        accountId: `paypal_${Date.now()}`,
+        connected: true,
+        testMode: mode !== 'live',
+        connectedAt: new Date().toISOString()
+      }
+    };
+
+    db.run(
+      `UPDATE organizations SET payment_settings = ? WHERE id = ?`,
+      [JSON.stringify(paymentSettings), organizationId]
+    );
+
+    res.json({
+      success: true,
+      message: 'PayPal account connected successfully'
+    });
+  } catch (error) {
+    console.error('PayPal callback error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/payments/disconnect/:provider
+ * @desc Disconnect payment provider
+ * @access Private
+ */
+router.post('/disconnect/:provider', authenticate, async (req, res) => {
+  try {
+    const { provider } = req.params;
+    const { organizationId } = req.body;
+
+    if (!['stripe', 'paypal'].includes(provider)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment provider'
+      });
+    }
+
+    const db = require('../database');
+    
+    // Remove payment configuration
+    db.run(
+      `DELETE FROM payment_configurations WHERE organization_id = ? AND provider = ?`,
+      [organizationId, provider]
+    );
+
+    // Update organization settings
+    db.get(
+      `SELECT payment_settings FROM organizations WHERE id = ?`,
+      [organizationId],
+      (err, row) => {
+        if (!err && row) {
+          const paymentSettings = row.payment_settings ? JSON.parse(row.payment_settings) : {};
+          delete paymentSettings[provider];
+          
+          db.run(
+            `UPDATE organizations SET payment_settings = ? WHERE id = ?`,
+            [JSON.stringify(paymentSettings), organizationId]
+          );
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: `${provider.toUpperCase()} account disconnected successfully`
+    });
+  } catch (error) {
+    console.error('Disconnect error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

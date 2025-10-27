@@ -21,6 +21,7 @@ import { organizationApi } from '../services/organizationApi';
 import OrganizationCustomization from '../components/OrganizationCustomization';
 import AdvancedCustomization from '../components/AdvancedCustomization';
 import WidgetManager from '../components/WidgetManager';
+import PaymentSettings from '../components/PaymentSettings';
 
 interface OrganizationSettingsProps {}
 
@@ -256,6 +257,12 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
           onSave={handleSaveCustomization}
           onPreview={handlePreview}
           isEditing={true}
+        />
+
+        {/* Payment Settings */}
+        <PaymentSettings
+          organizationId={id!}
+          organization={organization}
         />
 
         {/* Quick Actions */}

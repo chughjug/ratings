@@ -183,7 +183,11 @@ db.serialize(() => {
       section TEXT,
       bye_requests TEXT,
       notes TEXT,
-      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'payment_pending', 'payment_completed')),
+      payment_amount REAL,
+      payment_method TEXT,
+      payment_status TEXT,
+      payment_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       approved_at DATETIME,
       rejected_at DATETIME,
@@ -192,6 +196,23 @@ db.serialize(() => {
       FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
     )
   `);
+
+  // Add payment fields to registrations if they don't exist
+  db.run(`
+    ALTER TABLE registrations ADD COLUMN payment_amount REAL
+  `, (err) => {});
+  
+  db.run(`
+    ALTER TABLE registrations ADD COLUMN payment_method TEXT
+  `, (err) => {});
+  
+  db.run(`
+    ALTER TABLE registrations ADD COLUMN payment_status TEXT
+  `, (err) => {});
+  
+  db.run(`
+    ALTER TABLE registrations ADD COLUMN payment_id TEXT
+  `, (err) => {});
 
   // Add US Chess specific columns to tournaments table (for existing databases)
   const usChessColumns = [
@@ -585,6 +606,55 @@ db.serialize(() => {
   `, (err) => {
     // Ignore error if column already exists
   });
+
+  // Add payment settings to organizations table
+  db.run(`
+    ALTER TABLE organizations ADD COLUMN payment_settings TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Payments table for tracking transactions
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT,
+      registration_id TEXT,
+      player_id TEXT,
+      organization_id TEXT,
+      amount REAL NOT NULL,
+      currency TEXT DEFAULT 'usd',
+      payment_method TEXT NOT NULL,
+      payment_intent_id TEXT,
+      order_id TEXT,
+      status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'refunded')),
+      metadata TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (organization_id) REFERENCES organizations (id)
+    )
+  `);
+
+  // Payment configurations table for storing TD credentials
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payment_configurations (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      provider TEXT NOT NULL CHECK (provider IN ('stripe', 'paypal')),
+      account_id TEXT NOT NULL,
+      account_email TEXT,
+      access_token_encrypted TEXT,
+      refresh_token_encrypted TEXT,
+      is_active BOOLEAN DEFAULT 1,
+      is_production BOOLEAN DEFAULT 0,
+      webhook_secret TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      UNIQUE(organization_id, provider)
+    )
+  `);
 
   // Organization members table
   db.run(`
