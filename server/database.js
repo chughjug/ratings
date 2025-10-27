@@ -66,10 +66,24 @@ db.serialize(() => {
       tournament_information TEXT,
       public_display_config TEXT,
       registration_settings TEXT,
+      entry_fee REAL DEFAULT 0,
+      paypal_client_id TEXT,
+      paypal_secret TEXT,
+      stripe_publishable_key TEXT,
+      stripe_secret_key TEXT,
+      payment_method TEXT DEFAULT 'both',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (organization_id) REFERENCES organizations (id)
     )
   `);
+
+  // Add payment columns (will fail silently if they already exist - that's OK)
+  db.run(`ALTER TABLE tournaments ADD COLUMN entry_fee REAL DEFAULT 0`, () => {});
+  db.run(`ALTER TABLE tournaments ADD COLUMN paypal_client_id TEXT`, () => {});
+  db.run(`ALTER TABLE tournaments ADD COLUMN paypal_secret TEXT`, () => {});
+  db.run(`ALTER TABLE tournaments ADD COLUMN stripe_publishable_key TEXT`, () => {});
+  db.run(`ALTER TABLE tournaments ADD COLUMN stripe_secret_key TEXT`, () => {});
+  db.run(`ALTER TABLE tournaments ADD COLUMN payment_method TEXT DEFAULT 'both'`, () => {});
 
   // Players table
   db.run(`

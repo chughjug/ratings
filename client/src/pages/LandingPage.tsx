@@ -218,8 +218,8 @@ const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
-                <Trophy className="h-6 w-6 text-blue-600" />
+              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-6">
+                <Trophy className="h-6 w-6 text-amber-600" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Automated Swiss Pairings
@@ -272,8 +272,8 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-6">
-                <BarChart3 className="h-6 w-6 text-purple-600" />
+              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-6">
+                <BarChart3 className="h-6 w-6 text-amber-600" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Real-Time Standings & Analytics
@@ -299,8 +299,8 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-6">
-                <Bell className="h-6 w-6 text-orange-600" />
+              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-6">
+                <Bell className="h-6 w-6 text-amber-600" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Automated Email Notifications
@@ -326,8 +326,8 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-6">
-                <Globe className="h-6 w-6 text-indigo-600" />
+              <div className="w-12 h-12 bg-neutral-100 rounded-xl flex items-center justify-center mb-6">
+                <Globe className="h-6 w-6 text-neutral-600" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Public Tournament Pages
@@ -353,8 +353,8 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-6">
-                <Lock className="h-6 w-6 text-red-600" />
+              <div className="w-12 h-12 bg-neutral-100 rounded-xl flex items-center justify-center mb-6">
+                <Lock className="h-6 w-6 text-neutral-600" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Secure & Reliable

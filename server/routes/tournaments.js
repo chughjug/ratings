@@ -324,6 +324,15 @@ router.put('/:id', (req, res) => {
     const logo_url = updateFields.logo_url !== undefined ? updateFields.logo_url : existingTournament.logo_url;
     const tournament_information = updateFields.tournament_information !== undefined ? updateFields.tournament_information : existingTournament.tournament_information;
     const public_display_config = updateFields.public_display_config !== undefined ? updateFields.public_display_config : existingTournament.public_display_config;
+    const registration_settings = updateFields.registration_settings !== undefined ? updateFields.registration_settings : existingTournament.registration_settings;
+    
+    // Extract payment fields
+    const entry_fee = updateFields.entry_fee !== undefined ? updateFields.entry_fee : existingTournament.entry_fee;
+    const paypal_client_id = updateFields.paypal_client_id !== undefined ? updateFields.paypal_client_id : existingTournament.paypal_client_id;
+    const paypal_secret = updateFields.paypal_secret !== undefined ? updateFields.paypal_secret : existingTournament.paypal_secret;
+    const stripe_publishable_key = updateFields.stripe_publishable_key !== undefined ? updateFields.stripe_publishable_key : existingTournament.stripe_publishable_key;
+    const stripe_secret_key = updateFields.stripe_secret_key !== undefined ? updateFields.stripe_secret_key : existingTournament.stripe_secret_key;
+    const payment_method = updateFields.payment_method !== undefined ? updateFields.payment_method : existingTournament.payment_method;
 
     // Debug logging for tournament updates
     console.log('Tournament update request:', {
@@ -384,12 +393,17 @@ router.put('/:id', (req, res) => {
       settings: settingsJson ? (settingsJson.length > 100 ? settingsJson.substring(0, 100) + '...' : settingsJson) : 'empty'
     });
     
+    // Parse registration_settings if it's a string
+    const registrationSettingsJson = typeof registration_settings === 'string' ? registration_settings : JSON.stringify(registration_settings || {});
+    
     // Check all parameters
     const params = [organization_id || null, name, format, roundsNum, time_control, start_date, end_date, status, settingsJson,
      city, state, location, chief_td_name, chief_td_uscf_id, chief_arbiter_name,
      chief_arbiter_fide_id, chief_organizer_name, chief_organizer_fide_id,
      expected_players, website, fideRated, uscfRated, 
-     allowReg, isPublic, public_url || null, logo_url || null, tournament_information || null, public_display_config || null, id];
+     allowReg, isPublic, public_url || null, logo_url || null, tournament_information || null, public_display_config || null,
+     registrationSettingsJson, entry_fee, paypal_client_id || null, paypal_secret || null, 
+     stripe_publishable_key || null, stripe_secret_key || null, payment_method || 'both', id];
     
     console.log('Parameters count:', params.length);
     console.log('Updating tournament information:', tournament_information?.substring(0, 50) || 'null');
@@ -401,7 +415,8 @@ router.put('/:id', (req, res) => {
            city = ?, state = ?, location = ?, chief_td_name = ?, chief_td_uscf_id = ?,
            chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
            chief_organizer_fide_id = ?, expected_players = ?, website = ?,
-           fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?, tournament_information = ?, public_display_config = ?
+           fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?, tournament_information = ?, public_display_config = ?,
+           registration_settings = ?, entry_fee = ?, paypal_client_id = ?, paypal_secret = ?, stripe_publishable_key = ?, stripe_secret_key = ?, payment_method = ?
        WHERE id = ?`,
       params,
     function(err) {

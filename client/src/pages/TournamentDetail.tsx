@@ -3150,32 +3150,29 @@ const TournamentDetail: React.FC = () => {
                     <RegistrationSettings 
                       tournamentId={id}
                       tournament={tournament}
-                      onSave={async (settings: any) => {
+                      onSave={async (settingsData: any) => {
                         // Save registration settings
-                        await handleTournamentUpdate('registration_settings', JSON.stringify(settings.registration_settings));
+                        await handleTournamentUpdate('registration_settings', JSON.stringify(settingsData.registration_settings));
                         
-                        // Always save entry_fee to tournament settings
-                        const currentSettingsStr = tournament?.settings as string;
-                        const currentSettings = currentSettingsStr ? JSON.parse(currentSettingsStr) : {};
-                        
-                        // Save entry_fee and payment settings
-                        const updatedSettings = {
-                          ...currentSettings,
-                          entry_fee: settings.registration_settings.entry_fee || 0
+                        // Save payment fields directly to database columns (not in settings JSON)
+                        const paymentFields = {
+                          entry_fee: settingsData.registration_settings.entry_fee || 0,
+                          payment_method: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.payment_method || 'both') : 'both',
+                          paypal_client_id: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.paypal_client_id || '') : '',
+                          paypal_secret: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.paypal_secret || '') : '',
+                          stripe_publishable_key: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.stripe_publishable_key || '') : '',
+                          stripe_secret_key: settingsData.registration_settings.require_payment ? (settingsData.registration_settings.stripe_secret_key || '') : ''
                         };
                         
-                        // Only add payment_settings if payment is configured
-                        if (settings.registration_settings.require_payment) {
-                          updatedSettings.payment_settings = {
-                            payment_method: settings.registration_settings.payment_method || 'both',
-                            paypal_client_id: settings.registration_settings.paypal_client_id || '',
-                            paypal_secret: settings.registration_settings.paypal_secret || '',
-                            stripe_publishable_key: settings.registration_settings.stripe_publishable_key || '',
-                            stripe_secret_key: settings.registration_settings.stripe_secret_key || ''
-                          };
-                        }
-                        
-                        await handleTournamentUpdate('settings', JSON.stringify(updatedSettings));
+                        // Save each payment field separately
+                        await Promise.all([
+                          handleTournamentUpdate('entry_fee', paymentFields.entry_fee),
+                          handleTournamentUpdate('payment_method', paymentFields.payment_method),
+                          handleTournamentUpdate('paypal_client_id', paymentFields.paypal_client_id),
+                          handleTournamentUpdate('paypal_secret', paymentFields.paypal_secret),
+                          handleTournamentUpdate('stripe_publishable_key', paymentFields.stripe_publishable_key),
+                          handleTournamentUpdate('stripe_secret_key', paymentFields.stripe_secret_key)
+                        ]);
                       }}
                     />
                   </div>

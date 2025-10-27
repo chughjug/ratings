@@ -214,7 +214,7 @@ const UserProfile: React.FC = () => {
                 <h2 className="text-lg font-semibold text-gray-900">Organizations</h2>
                 <button
                   onClick={() => setShowOrgForm(!showOrgForm)}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Create Organization</span>
@@ -232,7 +232,7 @@ const UserProfile: React.FC = () => {
                         type="text"
                         value={orgFormData.name}
                         onChange={(e) => setOrgFormData({ ...orgFormData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder="My Chess Club"
                         required
                       />
@@ -242,7 +242,7 @@ const UserProfile: React.FC = () => {
                       <textarea
                         value={orgFormData.description}
                         onChange={(e) => setOrgFormData({ ...orgFormData, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder="Tell us about your organization..."
                         rows={3}
                       />
@@ -253,7 +253,7 @@ const UserProfile: React.FC = () => {
                         type="url"
                         value={orgFormData.website}
                         onChange={(e) => setOrgFormData({ ...orgFormData, website: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder="https://example.com"
                       />
                     </div>
@@ -263,7 +263,7 @@ const UserProfile: React.FC = () => {
                         type="email"
                         value={orgFormData.contactEmail}
                         onChange={(e) => setOrgFormData({ ...orgFormData, contactEmail: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder="contact@example.com"
                       />
                     </div>
@@ -282,7 +282,7 @@ const UserProfile: React.FC = () => {
                     <button
                       onClick={createOrganization}
                       disabled={orgLoading}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                      className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:bg-gray-400 transition-colors"
                     >
                       {orgLoading ? 'Creating...' : 'Create Organization'}
                     </button>
@@ -296,12 +296,12 @@ const UserProfile: React.FC = () => {
                   {orgState.organizations.map((org) => (
                     <div key={org.id} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start space-x-3">
-                        <Building2 className="h-6 w-6 text-blue-600 mt-1" />
+                        <Building2 className="h-6 w-6 text-amber-600 mt-1" />
                         <div className="flex-1">
                           <h3 className="text-md font-semibold text-gray-900">{org.name}</h3>
                           {org.description && <p className="text-sm text-gray-600 mt-1">{org.description}</p>}
                           <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                            {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{org.website}</a>}
+                            {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:underline">{org.website}</a>}
                             {org.contactEmail && <span>{org.contactEmail}</span>}
                           </div>
                           <div className="mt-2">
@@ -309,7 +309,7 @@ const UserProfile: React.FC = () => {
                               org.role === 'owner'
                                 ? 'bg-purple-100 text-purple-800'
                                 : org.role === 'admin'
-                                ? 'bg-blue-100 text-blue-800'
+                                ? 'bg-amber-100 text-amber-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
                               {org.role ? org.role.charAt(0).toUpperCase() + org.role.slice(1) : 'Member'}
@@ -335,7 +335,7 @@ const UserProfile: React.FC = () => {
                 <h2 className="text-lg font-semibold text-gray-900">API Keys</h2>
                 <button
                   onClick={() => setShowNewKeyForm(true)}
-                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Generate New Key</span>
@@ -353,7 +353,7 @@ const UserProfile: React.FC = () => {
                         type="text"
                         value={newKeyData.name}
                         onChange={(e) => setNewKeyData({ ...newKeyData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder="My API Key"
                       />
                     </div>
@@ -363,7 +363,7 @@ const UserProfile: React.FC = () => {
                         type="number"
                         value={newKeyData.rate_limit}
                         onChange={(e) => setNewKeyData({ ...newKeyData, rate_limit: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         min="1"
                         max="10000"
                       />
@@ -374,7 +374,7 @@ const UserProfile: React.FC = () => {
                         type="text"
                         value={newKeyData.description}
                         onChange={(e) => setNewKeyData({ ...newKeyData, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder="Description of this API key's purpose"
                       />
                     </div>
@@ -383,7 +383,7 @@ const UserProfile: React.FC = () => {
                       <select
                         value={newKeyData.permissions}
                         onChange={(e) => setNewKeyData({ ...newKeyData, permissions: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         <option value="read">Read Only</option>
                         <option value="write">Write Only</option>
@@ -400,7 +400,7 @@ const UserProfile: React.FC = () => {
                     </button>
                     <button
                       onClick={generateApiKey}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700"
                     >
                       Generate Key
                     </button>

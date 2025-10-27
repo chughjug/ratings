@@ -55,7 +55,7 @@ async function assignSectionToPlayer(db, tournamentId, playerRating) {
 router.get('/tournament/:tournamentId/info', (req, res) => {
   const { tournamentId } = req.params;
   
-  db.get('SELECT id, name, format, rounds, start_date, end_date, settings, allow_registration, registration_settings FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
+  db.get('SELECT id, name, format, rounds, start_date, end_date, settings, allow_registration, registration_settings, entry_fee, paypal_client_id, paypal_secret, stripe_publishable_key, stripe_secret_key, payment_method FROM tournaments WHERE id = ?', [tournamentId], (err, tournament) => {
     if (err) {
       console.error('Error fetching tournament info:', err);
       return res.status(500).json({ 
@@ -71,23 +71,28 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
       });
     }
     
-    // Parse settings to extract sections, entry_fee, payment settings
+    // Parse settings to extract sections
     let sections = [];
-    let entry_fee = 0;
-    let payment_enabled = false;
-    let payment_settings = {};
     
     if (tournament.settings) {
       try {
         const settings = JSON.parse(tournament.settings);
         sections = settings.sections || [];
-        entry_fee = settings.entry_fee || 0;
-        payment_enabled = Boolean(entry_fee > 0);
-        payment_settings = settings.payment_settings || {};
       } catch (parseError) {
         console.error('Error parsing tournament settings:', parseError);
       }
     }
+    
+    // Get entry fee and payment credentials from database columns (not from settings JSON)
+    const entry_fee = tournament.entry_fee || 0;
+    const payment_enabled = Boolean(entry_fee > 0);
+    const payment_settings = {
+      payment_method: tournament.payment_method || 'both',
+      paypal_client_id: tournament.paypal_client_id || '',
+      paypal_secret: tournament.paypal_secret || '',
+      stripe_publishable_key: tournament.stripe_publishable_key || '',
+      stripe_secret_key: tournament.stripe_secret_key || ''
+    };
     
     // Parse registration settings for custom fields
     let custom_fields = [];
