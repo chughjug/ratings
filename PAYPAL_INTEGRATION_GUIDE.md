@@ -1,4 +1,4 @@
-# PayPal Integration Guide
+# PayPal & Stripe Integration Guide
 
 ## ✅ What's Been Implemented
 
@@ -7,14 +7,30 @@
 - Embedded PayPal button (not a custom button)
 - Full payment flow: create order → approve → capture
 
-### 2. Tournament-Level PayPal Settings
-PayPal credentials are stored in **tournament settings** (not organization settings) for easy management:
+### 2. Stripe Elements Integration in Registration Form
+- Stripe.js loads automatically when tournament has Stripe credentials
+- Embedded Stripe Payment Element (modern card form)
+- Full payment flow: create intent → collect card → confirm payment
 
+### 3. Tournament-Level Payment Settings
+Payment credentials are stored in **tournament settings** (not organization settings) for easy management:
+
+**PayPal Configuration:**
 ```json
 {
   "payment_settings": {
     "paypal_client_id": "AazRC_i2xdF__MU_m_qFHsypNKktktCbUbBh9drb40409ApWHq2WW7Ico9WtEIoCEdCQsSNn4P0fb26-",
     "paypal_secret": "EBoBlclN77FLkrWawXa951KJIZxQJwfmDwviwGZ6etfdiS7t37NDE68w8xG3PwIpDxhSBlMuVB5adIVR"
+  }
+}
+```
+
+**Stripe Configuration:**
+```json
+{
+  "payment_settings": {
+    "stripe_publishable_key": "pk_test_...",
+    "stripe_secret_key": "sk_test_..."
   }
 }
 ```

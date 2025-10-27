@@ -258,7 +258,7 @@ class EnhancedPairingSystem {
           tournament_id: this.tournamentId,
           result: `bye_${byeType}`,
           is_bye: true,
-          bye_type: byeType
+          bye_type: 'bye' // Intentional byes are always 'bye' for 0.5 points
         };
       });
       
