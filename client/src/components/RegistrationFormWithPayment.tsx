@@ -195,36 +195,45 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
   }, [showCheckout, tournamentInfo]);
 
   const loadPayPalSDK = (clientId: string) => {
-    // Remove old script if exists
-    const oldScript = document.getElementById('paypal-sdk');
-    if (oldScript) {
-      oldScript.remove();
+    // Check if script already exists
+    let existingScript = document.getElementById('paypal-sdk');
+    
+    // If script exists, just initialize the button
+    if (existingScript && window.paypal) {
+      console.log('PayPal SDK already loaded, initializing button...');
+      initializePayPalButton(clientId);
+      return;
     }
 
-    // Load PayPal SDK
+    // Remove old script if exists
+    if (existingScript) {
+      existingScript.remove();
+    }
+
+    // Load PayPal SDK (same approach as working HTML demo)
     const script = document.createElement('script');
     script.id = 'paypal-sdk';
     script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`;
-    script.async = true;
     
     script.onload = () => {
-      console.log('PayPal SDK loaded successfully');
+      console.log('✅ PayPal SDK loaded successfully');
       initializePayPalButton(clientId);
     };
 
     script.onerror = (error) => {
-      console.error('Failed to load PayPal SDK:', error);
-      console.error('⚠️ PayPal SDK Error - Possible causes:');
+      console.error('❌ Failed to load PayPal SDK:', error);
+      console.error('⚠️  PayPal SDK Error - Possible causes:');
       console.error('1. Invalid PayPal Client ID');
       console.error('2. Network connectivity issues');
       console.error('3. PayPal service temporarily unavailable');
-      console.error('Client ID being used:', clientId.substring(0, 20) + '...');
+      console.error('Client ID being used:', clientId.substring(0, 30) + '...');
       
       // Show user-friendly error message
       setPaymentError('Unable to load PayPal payment system. Please contact the tournament organizer or try again later.');
     };
 
-    document.body.appendChild(script);
+    // Add to head (like the working HTML demo)
+    document.head.appendChild(script);
   };
 
   const loadStripeSDK = (publishableKey: string) => {
