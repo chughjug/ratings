@@ -55,13 +55,13 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
       if (paymentSettings) {
         setConfig({
           stripe: {
-            configured: !!paymentSettings.stripe?.accountId,
+            configured: !!(paymentSettings.stripe?.accountId || paymentSettings.stripe?.publishableKey),
             accountId: paymentSettings.stripe?.accountId,
             connected: !!paymentSettings.stripe?.connected,
             testMode: paymentSettings.stripe?.testMode || false
           },
           paypal: {
-            configured: !!paymentSettings.paypal?.accountId,
+            configured: !!(paymentSettings.paypal?.accountId || paymentSettings.paypal?.clientId),
             accountId: paymentSettings.paypal?.accountId,
             connected: !!paymentSettings.paypal?.connected,
             testMode: paymentSettings.paypal?.testMode || false
@@ -124,7 +124,24 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
         setSuccess('Stripe account connected successfully!');
         setShowStripeKeyInput(false);
         setStripeKeys({ publishableKey: '', secretKey: '' });
-        loadPaymentConfig();
+        // Update the organization prop by refetching
+        const updatedOrg = await organizationApi.getOrganization(organizationId);
+        const updatedOrgData = updatedOrg.data.organization || updatedOrg.data;
+        // Force re-render by updating config directly
+        setConfig({
+          stripe: {
+            configured: true,
+            accountId: updatedOrgData.payment_settings ? JSON.parse(updatedOrgData.payment_settings).stripe?.accountId : undefined,
+            connected: true,
+            testMode: true
+          },
+          paypal: {
+            configured: !!updatedOrgData.payment_settings && JSON.parse(updatedOrgData.payment_settings).paypal?.connected,
+            accountId: updatedOrgData.payment_settings ? JSON.parse(updatedOrgData.payment_settings).paypal?.accountId : undefined,
+            connected: !!updatedOrgData.payment_settings && JSON.parse(updatedOrgData.payment_settings).paypal?.connected,
+            testMode: updatedOrgData.payment_settings ? JSON.parse(updatedOrgData.payment_settings).paypal?.testMode : false
+          }
+        });
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (error: any) {
@@ -185,7 +202,24 @@ const PaymentSettings: React.FC<PaymentSettingsProps> = ({ organizationId, organ
         setSuccess('PayPal account connected successfully!');
         setShowPayPalKeyInput(false);
         setPaypalKeys({ clientId: '', clientSecret: '' });
-        loadPaymentConfig();
+        // Update the organization prop by refetching
+        const updatedOrg = await organizationApi.getOrganization(organizationId);
+        const updatedOrgData = updatedOrg.data.organization || updatedOrg.data;
+        // Force re-render by updating config directly
+        setConfig({
+          stripe: {
+            configured: !!updatedOrgData.payment_settings && JSON.parse(updatedOrgData.payment_settings).stripe?.connected,
+            accountId: updatedOrgData.payment_settings ? JSON.parse(updatedOrgData.payment_settings).stripe?.accountId : undefined,
+            connected: !!updatedOrgData.payment_settings && JSON.parse(updatedOrgData.payment_settings).stripe?.connected,
+            testMode: updatedOrgData.payment_settings ? JSON.parse(updatedOrgData.payment_settings).stripe?.testMode : false
+          },
+          paypal: {
+            configured: true,
+            accountId: updatedOrgData.payment_settings ? JSON.parse(updatedOrgData.payment_settings).paypal?.accountId : undefined,
+            connected: true,
+            testMode: true
+          }
+        });
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (error: any) {
