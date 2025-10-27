@@ -1367,7 +1367,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           {activeTab === 'contact' && (
             <div className="space-y-6">
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+                <div className="px-6 py-4 bg-gradient-to-r from-orange-700 to-orange-800">
                   <h3 className="text-lg font-semibold text-white">Contact Tournament Director</h3>
                 </div>
                 <div className="p-6">

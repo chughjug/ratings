@@ -97,27 +97,27 @@ const BrandedFooter: React.FC<BrandedFooterProps> = ({
           <h3>Quick Links</h3>
           <ul className="space-y-2">
             <li>
-              <Link to="/tournaments" className="hover:text-blue-600 transition-colors">
+              <Link to="/tournaments" className="hover:text-orange-800 transition-colors">
                 Tournaments
               </Link>
             </li>
             <li>
-              <Link to="/players" className="hover:text-blue-600 transition-colors">
+              <Link to="/players" className="hover:text-orange-800 transition-colors">
                 Players
               </Link>
             </li>
             <li>
-              <Link to="/schedule" className="hover:text-blue-600 transition-colors">
+              <Link to="/schedule" className="hover:text-orange-800 transition-colors">
                 Schedule
               </Link>
             </li>
             <li>
-              <Link to="/live" className="hover:text-blue-600 transition-colors">
+              <Link to="/live" className="hover:text-orange-800 transition-colors">
                 Live Games
               </Link>
             </li>
             <li>
-              <Link to="/about" className="hover:text-blue-600 transition-colors">
+              <Link to="/about" className="hover:text-orange-800 transition-colors">
                 About
               </Link>
             </li>
@@ -133,7 +133,7 @@ const BrandedFooter: React.FC<BrandedFooterProps> = ({
                 <Mail size={16} className="text-gray-500" />
                 <a 
                   href={`mailto:${orgEmail}`}
-                  className="hover:text-blue-600 transition-colors"
+                  className="hover:text-orange-800 transition-colors"
                 >
                   {orgEmail}
                 </a>
@@ -144,7 +144,7 @@ const BrandedFooter: React.FC<BrandedFooterProps> = ({
                 <Phone size={16} className="text-gray-500" />
                 <a 
                   href={`tel:${orgPhone}`}
-                  className="hover:text-blue-600 transition-colors"
+                  className="hover:text-orange-800 transition-colors"
                 >
                   {orgPhone}
                 </a>
@@ -163,7 +163,7 @@ const BrandedFooter: React.FC<BrandedFooterProps> = ({
                   href={orgWebsite}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-blue-600 transition-colors"
+                  className="hover:text-orange-800 transition-colors"
                 >
                   {orgWebsite}
                 </a>
@@ -191,13 +191,13 @@ const BrandedFooter: React.FC<BrandedFooterProps> = ({
               © {currentYear} {orgName}. All rights reserved.
             </div>
             <div className="flex items-center gap-6 text-sm">
-              <Link to="/privacy" className="hover:text-blue-600 transition-colors">
+              <Link to="/privacy" className="hover:text-orange-800 transition-colors">
                 Privacy Policy
               </Link>
-              <Link to="/terms" className="hover:text-blue-600 transition-colors">
+              <Link to="/terms" className="hover:text-orange-800 transition-colors">
                 Terms of Service
               </Link>
-              <Link to="/cookies" className="hover:text-blue-600 transition-colors">
+              <Link to="/cookies" className="hover:text-orange-800 transition-colors">
                 Cookie Policy
               </Link>
             </div>
