@@ -94,6 +94,15 @@ router.get('/tournament/:tournamentId/info', (req, res) => {
       stripe_secret_key: tournament.stripe_secret_key || ''
     };
     
+    // Debug: Log what we're returning
+    console.log('🔍 Returning payment_settings for tournament:', tournament.id, {
+      payment_method: payment_settings.payment_method,
+      paypal_client_id: payment_settings.paypal_client_id ? payment_settings.paypal_client_id.substring(0, 20) + '...' : 'EMPTY',
+      paypal_secret: payment_settings.paypal_secret ? '***SET***' : 'EMPTY',
+      stripe_publishable_key: payment_settings.stripe_publishable_key ? payment_settings.stripe_publishable_key.substring(0, 20) + '...' : 'EMPTY',
+      stripe_secret_key: payment_settings.stripe_secret_key ? '***SET***' : 'EMPTY'
+    });
+    
     // Parse registration settings for custom fields
     let custom_fields = [];
     let registration_form_settings = {};

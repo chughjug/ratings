@@ -117,6 +117,18 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           console.log('Tournament data received:', data);
           console.log('Entry fee from API:', data.entry_fee);
           console.log('Payment settings from API:', data.payment_settings);
+          console.log('Full API response data:', JSON.stringify(data, null, 2));
+          
+          // Check if payment_settings exists and has values
+          if (data.payment_settings) {
+            console.log('Payment method:', data.payment_settings.payment_method);
+            console.log('PayPal Client ID exists:', !!data.payment_settings.paypal_client_id);
+            console.log('PayPal Client ID value:', data.payment_settings.paypal_client_id ? data.payment_settings.paypal_client_id.substring(0, 20) + '...' : 'EMPTY');
+            console.log('Stripe Publishable Key exists:', !!data.payment_settings.stripe_publishable_key);
+            console.log('Stripe Publishable Key value:', data.payment_settings.stripe_publishable_key ? data.payment_settings.stripe_publishable_key.substring(0, 20) + '...' : 'EMPTY');
+          } else {
+            console.warn('⚠️ payment_settings object is missing or empty!');
+          }
           
           // Determine entry fee - use API value, fallback to $10 for testing
           let entryFee = data.entry_fee;
@@ -144,16 +156,19 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           // Initialize payment SDKs if needed
 
           // Load PayPal SDK if credentials exist
-          if (data.payment_settings?.paypal_client_id) {
-            console.log('Loading PayPal SDK with Client ID:', data.payment_settings.paypal_client_id.substring(0, 20) + '...');
+          if (data.payment_settings?.paypal_client_id && data.payment_settings.paypal_client_id.trim() !== '') {
+            console.log('✅ Loading PayPal SDK with Client ID:', data.payment_settings.paypal_client_id.substring(0, 20) + '...');
             loadPayPalSDK(data.payment_settings.paypal_client_id);
           } else {
-            console.log('No PayPal Client ID found in payment settings');
+            console.warn('⚠️ No PayPal Client ID found or it is empty. payment_settings:', data.payment_settings);
           }
 
           // Load Stripe SDK if credentials exist
-          if (data.payment_settings?.stripe_publishable_key) {
+          if (data.payment_settings?.stripe_publishable_key && data.payment_settings.stripe_publishable_key.trim() !== '') {
+            console.log('✅ Loading Stripe SDK with Publishable Key:', data.payment_settings.stripe_publishable_key.substring(0, 20) + '...');
             loadStripeSDK(data.payment_settings.stripe_publishable_key);
+          } else {
+            console.warn('⚠️ No Stripe Publishable Key found or it is empty');
           }
         } else {
           setError(response.data.error || 'Failed to load tournament information');
@@ -699,8 +714,16 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
                       )}
                       
                       {!tournamentInfo?.payment_settings?.paypal_client_id && !tournamentInfo?.payment_settings?.stripe_publishable_key && (
-                        <div className="text-sm text-red-600 italic">
-                          No payment credentials configured for this tournament.
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <div className="text-sm text-yellow-800 font-semibold mb-2">
+                            ⚠️ No payment credentials configured
+                          </div>
+                          <div className="text-xs text-yellow-700 space-y-1">
+                            <p>Payment method set to: <strong>{tournamentInfo?.payment_settings?.payment_method || 'not set'}</strong></p>
+                            <p>PayPal Client ID: {tournamentInfo?.payment_settings?.paypal_client_id ? '✅ Configured' : '❌ Missing'}</p>
+                            <p>Stripe Key: {tournamentInfo?.payment_settings?.stripe_publishable_key ? '✅ Configured' : '❌ Missing'}</p>
+                            <p className="mt-2 italic">Admin needs to configure payment credentials in tournament settings.</p>
+                          </div>
                         </div>
                       )}
                       

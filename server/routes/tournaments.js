@@ -345,13 +345,22 @@ router.put('/:id', (req, res) => {
     });
     
     // Log payment field updates
-    console.log('Payment fields being updated:', {
+    console.log('💳 Payment fields being updated:', {
       entry_fee: entry_fee,
       payment_method: payment_method,
-      paypal_client_id: paypal_client_id ? paypal_client_id.substring(0, 20) + '...' : 'empty',
-      paypal_secret: paypal_secret ? '***' : 'empty',
-      stripe_publishable_key: stripe_publishable_key ? stripe_publishable_key.substring(0, 20) + '...' : 'empty',
-      stripe_secret_key: stripe_secret_key ? '***' : 'empty'
+      paypal_client_id: paypal_client_id ? paypal_client_id.substring(0, 20) + '...' : 'EMPTY',
+      paypal_secret: paypal_secret ? '***SET***' : 'EMPTY',
+      stripe_publishable_key: stripe_publishable_key ? stripe_publishable_key.substring(0, 20) + '...' : 'EMPTY',
+      stripe_secret_key: stripe_secret_key ? '***SET***' : 'EMPTY'
+    });
+    
+    // Also log what we received in the request
+    console.log('📥 Raw updateFields received:', {
+      has_paypal_client_id: !!updateFields.paypal_client_id,
+      has_paypal_secret: !!updateFields.paypal_secret,
+      has_stripe_publishable_key: !!updateFields.stripe_publishable_key,
+      has_stripe_secret_key: !!updateFields.stripe_secret_key,
+      paypal_client_id_length: updateFields.paypal_client_id?.length || 0
     });
 
     // Validate required fields
