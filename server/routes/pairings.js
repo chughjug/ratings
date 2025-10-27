@@ -2515,7 +2515,7 @@ router.post('/tournament/:tournamentId/round/:round/complete', async (req, res) 
     const incompletePairings = await new Promise((resolve, reject) => {
       db.all(
         `SELECT COUNT(*) as count FROM pairings 
-         WHERE tournament_id = ? AND round = ? AND section = ? AND result IS NULL`,
+         WHERE tournament_id = ? AND round = ? AND section = ? AND result IS NULL AND (is_bye = 0 OR is_bye IS NULL)`,
         [tournamentId, roundNum, sectionName || 'Open'],
         (err, rows) => {
           if (err) reject(err);
