@@ -452,8 +452,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       console.log('Stripe checkout response:', data);
       
       if (data.success && data.data.checkoutUrl) {
-        // Redirect to Stripe Checkout (opens in new tab or same window)
-        window.location.href = data.data.checkoutUrl;
+        // Open Stripe Checkout in a new tab
+        window.open(data.data.checkoutUrl, '_blank', 'noopener,noreferrer');
       } else {
         setPaymentError(data.error || 'Failed to create checkout session');
         setProcessingPayment(false);
@@ -497,8 +497,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       console.log('PayPal checkout response:', data);
       
       if (data.success && data.data.checkoutUrl) {
-        // Redirect to PayPal hosted checkout (opens in new tab or same window)
-        window.location.href = data.data.checkoutUrl;
+        // Open PayPal hosted checkout in a new tab
+        window.open(data.data.checkoutUrl, '_blank', 'noopener,noreferrer');
       } else {
         setPaymentError(data.error || 'Failed to create PayPal checkout');
         setProcessingPayment(false);
