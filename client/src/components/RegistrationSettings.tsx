@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, UserPlus, Mail, Phone, Award, BookOpen, CheckCircle, Plus, X, Trash2 } from 'lucide-react';
+import { Save, UserPlus, Mail, Phone, Award, BookOpen, CheckCircle, Plus, X, Trash2, CreditCard, DollarSign } from 'lucide-react';
 
 interface RegistrationSettingsProps {
   tournamentId: string;
@@ -31,6 +31,10 @@ interface RegistrationSettingsData {
   custom_registration_message: string;
   custom_success_message: string;
   customFields: CustomField[];
+  // Payment settings
+  require_payment: boolean;
+  entry_fee: number | undefined;
+  payment_method: 'stripe' | 'paypal' | 'both';
 }
 
 const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({ 
@@ -52,7 +56,11 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
     send_confirmation_email: true,
     custom_registration_message: '',
     custom_success_message: 'Thank you for registering! Your registration is now pending approval.',
-    customFields: []
+    customFields: [],
+    // Payment settings
+    require_payment: false,
+    entry_fee: tournament?.settings?.entry_fee || 0,
+    payment_method: 'both'
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -426,6 +434,77 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
           {settings.customFields.length === 0 && !showAddField && (
             <p className="text-sm text-gray-500 italic">No custom fields added yet</p>
           )}
+        </div>
+
+        {/* Payment Settings */}
+        <div className="border-b border-gray-200 pb-6">
+          <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+            <CreditCard className="h-4 w-4 mr-2 text-blue-600" />
+            Payment Settings
+          </h4>
+          <div className="space-y-4">
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.require_payment}
+                onChange={(e) => setSettings({ ...settings, require_payment: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Require payment during registration</span>
+            </label>
+            
+            {settings.require_payment && (
+              <div className="ml-7 space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Entry Fee (USD)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <DollarSign className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="number"
+                      value={settings.entry_fee || ''}
+                      onChange={(e) => setSettings({ ...settings, entry_fee: e.target.value ? parseFloat(e.target.value) : 0 })}
+                      min="0"
+                      step="0.01"
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Amount players must pay to complete registration
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Accepted Payment Methods
+                  </label>
+                  <select
+                    value={settings.payment_method}
+                    onChange={(e) => setSettings({ ...settings, payment_method: e.target.value as 'stripe' | 'paypal' | 'both' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="both">Both Stripe and PayPal</option>
+                    <option value="stripe">Stripe Only</option>
+                    <option value="paypal">PayPal Only</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select which payment gateways to offer to players
+                  </p>
+                </div>
+                
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-800">
+                    <strong>Note:</strong> You must connect your Stripe and/or PayPal accounts 
+                    in Organization Settings → Payment Settings before payment will work.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Custom Messages */}
