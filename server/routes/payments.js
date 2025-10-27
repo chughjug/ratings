@@ -350,7 +350,7 @@ router.post('/paypal/create-checkout', async (req, res) => {
 
           const request = new paypal.orders.OrdersCreateRequest();
           request.prefer("return=representation");
-          request.requestBody = {
+          request.requestBody({
             intent: "CAPTURE",
             purchase_units: [{
               amount: {
@@ -367,7 +367,7 @@ router.post('/paypal/create-checkout', async (req, res) => {
               return_url: successUrl || `${req.protocol}://${req.get('host')}/registration/${tournamentId}?success=true&method=paypal`,
               cancel_url: cancelUrl || `${req.protocol}://${req.get('host')}/registration/${tournamentId}?canceled=true`
             }
-          };
+          });
 
           const response = await client.execute(request);
           
