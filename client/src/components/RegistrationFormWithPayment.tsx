@@ -465,16 +465,20 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
     }
   };
 
-  // Handle PayPal payment
+  // Handle PayPal payment - redirects to PayPal hosted checkout
   const handlePayPalPayment = async () => {
-    if (!tournamentInfo?.entry_fee) return;
+    if (!tournamentInfo?.entry_fee) {
+      setPaymentError('Entry fee is not set');
+      return;
+    }
 
     try {
       setPaymentError(null);
       setProcessingPayment(true);
+      console.log('🅿️ Starting PayPal checkout redirect...');
 
-      // Create PayPal order
-      const response = await fetch('/api/payments/paypal/create-order', {
+      // Create PayPal checkout
+      const response = await fetch('/api/payments/paypal/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -483,23 +487,25 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           currency: 'USD',
           tournamentId,
           playerId: 'pending',
-          description: `Entry fee for ${tournamentInfo.name}`
+          description: `Entry fee for ${tournamentInfo.name}`,
+          successUrl: `${window.location.origin}/registration/${tournamentId}?success=true&method=paypal`,
+          cancelUrl: `${window.location.origin}/registration/${tournamentId}?canceled=true`
         })
       });
 
       const data = await response.json();
+      console.log('PayPal checkout response:', data);
       
-      if (data.success) {
-        // Redirect to PayPal approval URL
-        if (data.data.approvalUrl) {
-          window.location.href = data.data.approvalUrl;
-        }
+      if (data.success && data.data.checkoutUrl) {
+        // Redirect to PayPal hosted checkout (opens in new tab or same window)
+        window.location.href = data.data.checkoutUrl;
       } else {
-        setPaymentError(data.error || 'Failed to create PayPal order');
+        setPaymentError(data.error || 'Failed to create PayPal checkout');
+        setProcessingPayment(false);
       }
     } catch (error: any) {
+      console.error('PayPal payment error:', error);
       setPaymentError(error.message || 'Payment failed');
-    } finally {
       setProcessingPayment(false);
     }
   };
@@ -743,10 +749,10 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
                         </div>
                       )}
                       
-                      {/* Stripe Payment Elements */}
+                      {/* Payment Methods */}
                       {tournamentInfo?.payment_settings?.stripe_publishable_key && (
-                        <div>
-                          <p className="text-sm text-gray-600 mb-2">Card Payment</p>
+                        <div className="mb-3">
+                          <p className="text-sm text-gray-600 mb-2">Pay with Card</p>
                           <button
                             type="button"
                             onClick={() => {
@@ -764,7 +770,34 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
                             ) : (
                               <>
                                 <CreditCard className="h-5 w-5 mr-2" />
-                                Pay with Card
+                                Pay with Stripe
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                      
+                      {tournamentInfo?.payment_settings?.paypal_client_id && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-2">Pay with PayPal</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentMethod('paypal');
+                              handlePayPalPayment();
+                            }}
+                            disabled={processingPayment}
+                            className="w-full flex items-center justify-center px-4 py-3 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors disabled:opacity-50 font-medium"
+                          >
+                            {processingPayment ? (
+                              <>
+                                <Loader className="h-5 w-5 animate-spin mr-2" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <span className="mr-2">🅿️</span>
+                                Pay with PayPal
                               </>
                             )}
                           </button>

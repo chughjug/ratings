@@ -306,9 +306,9 @@ router.post('/stripe/create-checkout', async (req, res) => {
  * @desc Create PayPal order
  * @access Private
  */
-router.post('/paypal/create-order', async (req, res) => {
+router.post('/paypal/create-checkout', async (req, res) => {
   try {
-    const { amount, currency = 'USD', tournamentId, playerId, description } = req.body;
+    const { amount, currency = 'USD', tournamentId, playerId, description, successUrl, cancelUrl } = req.body;
 
     if (!amount || !tournamentId || !playerId) {
       return res.status(400).json({
@@ -359,22 +359,31 @@ router.post('/paypal/create-order', async (req, res) => {
               },
               description: description || `Tournament entry fee - ${tournamentId}`,
               custom_id: `tournament_${tournamentId}_player_${playerId}`
-            }]
+            }],
+            application_context: {
+              brand_name: 'Chess Tournament',
+              landing_page: 'BILLING',
+              user_action: 'PAY_NOW',
+              return_url: successUrl || `${req.protocol}://${req.get('host')}/registration/${tournamentId}?success=true&method=paypal`,
+              cancel_url: cancelUrl || `${req.protocol}://${req.get('host')}/registration/${tournamentId}?canceled=true`
+            }
           };
 
           const response = await client.execute(request);
           
+          // Find the approval URL from the links
+          const approvalUrl = response.result.links.find(link => link.rel === 'approve')?.href;
+          
           res.json({
             success: true,
             data: {
+              checkoutUrl: approvalUrl,
               orderId: response.result.id,
-              status: response.result.status,
-              amount: response.result.purchase_units[0].amount.value,
-              currency: response.result.purchase_units[0].amount.currency_code
+              status: response.result.status
             }
           });
         } catch (error) {
-          console.error('PayPal order creation error:', error);
+          console.error('PayPal checkout creation error:', error);
           res.status(500).json({
             success: false,
             error: error.message
@@ -383,7 +392,7 @@ router.post('/paypal/create-order', async (req, res) => {
       }
     );
   } catch (error) {
-    console.error('PayPal order creation error:', error);
+    console.error('PayPal checkout creation error:', error);
     res.status(500).json({
       success: false,
       error: error.message
