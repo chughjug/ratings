@@ -517,7 +517,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         <div className="pt-4">
           <button
             type="submit"
-            disabled={submitting || !formData.player_name || !formData.email || (showPayment && tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 && !paymentIntentId)}
+            disabled={submitting || !formData.player_name || !formData.email || (showPayment && Boolean(tournamentInfo.entry_fee && tournamentInfo.entry_fee > 0 && !paymentIntentId))}
             className="w-full bg-black text-white py-3 px-6 rounded font-medium hover:bg-gray-800 focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? (
