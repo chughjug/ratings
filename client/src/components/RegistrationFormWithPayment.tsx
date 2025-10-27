@@ -92,11 +92,11 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
         const response = await registrationApi.getTournamentInfo(tournamentId);
         
         if (response.data.success) {
-          const data = response.data.data;
-          setTournamentInfo(data);
+          const data: any = response.data.data;
+          setTournamentInfo(data as TournamentInfo);
           
           // Check if payment is required
-          if (data.entry_fee && data.entry_fee > 0) {
+          if ((data as any).entry_fee && (data as any).entry_fee > 0) {
             setShowPayment(true);
           }
         } else {
