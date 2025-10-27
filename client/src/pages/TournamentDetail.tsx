@@ -3342,7 +3342,7 @@ const TournamentDetail: React.FC = () => {
                                   <tr className="border-b border-gray-300">
                                     <td className="py-2 px-4">
                                       <div className="font-semibold">
-                                        {pairing.white_player?.name || 'TBD'}
+                                        {whitePlayer?.name || 'TBD'}
                                         {whiteTeam && ` (${whiteTeam})`}
                                       </div>
                                     </td>
@@ -3350,21 +3350,21 @@ const TournamentDetail: React.FC = () => {
                                       W {pairing.board || idx + 1}
                                     </td>
                                     <td className="py-2 px-4">
-                                      {pairing.black_player?.name && pairing.black_player.name !== 'TBD' ? (
+                                      {blackPlayer && blackPlayer.name && blackPlayer.name !== 'TBD' ? (
                                         <div className="text-xs">
-                                          {pairing.black_player.name}
-                                          {blackTeam && ` (${blackTeam})`}, ({pairing.black_player.points || 0}.0, {blackTeam || 'N/A'}, {pairing.black_player.rating || 'nnnn'})
+                                          {blackPlayer.name}
+                                          {blackTeam && ` (${blackTeam})`}, ({(blackPlayer as any).total_points || 0}.0, {blackTeam || 'N/A'}, {blackPlayer.rating || 'nnnn'})
                                         </div>
                                       ) : (
                                         <span className="text-gray-500 italic">Please Wait</span>
                                       )}
                                     </td>
                                   </tr>
-                                  {pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye && (
+                                  {blackPlayer && blackPlayer.name && blackPlayer.name !== 'TBD' && !pairing.is_bye && (
                                     <tr className="border-b border-gray-300">
                                       <td className="py-2 px-4">
                                         <div className="font-semibold">
-                                          {pairing.black_player.name}
+                                          {blackPlayer.name}
                                           {blackTeam && ` (${blackTeam})`}
                                         </div>
                                       </td>
@@ -3373,8 +3373,8 @@ const TournamentDetail: React.FC = () => {
                                       </td>
                                       <td className="py-2 px-4">
                                         <div className="text-xs">
-                                          {pairing.white_player.name}
-                                          {whiteTeam && ` (${whiteTeam})`}, ({pairing.white_player.points || 0}.0, {whiteTeam || 'N/A'}, {pairing.white_player.rating || 'nnnn'})
+                                          {whitePlayer?.name}
+                                          {whiteTeam && ` (${whiteTeam})`}, ({(whitePlayer as any)?.total_points || 0}.0, {whiteTeam || 'N/A'}, {whitePlayer?.rating || 'nnnn'})
                                         </div>
                                       </td>
                                     </tr>
@@ -3422,7 +3422,7 @@ const TournamentDetail: React.FC = () => {
                                       <tr className="border-b border-gray-300">
                                         <td className="py-2 px-4">
                                           <div className="font-semibold">
-                                            {pairing.white_player?.name || 'TBD'}
+                                            {whitePlayer?.name || 'TBD'}
                                             {whiteTeam && ` (${whiteTeam})`}
                                           </div>
                                         </td>
@@ -3430,21 +3430,21 @@ const TournamentDetail: React.FC = () => {
                                           W {pairing.board || idx + 1}
                                         </td>
                                         <td className="py-2 px-4">
-                                          {pairing.black_player?.name && pairing.black_player.name !== 'TBD' ? (
+                                          {blackPlayer && blackPlayer.name && blackPlayer.name !== 'TBD' ? (
                                             <div className="text-xs">
-                                              {pairing.black_player.name}
-                                              {blackTeam && ` (${blackTeam})`}, ({pairing.black_player.points || 0}.0, {blackTeam || 'N/A'}, {pairing.black_player.rating || 'nnnn'})
+                                              {blackPlayer.name}
+                                              {blackTeam && ` (${blackTeam})`}, ({(blackPlayer as any).total_points || 0}.0, {blackTeam || 'N/A'}, {blackPlayer.rating || 'nnnn'})
                                             </div>
                                           ) : (
                                             <span className="text-gray-500 italic">Please Wait</span>
                                           )}
                                         </td>
                                       </tr>
-                                      {pairing.black_player?.name && pairing.black_player.name !== 'TBD' && !pairing.is_bye && (
+                                      {blackPlayer && blackPlayer.name && blackPlayer.name !== 'TBD' && !pairing.is_bye && (
                                         <tr className="border-b border-gray-300">
                                           <td className="py-2 px-4">
                                             <div className="font-semibold">
-                                              {pairing.black_player.name}
+                                              {blackPlayer.name}
                                               {blackTeam && ` (${blackTeam})`}
                                             </div>
                                           </td>
@@ -3453,8 +3453,8 @@ const TournamentDetail: React.FC = () => {
                                           </td>
                                           <td className="py-2 px-4">
                                             <div className="text-xs">
-                                              {pairing.white_player.name}
-                                              {whiteTeam && ` (${whiteTeam})`}, ({pairing.white_player.points || 0}.0, {whiteTeam || 'N/A'}, {pairing.white_player.rating || 'nnnn'})
+                                              {whitePlayer?.name}
+                                              {whiteTeam && ` (${whiteTeam})`}, ({(whitePlayer as any)?.total_points || 0}.0, {whiteTeam || 'N/A'}, {whitePlayer?.rating || 'nnnn'})
                                             </div>
                                           </td>
                                         </tr>

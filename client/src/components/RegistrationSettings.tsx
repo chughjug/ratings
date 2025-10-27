@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Save, UserPlus, Mail, Phone, Award, BookOpen, CheckCircle } from 'lucide-react';
+import { Save, UserPlus, Mail, Phone, Award, BookOpen, CheckCircle, Plus, X, Trash2 } from 'lucide-react';
 
 interface RegistrationSettingsProps {
   tournamentId: string;
   tournament: any;
   onSave: (settings: any) => void;
+}
+
+interface CustomField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'email' | 'tel' | 'select';
+  required: boolean;
+  placeholder?: string;
+  options?: string[]; // For select fields
 }
 
 interface RegistrationSettingsData {
@@ -21,6 +30,7 @@ interface RegistrationSettingsData {
   send_confirmation_email: boolean;
   custom_registration_message: string;
   custom_success_message: string;
+  customFields: CustomField[];
 }
 
 const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({ 
@@ -41,10 +51,19 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
     auto_approve: false,
     send_confirmation_email: true,
     custom_registration_message: '',
-    custom_success_message: 'Thank you for registering! Your registration is now pending approval.'
+    custom_success_message: 'Thank you for registering! Your registration is now pending approval.',
+    customFields: []
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showAddField, setShowAddField] = useState(false);
+  const [newField, setNewField] = useState<Partial<CustomField>>({
+    label: '',
+    type: 'text',
+    required: false,
+    placeholder: '',
+    options: []
+  });
 
   useEffect(() => {
     // Load existing registration settings from tournament
@@ -71,6 +90,40 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const addCustomField = () => {
+    if (!newField.label) return;
+    
+    const field: CustomField = {
+      id: `field_${Date.now()}`,
+      label: newField.label,
+      type: newField.type || 'text',
+      required: newField.required || false,
+      placeholder: newField.placeholder || '',
+      options: newField.type === 'select' ? [] : undefined
+    };
+    
+    setSettings(prev => ({
+      ...prev,
+      customFields: [...prev.customFields, field]
+    }));
+    
+    setNewField({
+      label: '',
+      type: 'text',
+      required: false,
+      placeholder: '',
+      options: []
+    });
+    setShowAddField(false);
+  };
+
+  const removeCustomField = (id: string) => {
+    setSettings(prev => ({
+      ...prev,
+      customFields: prev.customFields.filter(field => field.id !== id)
+    }));
   };
 
   return (
@@ -241,6 +294,138 @@ const RegistrationSettings: React.FC<RegistrationSettingsProps> = ({
               <span className="text-sm text-gray-700">Allow additional notes/comments</span>
             </label>
           </div>
+        </div>
+
+        {/* Customizable Fields */}
+        <div className="border-b border-gray-200 pb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-md font-semibold text-gray-900">Customizable Fields</h4>
+            <button
+              onClick={() => setShowAddField(!showAddField)}
+              className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Custom Field</span>
+            </button>
+          </div>
+
+          {/* Add Field Form */}
+          {showAddField && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Field Label *
+                  </label>
+                  <input
+                    type="text"
+                    value={newField.label}
+                    onChange={(e) => setNewField({ ...newField, label: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g., Emergency Contact"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Field Type *
+                  </label>
+                  <select
+                    value={newField.type}
+                    onChange={(e) => setNewField({ ...newField, type: e.target.value as CustomField['type'] })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="text">Text</option>
+                    <option value="textarea">Textarea</option>
+                    <option value="number">Number</option>
+                    <option value="email">Email</option>
+                    <option value="tel">Phone</option>
+                    <option value="select">Dropdown</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Placeholder (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newField.placeholder}
+                    onChange={(e) => setNewField({ ...newField, placeholder: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter placeholder text..."
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newField.required}
+                      onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Required</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end space-x-2">
+                <button
+                  onClick={() => {
+                    setShowAddField(false);
+                    setNewField({ label: '', type: 'text', required: false, placeholder: '' });
+                  }}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addCustomField}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={!newField.label}
+                >
+                  Add Field
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Existing Custom Fields */}
+          {settings.customFields.length > 0 && (
+            <div className="space-y-2">
+              {settings.customFields.map((field) => (
+                <div key={field.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium text-gray-900">{field.label}</span>
+                      <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded">
+                        {field.type}
+                      </span>
+                      {field.required && (
+                        <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
+                          Required
+                        </span>
+                      )}
+                    </div>
+                    {field.placeholder && (
+                      <p className="text-xs text-gray-500 mt-1">{field.placeholder}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeCustomField(field.id)}
+                    className="ml-2 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {settings.customFields.length === 0 && !showAddField && (
+            <p className="text-sm text-gray-500 italic">No custom fields added yet</p>
+          )}
         </div>
 
         {/* Custom Messages */}
