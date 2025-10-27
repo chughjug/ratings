@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayPal Payment Test</title>
+    <title>PayFlow - AI-Powered Payment Intelligence</title>
     <script src="https://www.paypal.com/sdk/js?client-id=AazRC_i2xdF__MU_m_qFHsypNKktktCbUbBh9drb40409ApWHq2WW7Ico9WtEIoCEdCQsSNn4P0fb26-&currency=USD"></script>
     <style>
         * {
@@ -14,151 +14,361 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            position: relative;
+            overflow: hidden;
         }
 
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
+            opacity: 0.5;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 800px;
+            padding: 60px 40px;
+        }
+
+        .hero h1 {
+            font-size: 72px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+        }
+
+        .hero p {
+            font-size: 24px;
+            margin-bottom: 40px;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .hero-tagline {
+            font-size: 16px;
+            opacity: 0.7;
+            margin-bottom: 48px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Main Content */
         .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 600px;
-            width: 100%;
-            padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px;
         }
 
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
+        /* Features Section */
+        .features {
+            padding: 120px 0;
+            background: #0f0f0f;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+        }
+
+        /* Payment Section */
+        .payment {
+            padding: 120px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             text-align: center;
         }
 
-        .info-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
+        .payment-content {
+            max-width: 800px;
+            margin: 0 auto;
         }
 
-        .info-section h2 {
-            color: #495057;
+        .section-title {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .section-subtitle {
             font-size: 18px;
-            margin-bottom: 15px;
+            opacity: 0.9;
+            margin-bottom: 48px;
         }
 
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .info-item:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #6c757d;
-        }
-
-        .info-value {
-            color: #495057;
-            font-family: monospace;
-            word-break: break-all;
-            text-align: right;
-        }
-
-        .payment-section {
-            margin-top: 30px;
-        }
-
-        .test-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 20px;
-            transition: transform 0.2s;
-        }
-
-        .test-button:hover {
-            transform: translateY(-2px);
+        .paypal-wrapper {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-top: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .paypal-container {
-            margin-top: 30px;
             min-height: 100px;
         }
 
         .status {
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 24px;
             font-weight: 500;
+            backdrop-filter: blur(10px);
         }
 
         .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
         }
 
         .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
         }
 
         .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196f3;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+
+        /* FAQ Section */
+        .faq {
+            padding: 120px 0;
+            background: #0a0a0a;
+        }
+
+        .faq-grid {
+            max-width: 800px;
+            margin: 60px auto 0;
+        }
+
+        .faq-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .faq-question {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .faq-answer {
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        .footer {
+            background: #0f0f0f;
+            padding: 60px 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer p {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 48px;
+            }
+
+            .hero p {
+                font-size: 20px;
+            }
+
+            .section-title {
+                font-size: 36px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 0 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>💳 PayPal Payment Test</h1>
-        
-        <div class="info-section">
-            <h2>Configuration</h2>
-            <div class="info-item">
-                <span class="info-label">Client ID:</span>
-                <span class="info-value">AazRC_i2xdF__MU_m_qFHsypNKktktCbUbBh9drb40409ApWHq2WW7Ico9WtEIoCEdCQsSNn4P0fb26-</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Environment:</span>
-                <span class="info-value">Sandbox (Test Mode)</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Currency:</span>
-                <span class="info-value">USD</span>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-tagline">AI-Powered Payment Intelligence</div>
+            <h1>From Payment<br/>to Profit</h1>
+            <p>Seamless, secure, and smart payment processing that grows your business.</p>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title" style="text-align: center; margin-bottom: 60px;">Why Choose PayFlow</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">⚡</span>
+                    <h3>Lightning Fast</h3>
+                    <p>Process transactions in seconds with our AI-powered infrastructure. No delays, no downtime.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🔒</span>
+                    <h3>Bank-Level Security</h3>
+                    <p>End-to-end encryption and fraud detection powered by machine learning. Your transactions are protected.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🤖</span>
+                    <h3>AI-Powered Analytics</h3>
+                    <p>Get real-time insights into your payment patterns and optimize your revenue with intelligent analytics.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">💳</span>
+                    <h3>Universal Compatibility</h3>
+                    <p>Works seamlessly with PayPal, Stripe, and all major payment processors. One integration, infinite possibilities.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <h3>Smart Dashboard</h3>
+                    <p>Monitor your transactions, revenue, and customer behavior all from one beautiful dashboard.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🚀</span>
+                    <h3>Enterprise Ready</h3>
+                    <p>Scale from startup to enterprise with infrastructure that grows with your business.</p>
+                </div>
             </div>
         </div>
+    </section>
 
-        <div class="payment-section">
-            <h2 style="margin-bottom: 20px;">Test Payment</h2>
-            <p style="color: #6c757d; margin-bottom: 20px;">Click the PayPal button below to test the payment integration.</p>
+    <!-- Payment Section -->
+    <section class="payment">
+        <div class="payment-content">
+            <h2 class="section-title">Try PayFlow Now</h2>
+            <p class="section-subtitle">Experience the future of payments. Test our integration with a secure sandbox transaction.</p>
             
-            <div id="paypal-container" class="paypal-container"></div>
+            <div class="paypal-wrapper">
+                <div id="paypal-container" class="paypal-container"></div>
+                <div id="status"></div>
+            </div>
         </div>
+    </section>
 
-        <div id="status"></div>
-    </div>
+    <!-- FAQ Section -->
+    <section class="faq">
+        <div class="container">
+            <h2 class="section-title" style="text-align: center; margin-bottom: 60px;">Frequently Asked Questions</h2>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <div class="faq-question">How secure is PayFlow?</div>
+                    <div class="faq-answer">PayFlow uses bank-level encryption and is PCI DSS compliant. All transactions are processed through secure channels with fraud detection powered by AI.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Which payment methods are supported?</div>
+                    <div class="faq-answer">We support PayPal, credit/debit cards, and all major payment processors. Our API integrates seamlessly with existing payment infrastructure.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">How does the AI technology work?</div>
+                    <div class="faq-answer">Our AI analyzes transaction patterns in real-time to detect fraud, optimize conversion rates, and provide actionable insights to grow your revenue.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Is there an API available?</div>
+                    <div class="faq-answer">Yes! PayFlow offers a comprehensive REST API that makes it easy to integrate payment processing into any application or platform.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">What are the fees?</div>
+                    <div class="faq-answer">Transparent pricing with no hidden fees. Contact us for enterprise pricing and volume discounts.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 PayFlow. All rights reserved.</p>
+        </div>
+    </footer>
 
     <script>
         // Create PayPal button
         paypal.Buttons({
+            style: {
+                color: 'gold',
+                shape: 'rect',
+                label: 'paypal',
+                height: 55
+            },
             createOrder: function(data, actions) {
                 return actions.order.create({
                     purchase_units: [{
@@ -192,8 +402,8 @@
         }
 
         // Log PayPal SDK version
+        console.log('PayFlow - AI-Powered Payment Intelligence');
         console.log('PayPal SDK loaded');
-        console.log('Client ID: AazRC_i2xdF__MU_m_qFHsypNKktktCbUbBh9drb40409ApWHq2WW7Ico9WtEIoCEdCQsSNn4P0fb26-');
     </script>
 </body>
 </html>
