@@ -337,7 +337,7 @@ const TournamentDetail: React.FC = () => {
     const opponentNum = opponentIdx !== undefined && opponentIdx !== -1 ? opponentIdx + 1 : '-';
     
     if (pairing.is_bye) {
-      return '-B-';
+      return 'BYE';
     }
     
     if (!pairing.result || pairing.result === 'TBD') {
