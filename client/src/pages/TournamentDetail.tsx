@@ -3177,7 +3177,7 @@ const TournamentDetail: React.FC = () => {
                         
                         // Save all fields in one update call
                         try {
-                          const response = await tournamentApi.update(id, paymentFields);
+                          const response = await tournamentApi.update(id, paymentFields as any);
                           console.log('Update response:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
