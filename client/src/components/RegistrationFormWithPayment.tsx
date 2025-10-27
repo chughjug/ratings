@@ -198,9 +198,9 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
     // Check if script already exists
     let existingScript = document.getElementById('paypal-sdk');
     
-    // If script exists, just initialize the button
+    // If script exists and paypal is available, just initialize the button
     if (existingScript && window.paypal) {
-      console.log('PayPal SDK already loaded, initializing button...');
+      console.log('✅ PayPal SDK already loaded, initializing button...');
       initializePayPalButton(clientId);
       return;
     }
@@ -210,13 +210,17 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       existingScript.remove();
     }
 
-    // Load PayPal SDK (same approach as working HTML demo)
+    console.log('📥 Loading PayPal SDK with URL:', `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`);
+
+    // Load PayPal SDK - EXACT same approach as working HTML demo
     const script = document.createElement('script');
     script.id = 'paypal-sdk';
     script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD`;
     
     script.onload = () => {
-      console.log('✅ PayPal SDK loaded successfully');
+      console.log('✅ PayPal SDK loaded successfully!');
+      console.log('✅ window.paypal:', !!window.paypal);
+      console.log('✅ window.paypal.Buttons:', !!window.paypal?.Buttons);
       initializePayPalButton(clientId);
     };
 
@@ -226,14 +230,15 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       console.error('1. Invalid PayPal Client ID');
       console.error('2. Network connectivity issues');
       console.error('3. PayPal service temporarily unavailable');
-      console.error('Client ID being used:', clientId.substring(0, 30) + '...');
+      console.error('URL being requested:', script.src.substring(0, 80) + '...');
       
       // Show user-friendly error message
       setPaymentError('Unable to load PayPal payment system. Please contact the tournament organizer or try again later.');
     };
 
-    // Add to head (like the working HTML demo)
+    // Add to head EXACTLY like the working HTML demo does
     document.head.appendChild(script);
+    console.log('📤 PayPal SDK script added to <head>');
   };
 
   const loadStripeSDK = (publishableKey: string) => {
