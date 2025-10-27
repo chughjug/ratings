@@ -950,7 +950,7 @@ class EnhancedPairingSystem {
       white_player_id: topPlayer.id,
       black_player_id: null,
       is_bye: true,
-      bye_type: 'bye',
+      bye_type: 'unpaired',
       section: this.section,
       board: pairings.length + 1
     });
@@ -1022,7 +1022,7 @@ class EnhancedPairingSystem {
               white_player_id: player1.id,
               black_player_id: null,
               is_bye: true,
-              bye_type: 'bye',
+              bye_type: 'unpaired',
               section: this.section,
               board: i + 1
             });
@@ -1090,7 +1090,7 @@ class EnhancedPairingSystem {
           white_player_id: player1.id,
           black_player_id: null,
           is_bye: true,
-          bye_type: 'bye',
+          bye_type: 'unpaired',
           section: this.section,
           board: i + 1
         });
@@ -1142,7 +1142,7 @@ class EnhancedPairingSystem {
           white_player_id: quad[0].id,
           black_player_id: null,
           is_bye: true,
-          bye_type: 'bye',
+          bye_type: 'unpaired',
           section: this.section,
           board: pairings.length + 1
         });
@@ -1182,7 +1182,7 @@ class EnhancedPairingSystem {
           white_player_id: byePlayer.id,
           black_player_id: null,
           is_bye: true,
-          bye_type: 'bye',
+          bye_type: 'unpaired',
           section: this.section,
           board: pairings.length + 1
         });
@@ -1652,7 +1652,7 @@ class EnhancedPairingSystem {
       white_player_id: topPlayer.id,
       black_player_id: null,
       is_bye: true,
-      bye_type: 'bye',
+      bye_type: 'unpaired',
       section: this.section,
       board: pairings.length + 1
     });
@@ -1695,7 +1695,7 @@ class EnhancedPairingSystem {
           white_player_id: byePlayer.id,
           black_player_id: null,
           is_bye: true,
-          bye_type: 'bye',
+          bye_type: 'unpaired',
           section: this.section,
           board: half + 1
         });
