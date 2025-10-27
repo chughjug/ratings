@@ -511,12 +511,23 @@ export const registrationApi = {
       rounds: number;
       start_date?: string;
       end_date?: string;
+      entry_fee?: number;
+      payment_enabled?: boolean;
+      payment_settings?: any;
       sections: Array<{
         name: string;
         min_rating?: number;
         max_rating?: number;
         description?: string;
       }>;
+      custom_fields?: Array<{
+        name: string;
+        type: string;
+        required: boolean;
+        options?: string[];
+      }>;
+      registration_form_settings?: any;
+      allow_registration?: boolean;
     }, error?: string}>(`/registrations/tournament/${tournamentId}/info`),
   searchPlayers: (searchTerm: string, limit: number = 10) =>
     api.get<{success: boolean, data: {
