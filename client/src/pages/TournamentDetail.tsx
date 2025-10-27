@@ -40,6 +40,7 @@ import CustomPagesManager from '../components/CustomPagesManager';
 import OnlineGameIntegration from '../components/OnlineGameIntegration';
 import ByeManagementModal from '../components/ByeManagementModal';
 import PublicViewCustomization from '../components/PublicViewCustomization';
+import RegistrationSettings from '../components/RegistrationSettings';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
 
@@ -3082,6 +3083,19 @@ const TournamentDetail: React.FC = () => {
                     onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
                   />
                 </div>
+
+                {/* Registration Settings */}
+                {id && tournament && (
+                  <div className="mb-8">
+                    <RegistrationSettings 
+                      tournamentId={id}
+                      tournament={tournament}
+                      onSave={async (settings: any) => {
+                        await handleTournamentUpdate('registration_settings', JSON.stringify(settings.registration_settings));
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* Save Button */}
                 <div className="flex justify-end">
