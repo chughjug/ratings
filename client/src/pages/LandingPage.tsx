@@ -22,27 +22,24 @@ const LandingPage: React.FC = () => {
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors">
+              <a href="#features" className="text-neutral-700 hover:text-orange-700 text-sm font-medium transition-colors">
                 Features
               </a>
-              <a href="#how-it-works" className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors">
+              <a href="#how-it-works" className="text-neutral-700 hover:text-orange-700 text-sm font-medium transition-colors">
                 How It Works
-              </a>
-              <a href="#testimonials" className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors">
-                Testimonials
               </a>
               <Link
                 to="/public/tournaments"
-                className="text-neutral-700 hover:text-neutral-900 text-sm font-medium transition-colors"
+                className="text-neutral-700 hover:text-orange-700 text-sm font-medium transition-colors"
               >
-                View Tournaments
+                Live Tournaments
               </Link>
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center space-x-2 bg-neutral-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-all shadow-sm hover:shadow-md"
+                className="flex items-center space-x-2 bg-gradient-to-r from-orange-700 to-orange-800 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:from-orange-800 hover:to-orange-900 transition-all shadow-sm hover:shadow-lg"
               >
                 <LogIn className="h-4 w-4" />
-                <span>Sign In</span>
+                <span>Get Started</span>
               </button>
             </div>
           </div>
