@@ -40,7 +40,7 @@ const PairCraftLogo: React.FC<PairCraftLogoProps> = ({
       {/* Text with Modern Typography */}
       {showText && (
         <div className="flex flex-col">
-          <span className={`bg-gradient-to-r from-orange-700 to-orange-800 bg-clip-text text-transparent ${textSizeClasses[size]}`}>
+          <span className={`text-white ${textSizeClasses[size]}`}>
             PairCraft
           </span>
           <span className={`text-gray-600 font-semibold tracking-wide ${size === 'sm' || size === 'md' ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-base'}`}>
