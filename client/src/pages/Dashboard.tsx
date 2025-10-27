@@ -229,11 +229,11 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Active</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{activeTournaments.length}</p>
+                <p className="text-3xl font-bold text-orange-800 mt-2">{activeTournaments.length}</p>
                 <p className="text-xs text-gray-500 mt-1">Running Now</p>
               </div>
-              <div className="p-4 bg-green-100 rounded-xl">
-                <Activity className="h-8 w-8 text-green-600" />
+              <div className="p-4 bg-orange-200 rounded-xl">
+                <Activity className="h-8 w-8 text-orange-800" />
               </div>
             </div>
           </div>
@@ -242,11 +242,11 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Players</p>
-                <p className="text-3xl font-bold text-purple-600 mt-2">{state.players.length}</p>
+                <p className="text-3xl font-bold text-orange-800 mt-2">{state.players.length}</p>
                 <p className="text-xs text-gray-500 mt-1">Total Registered</p>
               </div>
-              <div className="p-4 bg-purple-100 rounded-xl">
-                <Users className="h-8 w-8 text-purple-600" />
+              <div className="p-4 bg-orange-200 rounded-xl">
+                <Users className="h-8 w-8 text-orange-800" />
               </div>
             </div>
           </div>
@@ -288,7 +288,7 @@ const Dashboard: React.FC = () => {
 
           <Link
             to="/public/organizations"
-            className="group relative bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] overflow-hidden"
+            className="group relative bg-gradient-to-br from-orange-700 to-orange-800 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
             <div className="relative z-10">
@@ -299,13 +299,13 @@ const Dashboard: React.FC = () => {
                 <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
               </div>
               <h3 className="text-xl font-bold mb-2">Find Organizations</h3>
-              <p className="text-green-100">Discover chess groups near you</p>
+              <p className="text-orange-100">Discover chess groups near you</p>
             </div>
           </Link>
 
           <Link
             to="/tournaments"
-            className="group relative bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] overflow-hidden"
+            className="group relative bg-gradient-to-br from-orange-700 to-orange-800 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
             <div className="relative z-10">
@@ -316,7 +316,7 @@ const Dashboard: React.FC = () => {
                 <ArrowRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" />
               </div>
               <h3 className="text-xl font-bold mb-2">Browse All</h3>
-              <p className="text-purple-100">View and manage tournaments</p>
+              <p className="text-orange-100">View and manage tournaments</p>
             </div>
           </Link>
         </div>
@@ -358,7 +358,7 @@ const Dashboard: React.FC = () => {
                 onClick={() => setFilterStatus('active')}
                 className={`px-4 py-2 rounded-xl font-medium transition-all ${
                   filterStatus === 'active'
-                    ? 'bg-green-600 text-white shadow-md'
+                    ? 'bg-orange-800 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -377,7 +377,7 @@ const Dashboard: React.FC = () => {
               {orgState.organizations.length > 0 && (
                 <button
                   onClick={() => setShowOrgFilter(true)}
-                  className="px-4 py-2 rounded-xl font-medium bg-purple-600 text-white hover:bg-purple-700 transition-all flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl font-medium bg-orange-800 text-white hover:bg-orange-900 transition-all flex items-center gap-2"
                 >
                   <Filter className="h-4 w-4" />
                   Organizations
@@ -466,7 +466,7 @@ const Dashboard: React.FC = () => {
                       <span
                         className={`ml-3 px-3 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
                           tournament.status === 'active'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-orange-200 text-orange-800'
                             : tournament.status === 'completed'
                             ? 'bg-orange-200 text-orange-800'
                             : 'bg-gray-100 text-gray-800'
@@ -491,7 +491,7 @@ const Dashboard: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <div className="mt-4 flex items-center text-orange-800 group-hover:text-orange-700 font-medium">
+                    <div className="mt-4 flex items-center text-orange-800 group-hover:text-orange-900 font-medium">
                       <span>View Details</span>
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -507,7 +507,7 @@ const Dashboard: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
             <div className="px-6 py-5 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Building2 className="h-6 w-6 text-purple-600" />
+                <Building2 className="h-6 w-6 text-orange-800" />
                 Your Organizations
               </h2>
             </div>
@@ -517,14 +517,14 @@ const Dashboard: React.FC = () => {
                   <Link
                     key={org.id}
                     to={`/organizations/${org.id}/settings`}
-                    className="group p-6 bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-purple-400 hover:shadow-lg transition-all"
+                    className="group p-6 bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-orange-400 hover:shadow-lg transition-all"
                   >
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="p-3 bg-purple-100 rounded-xl group-hover:scale-110 transition-transform">
-                        <Building2 className="h-6 w-6 text-purple-600" />
+                      <div className="p-3 bg-orange-200 rounded-xl group-hover:scale-110 transition-transform">
+                        <Building2 className="h-6 w-6 text-orange-800" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 group-hover:text-purple-700 transition-colors">
+                        <h3 className="font-bold text-gray-900 group-hover:text-orange-800 transition-colors">
                           {org.name}
                         </h3>
                         <p className="text-xs text-gray-500 mt-1">{org.description || 'No description'}</p>
@@ -533,14 +533,14 @@ const Dashboard: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
                         org.role === 'owner'
-                          ? 'bg-purple-100 text-purple-800'
+                          ? 'bg-orange-200 text-orange-800'
                           : org.role === 'admin'
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-orange-200 text-orange-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
                         {org.role}
                       </span>
-                      <ArrowRight className="h-5 w-5 text-purple-600 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="h-5 w-5 text-orange-800 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </Link>
                 ))}
@@ -599,13 +599,13 @@ const Dashboard: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <Building2 className="h-6 w-6 text-purple-600" />
+                        <Building2 className="h-6 w-6 text-orange-800" />
                         <div className="flex-1">
                           <div className="font-semibold text-gray-900">{org.name}</div>
                           <div className="text-sm text-gray-600">{org.description || 'No description'}</div>
                         </div>
                         {orgState.currentOrganization?.id === org.id && (
-                          <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                          <span className="px-2 py-1 text-xs font-medium bg-orange-200 text-orange-800 rounded-full">
                             Current
                           </span>
                         )}
