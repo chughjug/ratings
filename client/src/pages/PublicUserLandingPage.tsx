@@ -12,38 +12,38 @@ const PublicUserLandingPage: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header with Glass Effect */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-indigo-100 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center group">
               <div className="transform transition-transform group-hover:scale-105">
-                <PairCraftLogo size="md" showText={true} textColor="text-indigo-900" knightGlow="bg-gradient-to-r from-indigo-600 to-purple-600" />
+                <PairCraftLogo size="md" showText={true} textColor="text-neutral-900" knightGlow="bg-gradient-to-r from-orange-700 to-orange-800" />
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <Link
                 to="/public/tournaments"
-                className="text-neutral-700 hover:text-indigo-600 text-sm font-medium transition-colors"
+                className="text-neutral-700 hover:text-orange-700 text-sm font-medium transition-colors"
               >
                 Find Tournaments
               </Link>
               <Link
                 to="/public/organizations"
-                className="text-neutral-700 hover:text-indigo-600 text-sm font-medium transition-colors"
+                className="text-neutral-700 hover:text-orange-700 text-sm font-medium transition-colors"
               >
                 Browse Organizations
               </Link>
               <Link
                 to="/"
-                className="text-neutral-700 hover:text-indigo-600 text-sm font-medium transition-colors"
+                className="text-neutral-700 hover:text-orange-700 text-sm font-medium transition-colors"
               >
                 For Directors
               </Link>
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center space-x-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="flex items-center space-x-2 bg-gradient-to-r from-orange-700 to-orange-800 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:from-orange-800 hover:to-orange-900 transition-all shadow-sm hover:shadow-lg"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Sign In</span>
@@ -53,32 +53,27 @@ const PublicUserLandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Hero Section with Purple Gradient */}
-      <section className="relative py-32 overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
-        </div>
+      {/* Hero Section */}
+      <section className="relative py-32 overflow-hidden bg-gradient-to-b from-white to-neutral-50">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-            <div className="space-y-8 text-white">
-              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium border border-white/30 text-white">
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-2 rounded-full text-sm font-medium border border-orange-200">
                 <Gamepad2 className="h-4 w-4" />
                 <span>Join Thousands of Chess Players</span>
               </div>
               
-              <h1 className="text-6xl md:text-7xl font-extrabold leading-tight tracking-tight">
-                Find Your Next
+              <h1 className="text-6xl md:text-7xl font-bold leading-tight tracking-tight">
+                <span className="text-neutral-900">Find Your Next</span>
                 <br />
-                <span className="bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent" style={{ fontFamily: 'serif' }}>
                   Chess Tournament
                 </span>
               </h1>
               
-              <p className="text-xl text-blue-100 leading-relaxed max-w-xl font-medium">
+              <p className="text-xl text-neutral-600 leading-relaxed max-w-xl">
                 Discover and register for chess tournaments near you. From local clubs to 
                 international competitions, find your perfect match.
               </p>
@@ -86,7 +81,7 @@ const PublicUserLandingPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   to="/public/tournaments"
-                  className="group bg-white text-indigo-700 px-8 py-4 rounded-xl text-lg font-bold hover:bg-blue-50 transition-all inline-flex items-center justify-center shadow-2xl hover:shadow-3xl transform hover:scale-105"
+                  className="group bg-neutral-900 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-neutral-800 transition-all inline-flex items-center justify-center shadow-lg hover:shadow-xl"
                 >
                   <Search className="mr-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
                   Browse Tournaments
@@ -94,39 +89,39 @@ const PublicUserLandingPage: React.FC = () => {
                 </Link>
                 <Link
                   to="/public/organizations"
-                  className="bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white px-8 py-4 rounded-xl text-lg font-bold hover:bg-white/20 transition-all inline-flex items-center justify-center"
+                  className="bg-white border-2 border-neutral-300 text-neutral-900 px-8 py-4 rounded-lg text-lg font-semibold hover:border-neutral-400 transition-all inline-flex items-center justify-center shadow-sm hover:shadow-md"
                 >
                   Explore Organizations
                   <ArrowRight className="ml-3 h-6 w-6" />
                 </Link>
               </div>
               
-              <div className="flex flex-wrap items-center gap-8 text-white">
+              <div className="flex flex-wrap items-center gap-8 text-neutral-700">
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30">
-                    <Check className="h-6 w-6 text-white" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
+                    <Check className="h-5 w-5 text-green-700" />
                   </div>
-                  <span className="font-bold">Free to Join</span>
+                  <span className="font-semibold">Free to Join</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30">
-                    <Check className="h-6 w-6 text-white" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
+                    <Check className="h-5 w-5 text-green-700" />
                   </div>
-                  <span className="font-bold">Live Updates</span>
+                  <span className="font-semibold">Live Updates</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30">
-                    <Check className="h-6 w-6 text-white" />
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center border border-green-200">
+                    <Check className="h-5 w-5 text-green-700" />
                   </div>
-                  <span className="font-bold">Easy Registration</span>
+                  <span className="font-semibold">Easy Registration</span>
                 </div>
               </div>
             </div>
             
             {/* Tournament Card Preview */}
             <div className="hidden lg:block relative">
-              <div className="relative bg-white rounded-3xl shadow-2xl p-8 border border-white/20 hover:shadow-3xl transition-all transform hover:scale-105">
-                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-3 rounded-full text-sm font-bold shadow-xl flex items-center gap-2">
+              <div className="relative bg-white rounded-3xl shadow-2xl p-8 border border-neutral-200 hover:shadow-3xl transition-all transform hover:scale-105">
+                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white px-5 py-3 rounded-full text-sm font-bold shadow-xl flex items-center gap-2">
                   <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
                   Live Now
                 </div>
@@ -152,7 +147,7 @@ const PublicUserLandingPage: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-50 to-orange-50 rounded-xl border border-orange-300">
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-50 to-orange-50 rounded-xl border border-orange-200">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-700 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
                         W
