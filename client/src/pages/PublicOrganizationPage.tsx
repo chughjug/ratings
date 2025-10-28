@@ -28,7 +28,8 @@ import {
   BarChart3,
   Eye,
   Zap,
-  Megaphone
+  Megaphone,
+  Shield
 } from 'lucide-react';
 import { organizationApi } from '../services/organizationApi';
 import { Organization, Tournament } from '../types';
