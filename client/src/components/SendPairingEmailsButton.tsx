@@ -35,23 +35,20 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     setMessage('');
 
     try {
-      // Create a comprehensive payload for the Apps Script
+      // Create payload that matches Apps Script doPost function expectations
       const emailPayload = {
-        action: 'send_pairing_emails',
+        event: 'pairings_generated', // This is what the Apps Script expects
         tournament: {
           id: tournamentId,
           name: `Tournament ${tournamentId.slice(0, 8)}`,
-          round: round,
-          section: sectionName,
-          totalRounds: 5, // Default value
-          format: 'swiss'
+          format: 'swiss',
+          rounds: 5, // Default value
+          logo_url: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png',
+          organization_logo: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png',
+          organization_name: 'Chess Tournament Director'
         },
-        pairings: generateMockPairings(),
-        metadata: {
-          timestamp: new Date().toISOString(),
-          source: 'chess-tournament-director',
-          version: '2.0'
-        }
+        round: round,
+        pairings: generateMockPairings()
       };
 
       console.log('Sending email notification payload:', emailPayload);
@@ -85,14 +82,14 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     }
   };
 
-  // Generate realistic mock pairings for testing
+  // Generate realistic mock pairings that match Apps Script expectations
   const generateMockPairings = () => {
     const pairings = [];
     const players = [
-      { name: 'Alice Johnson', rating: 1850, email: 'aarushchugh1@gmail.com' },
-      { name: 'Bob Smith', rating: 1720, email: 'aarushchugh1@gmail.com' },
-      { name: 'Carol Davis', rating: 1980, email: 'aarushchugh1@gmail.com' },
-      { name: 'David Wilson', rating: 1650, email: 'aarushchugh1@gmail.com' }
+      { id: 'p1', name: 'Alice Johnson', rating: 1850, email: 'aarushchugh1@gmail.com' },
+      { id: 'p2', name: 'Bob Smith', rating: 1720, email: 'aarushchugh1@gmail.com' },
+      { id: 'p3', name: 'Carol Davis', rating: 1980, email: 'aarushchugh1@gmail.com' },
+      { id: 'p4', name: 'David Wilson', rating: 1650, email: 'aarushchugh1@gmail.com' }
     ];
 
     for (let i = 0; i < Math.min(pairingsCount, 4); i++) {
@@ -102,11 +99,13 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
       pairings.push({
         board: i + 1,
         white: {
+          id: whitePlayer.id,
           name: whitePlayer.name,
           rating: whitePlayer.rating,
           email: whitePlayer.email
         },
         black: {
+          id: blackPlayer.id,
           name: blackPlayer.name,
           rating: blackPlayer.rating,
           email: blackPlayer.email
