@@ -127,6 +127,25 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
 
   const hasIncompleteResults = pairings.some(p => !p.is_bye && !p.result);
 
+  // Format bye results to show points clearly
+  const formatByeResult = (result: string, bye_type: string) => {
+    if (!result || !result.startsWith('bye_')) return result;
+    
+    // Full point byes (unpaired)
+    if (bye_type === 'unpaired' || result === 'bye_unpaired') {
+      return 'BYE (1.0)';
+    }
+    
+    // Half-point byes (intentional or inactive)
+    if (bye_type === 'bye' || bye_type === 'half_point_bye' || bye_type === 'inactive' || 
+        result === 'bye_bye' || result === 'bye_half_point_bye' || result === 'bye_inactive') {
+      return 'BYE (0.5)';
+    }
+    
+    // Default
+    return 'BYE';
+  };
+
   console.log('PairingSystem rendering with:', { tournamentId, section, round, players: players.length });
 
   return (
@@ -249,7 +268,7 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
                   </td>
                   <td className="result-cell">
                     <div className="result-display">
-                      {pairing.result || '-'}
+                      {pairing.is_bye ? formatByeResult(pairing.result, pairing.bye_type) : (pairing.result || '-')}
                     </div>
                   </td>
                   <td className="status-cell">

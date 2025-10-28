@@ -13,11 +13,19 @@ class BbpPairings {
 
   /**
    * Check if a player is eligible for a bye
-   * Based on bbpPairings eligibleForBye function
+   * Based on bbpPairings eligibleForBye function from common.h
+   * A player is NOT eligible if they already have a pairing-allocated bye (full point bye)
    */
   eligibleForBye(player) {
-    for (const match of player.matches || []) {
-      if (!match.gameWasPlayed && match.participatedInPairing && match.result === 'win') {
+    if (!player.matches || !Array.isArray(player.matches)) {
+      return true; // No history, eligible for bye
+    }
+    
+    for (const match of player.matches) {
+      // Check if this is a pairing-allocated bye (unpaired bye with full point)
+      // In bbpPairings: !match.gameWasPlayed && match.participatedInPairing && match.matchScore == tournament::MATCH_SCORE_WIN
+      if (match.bye_type === 'unpaired' || 
+          (!match.gameWasPlayed && match.result && match.result.startsWith('bye_') && match.result.includes('unpaired'))) {
         return false; // Player already received a pairing-allocated bye
       }
     }

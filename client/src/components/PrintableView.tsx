@@ -33,6 +33,24 @@ const PrintableView: React.FC<PrintableViewProps> = ({
     return new Date(dateStr).toLocaleDateString();
   };
 
+  const formatByeResult = (result: string, bye_type?: string) => {
+    if (!result || !result.startsWith('bye_')) return result;
+    
+    // Full point byes (unpaired)
+    if (bye_type === 'unpaired' || result === 'bye_unpaired') {
+      return 'BYE (1.0)';
+    }
+    
+    // Half-point byes (intentional or inactive)
+    if (bye_type === 'bye' || bye_type === 'half_point_bye' || bye_type === 'inactive' || 
+        result === 'bye_bye' || result === 'bye_half_point_bye' || result === 'bye_inactive') {
+      return 'BYE (0.5)';
+    }
+    
+    // Default
+    return 'BYE';
+  };
+
   const groupBySection = (items: any[], sectionKey: string = 'section') => {
     const grouped: { [key: string]: any[] } = {};
     items.forEach(item => {
@@ -169,7 +187,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
                         </div>
                       )}
                     </td>
-                    <td className="result">{pairing.result || '-'}</td>
+                    <td className="result">{formatByeResult(pairing.result, pairing.bye_type) || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -239,7 +257,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
                             </div>
                           )}
                         </td>
-                        <td className="result">{pairing.result || '-'}</td>
+                        <td className="result">{formatByeResult(pairing.result, pairing.bye_type) || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
