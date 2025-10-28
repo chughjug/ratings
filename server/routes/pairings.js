@@ -1019,15 +1019,15 @@ router.post('/regenerate', async (req, res) => {
  */
 async function sendPairingNotificationWebhook(tournamentId, round, pairings, tournament) {
   try {
-    // Use tournament-specific webhook URL if available, otherwise fall back to environment variable
-    const webhookUrl = tournament?.webhook_url || process.env.PAIRING_NOTIFICATION_WEBHOOK;
+    // Use environment variable webhook URL if available, otherwise fall back to tournament-specific
+    const webhookUrl = process.env.PAIRING_NOTIFICATION_WEBHOOK || tournament?.webhook_url;
     
     if (!webhookUrl) {
       console.warn('[Email Notifications] No webhook URL configured (neither tournament.webhook_url nor PAIRING_NOTIFICATION_WEBHOOK)');
       return;
     }
     
-    console.log(`[Email Notifications] Using webhook URL: ${tournament?.webhook_url ? 'tournament-specific' : 'environment variable'}`);
+    console.log(`[Email Notifications] Using webhook URL: ${process.env.PAIRING_NOTIFICATION_WEBHOOK ? 'environment variable' : 'tournament-specific'}`);
     // Log the exact URL to verify correct configuration on Heroku
     console.log(`[Email Notifications] Webhook URL value: ${webhookUrl}`);
 
