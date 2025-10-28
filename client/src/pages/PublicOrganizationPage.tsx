@@ -381,10 +381,7 @@ const PublicOrganizationPage: React.FC = () => {
   const showSocialLinks = organization?.settings?.layout?.showSocialLinks !== false;
 
   return (
-    <div 
-      className="min-h-screen" 
-      style={{ backgroundColor: organization?.settings?.theme?.backgroundColor || '#F9FAFB' }}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Custom CSS Injection */}
       {organization?.settings?.branding?.customCss && (
         <style dangerouslySetInnerHTML={{ __html: organization.settings.branding.customCss }} />
@@ -395,88 +392,74 @@ const PublicOrganizationPage: React.FC = () => {
         <link rel="stylesheet" href={organization.settings.branding.customFontUrl} />
       )}
 
-      {/* Header */}
-      <div 
-        className={`shadow-sm ${
-          headerStyle === 'hero' ? 'bg-gradient-to-r from-blue-600 to-blue-800 text-white' :
-          headerStyle === 'minimal' ? 'bg-transparent shadow-none' :
-          'bg-white'
-        }`}
-        style={{
-          backgroundColor: headerStyle === 'hero' ? undefined : (organization?.settings?.theme?.backgroundColor || '#FFFFFF'),
-          color: headerStyle === 'hero' ? undefined : (organization?.settings?.theme?.textColor || '#1F2937')
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-6">
+      {/* Hero Header with Modern Design */}
+      <div className="relative bg-gradient-to-br from-indigo-700 via-purple-600 to-pink-600 text-white shadow-2xl overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }} />
+        </div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
               {organization?.logoUrl && (
-                <img
-                  src={organization.logoUrl}
-                  alt={`${organization.name} logo`}
-                  className="h-20 w-20 object-cover border border-gray-200"
-                  style={{
-                    borderRadius: organization?.settings?.theme?.borderRadius || '8px'
-                  }}
-                />
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-white/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all"></div>
+                  <img
+                    src={organization.logoUrl}
+                    alt={`${organization.name} logo`}
+                    className="relative h-24 w-24 object-cover rounded-2xl border-2 border-white/30 shadow-2xl"
+                  />
+                </div>
               )}
               <div className="flex-1">
-                <h1 
-                  className="text-3xl font-bold mb-2"
-                  style={{
-                    color: headerStyle === 'hero' ? 'white' : (organization?.settings?.theme?.textColor || '#1F2937'),
-                    fontFamily: organization?.settings?.branding?.customFont || 'inherit'
-                  }}
-                >
+                <h1 className="text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200 drop-shadow-lg">
                   {organization.settings?.branding?.headerText || organization?.name}
                 </h1>
                 {(organization?.description || organization.settings?.branding?.tagline) && (
-                  <p 
-                    className="text-lg mb-4 max-w-3xl"
-                    style={{
-                      color: headerStyle === 'hero' ? 'rgba(255,255,255,0.8)' : (organization?.settings?.theme?.textColor || '#6B7280')
-                    }}
-                  >
+                  <p className="text-xl text-blue-100 mb-6 max-w-3xl font-medium">
                     {organization.settings?.branding?.tagline || organization.description}
                   </p>
                 )}
                 
-                {/* Contact Info */}
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-4">
+                {/* Contact Info with Modern Style */}
+                <div className="flex flex-wrap items-center gap-6 text-sm mb-6">
                   {organization?.website && (
                     <a
                       href={organization.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center hover:text-blue-600 transition-colors"
+                      className="flex items-center bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg hover:bg-white/20 transition-all border border-white/20"
                     >
-                      <Globe className="h-4 w-4 mr-1" />
-                      Website
+                      <Globe className="h-4 w-4 mr-2" />
+                      Visit Website
                     </a>
                   )}
                   {organization?.contactEmail && (
-                    <span className="flex items-center">
-                      <Mail className="h-4 w-4 mr-1" />
+                    <div className="flex items-center text-blue-100">
+                      <Mail className="h-4 w-4 mr-2" />
                       {organization.contactEmail}
-                    </span>
+                    </div>
                   )}
                   {organization?.contactPhone && (
-                    <span className="flex items-center">
-                      <Phone className="h-4 w-4 mr-1" />
+                    <div className="flex items-center text-blue-100">
+                      <Phone className="h-4 w-4 mr-2" />
                       {organization.contactPhone}
-                    </span>
+                    </div>
                   )}
                   {(organization?.city || organization?.state) && (
-                    <span className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-1" />
+                    <div className="flex items-center text-blue-100">
+                      <MapPin className="h-4 w-4 mr-2" />
                       {organization?.city && organization?.state
                         ? `${organization.city}, ${organization.state}`
                         : organization?.city || organization?.state}
-                    </span>
+                    </div>
                   )}
                 </div>
 
-                {/* Social Links */}
+                {/* Social Links with Glass Effect */}
                 {showSocialLinks && organization?.settings?.social && Object.keys(organization.settings.social).length > 0 && (
                   <div className="flex items-center space-x-3">
                     {Object.entries(organization.settings.social).map(([platform, url]) => {
@@ -488,12 +471,9 @@ const PublicOrganizationPage: React.FC = () => {
                           href={url as string}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`${getSocialColor(platform)} transition-colors`}
-                          style={{
-                            color: headerStyle === 'hero' ? 'white' : (organization?.settings?.theme?.primaryColor || '#3B82F6')
-                          }}
+                          className="p-2 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 border border-white/20 transition-all hover:scale-110"
                         >
-                          <Icon className="h-5 w-5" />
+                          <Icon className="h-5 w-5 text-white" />
                         </a>
                       );
                     })}
@@ -505,119 +485,56 @@ const PublicOrganizationPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Section */}
+      {/* Stats Section with Modern Cards */}
       {showStats && stats && (
-        <div 
-          className="border-b"
-          style={{
-            backgroundColor: organization?.settings?.theme?.backgroundColor || '#FFFFFF',
-            borderColor: organization?.settings?.theme?.borderColor || '#E5E7EB'
-          }}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="relative -mt-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="text-center">
-                <div 
-                  className="flex items-center justify-center w-12 h-12 rounded-lg mx-auto mb-2"
-                  style={{
-                    backgroundColor: `${organization?.settings?.theme?.primaryColor || '#3B82F6'}20`,
-                    borderRadius: organization?.settings?.theme?.borderRadius || '8px'
-                  }}
-                >
-                  <Trophy 
-                    className="h-6 w-6" 
-                    style={{ color: organization?.settings?.theme?.primaryColor || '#3B82F6' }}
-                  />
+              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
+                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mx-auto mb-3 shadow-lg">
+                  <Trophy className="h-7 w-7 text-white" />
                 </div>
-                <div 
-                  className="text-2xl font-bold"
-                  style={{ color: organization?.settings?.theme?.textColor || '#1F2937' }}
-                >
+                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
                   {stats.tournaments.total_tournaments}
                 </div>
-                <div 
-                  className="text-sm"
-                  style={{ color: organization?.settings?.theme?.textColor || '#6B7280' }}
-                >
+                <div className="text-sm text-gray-600 text-center font-medium">
                   Total Tournaments
                 </div>
               </div>
-              <div className="text-center">
-                <div 
-                  className="flex items-center justify-center w-12 h-12 rounded-lg mx-auto mb-2"
-                  style={{
-                    backgroundColor: `${organization?.settings?.theme?.accentColor || '#10B981'}20`,
-                    borderRadius: organization?.settings?.theme?.borderRadius || '8px'
-                  }}
-                >
-                  <TrendingUp 
-                    className="h-6 w-6" 
-                    style={{ color: organization?.settings?.theme?.accentColor || '#10B981' }}
-                  />
+              
+              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
+                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 mx-auto mb-3 shadow-lg">
+                  <TrendingUp className="h-7 w-7 text-white" />
                 </div>
-                <div 
-                  className="text-2xl font-bold"
-                  style={{ color: organization?.settings?.theme?.textColor || '#1F2937' }}
-                >
+                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
                   {stats.tournaments.active_tournaments}
                 </div>
-                <div 
-                  className="text-sm"
-                  style={{ color: organization?.settings?.theme?.textColor || '#6B7280' }}
-                >
-                  Active
+                <div className="text-sm text-gray-600 text-center font-medium">
+                  Active Now
                 </div>
               </div>
-              <div className="text-center">
-                <div 
-                  className="flex items-center justify-center w-12 h-12 rounded-lg mx-auto mb-2"
-                  style={{
-                    backgroundColor: `${organization?.settings?.theme?.secondaryColor || '#8B5CF6'}20`,
-                    borderRadius: organization?.settings?.theme?.borderRadius || '8px'
-                  }}
-                >
-                  <Award 
-                    className="h-6 w-6" 
-                    style={{ color: organization?.settings?.theme?.secondaryColor || '#8B5CF6' }}
-                  />
+              
+              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
+                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 mx-auto mb-3 shadow-lg">
+                  <Award className="h-7 w-7 text-white" />
                 </div>
-                <div 
-                  className="text-2xl font-bold"
-                  style={{ color: organization?.settings?.theme?.textColor || '#1F2937' }}
-                >
+                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
                   {stats.tournaments.completed_tournaments}
                 </div>
-                <div 
-                  className="text-sm"
-                  style={{ color: organization?.settings?.theme?.textColor || '#6B7280' }}
-                >
+                <div className="text-sm text-gray-600 text-center font-medium">
                   Completed
                 </div>
               </div>
-              <div className="text-center">
-                <div 
-                  className="flex items-center justify-center w-12 h-12 rounded-lg mx-auto mb-2"
-                  style={{
-                    backgroundColor: `${organization?.settings?.theme?.primaryColor || '#F59E0B'}20`,
-                    borderRadius: organization?.settings?.theme?.borderRadius || '8px'
-                  }}
-                >
-                  <Users 
-                    className="h-6 w-6" 
-                    style={{ color: organization?.settings?.theme?.primaryColor || '#F59E0B' }}
-                  />
+              
+              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
+                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 mx-auto mb-3 shadow-lg">
+                  <Users className="h-7 w-7 text-white" />
                 </div>
-                <div 
-                  className="text-2xl font-bold"
-                  style={{ color: organization?.settings?.theme?.textColor || '#1F2937' }}
-                >
+                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
                   {stats.players.total_players}
                 </div>
-                <div 
-                  className="text-sm"
-                  style={{ color: organization?.settings?.theme?.textColor || '#6B7280' }}
-                >
-                  Players
+                <div className="text-sm text-gray-600 text-center font-medium">
+                  Total Players
                 </div>
               </div>
             </div>
@@ -627,13 +544,16 @@ const PublicOrganizationPage: React.FC = () => {
 
       {/* Dashboard Sections - Upcoming & Active Tournaments */}
       {(upcomingTournaments.length > 0 || activeTournaments.length > 0) && (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-t border-b border-blue-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="py-12 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Upcoming Tournaments */}
               {upcomingTournaments.length > 0 && (
-                <div className="bg-white rounded-xl shadow-lg border border-blue-200 p-6">
+                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-2xl p-8 text-white overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/20 rounded-full blur-2xl"></div>
+                  <div className="relative">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
                       <div className="p-2 bg-blue-100 rounded-lg">
