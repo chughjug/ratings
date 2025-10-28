@@ -128,7 +128,7 @@ const PairingSystem: React.FC<PairingSystemProps> = ({
   const hasIncompleteResults = pairings.some(p => !p.is_bye && !p.result);
 
   // Format bye results to show points clearly
-  const formatByeResult = (result: string, bye_type: string) => {
+  const formatByeResult = (result: string | undefined, bye_type: string | undefined) => {
     if (!result || !result.startsWith('bye_')) return result;
     
     // Full point byes (unpaired)
