@@ -26,13 +26,9 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSendEmails = async () => {
-    if (!isEnabled) {
-      setErrorMessage('Email notifications are disabled. Enable them in the Notification Center first.');
-      setResult('error');
-      onError?.(errorMessage);
-      return;
-    }
-
+    // Don't check isEnabled - allow sending even if disabled
+    // The backend will handle checking notifications_enabled
+    
     setLoading(true);
     setResult(null);
     setErrorMessage('');
@@ -89,16 +85,16 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
 
   return (
     <div className="space-y-2">
-      {/* Main Button - Always visible */}
+      {/* Main Button - Always enabled */}
       <button
         onClick={() => setShowConfirm(true)}
-        disabled={loading || pairingsCount === 0 || !isEnabled}
+        disabled={loading}
         className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-          loading || pairingsCount === 0 || !isEnabled
+          loading
             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
             : 'bg-blue-600 text-white hover:bg-blue-700'
         }`}
-        title={!isEnabled ? 'Enable notifications in settings to send emails' : pairingsCount === 0 ? 'Generate pairings first' : 'Send emails to all players'}
+        title={loading ? 'Sending emails...' : 'Send emails to all players'}
       >
         {loading ? (
           <>

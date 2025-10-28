@@ -92,3 +92,5 @@ If PayPal setup is complex, consider using Stripe instead:
 - PayPal Developer Docs: https://developer.paypal.com/docs
 - PayPal Sandbox Testing: https://developer.paypal.com/docs/test-tools/sandbox-testing/
 - Contact: Check with your tournament platform administrator
+
+

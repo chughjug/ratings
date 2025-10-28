@@ -627,14 +627,14 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             </button>
           )}
           
-          {/* Email Notification Button - Always show (disabled when no pairings) */}
+          {/* Email Notification Button - Always enabled */}
           <div className="flex items-center">
             <SendPairingEmailsButton
               tournamentId={tournamentId}
               round={currentRound}
               pairingsCount={sectionPairings.length}
               webhookUrl={webhookUrl}
-              isEnabled={emailsEnabled && sectionPairings.length > 0}
+              isEnabled={true}
               onSuccess={() => console.log('Emails sent successfully')}
               onError={(error) => console.error('Failed to send emails:', error)}
             />
