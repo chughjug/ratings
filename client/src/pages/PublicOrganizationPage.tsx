@@ -779,6 +779,126 @@ const PublicOrganizationPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Features Section */}
+      <div className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose {organization?.name}?</h2>
+            <p className="text-lg text-gray-600">Professional tournament management with cutting-edge features</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
+                <Trophy className="h-6 w-6 text-orange-700" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Automated Swiss Pairings</h3>
+              <p className="text-gray-700 leading-relaxed">
+                Advanced pairing algorithms ensure fair and competitive matches every round.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
+                <Users className="h-6 w-6 text-orange-700" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Player Management</h3>
+              <p className="text-gray-700 leading-relaxed">
+                Comprehensive player registration, rating tracking, and tournament history.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
+                <BarChart3 className="h-6 w-6 text-orange-700" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Live Analytics</h3>
+              <p className="text-gray-700 leading-relaxed">
+                Real-time standings, statistics, and tournament progress tracking.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
+                <Calendar className="h-6 w-6 text-orange-700" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Flexible Scheduling</h3>
+              <p className="text-gray-700 leading-relaxed">
+                Support for multiple tournament formats and customizable time controls.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
+                <Shield className="h-6 w-6 text-orange-700" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Secure & Reliable</h3>
+              <p className="text-gray-700 leading-relaxed">
+                Enterprise-grade security with 99.9% uptime guarantee.
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
+                <Globe className="h-6 w-6 text-orange-700" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Public Access</h3>
+              <p className="text-gray-700 leading-relaxed">
+                Public tournament pages for spectators and easy player registration.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">About {organization?.name}</h3>
+              <p className="text-gray-400 leading-relaxed">
+                {organization?.description || 'Professional chess tournament organization committed to excellence.'}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link to="/public/tournaments" className="hover:text-orange-400 transition-colors">Browse Tournaments</Link></li>
+                <li><Link to="/public/organizations" className="hover:text-orange-400 transition-colors">Find Organizations</Link></li>
+                <li><Link to="/register" className="hover:text-orange-400 transition-colors">Register as Player</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Contact</h3>
+              <div className="space-y-2 text-gray-400">
+                {organization?.contactEmail && (
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 mr-2" />
+                    {organization.contactEmail}
+                  </div>
+                )}
+                {organization?.contactPhone && (
+                  <div className="flex items-center">
+                    <Phone className="h-4 w-4 mr-2" />
+                    {organization.contactPhone}
+                  </div>
+                )}
+                {organization?.website && (
+                  <a href={organization.website} target="_blank" rel="noopener noreferrer" className="flex items-center hover:text-orange-400 transition-colors">
+                    <Globe className="h-4 w-4 mr-2" />
+                    Visit Website
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 {organization?.name}. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
