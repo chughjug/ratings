@@ -1888,30 +1888,117 @@ const PublicTournamentDisplay: React.FC = () => {
                         sectionStandings.sort((a, b) => b.total_points - a.total_points);
 
                         return (
-                          <div key={sectionName} className="border border-gray-200 rounded-lg overflow-visible">
-                            <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                              <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
-                              <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
+                          <div key={sectionName}>
+                            {/* Desktop Table View */}
+                            <div className="hidden lg:block border border-gray-200 rounded-lg overflow-visible">
+                              <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                                <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
+                                <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
+                              </div>
+                              
+                              <div className="p-4 overflow-visible">
+                                <div className="overflow-x-auto overflow-y-visible">
+                                  <ChessStandingsTable
+                                    standings={sectionStandings.map(player => ({
+                                      ...player,
+                                      tiebreakers: player.tiebreakers || {
+                                        buchholz: 0,
+                                        sonnebornBerger: 0,
+                                        performanceRating: 0,
+                                        modifiedBuchholz: 0,
+                                        cumulative: 0
+                                      }
+                                    }))}
+                                    tournament={data?.tournament}
+                                    selectedSection={sectionName}
+                                    showTiebreakers={true}
+                                    showPrizes={true}
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            
-                            <div className="p-4 overflow-visible">
-                              <div className="overflow-x-auto overflow-y-visible">
-                                <ChessStandingsTable
-                                  standings={sectionStandings.map(player => ({
-                                    ...player,
-                                    tiebreakers: player.tiebreakers || {
-                                      buchholz: 0,
-                                      sonnebornBerger: 0,
-                                      performanceRating: 0,
-                                      modifiedBuchholz: 0,
-                                      cumulative: 0
-                                    }
-                                  }))}
-                                  tournament={data?.tournament}
-                                  selectedSection={sectionName}
-                                  showTiebreakers={true} // Show tiebreakers now that they're calculated
-                                  showPrizes={true}
-                                />
+
+                            {/* Mobile Card View */}
+                            <div className="lg:hidden">
+                              <div className="bg-gradient-to-r from-gray-700 to-gray-600 px-4 py-3 mb-3 rounded-t-xl">
+                                <h3 className="text-base font-bold text-white">{sectionName} Section</h3>
+                                <p className="text-xs text-gray-300">{sectionStandings.length} players</p>
+                              </div>
+                              <div className="space-y-2">
+                                {sectionStandings.map((player, index) => (
+                                  <div key={player.id} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-sm border border-gray-200 p-4">
+                                    {/* Rank Badge */}
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center space-x-3">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md ${
+                                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
+                                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500' :
+                                          index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
+                                          'bg-gradient-to-br from-blue-500 to-indigo-600'
+                                        }`}>
+                                          {index + 1}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="font-bold text-sm text-gray-900 truncate">{player.name}</div>
+                                          {player.uscf_id && (
+                                            <div className="text-xs text-gray-500">USCF: {player.uscf_id}</div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-2 gap-3 mt-3">
+                                      <div className="bg-blue-50 rounded-lg p-2">
+                                        <div className="text-xs text-blue-600 font-semibold">Points</div>
+                                        <div className="text-xl font-bold text-blue-700">{player.total_points || 0}</div>
+                                      </div>
+                                      
+                                      {displayOptions.showRatings && (
+                                        <div className="bg-green-50 rounded-lg p-2">
+                                          <div className="text-xs text-green-600 font-semibold">Rating</div>
+                                          <div className="text-lg font-bold text-green-700">{player.rating || '-'}</div>
+                                        </div>
+                                      )}
+                                      
+                                      {player.games_played !== undefined && (
+                                        <div className="bg-purple-50 rounded-lg p-2">
+                                          <div className="text-xs text-purple-600 font-semibold">Games</div>
+                                          <div className="text-lg font-bold text-purple-700">{player.games_played}</div>
+                                        </div>
+                                      )}
+                                      
+                                      <div className="bg-orange-50 rounded-lg p-2">
+                                        <div className="text-xs text-orange-600 font-semibold">Score</div>
+                                        <div className="text-lg font-bold text-orange-700">
+                                          {player.wins || 0}-{player.losses || 0}-{player.draws || 0}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Record Display */}
+                                    {(player.wins !== undefined || player.losses !== undefined || player.draws !== undefined) && (
+                                      <div className="mt-3 pt-3 border-t border-gray-200">
+                                        <div className="flex items-center justify-between text-xs">
+                                          <div className="flex items-center space-x-3">
+                                            <span className="flex items-center">
+                                              <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
+                                              {player.wins || 0}W
+                                            </span>
+                                            <span className="flex items-center">
+                                              <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
+                                              {player.losses || 0}L
+                                            </span>
+                                            <span className="flex items-center">
+                                              <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
+                                              {player.draws || 0}D
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </div>
