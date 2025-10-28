@@ -799,7 +799,7 @@ const PublicTournamentDisplay: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-8">
+      <div className={`max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 ${isMobile ? 'pb-24' : 'py-4 md:py-8'}`}>
         {/* Enhanced Tab Navigation */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 overflow-visible">
           <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
@@ -1635,7 +1635,7 @@ const PublicTournamentDisplay: React.FC = () => {
                             </div>
                             
                             {/* Desktop Table View */}
-                            <div className="hidden lg:block overflow-x-auto">
+                            <div className="hidden md:block overflow-x-auto">
                               <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                   <tr>
@@ -1724,7 +1724,7 @@ const PublicTournamentDisplay: React.FC = () => {
                             </div>
                             
                             {/* Custom Mobile View */}
-                            <div className="lg:hidden">
+                            <div className="md:hidden">
                               <div className="space-y-3">
                                 {sectionPairings.map((pairing) => (
                                   <div key={pairing.id} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-sm border border-gray-200 p-4">
@@ -1890,7 +1890,7 @@ const PublicTournamentDisplay: React.FC = () => {
                         return (
                           <div key={sectionName}>
                             {/* Desktop Table View */}
-                            <div className="hidden lg:block border border-gray-200 rounded-lg overflow-visible">
+                            <div className="hidden md:block border border-gray-200 rounded-lg overflow-visible">
                               <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
                                 <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
                                 <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
@@ -1919,7 +1919,7 @@ const PublicTournamentDisplay: React.FC = () => {
                             </div>
 
                             {/* Mobile Card View */}
-                            <div className="lg:hidden">
+                            <div className="md:hidden">
                               <div className="bg-gradient-to-r from-gray-700 to-gray-600 px-4 py-3 mb-3 rounded-t-xl">
                                 <h3 className="text-base font-bold text-white">{sectionName} Section</h3>
                                 <p className="text-xs text-gray-300">{sectionStandings.length} players</p>
@@ -1954,19 +1954,15 @@ const PublicTournamentDisplay: React.FC = () => {
                                         <div className="text-xl font-bold text-blue-700">{player.total_points || 0}</div>
                                       </div>
                                       
-                                      {displayOptions.showRatings && (
-                                        <div className="bg-green-50 rounded-lg p-2">
-                                          <div className="text-xs text-green-600 font-semibold">Rating</div>
-                                          <div className="text-lg font-bold text-green-700">{player.rating || '-'}</div>
-                                        </div>
-                                      )}
+                                      <div className="bg-green-50 rounded-lg p-2">
+                                        <div className="text-xs text-green-600 font-semibold">Rating</div>
+                                        <div className="text-lg font-bold text-green-700">{player.rating || '-'}</div>
+                                      </div>
                                       
-                                      {player.games_played !== undefined && (
-                                        <div className="bg-purple-50 rounded-lg p-2">
-                                          <div className="text-xs text-purple-600 font-semibold">Games</div>
-                                          <div className="text-lg font-bold text-purple-700">{player.games_played}</div>
-                                        </div>
-                                      )}
+                                      <div className="bg-purple-50 rounded-lg p-2">
+                                        <div className="text-xs text-purple-600 font-semibold">Games</div>
+                                        <div className="text-lg font-bold text-purple-700">{player.games_played || 0}</div>
+                                      </div>
                                       
                                       <div className="bg-orange-50 rounded-lg p-2">
                                         <div className="text-xs text-orange-600 font-semibold">Score</div>
@@ -1977,26 +1973,24 @@ const PublicTournamentDisplay: React.FC = () => {
                                     </div>
 
                                     {/* Record Display */}
-                                    {(player.wins !== undefined || player.losses !== undefined || player.draws !== undefined) && (
-                                      <div className="mt-3 pt-3 border-t border-gray-200">
-                                        <div className="flex items-center justify-between text-xs">
-                                          <div className="flex items-center space-x-3">
-                                            <span className="flex items-center">
-                                              <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-                                              {player.wins || 0}W
-                                            </span>
-                                            <span className="flex items-center">
-                                              <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
-                                              {player.losses || 0}L
-                                            </span>
-                                            <span className="flex items-center">
-                                              <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
-                                              {player.draws || 0}D
-                                            </span>
-                                          </div>
+                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center space-x-3">
+                                          <span className="flex items-center">
+                                            <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
+                                            {player.wins || 0}W
+                                          </span>
+                                          <span className="flex items-center">
+                                            <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
+                                            {player.losses || 0}L
+                                          </span>
+                                          <span className="flex items-center">
+                                            <span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span>
+                                            {player.draws || 0}D
+                                          </span>
                                         </div>
                                       </div>
-                                    )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
