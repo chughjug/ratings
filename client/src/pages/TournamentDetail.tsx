@@ -24,6 +24,7 @@ import TeamStandings from '../components/TeamStandings';
 import APIDocumentationModal from '../components/APIDocumentationModal';
 import APIStatusIndicator from '../components/APIStatusIndicator';
 import NotificationButton from '../components/NotificationButton';
+import SendPairingEmailsButton from '../components/SendPairingEmailsButton';
 import PrizeDisplay from '../components/PrizeDisplay';
 import PrizeConfigurationModal from '../components/PrizeConfigurationModal';
 import SMSManager from '../components/SMSManager';
