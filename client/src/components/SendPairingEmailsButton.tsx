@@ -31,21 +31,37 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     setErrorMessage('');
 
     try {
-      // Use the backend API endpoint instead of calling webhook directly
-      const response = await fetch('/api/pairings/notifications/email', {
+      // Fetch pairings for this round and section using the API
+      const response = await fetch(`/api/pairings/tournament/${tournamentId}/round/${round}${sectionName ? `?section=${encodeURIComponent(sectionName)}` : ''}`);
+      const pairings = await response.json();
+
+      if (!response.ok || !pairings || pairings.length === 0) {
+        throw new Error('No pairings found for this round');
+      }
+
+      // Use the updated webhook URL directly
+      const webhookUrl = 'https://script.google.com/macros/s/AKfycbxHMYoAVrLUpxzwaNMbTlDKusQVvhTvGAmrnDeaftLqhVhGt4rGUddxWxQiDPzqKW0z/exec';
+      
+      // Send webhook to Google Apps Script
+      const webhookResponse = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tournamentId,
-          round,
-          sectionName
+          event: 'pairings_generated',
+          tournament: {
+            id: tournamentId,
+            name: 'Tournament',
+            format: 'swiss',
+            rounds: round
+          },
+          round: round,
+          pairings: pairings,
+          timestamp: new Date().toISOString()
         })
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to send emails');
+      if (!webhookResponse.ok) {
+        throw new Error('Failed to send webhook');
       }
 
       setResult('success');
