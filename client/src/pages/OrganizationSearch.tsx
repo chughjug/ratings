@@ -292,7 +292,7 @@ const OrganizationSearch: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
               <ul className="space-y-2">
                 <li><Link to="/public/tournaments" className="text-gray-400 hover:text-white">All Tournaments</Link></li>
-                <li><Link to="/" className="text-gray-400 hover:text-white">Home</Link></li>
+                <li><Link to="/public" className="text-gray-400 hover:text-white">Home</Link></li>
               </ul>
             </div>
             <div>

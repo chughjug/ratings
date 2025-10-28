@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Trophy, Users, Calendar, ArrowRight, LogIn, Check, 
   BarChart3, Bell, Globe, Zap, Sparkles, Star, TrendingUp, Shield, 
-  Search, MapPin, Clock, Award, Activity, Gamepad2
+  Search, MapPin, Clock, Award, Activity, Gamepad2, Lock
 } from 'lucide-react';
 import PairCraftLogo from '../components/PairCraftLogo';
 import AuthModal from '../components/AuthModal';
