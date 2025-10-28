@@ -467,6 +467,29 @@ class PairingStorageService {
   }
 
   /**
+   * Get pairings for a specific round and section
+   */
+  getRoundPairingsForSection(tournamentId, round, sectionName) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT p.*, 
+                wp.name as white_name, wp.rating as white_rating, wp.uscf_id as white_uscf_id, wp.lichess_username as white_lichess_username,
+                bp.name as black_name, bp.rating as black_rating, bp.uscf_id as black_uscf_id, bp.lichess_username as black_lichess_username
+         FROM pairings p
+         LEFT JOIN players wp ON p.white_player_id = wp.id
+         LEFT JOIN players bp ON p.black_player_id = bp.id
+         WHERE p.tournament_id = ? AND p.round = ? AND COALESCE(p.section, 'Open') = ?
+         ORDER BY p.board`,
+        [tournamentId, round, sectionName],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+  }
+
+  /**
    * Get all pairings for a tournament with round independence
    */
   getAllTournamentPairings(tournamentId) {
