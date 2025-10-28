@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
+import { pairingApi } from '../services/api';
 
 interface SendPairingEmailsButtonProps {
   tournamentId: string;
@@ -9,6 +10,7 @@ interface SendPairingEmailsButtonProps {
   isEnabled: boolean;
   onSuccess?: () => void;
   onError?: (error: string) => void;
+  sectionName?: string;
 }
 
 const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
@@ -18,7 +20,8 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
   webhookUrl,
   isEnabled,
   onSuccess,
-  onError
+  onError,
+  sectionName
 }) => {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -34,17 +37,11 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     setErrorMessage('');
 
     try {
-      // Fetch pairings for this round
-      const response = await fetch(`/api/tournaments/${tournamentId}/pairings?round=${round}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch pairings');
-      }
+      // Fetch pairings for this round and section using the API
+      const response = await pairingApi.getByRound(tournamentId, round, sectionName);
+      const pairings = response.data || [];
 
-      const data = await response.json();
-      const pairings = data.data || [];
-
-      if (pairings.length === 0) {
+      if (!pairings || pairings.length === 0) {
         throw new Error('No pairings found for this round');
       }
 

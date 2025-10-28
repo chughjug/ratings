@@ -25,6 +25,7 @@ import Registration from './pages/Registration';
 import SectionPairingPage from './pages/SectionPairingPage';
 import UserProfile from './pages/UserProfile';
 import LandingPage from './pages/LandingPage';
+import PublicUserLandingPage from './pages/PublicUserLandingPage';
 import ChessGame from './pages/ChessGame';
 import PlayerPerformance from './components/PlayerPerformance';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -48,6 +49,7 @@ function App() {
               <PWAStatus showDetails={false} />
             </div>
               <Routes>
+                <Route path="/public" element={<PublicUserLandingPage />} />
                 <Route path="/public/tournaments" element={<PublicTournamentList />} />
                 <Route path="/public/tournaments/:id" element={<BrandedPublicTournamentDisplay />} />
                 <Route path="/public/tournament/:id" element={<BrandedPublicTournamentDisplay />} />

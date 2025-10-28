@@ -381,7 +381,7 @@ const PublicOrganizationPage: React.FC = () => {
   const showSocialLinks = organization?.settings?.layout?.showSocialLinks !== false;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       {/* Custom CSS Injection */}
       {organization?.settings?.branding?.customCss && (
         <style dangerouslySetInnerHTML={{ __html: organization.settings.branding.customCss }} />
@@ -392,8 +392,8 @@ const PublicOrganizationPage: React.FC = () => {
         <link rel="stylesheet" href={organization.settings.branding.customFontUrl} />
       )}
 
-      {/* Hero Header with Modern Design */}
-      <div className="relative bg-gradient-to-br from-indigo-700 via-purple-600 to-pink-600 text-white shadow-2xl overflow-hidden">
+      {/* Hero Header with Orange Gradient */}
+      <div className="relative bg-gradient-to-br from-orange-600 via-orange-700 to-red-600 text-white shadow-2xl overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -550,9 +550,9 @@ const PublicOrganizationPage: React.FC = () => {
               
               {/* Upcoming Tournaments */}
               {upcomingTournaments.length > 0 && (
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-2xl p-8 text-white overflow-hidden relative">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl shadow-2xl p-8 text-white overflow-hidden relative">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/20 rounded-full blur-2xl"></div>
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-300/20 rounded-full blur-2xl"></div>
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-2">
                       <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
@@ -573,7 +573,7 @@ const PublicOrganizationPage: React.FC = () => {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <h4 className="font-semibold text-white mb-1">{tournament.name}</h4>
-                            <div className="flex items-center space-x-3 text-sm text-blue-100">
+                            <div className="flex items-center space-x-3 text-sm text-orange-100">
                               <span className="flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
                                 {formatDate(tournament.startDate)}
@@ -587,7 +587,7 @@ const PublicOrganizationPage: React.FC = () => {
                           <ArrowRight className="h-5 w-5 text-white flex-shrink-0" />
                         </div>
                         {tournament.allowRegistration && (
-                          <button className="mt-2 w-full text-center py-1.5 bg-white text-blue-600 rounded-md text-sm font-bold hover:bg-blue-50 transition-colors">
+                          <button className="mt-2 w-full text-center py-1.5 bg-white text-orange-600 rounded-md text-sm font-bold hover:bg-orange-50 transition-colors">
                             Register Now
                           </button>
                         )}
@@ -596,7 +596,7 @@ const PublicOrganizationPage: React.FC = () => {
                   </div>
                   <Link
                     to={`/public/organizations/${organization?.slug}`}
-                    className="mt-4 inline-flex items-center text-sm font-medium text-white hover:text-blue-200"
+                    className="mt-4 inline-flex items-center text-sm font-medium text-white hover:text-orange-200"
                   >
                     View all upcoming tournaments
                     <ChevronRight className="h-4 w-4 ml-1" />

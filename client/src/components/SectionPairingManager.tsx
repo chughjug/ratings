@@ -635,6 +635,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               pairingsCount={sectionPairings.length}
               webhookUrl={webhookUrl}
               isEnabled={true}
+              sectionName={sectionName}
               onSuccess={() => console.log('Emails sent successfully')}
               onError={(error) => console.error('Failed to send emails:', error)}
             />

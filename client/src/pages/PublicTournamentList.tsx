@@ -148,13 +148,21 @@ const PublicTournamentList: React.FC = () => {
               <PairCraftLogo size="sm" showText={true} />
             </Link>
             
-            <Link
-              to="/"
-              className="inline-flex items-center space-x-2 text-gray-600 hover:text-black text-sm"
-            >
-              <Home className="h-4 w-4" />
-              <span>Admin Dashboard</span>
-            </Link>
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/public"
+                className="inline-flex items-center space-x-2 text-gray-600 hover:text-black text-sm"
+              >
+                <Home className="h-4 w-4" />
+                <span>Home</span>
+              </Link>
+              <Link
+                to="/"
+                className="inline-flex items-center space-x-2 text-gray-600 hover:text-black text-sm"
+              >
+                <span>For Directors</span>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
