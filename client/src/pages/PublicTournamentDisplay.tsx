@@ -1723,61 +1723,92 @@ const PublicTournamentDisplay: React.FC = () => {
                               </table>
                             </div>
                             
-                            {/* Mobile Card View - Compact */}
-                            <div className="lg:hidden divide-y divide-gray-200">
-                              {sectionPairings.map((pairing) => (
-                                <div key={pairing.id} className="p-3 hover:bg-blue-50 transition-colors">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs">
-                                        {pairing.board}
-                                      </div>
-                                    </div>
-                                    <span className={`inline-flex px-2 py-0.5 text-xs font-bold rounded ${
-                                      pairing.result === '1-0' ? 'bg-green-100 text-green-800' :
-                                      pairing.result === '0-1' ? 'bg-red-100 text-red-800' :
-                                      pairing.result === '1/2-1/2' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-gray-100 text-gray-800'
-                                    }`}>
-                                      {pairing.result || 'TBD'}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="space-y-2">
-                                    {/* White Player - Compact */}
-                                    <div className="flex items-center justify-between px-2 py-2 bg-white rounded border border-gray-200">
-                                      <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                        <div className="w-3 h-3 bg-white border border-gray-400 rounded flex-shrink-0"></div>
-                                        <div className="min-w-0 flex-1">
-                                          <div className="text-xs font-medium text-gray-900 truncate">{pairing.white_name || 'TBD'}</div>
-                                          {displayOptions.showRatings && pairing.white_rating && (
-                                            <div className="text-[10px] text-gray-500">{pairing.white_rating}</div>
-                                          )}
+                            {/* Custom Mobile View */}
+                            <div className="lg:hidden">
+                              <div className="space-y-3">
+                                {sectionPairings.map((pairing) => (
+                                  <div key={pairing.id} className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-sm border border-gray-200 p-4">
+                                    {/* Mobile Board Header */}
+                                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                          {pairing.board}
+                                        </div>
+                                        <div>
+                                          <div className="text-xs font-semibold text-gray-500 uppercase">Board</div>
+                                          <div className="text-sm font-bold text-gray-900">{sectionName}</div>
                                         </div>
                                       </div>
-                                      <div className="text-sm font-bold text-gray-900 ml-2">
-                                        {pairing.white_player_id ? calculatePlayerScores()[pairing.white_player_id] || 0 : '-'}
+                                      <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                                        pairing.result === '1-0' ? 'bg-green-500 text-white' :
+                                        pairing.result === '0-1' ? 'bg-red-500 text-white' :
+                                        pairing.result === '1/2-1/2' ? 'bg-yellow-500 text-white' :
+                                        'bg-gray-300 text-gray-700'
+                                      }`}>
+                                        {pairing.result || 'TBD'}
                                       </div>
                                     </div>
                                     
-                                    {/* Black Player - Compact */}
-                                    <div className="flex items-center justify-between px-2 py-2 bg-gray-50 rounded border border-gray-200">
-                                      <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                        <div className="w-3 h-3 bg-gray-800 border border-gray-400 rounded flex-shrink-0"></div>
-                                        <div className="min-w-0 flex-1">
-                                          <div className="text-xs font-medium text-gray-900 truncate">{pairing.black_name || 'TBD'}</div>
-                                          {displayOptions.showRatings && pairing.black_rating && (
-                                            <div className="text-[10px] text-gray-500">{pairing.black_rating}</div>
-                                          )}
+                                    {/* Mobile Match Card */}
+                                    <div className="space-y-3">
+                                      {/* White Player */}
+                                      <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                            <div className="w-5 h-5 bg-white border-2 border-gray-600 rounded flex-shrink-0 shadow-sm"></div>
+                                            <div className="min-w-0 flex-1">
+                                              <div className="font-semibold text-sm text-gray-900 truncate">
+                                                {pairing.white_name || 'TBD'}
+                                              </div>
+                                              {displayOptions.showRatings && pairing.white_rating && (
+                                                <div className="text-xs text-gray-600">Rating: {pairing.white_rating}</div>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="ml-3">
+                                            <div className="text-2xl font-bold text-blue-600">
+                                              {pairing.white_player_id ? calculatePlayerScores()[pairing.white_player_id] || 0 : '-'}
+                                            </div>
+                                            <div className="text-[10px] text-gray-500 text-center">pts</div>
+                                          </div>
                                         </div>
                                       </div>
-                                      <div className="text-sm font-bold text-gray-900 ml-2">
-                                        {pairing.black_player_id ? calculatePlayerScores()[pairing.black_player_id] || 0 : '-'}
+                                      
+                                      {/* VS Divider */}
+                                      <div className="flex items-center space-x-2">
+                                        <div className="flex-1 border-t border-gray-300"></div>
+                                        <div className="px-3 py-1 bg-gray-100 rounded-full">
+                                          <span className="text-xs font-bold text-gray-600">VS</span>
+                                        </div>
+                                        <div className="flex-1 border-t border-gray-300"></div>
+                                      </div>
+                                      
+                                      {/* Black Player */}
+                                      <div className="bg-gray-900 rounded-lg p-3 shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                            <div className="w-5 h-5 bg-gray-800 border-2 border-gray-400 rounded flex-shrink-0 shadow-sm"></div>
+                                            <div className="min-w-0 flex-1">
+                                              <div className="font-semibold text-sm text-white truncate">
+                                                {pairing.black_name || 'TBD'}
+                                              </div>
+                                              {displayOptions.showRatings && pairing.black_rating && (
+                                                <div className="text-xs text-gray-300">Rating: {pairing.black_rating}</div>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="ml-3">
+                                            <div className="text-2xl font-bold text-white">
+                                              {pairing.black_player_id ? calculatePlayerScores()[pairing.black_player_id] || 0 : '-'}
+                                            </div>
+                                            <div className="text-[10px] text-gray-400 text-center">pts</div>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
                           </div>
                         );
