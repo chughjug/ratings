@@ -25,8 +25,8 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
   const [result, setResult] = useState<'success' | 'error' | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Apps Script webhook URL for pairing email notifications (matches backend configuration)
-  const APPS_SCRIPT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyLjx_xfOs6XNlDmAZHJKobn1MMSgOeRBHJOAS0qNK7HyQEuMm9EdRIxt5f5P6sej-a/exec';
+  // Apps Script webhook URL for pairing email notifications (correct URL)
+  const APPS_SCRIPT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwq-_6VBehlLjilnt7hfFpSlAsfyhYjbpw7Qmpnle3IqetPdSVIJmVajy2GvUa_EabL/exec';
 
   const handleSendEmails = async () => {
     setLoading(true);
