@@ -544,7 +544,7 @@ const PublicOrganizationPage: React.FC = () => {
 
       {/* Dashboard Sections - Upcoming & Active Tournaments */}
       {(upcomingTournaments.length > 0 || activeTournaments.length > 0) && (
-        <div className="py-12 bg-white">
+        <div className="py-12 bg-gradient-to-b from-white to-neutral-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
@@ -562,7 +562,7 @@ const PublicOrganizationPage: React.FC = () => {
                     </div>
                     <Zap className="h-5 w-5 text-white" />
                   </div>
-                  <p className="text-sm text-blue-100 mb-4">Get ready for these exciting events!</p>
+                  <p className="text-sm text-orange-100 mb-4">Get ready for these exciting events!</p>
                   <div className="space-y-3">
                     {upcomingTournaments.map((tournament: any) => (
                       <Link
@@ -606,46 +606,52 @@ const PublicOrganizationPage: React.FC = () => {
 
               {/* Active Tournaments */}
               {activeTournaments.length > 0 && (
-                <div className="bg-white rounded-xl shadow-lg border border-green-200 p-6">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl shadow-2xl p-8 text-white overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-400/20 rounded-full blur-2xl"></div>
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-green-100 rounded-lg">
-                        <Activity className="h-5 w-5 text-green-600" />
+                      <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                        <Activity className="h-5 w-5 text-white" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900">Active Now</h3>
+                      <div>
+                        <h3 className="text-xl font-bold">Active Now</h3>
+                        <p className="text-sm text-orange-100">Games in progress</p>
+                      </div>
                     </div>
-                    <Eye className="h-5 w-5 text-green-600" />
+                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold">
+                      LIVE
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 mb-4">Follow these tournaments in real-time!</p>
                   <div className="space-y-3">
                     {activeTournaments.map((tournament: any) => (
                       <Link
                         key={tournament.id}
                         to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
-                        className="block p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 hover:shadow-md transition-all"
+                        className="block p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 mb-1">{tournament.name}</h4>
-                            <div className="flex items-center space-x-3 text-sm text-gray-600">
+                            <h4 className="font-semibold text-white mb-1">{tournament.name}</h4>
+                            <div className="flex items-center space-x-3 text-sm text-orange-100">
                               <span className="flex items-center">
-                                <BarChart3 className="h-4 w-4 mr-1" />
-                                Live now
+                                <Clock className="h-4 w-4 mr-1" />
+                                Round {tournament.currentRound || 1}
                               </span>
                               <span className="flex items-center">
-                                <TrendingUp className="h-4 w-4 mr-1" />
-                                {tournament.rounds} rounds
+                                <Users className="h-4 w-4 mr-1" />
+                                {tournament.playerCount || 0} players
                               </span>
                             </div>
                           </div>
-                          <ArrowRight className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          <ArrowRight className="h-5 w-5 text-white flex-shrink-0" />
                         </div>
                       </Link>
                     ))}
                   </div>
                   <Link
                     to={`/public/organizations/${organization?.slug}?status=active`}
-                    className="mt-4 inline-flex items-center text-sm font-medium text-green-600 hover:text-green-800"
+                    className="mt-4 inline-flex items-center text-sm font-medium text-white hover:text-orange-200"
                   >
                     View all active tournaments
                     <ChevronRight className="h-4 w-4 ml-1" />
