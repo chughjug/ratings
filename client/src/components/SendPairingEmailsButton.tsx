@@ -25,8 +25,8 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
   const [result, setResult] = useState<'success' | 'error' | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Apps Script webhook URL for pairing email notifications
-  const APPS_SCRIPT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxHMYoAVrLUpxzwaNMbTlDKusQVvhTvGAmrnDeaftLqhVhGt4rGUddxWxQiDPzqKW0z/exec';
+  // Apps Script webhook URL for pairing email notifications (matches backend configuration)
+  const APPS_SCRIPT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyLjx_xfOs6XNlDmAZHJKobn1MMSgOeRBHJOAS0qNK7HyQEuMm9EdRIxt5f5P6sej-a/exec';
 
   const handleSendEmails = async () => {
     setLoading(true);
@@ -70,7 +70,7 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     setErrorMessage('');
 
     try {
-      // Direct call to Apps Script webhook
+      // Direct call to Apps Script webhook with test data
       const response = await fetch(APPS_SCRIPT_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,14 +78,34 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
           event: 'pairings_generated',
           tournament: {
             id: tournamentId,
-            name: 'Tournament', // You might want to pass actual tournament name
+            name: 'Test Tournament',
             format: 'swiss',
-            rounds: 1
+            rounds: 5,
+            logo_url: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png',
+            organization_logo: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png',
+            organization_name: 'Chess Tournament Director'
           },
           round: round,
           pairingsCount: pairingsCount,
           timestamp: new Date().toISOString(),
-          pairings: [] // Empty for now, will be populated by backend
+          pairings: [
+            {
+              board: 1,
+              white: {
+                id: 'test-white',
+                name: 'Test Player (White)',
+                rating: 1800,
+                email: 'aarushchugh1@gmail.com'
+              },
+              black: {
+                id: 'test-black', 
+                name: 'Test Opponent (Black)',
+                rating: 1750,
+                email: 'aarushchugh1@gmail.com'
+              },
+              section: sectionName || 'Open'
+            }
+          ]
         })
       });
 
