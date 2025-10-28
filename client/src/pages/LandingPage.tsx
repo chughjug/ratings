@@ -140,14 +140,14 @@ const LandingPage: React.FC = () => {
                       <div className="text-xs text-neutral-600 mt-1">Complete</div>
                     </div>
                     <div className="text-center p-4 bg-neutral-50 rounded-xl border border-neutral-200">
-                      <div className="text-2xl font-bold text-orange-800">$2.5K</div>
+                      <div className="text-2xl font-bold text-purple-700">$2.5K</div>
                       <div className="text-xs text-neutral-600 mt-1">Prize Fund</div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-orange-50 to-orange-50 rounded-xl border border-orange-300">
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-700 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">
                         P1
                       </div>
                       <div>
@@ -216,8 +216,8 @@ const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-white rounded-xl p-8 border border-neutral-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-6 border border-orange-200">
-                <Trophy className="h-6 w-6 text-orange-700" />
+              <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-6 border border-indigo-200">
+                <Trophy className="h-6 w-6 text-indigo-700" />
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">
                 Automated Swiss Pairings
@@ -394,7 +394,7 @@ const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 1
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Sign Up</h3>
@@ -404,7 +404,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 2
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Create Tournament</h3>
@@ -414,7 +414,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 3
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Generate Pairings</h3>
@@ -424,7 +424,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-800 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white shadow-lg">
                 4
               </div>
               <h3 className="text-xl font-bold text-neutral-900 mb-3">Run Tournament</h3>
@@ -459,8 +459,8 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+              <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-indigo-500/50 transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mb-4">
                 <Trophy className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2">Swiss Pairings</h3>
@@ -469,8 +469,8 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+              <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-indigo-500/50 transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mb-4">
                 <BarChart3 className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2">Live Standings</h3>
@@ -479,8 +479,8 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+              <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-indigo-500/50 transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mb-4">
                 <Bell className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2">Smart Notifications</h3>
@@ -489,8 +489,8 @@ const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-orange-600/50 transition-all">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center mb-4">
+              <div className="bg-neutral-800 rounded-xl p-6 border border-neutral-700 hover:border-indigo-500/50 transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mb-4">
                 <Globe className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2">Public Pages</h3>
@@ -500,7 +500,7 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-700/10 to-orange-500/10 backdrop-blur rounded-2xl p-12 text-center border border-orange-700/20">
+          <div className="bg-gradient-to-br from-indigo-600/10 to-purple-600/10 backdrop-blur rounded-2xl p-12 text-center border border-indigo-600/20">
             <h3 className="text-3xl font-bold mb-4">
               Get Started in Under 5 Minutes
             </h3>
@@ -542,11 +542,11 @@ const LandingPage: React.FC = () => {
               </p>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-orange-600" />
+                  <Check className="h-5 w-5 text-indigo-500" />
                   <span className="text-neutral-300">Free Forever</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="h-5 w-5 text-orange-600" />
+                  <Check className="h-5 w-5 text-indigo-500" />
                   <span className="text-neutral-300">Zero Setup Time</span>
                 </div>
               </div>
@@ -554,49 +554,45 @@ const LandingPage: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4 text-white">Platform</h3>
               <ul className="space-y-3">
-                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                <li><Link to="/public/tournaments" className="text-neutral-400 hover:text-indigo-400 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Browse Tournaments
                 </Link></li>
-                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                <li><Link to="/public/organizations" className="text-neutral-400 hover:text-indigo-400 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Find Organizations
                 </Link></li>
-                <li><Link to="/register" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                <li><Link to="/register" className="text-neutral-400 hover:text-indigo-400 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Register as Player
                 </Link></li>
-                {/* <li><Link to="/chess" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
-                  <ArrowRight className="h-3 w-3" />
-                  Play Chess Online
-                </Link></li> */}
               </ul>
             </div>
             <div>
               <h3 className="text-lg font-semibold mb-4 text-white">Power Features</h3>
               <ul className="space-y-3 text-neutral-400">
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
                   <span>Burstein & Accelerated Pairings</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
                   <span>USCF Rating Integration</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
                   <span>Export to PDF & Print</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
                   <span>Team Tournament Support</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
                   <span>Embeddable Widgets</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
                   <span>White-Label Branding</span>
                 </li>
               </ul>
