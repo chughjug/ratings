@@ -23,19 +23,13 @@ class BBPPairingsDirect {
   /**
    * Check if player is eligible for bye
    * From common.h lines 115-128
-   * A player is NOT eligible if they already have a pairing-allocated bye (full point bye)
    */
   eligibleForBye(player) {
-    if (!player.matches || !Array.isArray(player.matches)) {
-      return true; // No history, eligible for bye
-    }
-    
-    for (const match of player.matches) {
-      // Check if this is a pairing-allocated bye (unpaired bye with full point)
-      // In bbpPairings: !match.gameWasPlayed && match.participatedInPairing && match.matchScore == tournament::MATCH_SCORE_WIN
-      if (match.bye_type === 'unpaired' || 
-          (!match.gameWasPlayed && match.result && match.result.startsWith('bye_') && match.result.includes('unpaired'))) {
-        return false; // Player already received a pairing-allocated bye
+    for (const match of player.matches || []) {
+      if (!match.gameWasPlayed && 
+          match.participatedInPairing && 
+          match.matchScore === 'win') {
+        return false;
       }
     }
     return true;
