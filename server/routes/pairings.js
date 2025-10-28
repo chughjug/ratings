@@ -3933,4 +3933,75 @@ router.post('/notifications/sms', async (req, res) => {
   }
 });
 
+/**
+ * Send pairing emails via webhook (manual trigger)
+ * POST /api/pairings/notifications/email
+ */
+router.post('/notifications/email', async (req, res) => {
+  const { tournamentId, round, sectionName } = req.body;
+
+  try {
+    if (!tournamentId || !round) {
+      res.status(400).json({ 
+        success: false,
+        error: 'tournamentId and round are required' 
+      });
+      return;
+    }
+
+    // Get tournament data
+    const tournament = await pairingStorage.getTournament(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ 
+        success: false,
+        error: `Tournament ${tournamentId} not found` 
+      });
+      return;
+    }
+
+    // Check if notifications are enabled
+    if (!tournament.notifications_enabled) {
+      res.status(400).json({ 
+        success: false,
+        error: 'Email notifications are disabled for this tournament' 
+      });
+      return;
+    }
+
+    // Get pairings for the round and section
+    let pairings;
+    if (sectionName) {
+      pairings = await pairingStorage.getRoundPairingsForSection(tournamentId, round, sectionName);
+    } else {
+      pairings = await pairingStorage.getRoundPairings(tournamentId, round);
+    }
+
+    if (!pairings || pairings.length === 0) {
+      res.status(404).json({ 
+        success: false,
+        error: `No pairings found for tournament ${tournamentId}, round ${round}${sectionName ? `, section ${sectionName}` : ''}` 
+      });
+      return;
+    }
+
+    console.log(`[Email Notifications API] Sending notifications for tournament ${tournamentId}, round ${round}${sectionName ? `, section ${sectionName}` : ''}`);
+    
+    // Send webhook notification
+    await sendPairingNotificationWebhook(tournamentId, round, pairings, tournament);
+
+    res.json({ 
+      success: true,
+      message: `Email notifications sent successfully`,
+      pairingsCount: pairings.length
+    });
+
+  } catch (error) {
+    console.error('[Email Notifications API] Error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

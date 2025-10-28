@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { Mail, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
-import { pairingApi } from '../services/api';
 
 interface SendPairingEmailsButtonProps {
   tournamentId: string;
   round: number;
   pairingsCount: number;
-  webhookUrl: string;
   isEnabled: boolean;
   onSuccess?: () => void;
   onError?: (error: string) => void;
@@ -17,7 +15,6 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
   tournamentId,
   round,
   pairingsCount,
-  webhookUrl,
   isEnabled,
   onSuccess,
   onError,
@@ -29,42 +26,26 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSendEmails = async () => {
-    // Don't check isEnabled - allow sending even if disabled
-    // The backend will handle checking notifications_enabled
-    
     setLoading(true);
     setResult(null);
     setErrorMessage('');
 
     try {
-      // Fetch pairings for this round and section using the API
-      const response = await pairingApi.getByRound(tournamentId, round, sectionName);
-      const pairings = response.data || [];
-
-      if (!pairings || pairings.length === 0) {
-        throw new Error('No pairings found for this round');
-      }
-
-      // Send webhook to Google Apps Script
-      const webhookResponse = await fetch(webhookUrl, {
+      // Use the backend API endpoint instead of calling webhook directly
+      const response = await fetch('/api/pairings/notifications/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event: 'pairings_generated',
-          tournament: {
-            id: tournamentId,
-            name: 'Tournament',
-            format: 'swiss',
-            rounds: round
-          },
-          round: round,
-          pairings: pairings,
-          timestamp: new Date().toISOString()
+          tournamentId,
+          round,
+          sectionName
         })
       });
 
-      if (!webhookResponse.ok) {
-        throw new Error('Failed to send webhook');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send emails');
       }
 
       setResult('success');

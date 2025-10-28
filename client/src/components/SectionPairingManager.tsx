@@ -36,7 +36,6 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   
   // Email notification state
   const [emailsEnabled, setEmailsEnabled] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState<string>('');
   const [tournament, setTournament] = useState<any>(null);
   
   // Drag and drop state
@@ -90,10 +89,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
           setTournament(response.data);
           // Access properties safely
           const notificationsEnabled = (response.data as any).notifications_enabled || false;
-          const webhookUrlValue = (response.data as any).webhook_url || '';
           setEmailsEnabled(notificationsEnabled);
-          setWebhookUrl(webhookUrlValue);
-          console.log('📧 Email notifications:', { enabled: notificationsEnabled, webhookUrl: webhookUrlValue });
+          console.log('📧 Email notifications:', { enabled: notificationsEnabled });
         }
       } catch (error) {
         console.error('Error fetching tournament:', error);
@@ -633,7 +630,6 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               tournamentId={tournamentId}
               round={currentRound}
               pairingsCount={sectionPairings.length}
-              webhookUrl={webhookUrl}
               isEnabled={true}
               sectionName={sectionName}
               onSuccess={() => console.log('Emails sent successfully')}

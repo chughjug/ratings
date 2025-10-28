@@ -148,8 +148,8 @@ class BBPPairingsDirect {
   }
 
   /**
-   * Generate Round 1 pairings with proper color alternation
-   * Based on Swiss system Round 1 rules
+   * Generate Round 1 pairings with proper Swiss system pattern
+   * Based on Swiss system Round 1 rules: 1 vs n/2+1, 2 vs n/2+2, etc.
    */
   generateRound1Pairings(players, tournament) {
     // Sort players by rating (descending)
@@ -159,12 +159,12 @@ class BBPPairingsDirect {
     const halfLength = Math.floor(sortedPlayers.length / 2);
     
     for (let i = 0; i < halfLength; i++) {
-      const player1 = sortedPlayers[i]; // Higher rated
-      const player2 = sortedPlayers[i + halfLength]; // Lower rated
+      const player1 = sortedPlayers[i]; // Higher rated (1, 2, 3, ...)
+      const player2 = sortedPlayers[i + halfLength]; // Lower rated (n/2+1, n/2+2, ...)
       
-      // For Round 1, use simple alternating pattern
-      // Board 1: higher rated white, Board 2: lower rated white, etc.
-      const whitePlayer = i % 2 === 0 ? player1 : player2;
+      // Use bbpPairings color assignment logic for proper color balancing
+      const whiteColor = this.choosePlayerColor(player1, player2, tournament);
+      const whitePlayer = whiteColor === this.COLOR_WHITE ? player1 : player2;
       const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
       
       pairings.push({
