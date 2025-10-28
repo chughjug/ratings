@@ -1005,6 +1005,8 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
     }
     
     console.log(`[Email Notifications] Using webhook URL: ${tournament?.webhook_url ? 'tournament-specific' : 'environment variable'}`);
+    // Log the exact URL to verify correct configuration on Heroku
+    console.log(`[Email Notifications] Webhook URL value: ${webhookUrl}`);
 
     // Get organization info if tournament has organization_id
     let organizationLogo = null;
