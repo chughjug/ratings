@@ -180,10 +180,21 @@ const OrganizationDashboard: React.FC = () => {
                   id="slug"
                   required
                   value={createFormData.slug}
-                  onChange={(e) => setCreateFormData({ ...createFormData, slug: e.target.value })}
+                  onChange={(e) => {
+                    // Auto-format slug to be URL-safe (lowercase, alphanumeric, hyphens, underscores)
+                    const formatted = e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_-]/g, '-') // Replace invalid chars with hyphens
+                      .replace(/--+/g, '-') // Replace multiple hyphens with single hyphen
+                      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+                    setCreateFormData({ ...createFormData, slug: formatted });
+                  }}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   placeholder="my-chess-club"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Only lowercase letters, numbers, hyphens, and underscores allowed
+                </p>
               </div>
               
               <div className="md:col-span-2">

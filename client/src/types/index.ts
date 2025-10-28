@@ -84,6 +84,10 @@ export interface Tournament {
   prize_fund_amount?: number;
   time_control_description?: string;
   
+  // Notification Settings
+  notifications_enabled?: boolean;
+  webhook_url?: string;
+  
   // USCF Export Status
   rating_submission_status?: 'not_submitted' | 'submitted' | 'accepted' | 'rejected';
   rating_submission_date?: string;

@@ -121,11 +121,18 @@ const UserProfile: React.FC = () => {
 
     setOrgLoading(true);
     try {
-      // Generate slug from organization name
+      // Generate slug from organization name (URL-safe format)
       const slug = orgFormData.name
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/[^a-z0-9_-]/g, '-') // Replace invalid chars with hyphens
+        .replace(/--+/g, '-') // Replace multiple hyphens with single hyphen
+        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+      
+      if (!slug) {
+        alert('Invalid organization name. Please use alphanumeric characters.');
+        setOrgLoading(false);
+        return;
+      }
       
       const newOrg = await createOrgFromContext({
         ...orgFormData,
@@ -143,9 +150,10 @@ const UserProfile: React.FC = () => {
       if (newOrg) {
         setCurrentOrganization(newOrg);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating organization:', error);
-      alert('Error creating organization. Please try again.');
+      const errorMessage = error?.response?.data?.error || error?.message || 'Error creating organization';
+      alert(errorMessage);
     } finally {
       setOrgLoading(false);
     }

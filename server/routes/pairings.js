@@ -5,6 +5,7 @@ const { EnhancedPairingSystem } = require('../utils/enhancedPairingSystem');
 const { calculateTournamentTiebreakers, getDefaultTiebreakerOrder } = require('../utils/tiebreakers');
 const QuadPairingSystem = require('../utils/quadPairingSystem');
 const TeamSwissPairingSystem = require('../utils/teamSwissPairingSystem');
+const smsService = require('../services/smsService');
 const axios = require('axios');
 const router = express.Router();
 
@@ -995,12 +996,15 @@ router.post('/regenerate', async (req, res) => {
  */
 async function sendPairingNotificationWebhook(tournamentId, round, pairings, tournament) {
   try {
-    const webhookUrl = process.env.PAIRING_NOTIFICATION_WEBHOOK;
+    // Use tournament-specific webhook URL if available, otherwise fall back to environment variable
+    const webhookUrl = tournament?.webhook_url || process.env.PAIRING_NOTIFICATION_WEBHOOK;
     
     if (!webhookUrl) {
-      console.warn('No PAIRING_NOTIFICATION_WEBHOOK configured');
+      console.warn('[Email Notifications] No webhook URL configured (neither tournament.webhook_url nor PAIRING_NOTIFICATION_WEBHOOK)');
       return;
     }
+    
+    console.log(`[Email Notifications] Using webhook URL: ${tournament?.webhook_url ? 'tournament-specific' : 'environment variable'}`);
 
     // Get player emails from database
     const pairingsWithEmails = await Promise.all(pairings.map(async (p) => {
@@ -1043,6 +1047,16 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
       };
     }));
 
+    // Count how many players have email addresses
+    const playersWithEmails = new Set();
+    pairingsWithEmails.forEach(p => {
+      if (p.white.email) playersWithEmails.add(p.white.email);
+      if (p.black.email) playersWithEmails.add(p.black.email);
+    });
+    
+    console.log(`[Email Notifications] Sending pairings for Round ${round} to ${playersWithEmails.size} unique players with email addresses`);
+    console.log(`[Email Notifications] Total pairings: ${pairingsWithEmails.length}, Players with emails: ${playersWithEmails.size}`);
+
     const payload = {
       event: 'pairings_generated',
       tournament: {
@@ -1065,20 +1079,21 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
     });
 
     if (response.status >= 200 && response.status < 300) {
-      console.log('Pairing notification webhook sent successfully');
+      const playersWithEmailsCount = new Set(pairingsWithEmails.flatMap(p => [p.white.email, p.black.email].filter(Boolean))).size;
+      console.log(`[Email Notifications] Webhook sent successfully - ${pairingsWithEmails.length} pairings, ${playersWithEmailsCount} unique players with emails`);
     } else {
-      console.error(`Webhook notification failed with status ${response.status}`);
+      console.error(`[Email Notifications] Webhook notification failed with status ${response.status}`);
     }
   } catch (error) {
     // Log specific network error types for debugging
     if (error.code === 'ECONNREFUSED') {
-      console.error('Webhook notification failed: Connection refused. Make sure the webhook URL is correct and the service is running.');
+      console.error('[Email Notifications] Webhook failed: Connection refused. Make sure the webhook URL is correct and the service is running.');
     } else if (error.code === 'ENOTFOUND') {
-      console.error('Webhook notification failed: Could not resolve webhook URL hostname.');
+      console.error('[Email Notifications] Webhook failed: Could not resolve webhook URL hostname.');
     } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-      console.error('Webhook notification failed: Request timeout.');
+      console.error('[Email Notifications] Webhook failed: Request timeout.');
     } else {
-      console.error('Error sending pairing notification webhook:', error.message);
+      console.error('[Email Notifications] Error sending webhook:', error.message);
     }
     // Don't throw - webhook failure shouldn't block pairing generation
   }
@@ -1364,8 +1379,26 @@ router.post('/generate/section', async (req, res) => {
       }
     }
 
-    // Send webhook notification for pairings generated
-    await sendPairingNotificationWebhook(tournamentId, currentRound, generatedPairings, tournament);
+    // Send webhook notification for pairings generated (only if enabled)
+    if (tournament?.notifications_enabled) {
+      await sendPairingNotificationWebhook(tournamentId, currentRound, generatedPairings, tournament);
+    } else {
+      console.log(`Notifications disabled for tournament ${tournamentId}, skipping webhook`);
+    }
+
+    // Send SMS notifications for pairings (if enabled and Twilio is configured)
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      try {
+        console.log(`[SMS Notifications] Attempting to send text notifications for Round ${currentRound}`);
+        const smsResult = await smsService.sendPairingNotifications(tournamentId, currentRound, generatedPairings);
+        console.log(`[SMS Notifications] SMS notification results:`, smsResult);
+      } catch (smsError) {
+        // Don't throw - SMS failure shouldn't block pairing generation
+        console.error('[SMS Notifications] SMS notification failed:', smsError.message);
+      }
+    } else {
+      console.log(`[SMS Notifications] SMS notifications skipped - Twilio not configured`);
+    }
 
     res.json({ 
       success: true,
@@ -3782,6 +3815,107 @@ router.post('/swap-players', async (req, res) => {
   } catch (error) {
     console.error('Error swapping players:', error);
     res.status(500).json({ success: false, message: 'Failed to swap players' });
+  }
+});
+
+/**
+ * Test SMS credentials
+ * POST /api/pairings/test-sms
+ */
+router.post('/test-sms', async (req, res) => {
+  const { twilio_account_sid, twilio_auth_token, twilio_phone_number } = req.body;
+  
+  try {
+    // Validate credentials
+    if (!twilio_account_sid || !twilio_auth_token || !twilio_phone_number) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required Twilio credentials'
+      });
+    }
+    
+    // Test sending SMS
+    const twilio = require('twilio');
+    const client = twilio(twilio_account_sid, twilio_auth_token);
+    
+    // Send a test message to a verified test number
+    const testMessage = await client.messages.create({
+      body: '✅ Test message from tournament system. SMS notifications are working!',
+      from: twilio_phone_number,
+      to: '+19802203489' // Your verified test number
+    });
+    
+    res.json({
+      success: true,
+      message: 'Test SMS sent successfully',
+      messageId: testMessage.sid,
+      status: testMessage.status
+    });
+    
+  } catch (error) {
+    console.error('SMS test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send test SMS',
+      code: error.code
+    });
+  }
+});
+
+/**
+ * Send SMS notifications for pairings (manual trigger)
+ * POST /api/pairings/notifications/sms
+ */
+router.post('/notifications/sms', async (req, res) => {
+  const { tournamentId, round, pairings } = req.body;
+
+  try {
+    if (!tournamentId || !round) {
+      res.status(400).json({ 
+        success: false,
+        error: 'tournamentId and round are required' 
+      });
+      return;
+    }
+
+    // Check if Twilio is configured
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+      res.status(400).json({ 
+        success: false,
+        error: 'SMS notifications not configured. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.' 
+      });
+      return;
+    }
+
+    // If pairings not provided, fetch them from database
+    let pairingsToSend = pairings;
+    if (!pairingsToSend || pairingsToSend.length === 0) {
+      pairingsToSend = await pairingStorage.getRoundPairings(tournamentId, round);
+      
+      if (!pairingsToSend || pairingsToSend.length === 0) {
+        res.status(404).json({ 
+          success: false,
+          error: `No pairings found for tournament ${tournamentId}, round ${round}` 
+        });
+        return;
+      }
+    }
+
+    console.log(`[SMS Notifications API] Sending notifications for tournament ${tournamentId}, round ${round}`);
+    const result = await smsService.sendPairingNotifications(tournamentId, round, pairingsToSend);
+
+    res.json({ 
+      success: true,
+      message: `SMS notifications sent successfully`,
+      result: result
+    });
+
+  } catch (error) {
+    console.error('[SMS Notifications API] Error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
   }
 });
 

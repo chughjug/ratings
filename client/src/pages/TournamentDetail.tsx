@@ -42,6 +42,7 @@ import ByeManagementModal from '../components/ByeManagementModal';
 import PublicViewCustomization from '../components/PublicViewCustomization';
 import RegistrationSettings from '../components/RegistrationSettings';
 import PaymentSettings from '../components/PaymentSettings';
+import SMSSettings from '../components/SMSSettings';
 import SectionsModal from '../components/SectionsModal';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
 // PDF export functions are used in ExportModal component
@@ -1423,7 +1424,7 @@ const TournamentDetail: React.FC = () => {
                     onWebhookToggle={(enabled) => {
                       setEmailsEnabled(enabled);
                     }}
-                    webhookUrl="https://script.google.com/macros/s/AKfycbyLjx_xfOs6XNlDmAZHJKobn1MMSgOeRBHJOAS0qNK7HyQEuMm9EdRIxt5f5P6sej-a/exec"
+                    webhookUrl={tournament?.webhook_url || process.env.REACT_APP_PAIRING_NOTIFICATION_WEBHOOK}
                     onDismiss={(notificationId) => {
                       console.log('Dismissed notification:', notificationId);
                     }}
@@ -3221,6 +3222,31 @@ const TournamentDetail: React.FC = () => {
                         } catch (error: any) {
                           console.error('Failed to save registration settings:', error);
                           alert(`Failed to save registration settings: ${error.message || error}`);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* SMS Settings */}
+                {id && tournament && (
+                  <div className="mb-8">
+                    <SMSSettings 
+                      tournamentId={id}
+                      tournament={tournament}
+                      onSave={async (settingsData: any) => {
+                        console.log('💾 Saving SMS settings:', settingsData);
+                        
+                        try {
+                          const response = await tournamentApi.update(id, settingsData);
+                          console.log('Update response:', response.data);
+                          if (response.data.success) {
+                            dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
+                            console.log('✅ SMS settings saved successfully');
+                          }
+                        } catch (error: any) {
+                          console.error('Failed to save SMS settings:', error);
+                          alert(`Failed to save SMS settings: ${error.message || error}`);
                         }
                       }}
                     />

@@ -250,6 +250,15 @@ router.post('/', authenticate, async (req, res) => {
       });
     }
 
+    // Validate slug format (lowercase, alphanumeric, hyphens, underscores only)
+    const slugRegex = /^[a-z0-9_-]+$/;
+    if (!slugRegex.test(slug)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Slug must contain only lowercase letters, numbers, hyphens, and underscores'
+      });
+    }
+
     if (website && !validator.isURL(website)) {
       return res.status(400).json({
         success: false,
@@ -283,39 +292,90 @@ router.post('/', authenticate, async (req, res) => {
       });
     }
 
-    // Create organization
-    const orgId = uuidv4();
+    // Verify user exists and is active
     const userId = req.user.id;
-
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO organizations (id, name, slug, description, website, logo_url, 
-         contact_email, contact_phone, address, city, state, zip_code, country, 
-         settings, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          orgId, name, slug, description || null, website || null, logoUrl || null,
-          contactEmail || null, contactPhone || null, address || null, city || null,
-          state || null, zipCode || null, country, JSON.stringify(settings), userId
-        ],
-        (err) => {
+    const userCheck = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT id, is_active FROM users WHERE id = ? AND is_active = 1',
+        [userId],
+        (err, row) => {
           if (err) reject(err);
-          else resolve();
+          else resolve(row);
         }
       );
     });
 
-    // Add creator as owner
+    if (!userCheck) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not found or inactive'
+      });
+    }
+
+    // Create organization with proper transaction handling
+    const orgId = uuidv4();
+    
+    // Use serialized mode to ensure atomic operations
     await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO organization_members (id, organization_id, user_id, role, invited_by)
-         VALUES (?, ?, ?, 'owner', ?)`,
-        [uuidv4(), orgId, userId, userId],
-        (err) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', (beginErr) => {
+          if (beginErr) {
+            console.error('Error beginning transaction:', beginErr);
+            return reject(beginErr);
+          }
+
+          // First, create the organization
+          db.run(
+            `INSERT INTO organizations (id, name, slug, description, website, logo_url, 
+             contact_email, contact_phone, address, city, state, zip_code, country, 
+             settings, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              orgId, name, slug, description || null, website || null, logoUrl || null,
+              contactEmail || null, contactPhone || null, address || null, city || null,
+              state || null, zipCode || null, country, JSON.stringify(settings), userId
+            ],
+            function(orgErr) {
+              if (orgErr) {
+                console.error('Error creating organization:', orgErr);
+                db.run('ROLLBACK', (rollbackErr) => {
+                  if (rollbackErr) console.error('Error rolling back:', rollbackErr);
+                });
+                return reject(orgErr);
+              }
+
+              // Add creator as owner
+              const memberId = uuidv4();
+              db.run(
+                `INSERT INTO organization_members (id, organization_id, user_id, role, invited_by, is_active)
+                 VALUES (?, ?, ?, 'owner', ?, 1)`,
+                [memberId, orgId, userId, userId],
+                function(memberErr) {
+                  if (memberErr) {
+                    console.error('Error creating organization member:', memberErr);
+                    db.run('ROLLBACK', (rollbackErr) => {
+                      if (rollbackErr) console.error('Error rolling back:', rollbackErr);
+                    });
+                    return reject(memberErr);
+                  }
+
+                  // Commit the transaction
+                  db.run('COMMIT', (commitErr) => {
+                    if (commitErr) {
+                      console.error('Error committing transaction:', commitErr);
+                      db.run('ROLLBACK', (rollbackErr) => {
+                        if (rollbackErr) console.error('Error rolling back:', rollbackErr);
+                      });
+                      return reject(commitErr);
+                    }
+                    resolve();
+                  });
+                }
+              );
+            }
+          );
+        });
+      });
     });
 
     // Log audit
@@ -347,9 +407,26 @@ router.post('/', authenticate, async (req, res) => {
 
   } catch (error) {
     console.error('Create organization error:', error);
+    const errorMessage = error.message || 'Failed to create organization';
+    
+    // Provide more specific error messages
+    if (error.message && error.message.includes('UNIQUE constraint failed')) {
+      return res.status(409).json({
+        success: false,
+        error: 'An organization with this slug already exists'
+      });
+    }
+    
+    if (error.message && error.message.includes('FOREIGN KEY constraint failed')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user or reference data'
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      error: 'Failed to create organization'
+      error: errorMessage
     });
   }
 });
@@ -790,12 +867,16 @@ router.post('/invitations/:token/accept', authenticate, async (req, res) => {
     // Add user to organization
     await new Promise((resolve, reject) => {
       db.run(
-        `INSERT INTO organization_members (id, organization_id, user_id, role, invited_by)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO organization_members (id, organization_id, user_id, role, invited_by, is_active)
+         VALUES (?, ?, ?, ?, ?, 1)`,
         [uuidv4(), invitation.organization_id, userId, invitation.role, invitation.invited_by],
         (err) => {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            console.error('Error adding user to organization:', err);
+            reject(err);
+          } else {
+            resolve();
+          }
         }
       );
     });

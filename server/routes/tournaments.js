@@ -333,6 +333,12 @@ router.put('/:id', (req, res) => {
     const stripe_publishable_key = updateFields.stripe_publishable_key !== undefined ? updateFields.stripe_publishable_key : existingTournament.stripe_publishable_key;
     const stripe_secret_key = updateFields.stripe_secret_key !== undefined ? updateFields.stripe_secret_key : existingTournament.stripe_secret_key;
     const payment_method = updateFields.payment_method !== undefined ? updateFields.payment_method : existingTournament.payment_method;
+    
+    // Extract SMS/Twilio fields
+    const twilio_account_sid = updateFields.twilio_account_sid !== undefined ? updateFields.twilio_account_sid : existingTournament.twilio_account_sid;
+    const twilio_auth_token = updateFields.twilio_auth_token !== undefined ? updateFields.twilio_auth_token : existingTournament.twilio_auth_token;
+    const twilio_phone_number = updateFields.twilio_phone_number !== undefined ? updateFields.twilio_phone_number : existingTournament.twilio_phone_number;
+    const sms_notifications_enabled = updateFields.sms_notifications_enabled !== undefined ? (updateFields.sms_notifications_enabled ? 1 : 0) : existingTournament.sms_notifications_enabled;
 
     // Debug logging for tournament updates
     console.log('Tournament update request:', {
@@ -422,7 +428,9 @@ router.put('/:id', (req, res) => {
      expected_players, website, fideRated, uscfRated, 
      allowReg, isPublic, public_url || null, logo_url || null, tournament_information || null, public_display_config || null,
      registrationSettingsJson, entry_fee, paypal_client_id || null, paypal_secret || null, 
-     stripe_publishable_key || null, stripe_secret_key || null, payment_method || 'both', id];
+     stripe_publishable_key || null, stripe_secret_key || null, payment_method || 'both',
+     twilio_account_sid || null, twilio_auth_token || null, twilio_phone_number || null, sms_notifications_enabled,
+     id];
      
     console.log('💳 Saving payment credentials to tournament:', {
       tournament_id: id,
@@ -445,7 +453,8 @@ router.put('/:id', (req, res) => {
            chief_arbiter_name = ?, chief_arbiter_fide_id = ?, chief_organizer_name = ?,
            chief_organizer_fide_id = ?, expected_players = ?, website = ?,
            fide_rated = ?, uscf_rated = ?, allow_registration = ?, is_public = ?, public_url = ?, logo_url = ?, tournament_information = ?, public_display_config = ?,
-           registration_settings = ?, entry_fee = ?, paypal_client_id = ?, paypal_secret = ?, stripe_publishable_key = ?, stripe_secret_key = ?, payment_method = ?
+           registration_settings = ?, entry_fee = ?, paypal_client_id = ?, paypal_secret = ?, stripe_publishable_key = ?, stripe_secret_key = ?, payment_method = ?,
+           twilio_account_sid = ?, twilio_auth_token = ?, twilio_phone_number = ?, sms_notifications_enabled = ?
        WHERE id = ?`,
       params,
     function(err) {

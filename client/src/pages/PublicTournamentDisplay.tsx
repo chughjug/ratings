@@ -60,6 +60,7 @@ const PublicTournamentDisplay: React.FC = () => {
   const [isTablet, setIsTablet] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showMobileTabs, setShowMobileTabs] = useState(false);
 
   // Calculate player scores from all pairings
   const calculatePlayerScores = useCallback(() => {
@@ -120,6 +121,20 @@ const PublicTournamentDisplay: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMobileTabs && event.target instanceof Element) {
+        if (!event.target.closest('[class*="md:hidden"]')) {
+          setShowMobileTabs(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMobileTabs]);
 
   const fetchPublicData = useCallback(async () => {
     if (!id) return;
@@ -788,7 +803,8 @@ const PublicTournamentDisplay: React.FC = () => {
         {/* Enhanced Tab Navigation */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-8 overflow-visible">
           <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-200">
-            <nav className="flex flex-wrap gap-2" role="tablist">
+            {/* Desktop Tab Navigation */}
+            <nav className="hidden md:flex flex-wrap gap-2" role="tablist">
               <button
                 onClick={() => setActiveTab('overview')}
                 className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
@@ -952,6 +968,146 @@ const PublicTournamentDisplay: React.FC = () => {
                 </button>
               )}
             </nav>
+            
+            {/* Mobile Tab Selector */}
+            <div className="md:hidden relative">
+              <button
+                onClick={() => setShowMobileTabs(!showMobileTabs)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                aria-expanded={showMobileTabs}
+                aria-haspopup="true"
+              >
+                <span className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+                  {activeTab === 'overview' && <><BarChart3 className="h-4 w-4" /><span>Overview</span></>}
+                  {activeTab === 'info' && <><FileText className="h-4 w-4" /><span>Info</span></>}
+                  {activeTab === 'pairings' && <><Gamepad2 className="h-4 w-4" /><span>Pairings</span></>}
+                  {activeTab === 'standings' && <><Trophy className="h-4 w-4" /><span>Standings</span></>}
+                  {activeTab === 'teams' && <><Users className="h-4 w-4" /><span>Teams</span></>}
+                  {activeTab === 'prizes' && <><Award className="h-4 w-4" /><span>Prizes</span></>}
+                  {activeTab === 'preregistered' && <><UserCheck className="h-4 w-4" /><span>Players</span></>}
+                  {activeTab === 'analytics' && <><TrendingUp className="h-4 w-4" /><span>Analytics</span></>}
+                  {customPages?.find(p => p.slug === activeTab) && (
+                    <span>{customPages.find(p => p.slug === activeTab)?.title || 'Custom Page'}</span>
+                  )}
+                </span>
+                {showMobileTabs ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+              </button>
+              
+              {/* Mobile Menu Dropdown */}
+              {showMobileTabs && (
+                <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl max-h-96 overflow-y-auto">
+                  <div className="py-2">
+                    <button
+                      onClick={() => { setActiveTab('overview'); setShowMobileTabs(false); }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                        activeTab === 'overview' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      <span className="font-medium">Overview</span>
+                      {activeTab === 'overview' && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
+                    
+                    <button
+                      onClick={() => { setActiveTab('info'); setShowMobileTabs(false); }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                        activeTab === 'info' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="font-medium">Info</span>
+                      {activeTab === 'info' && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
+                    
+                    <button
+                      onClick={() => { setActiveTab('pairings'); setShowMobileTabs(false); }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                        activeTab === 'pairings' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <Gamepad2 className="h-4 w-4" />
+                      <span className="font-medium">Pairings</span>
+                      {activeTab === 'pairings' && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
+                    
+                    <button
+                      onClick={() => { setActiveTab('standings'); setShowMobileTabs(false); }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                        activeTab === 'standings' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <Trophy className="h-4 w-4" />
+                      <span className="font-medium">Standings</span>
+                      {activeTab === 'standings' && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
+                    
+                    <button
+                      onClick={() => { setActiveTab('teams'); setShowMobileTabs(false); }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                        activeTab === 'teams' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="font-medium">Teams</span>
+                      {activeTab === 'teams' && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
+                    
+                    {data?.prizes && data?.prizes.length > 0 && (
+                      <button
+                        onClick={() => { setActiveTab('prizes'); setShowMobileTabs(false); }}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                          activeTab === 'prizes' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <Award className="h-4 w-4" />
+                        <span className="font-medium">Prizes</span>
+                        {activeTab === 'prizes' && <span className="ml-auto text-blue-600">✓</span>}
+                      </button>
+                    )}
+                    
+                    {customPages && customPages.length > 0 && customPages.map((page) => (
+                      <button
+                        key={page.id}
+                        onClick={() => { setActiveTab(page.slug); setShowMobileTabs(false); }}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                          activeTab === page.slug ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        {page.icon && <span>{page.icon}</span>}
+                        <span className="font-medium">{page.title}</span>
+                        {activeTab === page.slug && <span className="ml-auto text-blue-600">✓</span>}
+                      </button>
+                    ))}
+                    
+                    {data?.activePlayersList && data?.activePlayersList.length > 0 && (
+                      <button
+                        onClick={() => { setActiveTab('preregistered'); setShowMobileTabs(false); }}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                          activeTab === 'preregistered' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        <span className="font-medium">Players ({data?.activePlayersList?.length || 0})</span>
+                        {activeTab === 'preregistered' && <span className="ml-auto text-blue-600">✓</span>}
+                      </button>
+                    )}
+                    
+                    {data?.analytics && (
+                      <button
+                        onClick={() => { setActiveTab('analytics'); setShowMobileTabs(false); }}
+                        className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                          activeTab === 'analytics' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                        <span className="font-medium">Analytics</span>
+                        {activeTab === 'analytics' && <span className="ml-auto text-blue-600">✓</span>}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Tab Content */}

@@ -72,6 +72,10 @@ db.serialize(() => {
       stripe_publishable_key TEXT,
       stripe_secret_key TEXT,
       payment_method TEXT DEFAULT 'both',
+      twilio_account_sid TEXT,
+      twilio_auth_token TEXT,
+      twilio_phone_number TEXT,
+      sms_notifications_enabled BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (organization_id) REFERENCES organizations (id)
     )
@@ -112,6 +116,30 @@ db.serialize(() => {
     db.run(`ALTER TABLE tournaments ADD COLUMN payment_method TEXT DEFAULT 'both'`, (err) => {
       if (err && !err.message.includes('duplicate column')) {
         console.error('Error adding payment_method column:', err.message);
+      }
+    });
+
+    db.run(`ALTER TABLE tournaments ADD COLUMN twilio_account_sid TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding twilio_account_sid column:', err.message);
+      }
+    });
+
+    db.run(`ALTER TABLE tournaments ADD COLUMN twilio_auth_token TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding twilio_auth_token column:', err.message);
+      }
+    });
+
+    db.run(`ALTER TABLE tournaments ADD COLUMN twilio_phone_number TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding twilio_phone_number column:', err.message);
+      }
+    });
+
+    db.run(`ALTER TABLE tournaments ADD COLUMN sms_notifications_enabled BOOLEAN DEFAULT 0`, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Error adding sms_notifications_enabled column:', err.message);
       }
     });
   });
@@ -263,6 +291,15 @@ db.serialize(() => {
   // Add registration_settings column to tournaments table if it doesn't exist
   db.run(`
     ALTER TABLE tournaments ADD COLUMN registration_settings TEXT
+  `, (err) => {});
+
+  // Add notification settings columns to tournaments table if they don't exist
+  db.run(`
+    ALTER TABLE tournaments ADD COLUMN notifications_enabled BOOLEAN DEFAULT 0
+  `, (err) => {});
+  
+  db.run(`
+    ALTER TABLE tournaments ADD COLUMN webhook_url TEXT
   `, (err) => {});
 
   // Add US Chess specific columns to tournaments table (for existing databases)

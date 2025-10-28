@@ -9,9 +9,11 @@ class SMSService {
   }
 
   initializeServices() {
-    // Initialize Twilio for SMS
+    // Initialize Twilio for SMS - use environment variables as default
+    // Can be overridden per-tournament
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
       this.twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      this.twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
     }
 
     // Initialize email transporter for SMS fallback
@@ -256,19 +258,20 @@ class SMSService {
 
     pairings.forEach(pairing => {
       // Find players in pairing
-      const whitePlayer = players.find(p => p.id === pairing.white_player_id);
-      const blackPlayer = players.find(p => p.id === pairing.black_player_id);
+      const whitePlayer = players[pairing.white_player_id];
+      const blackPlayer = players[pairing.black_player_id];
 
+      // Create concise messages within 160 character limit for trial accounts
+      const tournamentName = tournament.name.length > 25 ? tournament.name.substring(0, 22) + '...' : tournament.name;
+      const opponentName = (blackPlayer?.name || whitePlayer?.name || 'TBD');
+      const shortOpponent = opponentName.length > 15 ? opponentName.substring(0, 12) + '...' : opponentName;
+      const boardNum = pairing.board || pairing.board_number;
+      
       if (whitePlayer && whitePlayer.phone_number) {
         messages.push({
           phoneNumber: whitePlayer.phone_number,
           playerName: whitePlayer.name,
-          message: `🏆 ${tournament.name} - Round ${round} Pairings\n\n` +
-                  `You are playing as WHITE against ${blackPlayer?.name || 'TBD'}\n` +
-                  `Board: ${pairing.board_number}\n` +
-                  `Time Control: ${tournament.time_control}\n` +
-                  `Location: ${tournament.location || 'TBD'}\n\n` +
-                  `Good luck! 🎯`
+          message: `🏆 R${round} WHITE vs ${shortOpponent} Board ${boardNum}`
         });
       }
 
@@ -276,17 +279,189 @@ class SMSService {
         messages.push({
           phoneNumber: blackPlayer.phone_number,
           playerName: blackPlayer.name,
-          message: `🏆 ${tournament.name} - Round ${round} Pairings\n\n` +
-                  `You are playing as BLACK against ${whitePlayer?.name || 'TBD'}\n` +
-                  `Board: ${pairing.board_number}\n` +
-                  `Time Control: ${tournament.time_control}\n` +
-                  `Location: ${tournament.location || 'TBD'}\n\n` +
-                  `Good luck! 🎯`
+          message: `🏆 R${round} BLACK vs ${shortOpponent} Board ${boardNum}`
         });
       }
     });
 
     return messages;
+  }
+
+  /**
+   * Get Twilio client for a tournament (use tournament credentials if available, else fall back to environment)
+   */
+  getTwilioClientForTournament(tournament) {
+    // Check if tournament has its own Twilio credentials
+    if (tournament.twilio_account_sid && tournament.twilio_auth_token && tournament.sms_notifications_enabled) {
+      console.log('[SMS] Using tournament-specific Twilio credentials');
+      return {
+        client: twilio(tournament.twilio_account_sid, tournament.twilio_auth_token),
+        phoneNumber: tournament.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER,
+        source: 'tournament'
+      };
+    }
+    
+    // Fall back to environment variables
+    if (this.twilioClient) {
+      console.log('[SMS] Using environment Twilio credentials');
+      return {
+        client: this.twilioClient,
+        phoneNumber: this.twilioPhoneNumber || process.env.TWILIO_PHONE_NUMBER,
+        source: 'environment'
+      };
+    }
+    
+    return null;
+  }
+
+  /**
+   * Send pairing notifications for a specific tournament round
+   * @param {string} tournamentId - Tournament ID
+   * @param {number} round - Round number
+   * @param {Array} pairings - Array of pairings with player info
+   * @returns {Promise<Object>} - Notification results
+   */
+  async sendPairingNotifications(tournamentId, round, pairings) {
+    try {
+      // Get tournament data
+      const tournament = await this.getTournamentData(tournamentId);
+      
+      // Check if SMS is enabled for this tournament
+      if (!tournament.sms_notifications_enabled && !this.twilioClient) {
+        console.log('[SMS Notifications] SMS not enabled for tournament and no global Twilio config');
+        return {
+          success: true,
+          message: 'SMS notifications not enabled',
+          sentCount: 0,
+          failedCount: 0
+        };
+      }
+      
+      // Get Twilio client (tournament-specific or environment)
+      const twilioConfig = this.getTwilioClientForTournament(tournament);
+      
+      if (!twilioConfig) {
+        console.log('[SMS Notifications] No Twilio credentials configured');
+        return {
+          success: true,
+          message: 'No Twilio credentials configured',
+          sentCount: 0,
+          failedCount: 0
+        };
+      }
+      
+      // Get player IDs from pairings
+      const playerIds = [];
+      pairings.forEach(p => {
+        if (p.white_player_id) playerIds.push(p.white_player_id);
+        if (p.black_player_id) playerIds.push(p.black_player_id);
+      });
+      
+      // Get players with phone numbers
+      const playersMap = await this.getPlayersByIdsWithPhones(tournamentId, playerIds);
+      
+      if (Object.keys(playersMap).length === 0) {
+        console.log('[SMS Notifications] No players with phone numbers found');
+        return {
+          success: true,
+          message: 'No players with phone numbers found',
+          sentCount: 0,
+          failedCount: 0
+        };
+      }
+      
+      // Generate messages
+      const messages = this.generatePairingsMessages(tournament, playersMap, { round, pairings });
+      
+      if (messages.length === 0) {
+        console.log('[SMS Notifications] No messages to send');
+        return {
+          success: true,
+          message: 'No messages to send',
+          sentCount: 0,
+          failedCount: 0
+        };
+      }
+      
+      // Send messages in bulk with tournament-specific Twilio client
+      const results = await this.sendBulkSMSWithClient(messages, twilioConfig, {
+        tournamentId,
+        round,
+        batchSize: 5,
+        delay: 500
+      });
+      
+      console.log(`[SMS Notifications] Sent ${results.successCount} of ${results.total} messages for Round ${round}`);
+      
+      return {
+        success: true,
+        sentCount: results.successCount,
+        failedCount: results.failureCount,
+        total: results.total,
+        results: results
+      };
+    } catch (error) {
+      console.error('[SMS Notifications] Error sending pairing notifications:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Send bulk SMS with a specific Twilio client
+   */
+  async sendBulkSMSWithClient(recipients, twilioConfig, options = {}) {
+    const results = {
+      successful: [],
+      failed: [],
+      total: recipients.length,
+      successCount: 0,
+      failureCount: 0
+    };
+
+    const batchSize = options.batchSize || 10;
+    const delay = options.delay || 1000;
+
+    for (let i = 0; i < recipients.length; i += batchSize) {
+      const batch = recipients.slice(i, i + batchSize);
+      
+      const batchPromises = batch.map(async (recipient) => {
+        try {
+          const result = await twilioConfig.client.messages.create({
+            body: recipient.message,
+            from: twilioConfig.phoneNumber,
+            to: recipient.phoneNumber
+          });
+          
+          results.successful.push({
+            ...recipient,
+            result: {
+              success: true,
+              messageId: result.sid,
+              status: result.status
+            }
+          });
+          results.successCount++;
+          
+          return result;
+        } catch (error) {
+          results.failed.push({
+            ...recipient,
+            error: error.message
+          });
+          results.failureCount++;
+          
+          return null;
+        }
+      });
+
+      await Promise.all(batchPromises);
+
+      if (i + batchSize < recipients.length) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    return results;
   }
 
   /**
@@ -431,34 +606,79 @@ class SMSService {
    * Get tournament data from database
    */
   async getTournamentData(tournamentId) {
-    // This would integrate with your existing database
-    // For now, return mock data
-    return {
-      id: tournamentId,
-      name: 'Sample Tournament',
-      time_control: 'G/90+30',
-      location: 'Chess Club'
-    };
+    const db = require('../database');
+    
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) {
+          console.error('Error fetching tournament:', err);
+          reject(err);
+        } else if (!row) {
+          reject(new Error('Tournament not found'));
+        } else {
+          resolve(row);
+        }
+      });
+    });
   }
 
   /**
    * Get players with phone numbers
    */
   async getPlayersWithPhoneNumbers(tournamentId) {
-    // This would integrate with your existing database
-    // For now, return mock data
-    return [
-      {
-        id: '1',
-        name: 'John Doe',
-        phone_number: '+1234567890'
-      },
-      {
-        id: '2',
-        name: 'Jane Smith',
-        phone_number: '+1987654321'
-      }
-    ];
+    const db = require('../database');
+    
+    return new Promise((resolve, reject) => {
+      db.all(
+        'SELECT id, name, phone FROM players WHERE tournament_id = ? AND phone IS NOT NULL AND phone != ""',
+        [tournamentId],
+        (err, rows) => {
+          if (err) {
+            console.error('Error fetching players:', err);
+            reject(err);
+          } else {
+            // Format phone numbers to E.164
+            const players = rows.map(row => ({
+              id: row.id,
+              name: row.name,
+              phone_number: row.phone
+            }));
+            resolve(players);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Get players by IDs with phone numbers
+   */
+  async getPlayersByIdsWithPhones(tournamentId, playerIds) {
+    const db = require('../database');
+    
+    return new Promise((resolve, reject) => {
+      const placeholders = playerIds.map(() => '?').join(',');
+      db.all(
+        `SELECT id, name, phone FROM players WHERE tournament_id = ? AND id IN (${placeholders}) AND phone IS NOT NULL AND phone != ""`,
+        [tournamentId, ...playerIds],
+        (err, rows) => {
+          if (err) {
+            console.error('Error fetching players:', err);
+            reject(err);
+          } else {
+            const playersMap = {};
+            rows.forEach(row => {
+              playersMap[row.id] = {
+                id: row.id,
+                name: row.name,
+                phone_number: row.phone
+              };
+            });
+            resolve(playersMap);
+          }
+        }
+      );
+    });
   }
 
   /**

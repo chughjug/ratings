@@ -561,10 +561,10 @@ const LandingPage: React.FC = () => {
                   <ArrowRight className="h-3 w-3" />
                   Register as Player
                 </Link></li>
-                <li><Link to="/chess" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
+                {/* <li><Link to="/chess" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
                   Play Chess Online
-                </Link></li>
+                </Link></li> */}
               </ul>
             </div>
             <div>

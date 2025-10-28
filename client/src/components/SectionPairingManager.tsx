@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X, GripVertical } from 'lucide-react';
-import { pairingApi, playerApi } from '../services/api';
+import { pairingApi, playerApi, tournamentApi } from '../services/api';
 import LichessGameCreator from './LichessGameCreator';
+import SendPairingEmailsButton from './SendPairingEmailsButton';
 
 interface SectionPairingManagerProps {
   tournamentId: string;
@@ -32,6 +33,11 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [newBoardNumber, setNewBoardNumber] = useState('');
   const [availableRounds, setAvailableRounds] = useState<number[]>([1]);
   const selectedPairingRef = useRef<string | null>(null);
+  
+  // Email notification state
+  const [emailsEnabled, setEmailsEnabled] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState<string>('');
+  const [tournament, setTournament] = useState<any>(null);
   
   // Drag and drop state
   const [draggedPlayer, setDraggedPlayer] = useState<{pairingId: string, position: 'white' | 'black', name: string, id: string} | null>(null);
@@ -75,6 +81,30 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
     }
   }, [tournamentId, sectionName, currentRound]);
 
+  // Fetch tournament data for email notifications
+  useEffect(() => {
+    const fetchTournament = async () => {
+      try {
+        const response = await tournamentApi.getById(tournamentId);
+        if (response.data) {
+          setTournament(response.data);
+          // Access properties safely
+          const notificationsEnabled = (response.data as any).notifications_enabled || false;
+          const webhookUrlValue = (response.data as any).webhook_url || '';
+          setEmailsEnabled(notificationsEnabled);
+          setWebhookUrl(webhookUrlValue);
+          console.log('📧 Email notifications:', { enabled: notificationsEnabled, webhookUrl: webhookUrlValue });
+        }
+      } catch (error) {
+        console.error('Error fetching tournament:', error);
+      }
+    };
+    
+    if (tournamentId) {
+      fetchTournament();
+    }
+  }, [tournamentId]);
+  
   // Fetch section data (standings and status only, pairings come from parent)
   const fetchSectionData = useCallback(async () => {
     if (!tournamentId || !sectionName) return;
@@ -596,6 +626,19 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
               <span>Generate Next Round</span>
             </button>
           )}
+          
+          {/* Email Notification Button - Always show (disabled when no pairings) */}
+          <div className="flex items-center">
+            <SendPairingEmailsButton
+              tournamentId={tournamentId}
+              round={currentRound}
+              pairingsCount={sectionPairings.length}
+              webhookUrl={webhookUrl}
+              isEnabled={emailsEnabled && sectionPairings.length > 0}
+              onSuccess={() => console.log('Emails sent successfully')}
+              onError={(error) => console.error('Failed to send emails:', error)}
+            />
+          </div>
 
           <button
             onClick={resetSection}

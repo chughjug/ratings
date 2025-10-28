@@ -87,30 +87,18 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     }
   };
 
-  if (!isEnabled) {
-    return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-        <p className="text-sm text-gray-600 mb-3">
-          Email notifications are currently disabled. Enable them in the Notification Center to use this feature.
-        </p>
-        <p className="text-xs text-gray-500">
-          Click the "Notifications" button in the top right, then toggle "Email Pairing Notifications" to ON
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-2">
-      {/* Main Button */}
+      {/* Main Button - Always visible */}
       <button
         onClick={() => setShowConfirm(true)}
-        disabled={loading || pairingsCount === 0}
+        disabled={loading || pairingsCount === 0 || !isEnabled}
         className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-          loading || pairingsCount === 0
+          loading || pairingsCount === 0 || !isEnabled
             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
             : 'bg-blue-600 text-white hover:bg-blue-700'
         }`}
+        title={!isEnabled ? 'Enable notifications in settings to send emails' : pairingsCount === 0 ? 'Generate pairings first' : 'Send emails to all players'}
       >
         {loading ? (
           <>
