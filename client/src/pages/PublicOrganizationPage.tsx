@@ -553,28 +553,27 @@ const PublicOrganizationPage: React.FC = () => {
                 <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-2xl p-8 text-white overflow-hidden relative">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
                   <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/20 rounded-full blur-2xl"></div>
-                  <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <Calendar className="h-5 w-5 text-blue-600" />
+                      <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                        <Calendar className="h-5 w-5 text-white" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900">Upcoming Tournaments</h3>
+                      <h3 className="text-xl font-bold text-white">Upcoming Tournaments</h3>
                     </div>
-                    <Zap className="h-5 w-5 text-blue-600" />
+                    <Zap className="h-5 w-5 text-white" />
                   </div>
-                  <p className="text-sm text-gray-600 mb-4">Get ready for these exciting events!</p>
+                  <p className="text-sm text-blue-100 mb-4">Get ready for these exciting events!</p>
                   <div className="space-y-3">
                     {upcomingTournaments.map((tournament: any) => (
                       <Link
                         key={tournament.id}
                         to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
-                        className="block p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 hover:shadow-md transition-all"
+                        className="block p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 mb-1">{tournament.name}</h4>
-                            <div className="flex items-center space-x-3 text-sm text-gray-600">
+                            <h4 className="font-semibold text-white mb-1">{tournament.name}</h4>
+                            <div className="flex items-center space-x-3 text-sm text-blue-100">
                               <span className="flex items-center">
                                 <Clock className="h-4 w-4 mr-1" />
                                 {formatDate(tournament.startDate)}
@@ -585,10 +584,10 @@ const PublicOrganizationPage: React.FC = () => {
                               </span>
                             </div>
                           </div>
-                          <ArrowRight className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                          <ArrowRight className="h-5 w-5 text-white flex-shrink-0" />
                         </div>
                         {tournament.allowRegistration && (
-                          <button className="mt-2 w-full text-center py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                          <button className="mt-2 w-full text-center py-1.5 bg-white text-blue-600 rounded-md text-sm font-bold hover:bg-blue-50 transition-colors">
                             Register Now
                           </button>
                         )}
@@ -597,7 +596,7 @@ const PublicOrganizationPage: React.FC = () => {
                   </div>
                   <Link
                     to={`/public/organizations/${organization?.slug}`}
-                    className="mt-4 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
+                    className="mt-4 inline-flex items-center text-sm font-medium text-white hover:text-blue-200"
                   >
                     View all upcoming tournaments
                     <ChevronRight className="h-4 w-4 ml-1" />
