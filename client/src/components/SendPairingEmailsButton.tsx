@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Mail, Loader, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 
 interface SendPairingEmailsButtonProps {
   tournamentId: string;
@@ -25,43 +25,30 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
   const [result, setResult] = useState<'success' | 'error' | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Apps Script webhook URL for pairing email notifications
+  const APPS_SCRIPT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxHMYoAVrLUpxzwaNMbTlDKusQVvhTvGAmrnDeaftLqhVhGt4rGUddxWxQiDPzqKW0z/exec';
+
   const handleSendEmails = async () => {
     setLoading(true);
     setResult(null);
     setErrorMessage('');
 
     try {
-      // Fetch pairings for this round and section using the API
-      const response = await fetch(`/api/pairings/tournament/${tournamentId}/round/${round}${sectionName ? `?section=${encodeURIComponent(sectionName)}` : ''}`);
-      const pairings = await response.json();
-
-      if (!response.ok || !pairings || pairings.length === 0) {
-        throw new Error('No pairings found for this round');
-      }
-
-      // Use the updated webhook URL directly
-      const webhookUrl = 'https://script.google.com/macros/s/AKfycbxHMYoAVrLUpxzwaNMbTlDKusQVvhTvGAmrnDeaftLqhVhGt4rGUddxWxQiDPzqKW0z/exec';
-      
-      // Send webhook to Google Apps Script
-      const webhookResponse = await fetch(webhookUrl, {
+      // Use the backend API endpoint instead of calling webhook directly
+      const response = await fetch('/api/pairings/notifications/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event: 'pairings_generated',
-          tournament: {
-            id: tournamentId,
-            name: 'Tournament',
-            format: 'swiss',
-            rounds: round
-          },
-          round: round,
-          pairings: pairings,
-          timestamp: new Date().toISOString()
+          tournamentId,
+          round,
+          sectionName
         })
       });
 
-      if (!webhookResponse.ok) {
-        throw new Error('Failed to send webhook');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send emails');
       }
 
       setResult('success');
@@ -77,31 +64,116 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     }
   };
 
+  const handleDirectWebhook = async () => {
+    setLoading(true);
+    setResult(null);
+    setErrorMessage('');
+
+    try {
+      // Direct call to Apps Script webhook
+      const response = await fetch(APPS_SCRIPT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'pairings_generated',
+          tournament: {
+            id: tournamentId,
+            name: 'Tournament', // You might want to pass actual tournament name
+            format: 'swiss',
+            rounds: 1
+          },
+          round: round,
+          pairingsCount: pairingsCount,
+          timestamp: new Date().toISOString(),
+          pairings: [] // Empty for now, will be populated by backend
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to trigger Apps Script webhook');
+      }
+
+      setResult('success');
+      onSuccess?.();
+    } catch (error: any) {
+      const message = error.message || 'Failed to trigger webhook';
+      setErrorMessage(message);
+      setResult('error');
+      onError?.(message);
+    } finally {
+      setLoading(false);
+      setShowConfirm(false);
+    }
+  };
+
   return (
-    <div className="space-y-2">
-      {/* Main Button - Always enabled */}
-      <button
-        onClick={() => setShowConfirm(true)}
-        disabled={loading}
-        className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-          loading
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 text-white hover:bg-blue-700'
-        }`}
-        title={loading ? 'Sending emails...' : 'Send emails to all players'}
-      >
-        {loading ? (
-          <>
-            <Loader className="h-4 w-4 animate-spin" />
-            <span>Sending Emails...</span>
-          </>
-        ) : (
-          <>
-            <Mail className="h-4 w-4" />
-            <span>Send Pairing Emails</span>
-          </>
-        )}
-      </button>
+    <div className="space-y-3">
+      {/* Button Group */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        {/* Backend API Button */}
+        <button
+          onClick={() => setShowConfirm(true)}
+          disabled={loading}
+          className={`flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            loading
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+          title={loading ? 'Sending emails...' : 'Send emails via backend API'}
+        >
+          {loading ? (
+            <>
+              <Loader className="h-4 w-4 animate-spin" />
+              <span>Sending Emails...</span>
+            </>
+          ) : (
+            <>
+              <Mail className="h-4 w-4" />
+              <span>Send Pairing Emails</span>
+            </>
+          )}
+        </button>
+
+        {/* Direct Apps Script Button */}
+        <button
+          onClick={handleDirectWebhook}
+          disabled={loading}
+          className={`flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            loading
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-green-600 text-white hover:bg-green-700'
+          }`}
+          title={loading ? 'Triggering webhook...' : 'Direct Apps Script webhook'}
+        >
+          {loading ? (
+            <>
+              <Loader className="h-4 w-4 animate-spin" />
+              <span>Triggering...</span>
+            </>
+          ) : (
+            <>
+              <ExternalLink className="h-4 w-4" />
+              <span>Direct Webhook</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Apps Script Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-start space-x-2">
+          <ExternalLink className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm">
+            <p className="text-blue-900 font-medium">Apps Script Webhook</p>
+            <p className="text-blue-700 mt-1">
+              Direct webhook URL: <code className="bg-blue-100 px-1 rounded text-xs">{APPS_SCRIPT_WEBHOOK_URL}</code>
+            </p>
+            <p className="text-blue-600 text-xs mt-1">
+              Use the green button to test the Apps Script webhook directly, or the blue button for the full backend integration.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Confirmation Modal */}
       {showConfirm && !loading && (
