@@ -25,7 +25,7 @@ To use this new toggle in your TD dashboard, update the `NotificationButton` com
 
 ```tsx
 const [webhookEnabled, setWebhookEnabled] = useState(false);
-const webhookUrl = 'https://script.google.com/macros/s/AKfycbyLjx_xfOs6XNlDmAZHJKobn1MMSgOeRBHJOAS0qNK7HyQEuMm9EdRIxt5f5P6sej-a/exec';
+const webhookUrl = 'https://script.google.com/macros/s/AKfycbxHMYoAVrLUpxzwaNMbTlDKusQVvhTvGAmrnDeaftLqhVhGt4rGUddxWxQiDPzqKW0z/exec';
 
 const handleWebhookToggle = async (enabled: boolean) => {
   try {

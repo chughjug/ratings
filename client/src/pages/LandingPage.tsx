@@ -34,6 +34,12 @@ const LandingPage: React.FC = () => {
               >
                 Live Tournaments
               </Link>
+              <Link
+                to="/public/organizations"
+                className="text-neutral-700 hover:text-orange-700 text-sm font-medium transition-colors"
+              >
+                Public View
+              </Link>
               <button
                 onClick={() => setShowAuthModal(true)}
                 className="flex items-center space-x-2 bg-gradient-to-r from-orange-700 to-orange-800 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:from-orange-800 hover:to-orange-900 transition-all shadow-sm hover:shadow-lg"
@@ -555,7 +561,7 @@ const LandingPage: React.FC = () => {
                 </Link></li>
                 <li><Link to="/public/organizations" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />
-                  Find Organizations
+                  Public View
                 </Link></li>
                 <li><Link to="/register" className="text-neutral-400 hover:text-orange-600 transition-colors flex items-center gap-2">
                   <ArrowRight className="h-3 w-3" />

@@ -65,7 +65,14 @@ function handleTestRequest(testEmail) {
   // All emails are directed to your test address for reliable testing
   const testPayload = {
     event: 'pairings_generated',
-    tournament: { id: 'test', name: 'Simplified Test Tournament', format: 'swiss', rounds: 3 },
+    tournament: { 
+      id: 'test', 
+      name: 'Simplified Test Tournament', 
+      format: 'swiss', 
+      rounds: 3,
+      logo_url: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAKMArgMBIgACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABAUCBgcBE//EAD8QAAEEAQIEAwQECwkBAAAAAAEAAgMEEQUhBhITMUFRYRQicYEHFSMyNUJDUnWCkZOhs9IzU2JydLHB0fAk/8QAGAEBAQEBAQAAAAAAAAAAAAAAAAECAwT/xAAdEQEBAAIDAQEBAAAAAAAAAAAAAQIRAyExEkFR/9oADAMBAAIRAxEAPwDuKIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiIP/2Q==',
+      organization_logo: null 
+    },
     round: 1,
     pairings: [
       {
@@ -182,9 +189,13 @@ function buildPersonalizedEmailContent(tournament, round, playerInfo) {
   const colorStyle = pairing.color === 'white' ? '#f0f0f0' : '#333333';
   const textColor = pairing.color === 'white' ? '#000000' : '#ffffff';
   
+  // Determine which logo to use (tournament logo, org logo, or default)
+  const logoUrl = tournament.organization_logo || tournament.logo_url || null;
+  
   // Build HTML content
   let html = `
     <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
+      ${logoUrl ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${logoUrl}" alt="Tournament Logo" style="max-width: 200px; height: auto;" /></div>` : ''}
       <h1 style="color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;">
         Your Pairing for Round ${round}
       </h1>
