@@ -23,7 +23,12 @@ import {
   TrendingUp,
   Award,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Activity,
+  BarChart3,
+  Eye,
+  Zap,
+  Megaphone
 } from 'lucide-react';
 import { organizationApi } from '../services/organizationApi';
 import { Organization, Tournament } from '../types';
@@ -32,6 +37,8 @@ const PublicOrganizationPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [upcomingTournaments, setUpcomingTournaments] = useState<Tournament[]>([]);
+  const [activeTournaments, setActiveTournaments] = useState<Tournament[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +60,7 @@ const PublicOrganizationPage: React.FC = () => {
       setError(null);
       
       // Load organization data and tournaments in parallel
-      const [orgResponse, tournamentsResponse, statsResponse] = await Promise.all([
+      const [orgResponse, tournamentsResponse, upcomingResponse, activeResponse, statsResponse] = await Promise.all([
         organizationApi.getPublicOrganization(slug!),
         organizationApi.getPublicTournaments(slug!, {
           status: filterStatus !== 'all' ? filterStatus : undefined,
@@ -61,12 +68,22 @@ const PublicOrganizationPage: React.FC = () => {
           limit: 12,
           offset: (currentPage - 1) * 12
         }),
+        organizationApi.getPublicTournaments(slug!, {
+          status: 'created',
+          limit: 3
+        }),
+        organizationApi.getPublicTournaments(slug!, {
+          status: 'active',
+          limit: 3
+        }),
         organizationApi.getOrganizationStats(slug!)
       ]);
 
       setOrganization(orgResponse.data.organization);
       setTournaments(tournamentsResponse.data.tournaments);
       setPagination(tournamentsResponse.data.pagination);
+      setUpcomingTournaments(upcomingResponse.data.tournaments || []);
+      setActiveTournaments(activeResponse.data.tournaments || []);
       setStats(statsResponse.data);
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to load organization data');
@@ -603,6 +620,120 @@ const PublicOrganizationPage: React.FC = () => {
                   Players
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dashboard Sections - Upcoming & Active Tournaments */}
+      {(upcomingTournaments.length > 0 || activeTournaments.length > 0) && (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-t border-b border-blue-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Upcoming Tournaments */}
+              {upcomingTournaments.length > 0 && (
+                <div className="bg-white rounded-xl shadow-lg border border-blue-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Calendar className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">Upcoming Tournaments</h3>
+                    </div>
+                    <Zap className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">Get ready for these exciting events!</p>
+                  <div className="space-y-3">
+                    {upcomingTournaments.map((tournament: any) => (
+                      <Link
+                        key={tournament.id}
+                        to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
+                        className="block p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900 mb-1">{tournament.name}</h4>
+                            <div className="flex items-center space-x-3 text-sm text-gray-600">
+                              <span className="flex items-center">
+                                <Clock className="h-4 w-4 mr-1" />
+                                {formatDate(tournament.startDate)}
+                              </span>
+                              <span className="flex items-center">
+                                <Trophy className="h-4 w-4 mr-1" />
+                                {tournament.rounds} rounds
+                              </span>
+                            </div>
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                        </div>
+                        {tournament.allowRegistration && (
+                          <button className="mt-2 w-full text-center py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                            Register Now
+                          </button>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                  <Link
+                    to={`/public/organizations/${organization?.slug}`}
+                    className="mt-4 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    View all upcoming tournaments
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </div>
+              )}
+
+              {/* Active Tournaments */}
+              {activeTournaments.length > 0 && (
+                <div className="bg-white rounded-xl shadow-lg border border-green-200 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Activity className="h-5 w-5 text-green-600" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">Active Now</h3>
+                    </div>
+                    <Eye className="h-5 w-5 text-green-600" />
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">Follow these tournaments in real-time!</p>
+                  <div className="space-y-3">
+                    {activeTournaments.map((tournament: any) => (
+                      <Link
+                        key={tournament.id}
+                        to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
+                        className="block p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900 mb-1">{tournament.name}</h4>
+                            <div className="flex items-center space-x-3 text-sm text-gray-600">
+                              <span className="flex items-center">
+                                <BarChart3 className="h-4 w-4 mr-1" />
+                                Live now
+                              </span>
+                              <span className="flex items-center">
+                                <TrendingUp className="h-4 w-4 mr-1" />
+                                {tournament.rounds} rounds
+                              </span>
+                            </div>
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-green-600 flex-shrink-0" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                  <Link
+                    to={`/public/organizations/${organization?.slug}?status=active`}
+                    className="mt-4 inline-flex items-center text-sm font-medium text-green-600 hover:text-green-800"
+                  >
+                    View all active tournaments
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
