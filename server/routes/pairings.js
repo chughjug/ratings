@@ -1006,6 +1006,16 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
     
     console.log(`[Email Notifications] Using webhook URL: ${tournament?.webhook_url ? 'tournament-specific' : 'environment variable'}`);
 
+    // Get organization info if tournament has organization_id
+    let organizationLogo = null;
+    if (tournament?.organization_id) {
+      organizationLogo = await new Promise((resolve) => {
+        db.get('SELECT logo_url FROM organizations WHERE id = ?', [tournament.organization_id], (err, row) => {
+          resolve(row?.logo_url || null);
+        });
+      });
+    }
+
     // Get player emails from database
     const pairingsWithEmails = await Promise.all(pairings.map(async (p) => {
       let whiteEmail = null;
@@ -1063,7 +1073,9 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
         id: tournamentId,
         name: tournament?.name || 'Unknown Tournament',
         format: tournament?.format || 'swiss',
-        rounds: tournament?.rounds || 1
+        rounds: tournament?.rounds || 1,
+        logo_url: tournament?.logo_url || null,
+        organization_logo: organizationLogo || null
       },
       round: round,
       pairingsCount: pairingsWithEmails?.length || 0,
