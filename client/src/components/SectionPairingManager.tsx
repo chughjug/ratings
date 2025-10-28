@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X, GripVertical } from 'lucide-react';
 import { pairingApi, playerApi, tournamentApi } from '../services/api';
 import LichessGameCreator from './LichessGameCreator';
-import SendPairingEmailsButton from './SendPairingEmailsButton';
 
 interface SectionPairingManagerProps {
   tournamentId: string;
@@ -624,18 +623,6 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
             </button>
           )}
           
-          {/* Email Notification Button - Always enabled */}
-          <div className="flex items-center">
-            <SendPairingEmailsButton
-              tournamentId={tournamentId}
-              round={currentRound}
-              pairingsCount={sectionPairings.length}
-              isEnabled={true}
-              sectionName={sectionName}
-              onSuccess={() => console.log('Emails sent successfully')}
-              onError={(error) => console.error('Failed to send emails:', error)}
-            />
-          </div>
 
           <button
             onClick={resetSection}
