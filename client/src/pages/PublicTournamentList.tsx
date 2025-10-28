@@ -197,7 +197,7 @@ const PublicTournamentList: React.FC = () => {
                   onClick={() => setViewMode('grid')}
                   className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium transition-colors ${
                     viewMode === 'grid'
-                      ? 'bg-black text-white'
+                      ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -208,7 +208,7 @@ const PublicTournamentList: React.FC = () => {
                   onClick={() => setViewMode('calendar')}
                   className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium transition-colors ${
                     viewMode === 'calendar'
-                      ? 'bg-black text-white'
+                      ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -384,13 +384,13 @@ const PublicTournamentList: React.FC = () => {
                   <div className="flex space-x-3">
                     <Link
                       to={`/register/${tournament.id}`}
-                      className="flex-1 bg-black text-white text-center py-2 px-4 rounded hover:bg-gray-800 transition-colors text-sm font-medium"
+                      className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 text-white text-center py-2 px-4 rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all shadow-sm hover:shadow-md text-sm font-semibold"
                     >
                       Register
                     </Link>
                     <Link
                       to={`/public/tournaments/${tournament.id}`}
-                      className="flex-1 border border-gray-300 text-gray-700 text-center py-2 px-4 rounded hover:bg-gray-50 transition-colors text-sm font-medium"
+                      className="flex-1 border-2 border-orange-500 text-orange-700 text-center py-2 px-4 rounded-lg hover:bg-orange-50 transition-colors text-sm font-semibold"
                     >
                       View Details
                     </Link>
@@ -410,7 +410,7 @@ const PublicTournamentList: React.FC = () => {
             </p>
             <a 
               href="/" 
-              className="inline-flex items-center space-x-2 bg-black text-white px-6 py-2 rounded hover:bg-gray-800 transition-colors text-sm font-medium"
+              className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-3 rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg hover:shadow-xl text-sm font-bold"
             >
               <Trophy className="h-4 w-4" />
               <span>Get Started</span>
