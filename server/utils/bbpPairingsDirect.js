@@ -125,8 +125,10 @@ class BBPPairingsDirect {
       return this.COLOR_BLACK; // player1 gets black (player2 gets white)
     }
     
-    // Equal balance: use consistent ordering (color equalization takes precedence)
-    return player1.id < player2.id ? this.COLOR_WHITE : this.COLOR_BLACK;
+    // Equal balance: higher rated player gets white (color equalization takes precedence)
+    const rating1 = player1.rating || 0;
+    const rating2 = player2.rating || 0;
+    return rating1 > rating2 ? this.COLOR_WHITE : this.COLOR_BLACK;
   }
 
   /**
@@ -150,8 +152,11 @@ class BBPPairingsDirect {
   /**
    * Generate Round 1 pairings with proper Swiss system pattern
    * Based on Swiss system Round 1 rules: 1 vs n/2+1, 2 vs n/2+2, etc.
+   * Uses alternating colors: Board 1 (higher rated white), Board 2 (lower rated white), etc.
    */
   generateRound1Pairings(players, tournament) {
+    console.log(`[BBPPairingsDirect] generateRound1Pairings called with ${players.length} players`);
+    
     // Sort players by rating (descending)
     const sortedPlayers = players.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     const pairings = [];
@@ -162,10 +167,11 @@ class BBPPairingsDirect {
       const player1 = sortedPlayers[i]; // Higher rated (1, 2, 3, ...)
       const player2 = sortedPlayers[i + halfLength]; // Lower rated (n/2+1, n/2+2, ...)
       
-      // Use bbpPairings color assignment logic for proper color balancing
-      const whiteColor = this.choosePlayerColor(player1, player2, tournament);
-      const whitePlayer = whiteColor === this.COLOR_WHITE ? player1 : player2;
+      // Round 1 uses alternating colors: Board 1 (higher rated white), Board 2 (lower rated white), etc.
+      const whitePlayer = i % 2 === 0 ? player1 : player2;
       const blackPlayer = whitePlayer.id === player1.id ? player2 : player1;
+      
+      console.log(`[BBPPairingsDirect] Board ${i + 1}: ${whitePlayer.name} (white) vs ${blackPlayer.name} (black)`);
       
       pairings.push({
         white_player_id: whitePlayer.id,
@@ -176,6 +182,7 @@ class BBPPairingsDirect {
       });
     }
     
+    console.log(`[BBPPairingsDirect] Generated ${pairings.length} Round 1 pairings`);
     return pairings;
   }
 
