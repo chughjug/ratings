@@ -22,47 +22,31 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Apps Script webhook endpoint
-  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwq-_6VBehlLjilnt7hfFpSlAsfyhYjbpw7Qmpnle3IqetPdSVIJmVajy2GvUa_EabL/exec';
-
   const triggerEmailNotification = async () => {
     if (isProcessing) return;
 
     setIsProcessing(true);
 
     try {
-      // Create payload that matches Apps Script doPost function expectations
-      const emailPayload = {
-        event: 'pairings_generated', // This is what the Apps Script expects
-        tournament: {
-          id: tournamentId,
-          name: `Tournament ${tournamentId.slice(0, 8)}`,
-          format: 'swiss',
-          rounds: 5, // Default value
-          logo_url: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png',
-          organization_logo: 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png',
-          organization_name: 'Chess Tournament Director'
-        },
-        round: round,
-        pairings: generateMockPairings()
-      };
-
-      console.log('Sending email notification payload:', emailPayload);
-
-      const response = await fetch(WEBHOOK_URL, {
+      // Use the backend API endpoint which handles real tournament data
+      const response = await fetch('/api/pairings/notifications/email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
-        body: JSON.stringify(emailPayload)
+        body: JSON.stringify({
+          tournamentId: tournamentId,
+          round: round,
+          sectionName: sectionName
+        })
       });
 
-      // Handle Apps Script response (usually returns HTML redirect)
-      if (response.ok || response.status === 302) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         onSuccess?.();
       } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
     } catch (error) {
@@ -72,41 +56,6 @@ const SendPairingEmailsButton: React.FC<SendPairingEmailsButtonProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  // Generate realistic mock pairings that match Apps Script expectations
-  const generateMockPairings = () => {
-    const pairings = [];
-    const players = [
-      { id: 'p1', name: 'Alice Johnson', rating: 1850, email: 'aarushchugh1@gmail.com' },
-      { id: 'p2', name: 'Bob Smith', rating: 1720, email: 'aarushchugh1@gmail.com' },
-      { id: 'p3', name: 'Carol Davis', rating: 1980, email: 'aarushchugh1@gmail.com' },
-      { id: 'p4', name: 'David Wilson', rating: 1650, email: 'aarushchugh1@gmail.com' }
-    ];
-
-    for (let i = 0; i < Math.min(pairingsCount, 4); i++) {
-      const whitePlayer = players[i * 2] || players[0];
-      const blackPlayer = players[i * 2 + 1] || players[1];
-      
-      pairings.push({
-        board: i + 1,
-        white: {
-          id: whitePlayer.id,
-          name: whitePlayer.name,
-          rating: whitePlayer.rating,
-          email: whitePlayer.email
-        },
-        black: {
-          id: blackPlayer.id,
-          name: blackPlayer.name,
-          rating: blackPlayer.rating,
-          email: blackPlayer.email
-        },
-        section: sectionName
-      });
-    }
-
-    return pairings;
   };
 
 
