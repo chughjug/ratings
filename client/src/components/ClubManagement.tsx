@@ -20,7 +20,8 @@ import {
   Star,
   Target,
   PieChart,
-  Activity
+  Activity,
+  X
 } from 'lucide-react';
 
 interface ClubManagementProps {
@@ -35,6 +36,14 @@ const ClubManagement: React.FC<ClubManagementProps> = ({ organizationId, organiz
   const [clubRatings, setClubRatings] = useState<any[]>([]);
   const [clubDues, setClubDues] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [newAnnouncement, setNewAnnouncement] = useState({
+    title: '',
+    content: '',
+    priority: 'normal',
+    is_published: true,
+    expires_at: ''
+  });
 
   useEffect(() => {
     loadClubData();
@@ -43,29 +52,43 @@ const ClubManagement: React.FC<ClubManagementProps> = ({ organizationId, organiz
   const loadClubData = async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
       // Load announcements
-      const announcementsRes = await fetch(`/api/club-announcements/${organizationId}`);
+      const announcementsRes = await fetch(`/api/club-announcements/${organizationId}`, {
+        headers
+      });
       if (announcementsRes.ok) {
         const announcementsData = await announcementsRes.json();
         setAnnouncements(announcementsData.data || []);
       }
 
       // Load email campaigns
-      const campaignsRes = await fetch(`/api/email-campaigns/${organizationId}`);
+      const campaignsRes = await fetch(`/api/email-campaigns/${organizationId}`, {
+        headers
+      });
       if (campaignsRes.ok) {
         const campaignsData = await campaignsRes.json();
         setEmailCampaigns(campaignsData.data || []);
       }
 
       // Load club ratings
-      const ratingsRes = await fetch(`/api/club-ratings/${organizationId}`);
+      const ratingsRes = await fetch(`/api/club-ratings/${organizationId}`, {
+        headers
+      });
       if (ratingsRes.ok) {
         const ratingsData = await ratingsRes.json();
         setClubRatings(ratingsData.data || []);
       }
 
       // Load club dues
-      const duesRes = await fetch(`/api/club-dues/${organizationId}`);
+      const duesRes = await fetch(`/api/club-dues/${organizationId}`, {
+        headers
+      });
       if (duesRes.ok) {
         const duesData = await duesRes.json();
         setClubDues(duesData.data || []);
@@ -74,6 +97,42 @@ const ClubManagement: React.FC<ClubManagementProps> = ({ organizationId, organiz
       console.error('Error loading club data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createAnnouncement = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/club-announcements', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          organization_id: organizationId,
+          ...newAnnouncement
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAnnouncements(prev => [result.data, ...prev]);
+        setShowAnnouncementModal(false);
+        setNewAnnouncement({
+          title: '',
+          content: '',
+          priority: 'normal',
+          is_published: true,
+          expires_at: ''
+        });
+      } else {
+        const error = await response.json();
+        alert(`Failed to create announcement: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating announcement:', error);
+      alert('Failed to create announcement');
     }
   };
 
@@ -230,7 +289,10 @@ const ClubManagement: React.FC<ClubManagementProps> = ({ organizationId, organiz
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">Club Announcements</h3>
-        <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <button 
+          onClick={() => setShowAnnouncementModal(true)}
+          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Announcement
         </button>
@@ -656,6 +718,111 @@ const ClubManagement: React.FC<ClubManagementProps> = ({ organizationId, organiz
           renderTabContent()
         )}
       </div>
+
+      {/* Announcement Creation Modal */}
+      {showAnnouncementModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Create New Announcement</h2>
+              <button
+                onClick={() => setShowAnnouncementModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={newAnnouncement.title}
+                    onChange={(e) => setNewAnnouncement(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter announcement title"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Content *
+                  </label>
+                  <textarea
+                    value={newAnnouncement.content}
+                    onChange={(e) => setNewAnnouncement(prev => ({ ...prev, content: e.target.value }))}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter announcement content"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Priority
+                    </label>
+                    <select
+                      value={newAnnouncement.priority}
+                      onChange={(e) => setNewAnnouncement(prev => ({ ...prev, priority: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expires At (Optional)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newAnnouncement.expires_at}
+                      onChange={(e) => setNewAnnouncement(prev => ({ ...prev, expires_at: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="is_published"
+                    checked={newAnnouncement.is_published}
+                    onChange={(e) => setNewAnnouncement(prev => ({ ...prev, is_published: e.target.checked }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="is_published" className="ml-2 block text-sm text-gray-900">
+                    Publish immediately
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAnnouncementModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createAnnouncement}
+                disabled={!newAnnouncement.title || !newAnnouncement.content}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create Announcement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
