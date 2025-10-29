@@ -22,6 +22,7 @@ import OrganizationCustomization from '../components/OrganizationCustomization';
 import AdvancedCustomization from '../components/AdvancedCustomization';
 import WidgetManager from '../components/WidgetManager';
 import PaymentSettings from '../components/PaymentSettings';
+import ClubManagement from '../components/ClubManagement';
 
 interface OrganizationSettingsProps {}
 
@@ -259,6 +260,14 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
           isEditing={true}
         />
 
+        {/* Club Management */}
+        <div data-club-management>
+          <ClubManagement
+            organizationId={id!}
+            organization={organization}
+          />
+        </div>
+
         {/* Payment Settings */}
         <PaymentSettings
           organizationId={id!}
@@ -316,6 +325,22 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
                 <div className="text-left">
                   <div className="font-medium text-gray-900">View Public Page</div>
                   <div className="text-sm text-gray-600">See how your organization appears publicly</div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => {
+                  const clubManagementElement = document.querySelector('[data-club-management]');
+                  if (clubManagementElement) {
+                    clubManagementElement.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Settings className="h-6 w-6 text-orange-600 mr-3" />
+                <div className="text-left">
+                  <div className="font-medium text-gray-900">Club Management</div>
+                  <div className="text-sm text-gray-600">Access advanced club features</div>
                 </div>
               </button>
             </div>

@@ -657,6 +657,10 @@ db.serialize(() => {
       country TEXT DEFAULT 'US',
       is_active BOOLEAN DEFAULT 1,
       settings TEXT,
+      subscription_plan TEXT DEFAULT 'basic',
+      subscription_status TEXT DEFAULT 'active',
+      payment_settings TEXT,
+      commission_rate REAL DEFAULT 0.02,
       created_by TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -938,6 +942,159 @@ db.serialize(() => {
   `, (err) => {
     // This is just a test query, will fail gracefully if prizes table doesn't exist yet
   });
+
+  // Club Management Features Tables
+  
+  // Club announcements table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_announcements (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      priority TEXT DEFAULT 'normal',
+      is_published BOOLEAN DEFAULT 1,
+      published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME,
+      created_by TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id),
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `);
+
+  // Email campaigns table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS email_campaigns (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      content TEXT NOT NULL,
+      recipient_type TEXT DEFAULT 'all',
+      recipient_filters TEXT,
+      status TEXT DEFAULT 'draft',
+      scheduled_at DATETIME,
+      sent_at DATETIME,
+      total_recipients INTEGER DEFAULT 0,
+      delivered_count INTEGER DEFAULT 0,
+      opened_count INTEGER DEFAULT 0,
+      clicked_count INTEGER DEFAULT 0,
+      created_by TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id),
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `);
+
+  // Email tracking table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS email_tracking (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL,
+      recipient_email TEXT NOT NULL,
+      recipient_name TEXT,
+      status TEXT DEFAULT 'sent',
+      delivered_at DATETIME,
+      opened_at DATETIME,
+      clicked_at DATETIME,
+      bounce_reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (campaign_id) REFERENCES email_campaigns (id)
+    )
+  `);
+
+  // Club rating database table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_ratings (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      player_id TEXT NOT NULL,
+      player_name TEXT NOT NULL,
+      rating INTEGER NOT NULL,
+      rating_type TEXT DEFAULT 'regular',
+      games_played INTEGER DEFAULT 0,
+      wins INTEGER DEFAULT 0,
+      losses INTEGER DEFAULT 0,
+      draws INTEGER DEFAULT 0,
+      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id),
+      UNIQUE(organization_id, player_id, rating_type)
+    )
+  `);
+
+  // Club dues tracking table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_dues (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      member_id TEXT NOT NULL,
+      member_name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      due_date DATE NOT NULL,
+      status TEXT DEFAULT 'pending',
+      paid_at DATETIME,
+      payment_method TEXT,
+      payment_reference TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id)
+    )
+  `);
+
+  // Payment configurations table for organizations
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payment_configurations (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      account_email TEXT,
+      access_token_encrypted TEXT,
+      is_active BOOLEAN DEFAULT 1,
+      is_production BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id),
+      UNIQUE(organization_id, provider)
+    )
+  `);
+
+  // Lichess integration table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS lichess_integrations (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      tournament_id TEXT,
+      lichess_tournament_id TEXT,
+      lichess_username TEXT,
+      access_token TEXT,
+      is_active BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id),
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
+
+  // Branded documents table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS branded_documents (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      document_type TEXT NOT NULL,
+      template_content TEXT NOT NULL,
+      is_active BOOLEAN DEFAULT 1,
+      created_by TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id),
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `);
 });
 
 module.exports = db;
