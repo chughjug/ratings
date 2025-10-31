@@ -14,7 +14,60 @@ const ratingService = new ClubRatingService(db);
 // ============================================================================
 
 /**
- * Get all announcements for an organization
+ * Get all announcements for an organization (public - published only)
+ * GET /api/club-features/public/announcements?organizationId=xxx
+ */
+router.get('/public/announcements', async (req, res) => {
+  try {
+    const { organizationId } = req.query;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'organizationId is required'
+      });
+    }
+
+    // Only return published announcements for public access
+    const query = 'SELECT * FROM club_announcements WHERE organization_id = ? AND is_published = 1';
+    const params = [organizationId];
+
+    query += ' ORDER BY is_pinned DESC, created_at DESC';
+
+    const announcements = await new Promise((resolve, reject) => {
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+
+    res.json({
+      success: true,
+      data: {
+        announcements: announcements.map(ann => ({
+          id: ann.id,
+          organizationId: ann.organization_id,
+          title: ann.title,
+          content: ann.content,
+          isPinned: ann.is_pinned === 1,
+          isPublished: ann.is_published === 1,
+          publishedAt: ann.published_at,
+          expiresAt: ann.expires_at,
+          createdAt: ann.created_at
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get public announcements error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get announcements'
+    });
+  }
+});
+
+/**
+ * Get all announcements for an organization (authenticated)
  * GET /api/club-features/announcements?organizationId=xxx
  */
 router.get('/announcements', authenticate, async (req, res) => {
@@ -749,7 +802,53 @@ router.get('/track/:token/click', async (req, res) => {
 // ============================================================================
 
 /**
- * Get club ratings leaderboard
+ * Get club ratings leaderboard (public)
+ * GET /api/club-features/public/ratings?organizationId=xxx&ratingType=regular
+ */
+router.get('/public/ratings', async (req, res) => {
+  try {
+    const { organizationId, ratingType = 'regular', limit = 100 } = req.query;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'organizationId is required'
+      });
+    }
+
+    const leaderboard = await ratingService.getLeaderboard(organizationId, ratingType, parseInt(limit));
+
+    res.json({
+      success: true,
+      data: {
+        leaderboard: leaderboard.map(r => ({
+          id: r.id,
+          memberId: r.member_id,
+          memberName: r.name,
+          uscfId: r.uscf_id,
+          ratingType: r.rating_type,
+          rating: r.rating,
+          gamesPlayed: r.games_played,
+          wins: r.wins,
+          losses: r.losses,
+          draws: r.draws,
+          peakRating: r.peak_rating,
+          peakRatingDate: r.peak_rating_date,
+          lastGameDate: r.last_game_date
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get public ratings error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get ratings'
+    });
+  }
+});
+
+/**
+ * Get club ratings leaderboard (authenticated)
  * GET /api/club-features/ratings?organizationId=xxx&ratingType=regular
  */
 router.get('/ratings', authenticate, async (req, res) => {

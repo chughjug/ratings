@@ -34,7 +34,7 @@ import {
   Pin
 } from 'lucide-react';
 import { organizationApi } from '../services/organizationApi';
-import { clubFeaturesApi } from '../services/api';
+import api from '../services/api';
 import { Organization, Tournament } from '../types';
 
 const PublicOrganizationPage: React.FC = () => {
@@ -111,14 +111,18 @@ const PublicOrganizationPage: React.FC = () => {
   const loadClubFeatures = async (organizationId: string) => {
     try {
       setLoadingClubFeatures(true);
-      // Load published announcements
-      const announcementsResponse = await clubFeaturesApi.getAnnouncements(organizationId, true);
+      // Load published announcements (public endpoint)
+      const announcementsResponse = await api.get(
+        `/club-features/public/announcements?organizationId=${organizationId}&t=${Date.now()}`
+      );
       if (announcementsResponse.data.success) {
         setAnnouncements(announcementsResponse.data.data.announcements.slice(0, 5)); // Show top 5
       }
 
-      // Load top ratings
-      const ratingsResponse = await clubFeaturesApi.getRatings(organizationId, 'regular', 10);
+      // Load top ratings (public endpoint)
+      const ratingsResponse = await api.get(
+        `/club-features/public/ratings?organizationId=${organizationId}&ratingType=regular&limit=10&t=${Date.now()}`
+      );
       if (ratingsResponse.data.success) {
         setRatings(ratingsResponse.data.data.leaderboard.slice(0, 10)); // Show top 10
       }
