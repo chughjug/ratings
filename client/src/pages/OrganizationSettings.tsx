@@ -28,7 +28,6 @@ import ClubMembersManager from '../components/ClubMembersManager';
 import ClubAnnouncementsManager from '../components/ClubAnnouncementsManager';
 import ClubEmailCampaignManager from '../components/ClubEmailCampaignManager';
 import ClubRatingsManager from '../components/ClubRatingsManager';
-import EmailSettingsForm from '../components/EmailSettingsForm';
 
 interface OrganizationSettingsProps {}
 
@@ -267,42 +266,6 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
           isEditing={true}
         />
 
-        {/* Email Settings */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Email Settings</h2>
-            <p className="text-sm text-gray-600 mt-1">Configure email sending via Google Apps Script</p>
-          </div>
-          <div className="p-6">
-            <EmailSettingsForm
-              organizationId={id!}
-              organization={organization}
-              onSave={async (settings: any) => {
-                try {
-                  const currentSettings = organization.settings ? JSON.parse(organization.settings) : {};
-                  const updatedSettings = {
-                    ...currentSettings,
-                    email: {
-                      ...currentSettings.email,
-                      ...settings
-                    }
-                  };
-                  const response = await organizationApi.updateOrganization(id!, {
-                    settings: JSON.stringify(updatedSettings)
-                  });
-                  if (response.success) {
-                    setOrganization(response.data.organization);
-                    setSuccess('Email settings saved successfully');
-                    setTimeout(() => setSuccess(null), 3000);
-                  }
-                } catch (error: any) {
-                  setError(error.message || 'Failed to save email settings');
-                }
-              }}
-            />
-          </div>
-        </div>
-
         {/* Payment Settings */}
         <PaymentSettings
           organizationId={id!}
@@ -324,63 +287,63 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
 
         {/* Club Features Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Club Features</h2>
-            <p className="text-sm text-gray-600 mt-1">Manage members, announcements, emails, and ratings</p>
+          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+            <h2 className="text-xl font-bold text-gray-900">Club Management</h2>
+            <p className="text-sm text-gray-600 mt-1">Manage members, announcements, email campaigns, and ratings</p>
           </div>
           
           {/* Tabs */}
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6" aria-label="Club Features">
+          <div className="border-b border-gray-200 bg-gray-50">
+            <nav className="flex space-x-1 px-6 overflow-x-auto" aria-label="Club Features">
               <button
                 onClick={() => setActiveClubTab('members')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
                   activeClubTab === 'members'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <Users className="h-4 w-4 inline mr-2" />
-                Members
+                <Users className="h-4 w-4" />
+                <span>Members</span>
               </button>
               <button
                 onClick={() => setActiveClubTab('announcements')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
                   activeClubTab === 'announcements'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <Bell className="h-4 w-4 inline mr-2" />
-                Announcements
+                <Bell className="h-4 w-4" />
+                <span>Announcements</span>
               </button>
               <button
                 onClick={() => setActiveClubTab('emails')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
                   activeClubTab === 'emails'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <Mail className="h-4 w-4 inline mr-2" />
-                Email Campaigns
+                <Mail className="h-4 w-4" />
+                <span>Email Campaigns</span>
               </button>
               <button
                 onClick={() => setActiveClubTab('ratings')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
                   activeClubTab === 'ratings'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <Trophy className="h-4 w-4 inline mr-2" />
-                Club Ratings
+                <Trophy className="h-4 w-4" />
+                <span>Ratings</span>
               </button>
             </nav>
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-6 bg-gray-50 min-h-[500px]">
             {activeClubTab === 'members' && (
               <ClubMembersManager organizationId={id!} />
             )}

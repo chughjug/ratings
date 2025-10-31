@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 /**
  * Club Email Service
- * Handles white-label email sending for clubs without Chess Nut branding
+ * Handles white-label email sending for clubs
  * Includes email tracking for opens, deliveries, and clicks
  */
 class ClubEmailService {
@@ -74,7 +74,7 @@ class ClubEmailService {
               website: org?.website,
               primaryColor: settings.branding?.primaryColor || '#3b82f6',
               secondaryColor: settings.branding?.secondaryColor || '#8b5cf6',
-              googleAppsScriptUrl: settings.email?.googleAppsScriptUrl || null
+              googleAppsScriptUrl: 'https://script.google.com/macros/s/AKfycbzOSDnA206fqocum-WcxjHynNspC276YghRdSDQcmLsW56aHuxW7rEwPvYEpdrg3jmBEg/exec'
             });
           }
         }

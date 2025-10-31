@@ -29,9 +29,12 @@ import {
   Eye,
   Zap,
   Megaphone,
-  Shield
+  Shield,
+  Bell,
+  Pin
 } from 'lucide-react';
 import { organizationApi } from '../services/organizationApi';
+import { clubFeaturesApi } from '../services/api';
 import { Organization, Tournament } from '../types';
 
 const PublicOrganizationPage: React.FC = () => {
@@ -48,6 +51,9 @@ const PublicOrganizationPage: React.FC = () => {
   const [filterFormat, setFilterFormat] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<any>(null);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [ratings, setRatings] = useState<any[]>([]);
+  const [loadingClubFeatures, setLoadingClubFeatures] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -86,6 +92,11 @@ const PublicOrganizationPage: React.FC = () => {
       setUpcomingTournaments(upcomingResponse.data.tournaments || []);
       setActiveTournaments(activeResponse.data.tournaments || []);
       setStats(statsResponse.data);
+
+      // Load club features if organization has an ID
+      if (orgResponse.data.organization?.id) {
+        loadClubFeatures(orgResponse.data.organization.id);
+      }
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to load organization data');
     } finally {
@@ -96,6 +107,28 @@ const PublicOrganizationPage: React.FC = () => {
   useEffect(() => {
     loadOrganizationData();
   }, [slug, filterStatus, filterFormat, currentPage]);
+
+  const loadClubFeatures = async (organizationId: string) => {
+    try {
+      setLoadingClubFeatures(true);
+      // Load published announcements
+      const announcementsResponse = await clubFeaturesApi.getAnnouncements(organizationId, true);
+      if (announcementsResponse.data.success) {
+        setAnnouncements(announcementsResponse.data.data.announcements.slice(0, 5)); // Show top 5
+      }
+
+      // Load top ratings
+      const ratingsResponse = await clubFeaturesApi.getRatings(organizationId, 'regular', 10);
+      if (ratingsResponse.data.success) {
+        setRatings(ratingsResponse.data.data.leaderboard.slice(0, 10)); // Show top 10
+      }
+    } catch (error) {
+      console.error('Failed to load club features:', error);
+      // Fail silently - these are optional features
+    } finally {
+      setLoadingClubFeatures(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -781,8 +814,135 @@ const PublicOrganizationPage: React.FC = () => {
         )}
       </div>
 
+      {/* Club Announcements Section */}
+      {announcements.length > 0 && (
+        <div className="py-16 bg-gradient-to-b from-blue-50 to-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center space-x-2">
+                  <Bell className="h-8 w-8 text-blue-600" />
+                  <span>Club Announcements</span>
+                </h2>
+                <p className="text-lg text-gray-600">Latest updates and news from the club</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {announcements.map((announcement) => (
+                <div
+                  key={announcement.id}
+                  className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${
+                    announcement.isPinned ? 'border-yellow-500 bg-yellow-50/30' : 'border-blue-500'
+                  } hover:shadow-xl transition-all`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      {announcement.isPinned && (
+                        <Pin className="h-4 w-4 text-yellow-600 fill-current" />
+                      )}
+                      <h3 className="text-xl font-bold text-gray-900">{announcement.title}</h3>
+                    </div>
+                    {announcement.publishedAt && (
+                      <span className="text-sm text-gray-500">
+                        {formatDate(announcement.publishedAt)}
+                      </span>
+                    )}
+                  </div>
+                  <div 
+                    className="text-gray-700 prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: announcement.content.substring(0, 200) + (announcement.content.length > 200 ? '...' : '') }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Club Ratings Leaderboard */}
+      {ratings.length > 0 && (
+        <div className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center space-x-2">
+                  <Trophy className="h-8 w-8 text-yellow-600" />
+                  <span>Club Ratings Leaderboard</span>
+                </h2>
+                <p className="text-lg text-gray-600">Top rated players in the club</p>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gradient-to-r from-blue-600 to-purple-600">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                        Rank
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                        Player
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                        Rating
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                        Games
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                        Record
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {ratings.map((rating, index) => (
+                      <tr key={rating.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {index < 3 && (
+                              <Trophy className={`h-5 w-5 mr-2 ${
+                                index === 0 ? 'text-yellow-500' :
+                                index === 1 ? 'text-gray-400' :
+                                'text-orange-500'
+                              }`} />
+                            )}
+                            <span className="text-sm font-semibold text-gray-900">#{index + 1}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{rating.memberName}</div>
+                          {rating.uscfId && (
+                            <div className="text-sm text-gray-500">USCF: {rating.uscfId}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-lg font-bold text-blue-600">{rating.rating}</div>
+                          {rating.peakRating && rating.peakRating > rating.rating && (
+                            <div className="text-xs text-green-600">Peak: {rating.peakRating}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{rating.gamesPlayed}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">
+                            {rating.wins}-{rating.losses}-{rating.draws}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Features Section */}
-      <div className="py-16 bg-white">
+      <div className="py-16 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose {organization?.name}?</h2>

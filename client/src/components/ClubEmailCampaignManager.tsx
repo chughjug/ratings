@@ -456,7 +456,7 @@ const EmailCampaignModal: React.FC<EmailCampaignModalProps> = ({ organizationId,
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> The email will be sent with your club's branding (logo, colors) and will not include any Chess Nut branding.
+              <strong>Note:</strong> The email will be sent with your club's branding (logo, colors).
               Email tracking (opens, clicks) will be enabled automatically.
             </p>
           </div>
