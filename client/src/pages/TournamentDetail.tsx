@@ -21,6 +21,7 @@ import TeamStandingsTable from '../components/TeamStandingsTable';
 import TeamPairingsTable from '../components/TeamPairingsTable';
 import RegistrationManagement from '../components/RegistrationManagement';
 import SectionPairingManager from '../components/SectionPairingManager';
+import TeamTournamentPairingManager from '../components/TeamTournamentPairingManager';
 import TeamStandings from '../components/TeamStandings';
 import TeamTournamentManagement from '../components/TeamTournamentManagement';
 import APIDocumentationModal from '../components/APIDocumentationModal';
@@ -2654,219 +2655,243 @@ const TournamentDetail: React.FC = () => {
 
           {activeTab === 'pairings' && (
             <div className="space-y-4">
-              {/* Section Selector */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <label htmlFor="pairing-section-select" className="text-sm font-medium text-gray-700">
-                      Select Section:
-                    </label>
-                    <select
-                      id="pairing-section-select"
-                      value={selectedSection || ''}
-                      onChange={(e) => handleSectionChange(e.target.value)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">-- Select a Section --</option>
-                      {getAvailableSections().map(section => (
-                        <option key={section} value={section}>
-                          {section}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center space-x-2 mt-4">
-                    <button
-                      onClick={async () => {
-                        if (!id) return;
-                        const round = getCurrentRound();
-                        try {
-                          await tournamentApi.downloadScoreSheets(id, round);
-                        } catch (error: any) {
-                          alert(`Failed to download score sheets: ${error.message || 'Unknown error'}`);
-                        }
-                      }}
-                      className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <FileText className="h-4 w-4" />
-                      <span>Download Branded Score Sheets</span>
-                    </button>
-                    {tournament && tournament.format === 'quad' && (
-                      <button
-                        onClick={async () => {
-                          if (!id) return;
-                          const round = getCurrentRound();
-                          try {
-                            await tournamentApi.downloadQuadForms(id, round);
-                          } catch (error: any) {
-                            alert(`Failed to download quad forms: ${error.message || 'Unknown error'}`);
-                          }
-                        }}
-                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                      >
-                        <FileText className="h-4 w-4" />
-                        <span>Download Branded Quad Forms</span>
-                      </button>
-                    )}
-                  </div>
-                  {/* Generate Round buttons - Hidden */}
-                  {false && (
-                  <div className="flex items-center space-x-2">
-                    {selectedSection && (
-                      <button
-                        onClick={() => {
-                          setSelectedSection('');
-                        }}
-                        className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
-                      >
-                        Clear Selection
-                      </button>
-                    )}
-                     <button
-                       onClick={async () => {
-                         if (!id) return;
-                         if (!selectedSection) {
-                           alert('Please select a section first');
-                           return;
-                         }
-                         if (!window.confirm(`Generate pairings for ${selectedSection} section?`)) return;
-                         
-                         try {
-                           setIsLoading(true);
-                           const currentRoundNum = 1; // Always start with round 1
-                           const response = await pairingApi.generateForSection(id, currentRoundNum, selectedSection);
-                           
-                           if (response.data.success) {
-                             alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
-                             await fetchPairings(currentRoundNum, selectedSection);
-                             await fetchStandings();
-                           } else {
-                             throw new Error(response.data.message || 'Failed to generate pairings');
-                           }
-                         } catch (error: any) {
-                           alert(`Failed to generate pairings: ${error.message}`);
-                         } finally {
-                           setIsLoading(false);
-                         }
-                       }}
-                       disabled={isLoading || !selectedSection}
-                       className="px-4 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
-                     >
-                       {isLoading ? (
-                         <>
-                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                           Generating...
-                         </>
-                       ) : (
-                         <>
-                           <Users className="w-3 h-3 mr-1" />
-                           Generate Round 1
-                         </>
-                       )}
-                     </button>
-                     {selectedSection && (
-                       <button
-                         onClick={async () => {
-                           if (!id) return;
-                           if (!selectedSection) {
-                             alert('Please select a section first');
-                             return;
-                           }
-                           const currentRoundNum = getCurrentRoundForSection(selectedSection);
-                           if (!window.confirm(`Generate pairings for ${selectedSection} section Round ${currentRoundNum}?`)) return;
-                           
-                           try {
-                             setIsLoading(true);
-                             const response = await pairingApi.generateForSection(id, currentRoundNum, selectedSection);
-                             
-                             if (response.data.success) {
-                               alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
-                               await fetchPairings(currentRoundNum, selectedSection);
-                               await fetchStandings();
-                             } else {
-                               throw new Error(response.data.message || 'Failed to generate pairings');
-                             }
-                           } catch (error: any) {
-                             alert(`Failed to generate pairings: ${error.message}`);
-                           } finally {
-                             setIsLoading(false);
-                           }
-                         }}
-                         disabled={isLoading || !selectedSection}
-                         className="px-4 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
-                       >
-                         {isLoading ? (
-                           <>
-                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                             Generating...
-                           </>
-                         ) : (
-                           <>
-                             <Users className="w-3 h-3 mr-1" />
-                             Generate Current Round
-                           </>
-                         )}
-                       </button>
-                     )}
-                  </div>
-                  )}
-                </div>
-              </div>
-
-              {selectedSection ? (
+              {/* Team Tournament Format - Show Team-Specific UI */}
+              {tournament && tournament.format === 'team-tournament' ? (
+                <TeamTournamentPairingManager
+                  tournamentId={id || ''}
+                  currentRound={currentRound}
+                  pairings={state.pairings || []}
+                  onRoundComplete={(nextRound) => {
+                    setCurrentRound(nextRound);
+                    fetchPairings(nextRound);
+                  }}
+                  onPairingsUpdate={(newPairings) => {
+                    dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
+                  }}
+                  onRoundChange={(round) => {
+                    setCurrentRound(round);
+                    fetchPairings(round);
+                  }}
+                  tournament={tournament}
+                />
+              ) : (
                 <>
-                  {/* Online Game Generation - Only for online tournaments */}
-                  {state.currentTournament && state.currentTournament.format === 'online' && (
-                    <div className="mb-6">
-                      <OnlineGameIntegration
+                  {/* Regular Tournament Format - Section-Based UI */}
+                  {/* Section Selector */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <label htmlFor="pairing-section-select" className="text-sm font-medium text-gray-700">
+                          Select Section:
+                        </label>
+                        <select
+                          id="pairing-section-select"
+                          value={selectedSection || ''}
+                          onChange={(e) => handleSectionChange(e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">-- Select a Section --</option>
+                          {getAvailableSections().map(section => (
+                            <option key={section} value={section}>
+                              {section}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-4">
+                        <button
+                          onClick={async () => {
+                            if (!id) return;
+                            const round = getCurrentRound();
+                            try {
+                              await tournamentApi.downloadScoreSheets(id, round);
+                            } catch (error: any) {
+                              alert(`Failed to download score sheets: ${error.message || 'Unknown error'}`);
+                            }
+                          }}
+                          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <FileText className="h-4 w-4" />
+                          <span>Download Branded Score Sheets</span>
+                        </button>
+                        {tournament && tournament.format === 'quad' && (
+                          <button
+                            onClick={async () => {
+                              if (!id) return;
+                              const round = getCurrentRound();
+                              try {
+                                await tournamentApi.downloadQuadForms(id, round);
+                              } catch (error: any) {
+                                alert(`Failed to download quad forms: ${error.message || 'Unknown error'}`);
+                              }
+                            }}
+                            className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>Download Branded Quad Forms</span>
+                          </button>
+                        )}
+                      </div>
+                      {/* Generate Round buttons - Hidden */}
+                      {false && (
+                      <div className="flex items-center space-x-2">
+                        {selectedSection && (
+                          <button
+                            onClick={() => {
+                              setSelectedSection('');
+                            }}
+                            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            Clear Selection
+                          </button>
+                        )}
+                         <button
+                           onClick={async () => {
+                             if (!id) return;
+                             if (!selectedSection) {
+                               alert('Please select a section first');
+                               return;
+                             }
+                             if (!window.confirm(`Generate pairings for ${selectedSection} section?`)) return;
+                             
+                             try {
+                               setIsLoading(true);
+                               const currentRoundNum = 1; // Always start with round 1
+                               const response = await pairingApi.generateForSection(id, currentRoundNum, selectedSection);
+                               
+                               if (response.data.success) {
+                                 alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
+                                 await fetchPairings(currentRoundNum, selectedSection);
+                                 await fetchStandings();
+                               } else {
+                                 throw new Error(response.data.message || 'Failed to generate pairings');
+                               }
+                             } catch (error: any) {
+                               alert(`Failed to generate pairings: ${error.message}`);
+                             } finally {
+                               setIsLoading(false);
+                             }
+                           }}
+                           disabled={isLoading || !selectedSection}
+                           className="px-4 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
+                         >
+                           {isLoading ? (
+                             <>
+                               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                               Generating...
+                             </>
+                           ) : (
+                             <>
+                               <Users className="w-3 h-3 mr-1" />
+                               Generate Round 1
+                             </>
+                           )}
+                         </button>
+                         {selectedSection && (
+                           <button
+                             onClick={async () => {
+                               if (!id) return;
+                               if (!selectedSection) {
+                                 alert('Please select a section first');
+                                 return;
+                               }
+                               const currentRoundNum = getCurrentRoundForSection(selectedSection);
+                               if (!window.confirm(`Generate pairings for ${selectedSection} section Round ${currentRoundNum}?`)) return;
+                               
+                               try {
+                                 setIsLoading(true);
+                                 const response = await pairingApi.generateForSection(id, currentRoundNum, selectedSection);
+                                 
+                                 if (response.data.success) {
+                                   alert(`Successfully generated pairings for ${selectedSection} section in Round ${currentRoundNum}`);
+                                   await fetchPairings(currentRoundNum, selectedSection);
+                                   await fetchStandings();
+                                 } else {
+                                   throw new Error(response.data.message || 'Failed to generate pairings');
+                                 }
+                               } catch (error: any) {
+                                 alert(`Failed to generate pairings: ${error.message}`);
+                               } finally {
+                                 setIsLoading(false);
+                               }
+                             }}
+                             disabled={isLoading || !selectedSection}
+                             className="px-4 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors flex items-center"
+                           >
+                             {isLoading ? (
+                               <>
+                                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                 Generating...
+                               </>
+                             ) : (
+                               <>
+                                 <Users className="w-3 h-3 mr-1" />
+                                 Generate Current Round
+                               </>
+                             )}
+                           </button>
+                         )}
+                      </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {selectedSection ? (
+                    <>
+                      {/* Online Game Generation - Only for online tournaments */}
+                      {state.currentTournament && state.currentTournament.format === 'online' && (
+                        <div className="mb-6">
+                          <OnlineGameIntegration
+                            tournamentId={id || ''}
+                            tournamentName={state.currentTournament.name}
+                            timeControl={state.currentTournament.time_control || 'G/45+15'}
+                            round={getCurrentRoundForSection(selectedSection)}
+                            pairings={state.pairings
+                              .filter(p => p.section === selectedSection && p.round === getCurrentRoundForSection(selectedSection))
+                              .map(p => ({
+                                id: p.id,
+                                white_player_id: p.white_player_id,
+                                black_player_id: p.black_player_id,
+                                white_player_name: p.white_name || '',
+                                black_player_name: p.black_name || '',
+                                white_player_uscf_id: p.white_uscf_id,
+                                black_player_uscf_id: p.black_uscf_id
+                              }))}
+                            onGameCreated={(pairingId, gameUrl, links) => {
+                              console.log('Game created:', pairingId, gameUrl, links);
+                            }}
+                          />
+                        </div>
+                      )}
+                      
+                      <SectionPairingManager
                         tournamentId={id || ''}
-                        tournamentName={state.currentTournament.name}
-                        timeControl={state.currentTournament.time_control || 'G/45+15'}
-                        round={getCurrentRoundForSection(selectedSection)}
-                        pairings={state.pairings
-                          .filter(p => p.section === selectedSection && p.round === getCurrentRoundForSection(selectedSection))
-                          .map(p => ({
-                            id: p.id,
-                            white_player_id: p.white_player_id,
-                            black_player_id: p.black_player_id,
-                            white_player_name: p.white_name || '',
-                            black_player_name: p.black_name || '',
-                            white_player_uscf_id: p.white_uscf_id,
-                            black_player_uscf_id: p.black_uscf_id
-                          }))}
-                        onGameCreated={(pairingId, gameUrl, links) => {
-                          console.log('Game created:', pairingId, gameUrl, links);
+                        sectionName={selectedSection}
+                        currentRound={getCurrentRoundForSection(selectedSection)}
+                        pairings={state.pairings || []}
+                        onRoundComplete={(nextRound) => {
+                          setCurrentRoundForSection(selectedSection, nextRound);
+                          fetchPairings(nextRound, selectedSection);
+                        }}
+                        onPairingsUpdate={(newPairings) => {
+                          dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
+                        }}
+                        onRoundChange={(round) => {
+                          setCurrentRoundForSection(selectedSection, round);
+                          fetchPairings(round, selectedSection);
                         }}
                       />
+                    </>
+                  ) : (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                      <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Section Selected</h3>
+                      <p className="text-gray-600 mb-4">
+                        Select a section from the dropdown above to manage pairings and results.
+                      </p>
                     </div>
                   )}
-                  
-                  <SectionPairingManager
-                    tournamentId={id || ''}
-                    sectionName={selectedSection}
-                    currentRound={getCurrentRoundForSection(selectedSection)}
-                    pairings={state.pairings || []}
-                    onRoundComplete={(nextRound) => {
-                      setCurrentRoundForSection(selectedSection, nextRound);
-                      fetchPairings(nextRound, selectedSection);
-                    }}
-                    onPairingsUpdate={(newPairings) => {
-                      dispatch({ type: 'SET_PAIRINGS', payload: newPairings });
-                    }}
-                    onRoundChange={(round) => {
-                      setCurrentRoundForSection(selectedSection, round);
-                      fetchPairings(round, selectedSection);
-                    }}
-                  />
                 </>
-              ) : (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-                  <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Section Selected</h3>
-                  <p className="text-gray-600 mb-4">
-                    Select a section from the dropdown above to manage pairings and results.
-                  </p>
-                </div>
               )}
             </div>
           )}

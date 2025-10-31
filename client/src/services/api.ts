@@ -452,6 +452,14 @@ export const pairingApi = {
       };
     }>('/pairings/generate/quad', { tournamentId }),
   
+  generateTeamSwiss: (tournamentId: string, round: number) =>
+    api.post<{
+      success: boolean;
+      message?: string;
+      error?: string;
+      pairings?: any[];
+    }>('/pairings/generate/team-swiss', { tournamentId, round }),
+  
   // Section-specific pairing methods
   generateSectionPairings: (tournamentId: string, round: number, sectionName: string) => 
     api.post<{
