@@ -53,6 +53,8 @@ class TeamSwissPairingSystem {
 
   /**
    * Calculate team scores from previous results
+   * This should be called with tournament data if scores need to be loaded from DB
+   * For now, initializes to 0 (scores will be calculated from results when available)
    */
   calculateTeamScores() {
     this.teams.forEach(team => {
@@ -67,6 +69,160 @@ class TeamSwissPairingSystem {
         };
       }
     });
+  }
+
+  /**
+   * Calculate team scores from database results
+   * Loads scores from previous rounds by calculating match results from pairings
+   */
+  static async calculateTeamScoresFromDB(db, tournamentId, teams, currentRound) {
+    const teamScores = {};
+    
+    // Initialize all teams
+    teams.forEach(team => {
+      teamScores[team.id] = {
+        matchPoints: 0,
+        gamePoints: 0,
+        matchWins: 0,
+        matchDraws: 0,
+        matchLosses: 0
+      };
+    });
+
+    // Get all completed pairings from previous rounds
+    const previousPairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT 
+          p.round,
+          p.white_player_id,
+          p.black_player_id,
+          p.result,
+          COALESCE(r1.points, 0) as white_points,
+          COALESCE(r2.points, 0) as black_points,
+          tm1.team_id as white_team_id,
+          tm2.team_id as black_team_id,
+          p.section
+        FROM pairings p
+        LEFT JOIN team_members tm1 ON p.white_player_id = tm1.player_id
+        LEFT JOIN team_members tm2 ON p.black_player_id = tm2.player_id
+        LEFT JOIN results r1 ON p.id = r1.pairing_id AND r1.player_id = p.white_player_id
+        LEFT JOIN results r2 ON p.id = r2.pairing_id AND r2.player_id = p.black_player_id
+        WHERE p.tournament_id = ? 
+          AND p.round < ?
+          AND p.is_bye = 0
+          AND tm1.team_id IS NOT NULL
+          AND tm2.team_id IS NOT NULL
+          AND (p.result IS NOT NULL OR r1.points IS NOT NULL OR r2.points IS NOT NULL)
+        ORDER BY p.round, p.section, p.board`,
+        [tournamentId, currentRound],
+        (err, rows) => {
+          if (err) {
+            console.error('Error fetching previous pairings for team scores:', err);
+            resolve([]);
+          } else {
+            resolve(rows || []);
+          }
+        }
+      );
+    });
+
+    // Group pairings by round and section (team match)
+    const matchesByRound = {};
+    previousPairings.forEach(p => {
+      const key = `${p.round}_${p.section}`;
+      if (!matchesByRound[key]) {
+        matchesByRound[key] = {
+          round: p.round,
+          section: p.section,
+          team1Id: p.white_team_id,
+          team2Id: p.black_team_id,
+          games: []
+        };
+      }
+      
+      // Calculate points from result or results table
+      let whitePoints = p.white_points || 0;
+      let blackPoints = p.black_points || 0;
+      
+      // If points not in results table, calculate from pairing result
+      if (whitePoints === 0 && blackPoints === 0 && p.result) {
+        if (p.result === '1-0' || p.result === '1-0F') {
+          whitePoints = 1;
+          blackPoints = 0;
+        } else if (p.result === '0-1' || p.result === '0-1F') {
+          whitePoints = 0;
+          blackPoints = 1;
+        } else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') {
+          whitePoints = 0.5;
+          blackPoints = 0.5;
+        }
+      }
+      
+      matchesByRound[key].games.push({
+        whiteTeam: p.white_team_id,
+        blackTeam: p.black_team_id,
+        whitePoints: whitePoints,
+        blackPoints: blackPoints
+      });
+    });
+
+    // Calculate match results for each team match
+    Object.values(matchesByRound).forEach(match => {
+      let team1Points = 0;
+      let team2Points = 0;
+      
+      match.games.forEach(game => {
+        if (game.whiteTeam === match.team1Id) {
+          team1Points += game.whitePoints;
+          team2Points += game.blackPoints;
+        } else {
+          team1Points += game.blackPoints;
+          team2Points += game.whitePoints;
+        }
+      });
+
+      // Determine match result
+      let team1MatchPoints = 0;
+      let team2MatchPoints = 0;
+      let team1Result = 'loss';
+      let team2Result = 'loss';
+
+      if (team1Points > team2Points) {
+        team1MatchPoints = 1;
+        team2MatchPoints = 0;
+        team1Result = 'win';
+        team2Result = 'loss';
+      } else if (team1Points < team2Points) {
+        team1MatchPoints = 0;
+        team2MatchPoints = 1;
+        team1Result = 'loss';
+        team2Result = 'win';
+      } else {
+        team1MatchPoints = 0.5;
+        team2MatchPoints = 0.5;
+        team1Result = 'draw';
+        team2Result = 'draw';
+      }
+
+      // Update team scores
+      if (teamScores[match.team1Id]) {
+        teamScores[match.team1Id].matchPoints += team1MatchPoints;
+        teamScores[match.team1Id].gamePoints += team1Points;
+        if (team1Result === 'win') teamScores[match.team1Id].matchWins++;
+        else if (team1Result === 'draw') teamScores[match.team1Id].matchDraws++;
+        else teamScores[match.team1Id].matchLosses++;
+      }
+
+      if (teamScores[match.team2Id]) {
+        teamScores[match.team2Id].matchPoints += team2MatchPoints;
+        teamScores[match.team2Id].gamePoints += team2Points;
+        if (team2Result === 'win') teamScores[match.team2Id].matchWins++;
+        else if (team2Result === 'draw') teamScores[match.team2Id].matchDraws++;
+        else teamScores[match.team2Id].matchLosses++;
+      }
+    });
+
+    return teamScores;
   }
 
   /**
@@ -271,13 +427,20 @@ class TeamSwissPairingSystem {
 
   /**
    * Assign colors for a board pairing
-   * Board 1 = top board, important match
-   * Colors alternate: Board 1 Round 1 = team1 white
-   * Board 2 Round 1 = team2 white, etc.
+   * Team tournament color assignment:
+   * - Round 1: Team 1 white on odd boards, Team 2 white on even boards
+   * - Round 2: Team 1 white on even boards, Team 2 white on odd boards
+   * - This alternates each round to balance colors
+   * 
+   * Examples:
+   * - Round 1, Board 1: Team 1 = White, Team 2 = Black
+   * - Round 1, Board 2: Team 1 = Black, Team 2 = White
+   * - Round 2, Board 1: Team 1 = Black, Team 2 = White
+   * - Round 2, Board 2: Team 1 = White, Team 2 = Black
    */
   assignColors(player1, player2, board, round) {
-    // Team 1 gets white on odd boards in odd rounds
-    // Team 1 gets white on even boards in even rounds
+    // Team 1 gets white on odd boards in odd rounds, or even boards in even rounds
+    // Team 1 gets black on even boards in odd rounds, or odd boards in even rounds
     const team1White = (board % 2 === 1 && round % 2 === 1) || (board % 2 === 0 && round % 2 === 0);
 
     if (team1White) {
@@ -365,9 +528,11 @@ class TeamSwissPairingSystem {
         });
 
         if (teams.length < 2) {
-          reject(new Error('Need at least 2 teams for team tournament'));
+          reject(new Error(`Need at least 2 teams for team tournament. Found ${teams.length} team(s). Make sure teams have members assigned.`));
           return;
         }
+
+        console.log(`Found ${teams.length} teams for tournament ${tournamentId}`);
 
         // Get team members for each team
         const teamsWithMembers = await Promise.all(
@@ -399,19 +564,52 @@ class TeamSwissPairingSystem {
 
         const validTeams = teamsWithMembers.filter(t => t !== null);
 
-        // Get previous team pairings
+        if (validTeams.length < 2) {
+          reject(new Error(`Need at least 2 valid teams with members. Found ${validTeams.length} valid team(s).`));
+          return;
+        }
+
+        console.log(`Valid teams with members: ${validTeams.length}`);
+
+        // Get previous team pairings by looking up teams from players in previous pairings
         const previousPairings = await new Promise((resolve, reject) => {
           db.all(
-            `SELECT DISTINCT team1Id, team2Id FROM pairings 
-             WHERE tournament_id = ? AND round < ? AND team1Id IS NOT NULL AND team2Id IS NOT NULL
-             GROUP BY team1Id, team2Id`,
-            [tournamentId, round],
+            `SELECT DISTINCT 
+              t1.id as team1Id,
+              t2.id as team2Id
+            FROM pairings p
+            JOIN team_members tm1 ON p.white_player_id = tm1.player_id
+            JOIN teams t1 ON tm1.team_id = t1.id AND t1.tournament_id = ?
+            JOIN team_members tm2 ON p.black_player_id = tm2.player_id
+            JOIN teams t2 ON tm2.team_id = t2.id AND t2.tournament_id = ?
+            WHERE p.tournament_id = ? 
+              AND p.round < ? 
+              AND p.is_bye = 0
+              AND p.white_player_id IS NOT NULL
+              AND p.black_player_id IS NOT NULL
+            GROUP BY t1.id, t2.id`,
+            [tournamentId, tournamentId, tournamentId, round],
             (err, rows) => {
-              if (err) reject(err);
-              else resolve(rows);
+              if (err) {
+                console.error('Error fetching previous team pairings:', err);
+                // Return empty array if query fails (for first round or if teams table structure is different)
+                resolve([]);
+              } else {
+                resolve(rows || []);
+              }
             }
           );
         });
+
+        // Calculate team scores from previous rounds
+        const teamScores = await TeamSwissPairingSystem.calculateTeamScoresFromDB(
+          db, 
+          tournamentId, 
+          validTeams, 
+          round
+        );
+
+        console.log('Team scores calculated:', Object.keys(teamScores).length, 'teams');
 
         // Generate pairings
         const system = new TeamSwissPairingSystem(validTeams, {
@@ -421,7 +619,17 @@ class TeamSwissPairingSystem {
           pairingSystem: options.pairingSystem || 'fide_dutch'
         });
 
+        // Set calculated team scores
+        system.teamScores = teamScores;
+
         const pairings = system.generatePairingsForRound(round);
+
+        console.log(`Generated ${pairings.length} pairings for round ${round}`);
+
+        if (!pairings || pairings.length === 0) {
+          reject(new Error('No pairings generated. Check team member assignments.'));
+          return;
+        }
 
         resolve({
           success: true,

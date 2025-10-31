@@ -3004,6 +3004,14 @@ router.post('/generate/team-swiss', async (req, res) => {
         const pairingId = uuidv4();
         
         await new Promise((resolve, reject) => {
+          // Handle null values for bye pairings
+          const whitePlayerId = pairing.white_player_id || null;
+          const blackPlayerId = pairing.black_player_id || null;
+          const board = pairing.board || 1;
+          const sectionName = pairing.team1Name 
+            ? `${pairing.team1Name} vs ${pairing.team2Name || 'BYE'}`
+            : 'Team Match';
+
           db.run(
             `INSERT INTO pairings 
              (id, tournament_id, round, board, white_player_id, black_player_id, result, section, created_at)
@@ -3012,15 +3020,16 @@ router.post('/generate/team-swiss', async (req, res) => {
               pairingId,
               tournamentId,
               round,
-              pairing.board,
-              pairing.white_player_id,
-              pairing.black_player_id,
+              board,
+              whitePlayerId,
+              blackPlayerId,
               null,
-              `${pairing.team1Name} vs ${pairing.team2Name || 'BYE'}` // Store as section for display
+              sectionName // Store as section for display
             ],
             (err) => {
               if (err) {
                 console.error('Error inserting pairing:', err);
+                console.error('Pairing data:', pairing);
                 reject(err);
               } else {
                 storedCount++;

@@ -249,6 +249,10 @@ class ClubEmailService {
       // Get target recipients
       const recipients = await this.getCampaignRecipients(campaign);
 
+      if (!recipients || recipients.length === 0) {
+        throw new Error('No recipients found. Make sure you have club members with email addresses that match your target audience.');
+      }
+
       // Update campaign status
       await new Promise((resolve, reject) => {
         this.db.run(

@@ -53,15 +53,24 @@ const ClubEmailCampaignManager: React.FC<ClubEmailCampaignManagerProps> = ({ org
     if (!window.confirm('Are you sure you want to send this email campaign to all recipients?')) return;
 
     try {
+      setLoading(true);
+      setError(null);
       const response = await clubFeaturesApi.sendEmailCampaign(campaignId);
       if (response.data.success) {
-        alert('Email campaign is being sent');
+        alert('Email campaign is being sent. You can check the status and insights once sending completes.');
         loadCampaigns();
+        // Refresh campaigns after a delay to see updated status
+        setTimeout(() => loadCampaigns(), 3000);
       } else {
+        setError(response.data.error || 'Failed to send campaign');
         alert(response.data.error || 'Failed to send campaign');
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to send campaign');
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to send campaign. Make sure you have club members with email addresses.';
+      setError(errorMsg);
+      alert(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -115,6 +124,12 @@ const ClubEmailCampaignManager: React.FC<ClubEmailCampaignManagerProps> = ({ org
           <div className="col-span-full bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
             <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600">No email campaigns yet. Click "New Campaign" to create one.</p>
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Important:</strong> Make sure you have club members with valid email addresses in your organization. 
+                Email campaigns will only be sent to members who have email addresses on file.
+              </p>
+            </div>
           </div>
         ) : (
           campaigns.map((campaign) => (
