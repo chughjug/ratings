@@ -144,9 +144,13 @@ const TeamTournamentPairingManager: React.FC<TeamTournamentPairingManagerProps> 
     if (!tournamentId) return;
     
     try {
-      const response = await pairingApi.getAll(tournamentId);
-      const allPairings = response.data || [];
-      const rounds = Array.from(new Set(allPairings.map((p: any) => p.round))).sort((a, b) => a - b);
+      // Use getAllByTournament which returns pairings grouped by round
+      const response = await pairingApi.getAllByTournament(tournamentId);
+      const pairingsByRound = response.data?.pairingsByRound || {};
+      const rounds = Object.keys(pairingsByRound)
+        .map(r => parseInt(r))
+        .filter(r => !isNaN(r))
+        .sort((a, b) => a - b);
       setAvailableRounds(rounds.length > 0 ? rounds : [currentRound]);
     } catch (error) {
       console.error('Error fetching available rounds:', error);
