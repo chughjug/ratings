@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
-  Building2, 
   Trophy, 
   Users, 
   Calendar, 
@@ -14,24 +13,20 @@ import {
   Instagram,
   Youtube,
   MessageCircle,
-  Filter,
   Grid,
   List,
   ArrowRight,
   Clock,
-  Star,
   TrendingUp,
   Award,
   ChevronLeft,
   ChevronRight,
   Activity,
   BarChart3,
-  Eye,
-  Zap,
-  Megaphone,
   Shield,
   Bell,
-  Pin
+  Pin,
+  Sparkles
 } from 'lucide-react';
 import { organizationApi } from '../services/organizationApi';
 import api from '../services/api';
@@ -53,7 +48,6 @@ const PublicOrganizationPage: React.FC = () => {
   const [pagination, setPagination] = useState<any>(null);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [ratings, setRatings] = useState<any[]>([]);
-  const [loadingClubFeatures, setLoadingClubFeatures] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -66,7 +60,6 @@ const PublicOrganizationPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Load organization data and tournaments in parallel
       const [orgResponse, tournamentsResponse, upcomingResponse, activeResponse, statsResponse] = await Promise.all([
         organizationApi.getPublicOrganization(slug!),
         organizationApi.getPublicTournaments(slug!, {
@@ -93,7 +86,6 @@ const PublicOrganizationPage: React.FC = () => {
       setActiveTournaments(activeResponse.data.tournaments || []);
       setStats(statsResponse.data);
 
-      // Load club features if organization has an ID
       if (orgResponse.data.organization?.id) {
         loadClubFeatures(orgResponse.data.organization.id);
       }
@@ -110,27 +102,19 @@ const PublicOrganizationPage: React.FC = () => {
 
   const loadClubFeatures = async (organizationId: string) => {
     try {
-      setLoadingClubFeatures(true);
-      // Load published announcements (public endpoint)
-      const announcementsResponse = await api.get(
-        `/club-features/public/announcements?organizationId=${organizationId}&t=${Date.now()}`
-      );
+      const [announcementsResponse, ratingsResponse] = await Promise.all([
+        api.get(`/club-features/public/announcements?organizationId=${organizationId}&t=${Date.now()}`),
+        api.get(`/club-features/public/ratings?organizationId=${organizationId}&ratingType=regular&limit=10&t=${Date.now()}`)
+      ]);
+      
       if (announcementsResponse.data.success) {
-        setAnnouncements(announcementsResponse.data.data.announcements.slice(0, 5)); // Show top 5
+        setAnnouncements(announcementsResponse.data.data.announcements.slice(0, 5));
       }
-
-      // Load top ratings (public endpoint)
-      const ratingsResponse = await api.get(
-        `/club-features/public/ratings?organizationId=${organizationId}&ratingType=regular&limit=10&t=${Date.now()}`
-      );
       if (ratingsResponse.data.success) {
-        setRatings(ratingsResponse.data.data.leaderboard.slice(0, 10)); // Show top 10
+        setRatings(ratingsResponse.data.data.leaderboard.slice(0, 10));
       }
     } catch (error) {
-      console.error('Failed to load club features:', error);
-      // Fail silently - these are optional features
-    } finally {
-      setLoadingClubFeatures(false);
+      // Fail silently
     }
   };
 
@@ -140,79 +124,6 @@ const PublicOrganizationPage: React.FC = () => {
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800';
-      case 'created':
-        return 'bg-gray-100 text-gray-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!organization) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Organization Not Found</h1>
-          <p className="text-gray-600">The organization you're looking for doesn't exist or is not public.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const getSocialIcon = (platform: string) => {
-    switch (platform) {
-      case 'facebook': return Facebook;
-      case 'twitter': return Twitter;
-      case 'instagram': return Instagram;
-      case 'youtube': return Youtube;
-      case 'discord': return MessageCircle;
-      case 'linkedin': return Globe; // You can import LinkedIn icon if available
-      case 'twitch': return Globe; // You can import Twitch icon if available
-      case 'tiktok': return Globe; // You can import TikTok icon if available
-      default: return Globe;
-    }
-  };
-
-  const getSocialColor = (platform: string) => {
-    switch (platform) {
-      case 'facebook': return 'text-blue-600 hover:text-blue-700';
-      case 'twitter': return 'text-blue-400 hover:text-blue-500';
-      case 'instagram': return 'text-pink-500 hover:text-pink-600';
-      case 'youtube': return 'text-red-600 hover:text-red-700';
-      case 'discord': return 'text-indigo-600 hover:text-indigo-700';
-      case 'linkedin': return 'text-blue-700 hover:text-blue-800';
-      case 'twitch': return 'text-purple-600 hover:text-purple-700';
-      case 'tiktok': return 'text-black hover:text-gray-800';
-      default: return 'text-gray-600 hover:text-gray-700';
-    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -232,432 +143,283 @@ const PublicOrganizationPage: React.FC = () => {
     return Trophy;
   };
 
+  const getSocialIcon = (platform: string) => {
+    switch (platform) {
+      case 'facebook': return Facebook;
+      case 'twitter': return Twitter;
+      case 'instagram': return Instagram;
+      case 'youtube': return Youtube;
+      case 'discord': return MessageCircle;
+      default: return Globe;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !organization) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Organization Not Found</h1>
+        <p className="text-gray-600">The organization you're looking for doesn't exist or is not public.</p>
+      </div>
+    );
+  }
+
   const renderTournamentCard = (tournament: any) => (
-    <div
+    <Link
       key={tournament.id}
-      className={`transition-all duration-200 ${
-        cardStyle === 'minimal' ? 'bg-transparent border-0 shadow-none' :
-        cardStyle === 'elevated' ? 'shadow-xl hover:shadow-2xl' :
-        'shadow hover:shadow-lg'
-      }`}
-      style={{
-        backgroundColor: cardStyle === 'minimal' ? 'transparent' : (organization?.settings?.theme?.backgroundColor || '#FFFFFF'),
-        borderRadius: organization?.settings?.theme?.borderRadius || '8px',
-        borderColor: organization?.settings?.theme?.borderColor || '#E5E7EB',
-        border: cardStyle === 'minimal' ? 'none' : `1px solid ${organization?.settings?.theme?.borderColor || '#E5E7EB'}`
-      }}
+      to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
+      className="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden"
     >
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 
-              className="text-lg font-semibold line-clamp-2 mb-1"
-              style={{ color: organization?.settings?.theme?.textColor || '#1F2937' }}
-            >
-              {tournament.name}
-            </h3>
-            <div className="flex items-center space-x-2 mb-2">
-              {React.createElement(getFormatIcon(tournament.format), { className: "h-4 w-4 text-gray-500" })}
-              <span className="text-sm text-gray-600 capitalize">
-                {tournament.format.replace('-', ' ')}
-              </span>
-            </div>
-          </div>
-          <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusBadge(tournament.status)}`}>
+          <h3 className="text-xl font-bold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-2 flex-1">
+            {tournament.name}
+          </h3>
+          <span className={`px-3 py-1 text-xs font-semibold rounded-full border ml-3 flex-shrink-0 ${getStatusBadge(tournament.status)}`}>
             {tournament.status}
           </span>
         </div>
 
-        <div className="space-y-3 text-sm text-gray-600 mb-4">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-              Rounds
-            </span>
-            <span className="font-medium">{tournament.rounds}</span>
+        <div className="space-y-3 mb-4">
+          <div className="flex items-center text-sm text-gray-600">
+            {React.createElement(getFormatIcon(tournament.format), { className: "h-4 w-4 mr-2 text-orange-600" })}
+            <span className="capitalize">{tournament.format.replace('-', ' ')}</span>
+            <span className="mx-2">•</span>
+            <Trophy className="h-4 w-4 mr-1" />
+            <span>{tournament.rounds} rounds</span>
           </div>
           
-          {tournament.timeControl && (
-            <div className="flex items-center justify-between">
-              <span className="flex items-center">
-                <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                Time Control
-              </span>
-              <span className="font-medium">{tournament.timeControl}</span>
-            </div>
-          )}
-          
           {tournament.startDate && (
-            <div className="flex items-center justify-between">
-              <span className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                Start Date
-              </span>
-              <span className="font-medium">{formatDate(tournament.startDate)}</span>
+            <div className="flex items-center text-sm text-gray-600">
+              <Calendar className="h-4 w-4 mr-2 text-orange-600" />
+              {formatDate(tournament.startDate)}
             </div>
           )}
           
           {tournament.location && (
-            <div className="flex items-center justify-between">
-              <span className="flex items-center">
-                <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                Location
-              </span>
-              <span className="font-medium truncate ml-2">{tournament.location}</span>
-            </div>
-          )}
-
-          {tournament.fideRated && (
-            <div className="flex items-center">
-              <Star className="h-4 w-4 mr-2 text-yellow-500" />
-              <span className="text-xs text-yellow-700 font-medium">FIDE Rated</span>
-            </div>
-          )}
-
-          {tournament.uscfRated && (
-            <div className="flex items-center">
-              <Award className="h-4 w-4 mr-2 text-blue-500" />
-              <span className="text-xs text-blue-700 font-medium">USCF Rated</span>
+            <div className="flex items-center text-sm text-gray-600">
+              <MapPin className="h-4 w-4 mr-2 text-orange-600" />
+              <span className="truncate">{tournament.location}</span>
             </div>
           )}
         </div>
 
-        <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-          <Link
-            to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
-            className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center"
-          >
-            View Tournament
-            <ArrowRight className="h-4 w-4 ml-1" />
-          </Link>
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <span className="text-sm font-medium text-orange-600 group-hover:text-orange-700 flex items-center">
+            View Details
+            <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+          </span>
           {tournament.allowRegistration && tournament.status === 'created' && (
-            <Link
-              to={`/register/${tournament.id}`}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors font-medium"
-            >
+            <span className="px-4 py-1.5 bg-orange-600 text-white text-sm font-semibold rounded-lg">
               Register
-            </Link>
+            </span>
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
-
-  const renderTournamentList = (tournament: any) => (
-    <div
-      key={tournament.id}
-      className="bg-white rounded-lg shadow hover:shadow-lg transition-all duration-200 border border-gray-200 p-6"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center space-x-4 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">{tournament.name}</h3>
-            <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusBadge(tournament.status)}`}>
-              {tournament.status}
-            </span>
-          </div>
-          <div className="flex items-center space-x-6 text-sm text-gray-600">
-            <span className="flex items-center">
-              {React.createElement(getFormatIcon(tournament.format), { className: "h-4 w-4 mr-2" })}
-              {tournament.format.replace('-', ' ')}
-            </span>
-            <span className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2" />
-              {tournament.rounds} rounds
-            </span>
-            {tournament.startDate && (
-              <span className="flex items-center">
-                <Clock className="h-4 w-4 mr-2" />
-                {formatDate(tournament.startDate)}
-              </span>
-            )}
-            {tournament.location && (
-              <span className="flex items-center">
-                <MapPin className="h-4 w-4 mr-2" />
-                {tournament.location}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Link
-            to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
-            className="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center"
-          >
-            View
-            <ArrowRight className="h-4 w-4 ml-1" />
-          </Link>
-          {tournament.allowRegistration && tournament.status === 'created' && (
-            <Link
-              to={`/register/${tournament.id}`}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors font-medium"
-            >
-              Register
-            </Link>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Apply custom styling based on organization settings
-  const customStyles = organization?.settings ? {
-    '--primary-color': organization.settings.theme?.primaryColor || '#3B82F6',
-    '--secondary-color': organization.settings.theme?.secondaryColor || '#1E40AF',
-    '--background-color': organization.settings.theme?.backgroundColor || '#FFFFFF',
-    '--text-color': organization.settings.theme?.textColor || '#1F2937',
-    '--accent-color': organization.settings.theme?.accentColor || '#F59E0B',
-    '--border-color': organization.settings.theme?.borderColor || '#E5E7EB',
-    '--hover-color': organization.settings.theme?.hoverColor || '#F3F4F6',
-    '--border-radius': organization.settings.theme?.borderRadius || '8px',
-    '--spacing': organization.settings.theme?.spacing || '16px'
-  } as React.CSSProperties : {};
-
-  const headerStyle = organization?.settings?.layout?.headerStyle || 'default';
-  const cardStyle = organization?.settings?.layout?.cardStyle || 'default';
-  const showStats = organization?.settings?.layout?.showStats !== false;
-  const showSocialLinks = organization?.settings?.layout?.showSocialLinks !== false;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      {/* Custom CSS Injection */}
-      {organization?.settings?.branding?.customCss && (
-        <style dangerouslySetInnerHTML={{ __html: organization.settings.branding.customCss }} />
-      )}
-      
-      {/* Custom Font Loading */}
-      {organization?.settings?.branding?.customFontUrl && (
-        <link rel="stylesheet" href={organization.settings.branding.customFontUrl} />
-      )}
-
-      {/* Hero Header with Orange Gradient */}
-      <div className="relative bg-gradient-to-br from-orange-600 via-orange-700 to-red-600 text-white shadow-2xl overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <div className="relative bg-gradient-to-br from-orange-600 via-orange-700 to-red-600 text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }} />
         </div>
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              {organization?.logoUrl && (
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-white/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all"></div>
-                  <img
-                    src={organization.logoUrl}
-                    alt={`${organization.name} logo`}
-                    className="relative h-24 w-24 object-cover rounded-2xl border-2 border-white/30 shadow-2xl"
-                  />
-                </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
+            {organization?.logoUrl && (
+              <div className="relative group">
+                <div className="absolute inset-0 bg-white/30 rounded-3xl blur-2xl"></div>
+                <img
+                  src={organization.logoUrl}
+                  alt={`${organization.name} logo`}
+                  className="relative h-32 w-32 object-cover rounded-3xl border-4 border-white/50 shadow-2xl"
+                />
+              </div>
+            )}
+            <div className="flex-1">
+              <h1 className="text-5xl md:text-6xl font-extrabold mb-4 leading-tight">
+                {organization.settings?.branding?.headerText || organization?.name}
+              </h1>
+              {(organization?.description || organization.settings?.branding?.tagline) && (
+                <p className="text-xl md:text-2xl text-orange-100 mb-6 max-w-3xl font-medium">
+                  {organization.settings?.branding?.tagline || organization.description}
+                </p>
               )}
-              <div className="flex-1">
-                <h1 className="text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200 drop-shadow-lg">
-                  {organization.settings?.branding?.headerText || organization?.name}
-                </h1>
-                {(organization?.description || organization.settings?.branding?.tagline) && (
-                  <p className="text-xl text-blue-100 mb-6 max-w-3xl font-medium">
-                    {organization.settings?.branding?.tagline || organization.description}
-                  </p>
+              
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                {organization?.website && (
+                  <a
+                    href={organization.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center bg-white/20 backdrop-blur-sm px-5 py-2.5 rounded-xl hover:bg-white/30 transition-all border border-white/30 font-medium"
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    Website
+                  </a>
                 )}
-                
-                {/* Contact Info with Modern Style */}
-                <div className="flex flex-wrap items-center gap-6 text-sm mb-6">
-                  {organization?.website && (
-                    <a
-                      href={organization.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg hover:bg-white/20 transition-all border border-white/20"
-                    >
-                      <Globe className="h-4 w-4 mr-2" />
-                      Visit Website
-                    </a>
-                  )}
-                  {organization?.contactEmail && (
-                    <div className="flex items-center text-blue-100">
-                      <Mail className="h-4 w-4 mr-2" />
-                      {organization.contactEmail}
-                    </div>
-                  )}
-                  {organization?.contactPhone && (
-                    <div className="flex items-center text-blue-100">
-                      <Phone className="h-4 w-4 mr-2" />
-                      {organization.contactPhone}
-                    </div>
-                  )}
-                  {(organization?.city || organization?.state) && (
-                    <div className="flex items-center text-blue-100">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      {organization?.city && organization?.state
-                        ? `${organization.city}, ${organization.state}`
-                        : organization?.city || organization?.state}
-                    </div>
-                  )}
-                </div>
-
-                {/* Social Links with Glass Effect */}
-                {showSocialLinks && organization?.settings?.social && Object.keys(organization.settings.social).length > 0 && (
-                  <div className="flex items-center space-x-3">
-                    {Object.entries(organization.settings.social).map(([platform, url]) => {
-                      if (!url) return null;
-                      const Icon = getSocialIcon(platform);
-                      return (
-                        <a
-                          key={platform}
-                          href={url as string}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 border border-white/20 transition-all hover:scale-110"
-                        >
-                          <Icon className="h-5 w-5 text-white" />
-                        </a>
-                      );
-                    })}
+                {organization?.contactEmail && (
+                  <div className="flex items-center bg-white/10 backdrop-blur-sm px-5 py-2.5 rounded-xl border border-white/20">
+                    <Mail className="h-4 w-4 mr-2" />
+                    {organization.contactEmail}
+                  </div>
+                )}
+                {organization?.contactPhone && (
+                  <div className="flex items-center bg-white/10 backdrop-blur-sm px-5 py-2.5 rounded-xl border border-white/20">
+                    <Phone className="h-4 w-4 mr-2" />
+                    {organization.contactPhone}
+                  </div>
+                )}
+                {(organization?.city || organization?.state) && (
+                  <div className="flex items-center bg-white/10 backdrop-blur-sm px-5 py-2.5 rounded-xl border border-white/20">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    {organization?.city && organization?.state
+                      ? `${organization.city}, ${organization.state}`
+                      : organization?.city || organization?.state}
                   </div>
                 )}
               </div>
+
+              {organization?.settings?.social && Object.keys(organization.settings.social).length > 0 && (
+                <div className="flex items-center space-x-3 mt-6">
+                  {Object.entries(organization.settings.social).map(([platform, url]) => {
+                    if (!url) return null;
+                    const Icon = getSocialIcon(platform);
+                    return (
+                      <a
+                        key={platform}
+                        href={url as string}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-3 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 border border-white/30 transition-all hover:scale-110"
+                      >
+                        <Icon className="h-5 w-5 text-white" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Section with Modern Cards */}
-      {showStats && stats && (
-        <div className="relative -mt-12">
+      {/* Stats Section */}
+      {stats && (
+        <div className="relative -mt-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mx-auto mb-3 shadow-lg">
-                  <Trophy className="h-7 w-7 text-white" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mb-3">
+                  <Trophy className="h-6 w-6 text-white" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
+                <div className="text-3xl font-extrabold text-gray-900 mb-1">
                   {stats.tournaments.total_tournaments}
                 </div>
-                <div className="text-sm text-gray-600 text-center font-medium">
-                  Total Tournaments
-                </div>
+                <div className="text-sm text-gray-600 font-medium">Tournaments</div>
               </div>
               
-              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 mx-auto mb-3 shadow-lg">
-                  <TrendingUp className="h-7 w-7 text-white" />
+              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 mb-3">
+                  <Activity className="h-6 w-6 text-white" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
+                <div className="text-3xl font-extrabold text-gray-900 mb-1">
                   {stats.tournaments.active_tournaments}
                 </div>
-                <div className="text-sm text-gray-600 text-center font-medium">
-                  Active Now
-                </div>
+                <div className="text-sm text-gray-600 font-medium">Active Now</div>
               </div>
               
-              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 mx-auto mb-3 shadow-lg">
-                  <Award className="h-7 w-7 text-white" />
+              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 mb-3">
+                  <Award className="h-6 w-6 text-white" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
+                <div className="text-3xl font-extrabold text-gray-900 mb-1">
                   {stats.tournaments.completed_tournaments}
                 </div>
-                <div className="text-sm text-gray-600 text-center font-medium">
-                  Completed
-                </div>
+                <div className="text-sm text-gray-600 font-medium">Completed</div>
               </div>
               
-              <div className="bg-white rounded-2xl shadow-xl p-6 transform hover:scale-105 transition-all border border-gray-100">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 mx-auto mb-3 shadow-lg">
-                  <Users className="h-7 w-7 text-white" />
+              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 mb-3">
+                  <Users className="h-6 w-6 text-white" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 text-center mb-1">
+                <div className="text-3xl font-extrabold text-gray-900 mb-1">
                   {stats.players.total_players}
                 </div>
-                <div className="text-sm text-gray-600 text-center font-medium">
-                  Total Players
-                </div>
+                <div className="text-sm text-gray-600 font-medium">Players</div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Dashboard Sections - Upcoming & Active Tournaments */}
+      {/* Quick Access: Upcoming & Active */}
       {(upcomingTournaments.length > 0 || activeTournaments.length > 0) && (
-        <div className="py-12 bg-gradient-to-b from-white to-neutral-50">
+        <div className="py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              
-              {/* Upcoming Tournaments */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {upcomingTournaments.length > 0 && (
-                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl shadow-2xl p-8 text-white overflow-hidden relative">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-300/20 rounded-full blur-2xl"></div>
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-xl p-8 text-white">
                   <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                        <Calendar className="h-5 w-5 text-white" />
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-white/20 rounded-xl">
+                        <Calendar className="h-6 w-6" />
                       </div>
-                      <h3 className="text-xl font-bold text-white">Upcoming Tournaments</h3>
+                      <div>
+                        <h3 className="text-2xl font-bold">Upcoming</h3>
+                        <p className="text-orange-100 text-sm">Coming soon</p>
+                      </div>
                     </div>
-                    <Zap className="h-5 w-5 text-white" />
                   </div>
-                  <p className="text-sm text-orange-100 mb-4">Get ready for these exciting events!</p>
                   <div className="space-y-3">
                     {upcomingTournaments.map((tournament: any) => (
                       <Link
                         key={tournament.id}
                         to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
-                        className="block p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all"
+                        className="block p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/20 transition-all"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-white mb-1">{tournament.name}</h4>
-                            <div className="flex items-center space-x-3 text-sm text-orange-100">
-                              <span className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
-                                {formatDate(tournament.startDate)}
-                              </span>
-                              <span className="flex items-center">
-                                <Trophy className="h-4 w-4 mr-1" />
-                                {tournament.rounds} rounds
-                              </span>
-                            </div>
-                          </div>
-                          <ArrowRight className="h-5 w-5 text-white flex-shrink-0" />
+                        <div className="font-semibold mb-1">{tournament.name}</div>
+                        <div className="flex items-center space-x-4 text-sm text-orange-100">
+                          <span className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {formatDate(tournament.startDate)}
+                          </span>
+                          <span className="flex items-center">
+                            <Trophy className="h-3 w-3 mr-1" />
+                            {tournament.rounds} rounds
+                          </span>
                         </div>
-                        {tournament.allowRegistration && (
-                          <button className="mt-2 w-full text-center py-1.5 bg-white text-orange-600 rounded-md text-sm font-bold hover:bg-orange-50 transition-colors">
-                            Register Now
-                          </button>
-                        )}
                       </Link>
                     ))}
                   </div>
-                  <Link
-                    to={`/public/organizations/${organization?.slug}`}
-                    className="mt-4 inline-flex items-center text-sm font-medium text-white hover:text-orange-200"
-                  >
-                    View all upcoming tournaments
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Link>
                 </div>
               )}
 
-              {/* Active Tournaments */}
               {activeTournaments.length > 0 && (
-                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl shadow-2xl p-8 text-white overflow-hidden relative">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-400/20 rounded-full blur-2xl"></div>
+                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-xl p-8 text-white">
                   <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                        <Activity className="h-5 w-5 text-white" />
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-white/20 rounded-xl">
+                        <Activity className="h-6 w-6" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold">Active Now</h3>
-                        <p className="text-sm text-orange-100">Games in progress</p>
+                        <h3 className="text-2xl font-bold">Live Now</h3>
+                        <p className="text-emerald-100 text-sm">In progress</p>
                       </div>
                     </div>
-                    <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold">
+                    <div className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold">
                       LIVE
                     </div>
                   </div>
@@ -666,197 +428,66 @@ const PublicOrganizationPage: React.FC = () => {
                       <Link
                         key={tournament.id}
                         to={`/public/organizations/${organization?.slug}/tournaments/${tournament.id}`}
-                        className="block p-4 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20 hover:bg-white/20 transition-all"
+                        className="block p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/20 transition-all"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-white mb-1">{tournament.name}</h4>
-                            <div className="flex items-center space-x-3 text-sm text-orange-100">
-                              <span className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
-                                Round {tournament.currentRound || 1}
-                              </span>
-                              <span className="flex items-center">
-                                <Users className="h-4 w-4 mr-1" />
-                                {tournament.playerCount || 0} players
-                              </span>
-                            </div>
-                          </div>
-                          <ArrowRight className="h-5 w-5 text-white flex-shrink-0" />
+                        <div className="font-semibold mb-1">{tournament.name}</div>
+                        <div className="flex items-center space-x-4 text-sm text-emerald-100">
+                          <span className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Round {tournament.currentRound || 1}
+                          </span>
+                          <span className="flex items-center">
+                            <Users className="h-3 w-3 mr-1" />
+                            {tournament.playerCount || 0} players
+                          </span>
                         </div>
                       </Link>
                     ))}
                   </div>
-                  <Link
-                    to={`/public/organizations/${organization?.slug}?status=active`}
-                    className="mt-4 inline-flex items-center text-sm font-medium text-white hover:text-orange-200"
-                  >
-                    View all active tournaments
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Link>
                 </div>
               )}
-
             </div>
           </div>
         </div>
       )}
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters and Controls */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Tournaments</h2>
-            <p className="text-gray-600">
-              Browse tournaments organized by {organization?.name}
-            </p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-            {/* Filters */}
-            <div className="flex items-center space-x-3">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Status</option>
-                <option value="created">Upcoming</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-              </select>
-              
-              <select
-                value={filterFormat}
-                onChange={(e) => setFilterFormat(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Formats</option>
-                <option value="swiss">Swiss</option>
-                <option value="round-robin">Round Robin</option>
-                <option value="team-swiss">Team Swiss</option>
-                <option value="blitz">Blitz</option>
-              </select>
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'grid' ? 'bg-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Grid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'list' ? 'bg-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Tournaments */}
-        {tournaments.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <Trophy className="mx-auto h-12 w-12" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Tournaments Found</h3>
-            <p className="text-gray-600">
-              {filterStatus !== 'all' || filterFormat !== 'all'
-                ? 'No tournaments match your current filters.'
-                : `${organization?.name} hasn't made any tournaments public yet.`
-              }
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className={viewMode === 'grid' 
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-              : "space-y-4"
-            }>
-              {tournaments.map(viewMode === 'grid' ? renderTournamentCard : renderTournamentList)}
-            </div>
-
-            {/* Pagination */}
-            {pagination && pagination.total > pagination.limit && (
-              <div className="flex items-center justify-between mt-8">
-                <div className="text-sm text-gray-700">
-                  Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total} tournaments
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  
-                  <span className="px-3 py-2 text-sm font-medium text-gray-700">
-                    Page {currentPage} of {Math.ceil(pagination.total / pagination.limit)}
-                  </span>
-                  
-                  <button
-                    onClick={() => setCurrentPage(prev => prev + 1)}
-                    disabled={!pagination.hasMore}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Club Announcements Section */}
+      {/* Club Announcements */}
       {announcements.length > 0 && (
-        <div className="py-16 bg-gradient-to-b from-blue-50 to-white">
+        <div className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center space-x-2">
-                  <Bell className="h-8 w-8 text-blue-600" />
-                  <span>Club Announcements</span>
-                </h2>
-                <p className="text-lg text-gray-600">Latest updates and news from the club</p>
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-100 mb-4">
+                <Bell className="h-8 w-8 text-orange-600" />
               </div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-3">Club Announcements</h2>
+              <p className="text-xl text-gray-600">Latest updates and news</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {announcements.map((announcement) => (
                 <div
                   key={announcement.id}
-                  className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${
-                    announcement.isPinned ? 'border-yellow-500 bg-yellow-50/30' : 'border-blue-500'
-                  } hover:shadow-xl transition-all`}
+                  className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 transition-all hover:shadow-xl ${
+                    announcement.isPinned ? 'border-yellow-500 bg-gradient-to-br from-yellow-50 to-white' : 'border-orange-500'
+                  }`}
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-2">
                       {announcement.isPinned && (
-                        <Pin className="h-4 w-4 text-yellow-600 fill-current" />
+                        <Pin className="h-5 w-5 text-yellow-600 fill-current" />
                       )}
                       <h3 className="text-xl font-bold text-gray-900">{announcement.title}</h3>
                     </div>
-                    {announcement.publishedAt && (
-                      <span className="text-sm text-gray-500">
-                        {formatDate(announcement.publishedAt)}
-                      </span>
-                    )}
                   </div>
                   <div 
-                    className="text-gray-700 prose max-w-none"
+                    className="text-gray-700 mb-4 line-clamp-4"
                     dangerouslySetInnerHTML={{ __html: announcement.content.substring(0, 200) + (announcement.content.length > 200 ? '...' : '') }}
                   />
+                  {announcement.publishedAt && (
+                    <div className="text-sm text-gray-500 pt-4 border-t border-gray-100">
+                      {formatDate(announcement.publishedAt)}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -866,72 +497,60 @@ const PublicOrganizationPage: React.FC = () => {
 
       {/* Club Ratings Leaderboard */}
       {ratings.length > 0 && (
-        <div className="py-16 bg-white">
+        <div className="py-16 bg-gradient-to-b from-gray-50 to-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center space-x-2">
-                  <Trophy className="h-8 w-8 text-yellow-600" />
-                  <span>Club Ratings Leaderboard</span>
-                </h2>
-                <p className="text-lg text-gray-600">Top rated players in the club</p>
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-100 mb-4">
+                <Trophy className="h-8 w-8 text-yellow-600" />
               </div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-3">Club Ratings</h2>
+              <p className="text-xl text-gray-600">Top rated players</p>
             </div>
             
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-blue-600 to-purple-600">
+                  <thead className="bg-gradient-to-r from-orange-600 to-orange-700">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Rank
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Player
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Rating
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Games
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        Record
-                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Rank</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Player</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Rating</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Games</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Record</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {ratings.map((rating, index) => (
-                      <tr key={rating.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={rating.id} className="hover:bg-orange-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             {index < 3 && (
                               <Trophy className={`h-5 w-5 mr-2 ${
-                                index === 0 ? 'text-yellow-500' :
-                                index === 1 ? 'text-gray-400' :
-                                'text-orange-500'
+                                index === 0 ? 'text-yellow-500 fill-current' :
+                                index === 1 ? 'text-gray-400 fill-current' :
+                                'text-orange-500 fill-current'
                               }`} />
                             )}
-                            <span className="text-sm font-semibold text-gray-900">#{index + 1}</span>
+                            <span className="text-lg font-bold text-gray-900">#{index + 1}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{rating.memberName}</div>
+                          <div className="text-base font-semibold text-gray-900">{rating.memberName}</div>
                           {rating.uscfId && (
                             <div className="text-sm text-gray-500">USCF: {rating.uscfId}</div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-lg font-bold text-blue-600">{rating.rating}</div>
+                          <div className="text-2xl font-bold text-orange-600">{rating.rating}</div>
                           {rating.peakRating && rating.peakRating > rating.rating && (
-                            <div className="text-xs text-green-600">Peak: {rating.peakRating}</div>
+                            <div className="text-xs text-green-600 font-medium">Peak: {rating.peakRating}</div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{rating.gamesPlayed}</div>
+                          <div className="text-base font-semibold text-gray-900">{rating.gamesPlayed}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-600">
+                          <div className="text-base text-gray-700 font-medium">
                             {rating.wins}-{rating.losses}-{rating.draws}
                           </div>
                         </td>
@@ -945,71 +564,178 @@ const PublicOrganizationPage: React.FC = () => {
         </div>
       )}
 
-      {/* Features Section */}
-      <div className="py-16 bg-gradient-to-b from-white to-gray-50">
+      {/* All Tournaments */}
+      <div className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose {organization?.name}?</h2>
-            <p className="text-lg text-gray-600">Professional tournament management with cutting-edge features</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+            <div className="mb-6 sm:mb-0">
+              <h2 className="text-4xl font-bold text-gray-900 mb-2">All Tournaments</h2>
+              <p className="text-xl text-gray-600">Browse all tournaments</p>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="created">Upcoming</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+              
+              <select
+                value={filterFormat}
+                onChange={(e) => setFilterFormat(e.target.value)}
+                className="px-4 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="all">All Formats</option>
+                <option value="swiss">Swiss</option>
+                <option value="round-robin">Round Robin</option>
+                <option value="team-swiss">Team Swiss</option>
+                <option value="blitz">Blitz</option>
+              </select>
+
+              <div className="flex items-center bg-gray-100 rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-lg transition-colors ${
+                    viewMode === 'grid' ? 'bg-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Grid className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-lg transition-colors ${
+                    viewMode === 'list' ? 'bg-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <List className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {tournaments.length === 0 ? (
+            <div className="text-center py-16">
+              <Trophy className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">No Tournaments Found</h3>
+              <p className="text-gray-600">
+                {filterStatus !== 'all' || filterFormat !== 'all'
+                  ? 'No tournaments match your filters.'
+                  : `${organization?.name} hasn't made any tournaments public yet.`
+                }
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                : "space-y-4"
+              }>
+                {tournaments.map(renderTournamentCard)}
+              </div>
+
+              {pagination && pagination.total > pagination.limit && (
+                <div className="flex items-center justify-between mt-12">
+                  <div className="text-sm text-gray-700 font-medium">
+                    Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total} tournaments
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 border-2 border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4 inline" />
+                    </button>
+                    
+                    <span className="px-4 py-2 text-sm font-medium text-gray-700">
+                      Page {currentPage} of {Math.ceil(pagination.total / pagination.limit)}
+                    </span>
+                    
+                    <button
+                      onClick={() => setCurrentPage(prev => prev + 1)}
+                      disabled={!pagination.hasMore}
+                      className="px-4 py-2 border-2 border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4 inline" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <div className="py-20 bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose {organization?.name}?</h2>
+            <p className="text-xl text-gray-600">Professional tournament management with cutting-edge features</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
-                <Trophy className="h-6 w-6 text-orange-700" />
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
+                <Trophy className="h-7 w-7 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Automated Swiss Pairings</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 Advanced pairing algorithms ensure fair and competitive matches every round.
               </p>
             </div>
             
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
-                <Users className="h-6 w-6 text-orange-700" />
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
+                <Users className="h-7 w-7 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Player Management</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 Comprehensive player registration, rating tracking, and tournament history.
               </p>
             </div>
             
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
-                <BarChart3 className="h-6 w-6 text-orange-700" />
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
+                <BarChart3 className="h-7 w-7 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Live Analytics</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 Real-time standings, statistics, and tournament progress tracking.
               </p>
             </div>
             
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
-                <Calendar className="h-6 w-6 text-orange-700" />
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
+                <Calendar className="h-7 w-7 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Flexible Scheduling</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 Support for multiple tournament formats and customizable time controls.
               </p>
             </div>
             
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
-                <Shield className="h-6 w-6 text-orange-700" />
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
+                <Shield className="h-7 w-7 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Secure & Reliable</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 Enterprise-grade security with 99.9% uptime guarantee.
               </p>
             </div>
             
-            <div className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-all">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 border border-orange-200">
-                <Globe className="h-6 w-6 text-orange-700" />
+            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
+                <Globe className="h-7 w-7 text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Public Access</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 Public tournament pages for spectators and easy player registration.
               </p>
             </div>
@@ -1020,24 +746,23 @@ const PublicOrganizationPage: React.FC = () => {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             <div>
-              <h3 className="text-lg font-semibold mb-4">About {organization?.name}</h3>
+              <h3 className="text-xl font-bold mb-4">About {organization?.name}</h3>
               <p className="text-gray-400 leading-relaxed">
                 {organization?.description || 'Professional chess tournament organization committed to excellence.'}
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+              <h3 className="text-xl font-bold mb-4">Quick Links</h3>
               <ul className="space-y-2 text-gray-400">
                 <li><Link to="/public/tournaments" className="hover:text-orange-400 transition-colors">Browse Tournaments</Link></li>
                 <li><Link to="/public/organizations" className="hover:text-orange-400 transition-colors">Find Organizations</Link></li>
-                <li><Link to="/register" className="hover:text-orange-400 transition-colors">Register as Player</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4">Contact</h3>
-              <div className="space-y-2 text-gray-400">
+              <h3 className="text-xl font-bold mb-4">Contact</h3>
+              <div className="space-y-3 text-gray-400">
                 {organization?.contactEmail && (
                   <div className="flex items-center">
                     <Mail className="h-4 w-4 mr-2" />
@@ -1059,7 +784,7 @@ const PublicOrganizationPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
             <p>&copy; 2024 {organization?.name}. All rights reserved.</p>
           </div>
         </div>

@@ -22,6 +22,7 @@ import TeamPairingsTable from '../components/TeamPairingsTable';
 import RegistrationManagement from '../components/RegistrationManagement';
 import SectionPairingManager from '../components/SectionPairingManager';
 import TeamStandings from '../components/TeamStandings';
+import TeamTournamentManagement from '../components/TeamTournamentManagement';
 import APIDocumentationModal from '../components/APIDocumentationModal';
 import APIStatusIndicator from '../components/APIStatusIndicator';
 import NotificationButton from '../components/NotificationButton';
@@ -145,6 +146,7 @@ const TournamentDetail: React.FC = () => {
   const [showChessIntegration, setShowChessIntegration] = useState(false);
   const [showSectionManager, setShowSectionManager] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
+  const [showTeamTournamentManagement, setShowTeamTournamentManagement] = useState(false);
   
   // Settings tab state
   const [logoUrl, setLogoUrl] = useState('');
@@ -452,7 +454,7 @@ const TournamentDetail: React.FC = () => {
     if (!id || !tournament) return;
     
     // Only fetch team pairings for team tournaments
-    if (!['team-swiss', 'team-round-robin'].includes(tournament.format)) {
+    if (!['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format)) {
       return;
     }
     
@@ -4034,6 +4036,22 @@ const TournamentDetail: React.FC = () => {
 
       {/* All modals and dialogs go here, outside the max-w-7xl container */}
       {/* Add Player Modal */}
+      {showTeamTournamentManagement && id && tournament?.format === 'team-tournament' && (
+        <TeamTournamentManagement
+          tournamentId={id}
+          isVisible={showTeamTournamentManagement}
+          onClose={() => setShowTeamTournamentManagement(false)}
+          players={state.players}
+          onTeamsUpdated={() => {
+            fetchPlayers();
+            // Refresh standings if team standings are shown
+            if (activeTab === 'team-standings') {
+              fetchTeamStandings();
+            }
+          }}
+        />
+      )}
+
       <AddPlayerModal
         isOpen={showAddPlayer}
         onClose={() => setShowAddPlayer(false)}
