@@ -226,24 +226,53 @@ db.serialize(() => {
     // Ignore error if column doesn't exist or can't be dropped
   });
 
-  // Remove team tables (migration to simple team category model)
+  // Teams table for team tournaments (Team vs Team format)
   db.run(`
-    DROP TABLE IF EXISTS team_members
-  `, (err) => {
-    // Ignore error if table doesn't exist
-  });
-  
+    CREATE TABLE IF NOT EXISTS teams (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      captain_id TEXT,
+      status TEXT DEFAULT 'active' CHECK (status IN ('active', 'withdrawn')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (captain_id) REFERENCES players (id),
+      UNIQUE(tournament_id, name)
+    )
+  `);
+
+  // Team members table for team tournaments
   db.run(`
-    DROP TABLE IF EXISTS teams
-  `, (err) => {
-    // Ignore error if table doesn't exist
-  });
-  
+    CREATE TABLE IF NOT EXISTS team_members (
+      id TEXT PRIMARY KEY,
+      team_id TEXT NOT NULL,
+      player_id TEXT NOT NULL,
+      board_number INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
+      FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE,
+      UNIQUE(team_id, player_id)
+    )
+  `);
+
+  // Team results table for tracking team match results
   db.run(`
-    DROP TABLE IF EXISTS team_results
-  `, (err) => {
-    // Ignore error if table doesn't exist
-  });
+    CREATE TABLE IF NOT EXISTS team_results (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      round INTEGER NOT NULL,
+      team_id TEXT NOT NULL,
+      opponent_team_id TEXT,
+      team_score REAL DEFAULT 0,
+      opponent_score REAL DEFAULT 0,
+      result TEXT CHECK (result IN ('win', 'loss', 'draw', 'bye')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+      FOREIGN KEY (team_id) REFERENCES teams (id),
+      FOREIGN KEY (opponent_team_id) REFERENCES teams (id),
+      UNIQUE(tournament_id, round, team_id)
+    )
+  `);
 
   // Registrations table
   db.run(`

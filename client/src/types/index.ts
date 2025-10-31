@@ -2,7 +2,7 @@ export interface Tournament {
   id: string;
   organization_id?: string;
   name: string;
-  format: 'swiss' | 'online' | 'quad' | 'team-swiss';
+  format: 'swiss' | 'online' | 'quad' | 'team-swiss' | 'team-tournament';
   rounds: number;
   time_control?: string;
   start_date?: string;

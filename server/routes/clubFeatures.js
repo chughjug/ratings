@@ -29,7 +29,7 @@ router.get('/public/announcements', async (req, res) => {
     }
 
     // Only return published announcements for public access
-    const query = 'SELECT * FROM club_announcements WHERE organization_id = ? AND is_published = 1';
+    let query = 'SELECT * FROM club_announcements WHERE organization_id = ? AND is_published = 1';
     const params = [organizationId];
 
     query += ' ORDER BY is_pinned DESC, created_at DESC';
