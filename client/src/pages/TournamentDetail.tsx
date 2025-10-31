@@ -2060,7 +2060,15 @@ const TournamentDetail: React.FC = () => {
                         <Download className="h-4 w-4" />
                         <span>Export USCF</span>
                       </button>
-                      
+                      {tournament?.format === 'team-tournament' && (
+                        <button
+                          onClick={() => setShowTeamTournamentManagement(true)}
+                          className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          <Users className="h-4 w-4" />
+                          <span>Manage Teams</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowAPIDocs(true)}
                         className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
