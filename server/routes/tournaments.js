@@ -152,11 +152,11 @@ router.post('/', (req, res) => {
     }
 
     // Validate format
-    if (!['swiss', 'online', 'quad', 'team-swiss'].includes(format)) {
+    if (!['swiss', 'online', 'quad', 'team-swiss', 'team-tournament'].includes(format)) {
       console.error('Invalid format:', format);
       return res.status(400).json({ 
         success: false,
-        error: 'Format must be one of: swiss, online, quad, team-swiss' 
+        error: 'Format must be one of: swiss, online, quad, team-swiss, team-tournament' 
       });
     }
 

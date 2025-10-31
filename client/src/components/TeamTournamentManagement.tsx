@@ -382,7 +382,7 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                                 </span>
                                 <div>
                                   <div className="font-medium text-gray-900 text-sm">
-                                    {member.name || 'Unknown Player'}
+                                    {member.player_name || member.name || 'Unknown Player'}
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     Rating: {member.rating || 'Unrated'}

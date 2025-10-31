@@ -26,6 +26,7 @@ import WidgetManager from '../components/WidgetManager';
 import PaymentSettings from '../components/PaymentSettings';
 import ClubMembersManager from '../components/ClubMembersManager';
 import ClubAnnouncementsManager from '../components/ClubAnnouncementsManager';
+import ClubEmailCampaignManager from '../components/ClubEmailCampaignManager';
 import ClubRatingsManager from '../components/ClubRatingsManager';
 
 interface OrganizationSettingsProps {}
@@ -288,7 +289,7 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
           <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
             <h2 className="text-xl font-bold text-gray-900">Club Management</h2>
-            <p className="text-sm text-gray-600 mt-1">Manage members, announcements, and ratings</p>
+            <p className="text-sm text-gray-600 mt-1">Manage members, announcements, email campaigns, and ratings</p>
           </div>
           
           {/* Tabs */}
@@ -317,6 +318,17 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
                 <span>Announcements</span>
               </button>
               <button
+                onClick={() => setActiveClubTab('emails')}
+                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
+                  activeClubTab === 'emails'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Mail className="h-4 w-4" />
+                <span>Email Campaigns</span>
+              </button>
+              <button
                 onClick={() => setActiveClubTab('ratings')}
                 className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
                   activeClubTab === 'ratings'
@@ -337,6 +349,9 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
             )}
             {activeClubTab === 'announcements' && (
               <ClubAnnouncementsManager organizationId={id!} />
+            )}
+            {activeClubTab === 'emails' && (
+              <ClubEmailCampaignManager organizationId={id!} />
             )}
             {activeClubTab === 'ratings' && (
               <ClubRatingsManager organizationId={id!} />
