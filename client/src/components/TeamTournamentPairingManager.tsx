@@ -368,6 +368,7 @@ const TeamTournamentPairingManager: React.FC<TeamTournamentPairingManagerProps> 
               <SendPairingEmailsButton
                 tournamentId={tournamentId}
                 round={currentRound}
+                pairingsCount={roundPairings.length}
               />
             )}
           </div>
