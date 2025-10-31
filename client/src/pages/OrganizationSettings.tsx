@@ -15,14 +15,20 @@ import {
   Settings,
   Building2,
   AlertCircle,
-  Trophy
+  Trophy,
+  Bell,
+  Mail
 } from 'lucide-react';
 import { organizationApi } from '../services/organizationApi';
 import OrganizationCustomization from '../components/OrganizationCustomization';
 import AdvancedCustomization from '../components/AdvancedCustomization';
 import WidgetManager from '../components/WidgetManager';
 import PaymentSettings from '../components/PaymentSettings';
-import ClubManagement from '../components/ClubManagement';
+import ClubMembersManager from '../components/ClubMembersManager';
+import ClubAnnouncementsManager from '../components/ClubAnnouncementsManager';
+import ClubEmailCampaignManager from '../components/ClubEmailCampaignManager';
+import ClubRatingsManager from '../components/ClubRatingsManager';
+import EmailSettingsForm from '../components/EmailSettingsForm';
 
 interface OrganizationSettingsProps {}
 
@@ -35,6 +41,7 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [activeClubTab, setActiveClubTab] = useState<'members' | 'announcements' | 'emails' | 'ratings'>('members');
 
   useEffect(() => {
     if (id) {
@@ -260,12 +267,40 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
           isEditing={true}
         />
 
-        {/* Club Management */}
-        <div data-club-management>
-          <ClubManagement
-            organizationId={id!}
-            organization={organization}
-          />
+        {/* Email Settings */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Email Settings</h2>
+            <p className="text-sm text-gray-600 mt-1">Configure email sending via Google Apps Script</p>
+          </div>
+          <div className="p-6">
+            <EmailSettingsForm
+              organizationId={id!}
+              organization={organization}
+              onSave={async (settings: any) => {
+                try {
+                  const currentSettings = organization.settings ? JSON.parse(organization.settings) : {};
+                  const updatedSettings = {
+                    ...currentSettings,
+                    email: {
+                      ...currentSettings.email,
+                      ...settings
+                    }
+                  };
+                  const response = await organizationApi.updateOrganization(id!, {
+                    settings: JSON.stringify(updatedSettings)
+                  });
+                  if (response.success) {
+                    setOrganization(response.data.organization);
+                    setSuccess('Email settings saved successfully');
+                    setTimeout(() => setSuccess(null), 3000);
+                  }
+                } catch (error: any) {
+                  setError(error.message || 'Failed to save email settings');
+                }
+              }}
+            />
+          </div>
         </div>
 
         {/* Payment Settings */}
@@ -286,6 +321,80 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
             }
           }}
         />
+
+        {/* Club Features Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Club Features</h2>
+            <p className="text-sm text-gray-600 mt-1">Manage members, announcements, emails, and ratings</p>
+          </div>
+          
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6" aria-label="Club Features">
+              <button
+                onClick={() => setActiveClubTab('members')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeClubTab === 'members'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Users className="h-4 w-4 inline mr-2" />
+                Members
+              </button>
+              <button
+                onClick={() => setActiveClubTab('announcements')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeClubTab === 'announcements'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Bell className="h-4 w-4 inline mr-2" />
+                Announcements
+              </button>
+              <button
+                onClick={() => setActiveClubTab('emails')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeClubTab === 'emails'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Mail className="h-4 w-4 inline mr-2" />
+                Email Campaigns
+              </button>
+              <button
+                onClick={() => setActiveClubTab('ratings')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeClubTab === 'ratings'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Trophy className="h-4 w-4 inline mr-2" />
+                Club Ratings
+              </button>
+            </nav>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            {activeClubTab === 'members' && (
+              <ClubMembersManager organizationId={id!} />
+            )}
+            {activeClubTab === 'announcements' && (
+              <ClubAnnouncementsManager organizationId={id!} />
+            )}
+            {activeClubTab === 'emails' && (
+              <ClubEmailCampaignManager organizationId={id!} />
+            )}
+            {activeClubTab === 'ratings' && (
+              <ClubRatingsManager organizationId={id!} />
+            )}
+          </div>
+        </div>
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
@@ -325,22 +434,6 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
                 <div className="text-left">
                   <div className="font-medium text-gray-900">View Public Page</div>
                   <div className="text-sm text-gray-600">See how your organization appears publicly</div>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => {
-                  const clubManagementElement = document.querySelector('[data-club-management]');
-                  if (clubManagementElement) {
-                    clubManagementElement.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <Settings className="h-6 w-6 text-orange-600 mr-3" />
-                <div className="text-left">
-                  <div className="font-medium text-gray-900">Club Management</div>
-                  <div className="text-sm text-gray-600">Access advanced club features</div>
                 </div>
               </button>
             </div>

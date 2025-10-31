@@ -657,10 +657,6 @@ db.serialize(() => {
       country TEXT DEFAULT 'US',
       is_active BOOLEAN DEFAULT 1,
       settings TEXT,
-      subscription_plan TEXT DEFAULT 'basic',
-      subscription_status TEXT DEFAULT 'active',
-      payment_settings TEXT,
-      commission_rate REAL DEFAULT 0.02,
       created_by TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -781,6 +777,194 @@ db.serialize(() => {
       FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
       FOREIGN KEY (invited_by) REFERENCES users (id)
     )
+  `);
+
+  // Club members table - tracks chess players as members of clubs/organizations
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_members (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      first_name TEXT,
+      last_name TEXT,
+      uscf_id TEXT,
+      fide_id TEXT,
+      rating INTEGER,
+      quick_rating INTEGER,
+      blitz_rating INTEGER,
+      expiration_date TEXT,
+      email TEXT,
+      phone TEXT,
+      address TEXT,
+      city TEXT,
+      state TEXT,
+      zip_code TEXT,
+      country TEXT DEFAULT 'US',
+      notes TEXT,
+      status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+      membership_start_date TEXT,
+      membership_end_date TEXT,
+      created_by TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `);
+
+  // Indexes for faster lookups
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_club_members_org ON club_members(organization_id)
+  `);
+  
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_club_members_uscf ON club_members(uscf_id)
+  `);
+
+  // Club announcements table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_announcements (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      author_id TEXT NOT NULL,
+      is_pinned BOOLEAN DEFAULT 0,
+      is_published BOOLEAN DEFAULT 0,
+      published_at DATETIME,
+      expires_at DATETIME,
+      target_audience TEXT DEFAULT 'all' CHECK (target_audience IN ('all', 'active_members', 'inactive_members', 'custom')),
+      target_member_ids TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      FOREIGN KEY (author_id) REFERENCES users (id)
+    )
+  `);
+
+  // Club email campaigns table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_email_campaigns (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      content_html TEXT,
+      content_text TEXT,
+      sender_name TEXT,
+      sender_email TEXT,
+      reply_to_email TEXT,
+      status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'cancelled')),
+      scheduled_at DATETIME,
+      sent_at DATETIME,
+      target_audience TEXT DEFAULT 'all' CHECK (target_audience IN ('all', 'active_members', 'inactive_members', 'custom')),
+      target_member_ids TEXT,
+      total_recipients INTEGER DEFAULT 0,
+      total_sent INTEGER DEFAULT 0,
+      total_delivered INTEGER DEFAULT 0,
+      total_opened INTEGER DEFAULT 0,
+      total_clicked INTEGER DEFAULT 0,
+      total_bounced INTEGER DEFAULT 0,
+      total_failed INTEGER DEFAULT 0,
+      created_by TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `);
+
+  // Club email tracking table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_email_tracking (
+      id TEXT PRIMARY KEY,
+      campaign_id TEXT NOT NULL,
+      member_id TEXT,
+      recipient_email TEXT NOT NULL,
+      tracking_token TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed')),
+      sent_at DATETIME,
+      delivered_at DATETIME,
+      opened_at DATETIME,
+      clicked_at DATETIME,
+      opened_count INTEGER DEFAULT 0,
+      clicked_count INTEGER DEFAULT 0,
+      bounce_reason TEXT,
+      error_message TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (campaign_id) REFERENCES club_email_campaigns (id) ON DELETE CASCADE,
+      FOREIGN KEY (member_id) REFERENCES club_members (id) ON DELETE SET NULL
+    )
+  `);
+
+  // Club ratings table - custom rating system for clubs
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_ratings (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      member_id TEXT NOT NULL,
+      rating_type TEXT DEFAULT 'regular' CHECK (rating_type IN ('regular', 'quick', 'blitz', 'tournament')),
+      rating INTEGER NOT NULL,
+      rating_deviation INTEGER DEFAULT 350,
+      volatility REAL DEFAULT 0.06,
+      games_played INTEGER DEFAULT 0,
+      wins INTEGER DEFAULT 0,
+      losses INTEGER DEFAULT 0,
+      draws INTEGER DEFAULT 0,
+      last_game_date TEXT,
+      peak_rating INTEGER,
+      peak_rating_date TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      FOREIGN KEY (member_id) REFERENCES club_members (id) ON DELETE CASCADE,
+      UNIQUE(organization_id, member_id, rating_type)
+    )
+  `);
+
+  // Club rating history table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS club_rating_history (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL,
+      member_id TEXT NOT NULL,
+      rating_type TEXT NOT NULL,
+      rating_before INTEGER,
+      rating_after INTEGER,
+      rating_change INTEGER,
+      tournament_id TEXT,
+      game_id TEXT,
+      opponent_id TEXT,
+      result TEXT CHECK (result IN ('win', 'loss', 'draw')),
+      game_date TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+      FOREIGN KEY (member_id) REFERENCES club_members (id) ON DELETE CASCADE,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE SET NULL
+    )
+  `);
+
+  // Indexes for email tracking
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_email_tracking_campaign ON club_email_tracking(campaign_id)
+  `);
+  
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_email_tracking_member ON club_email_tracking(member_id)
+  `);
+  
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_email_tracking_token ON club_email_tracking(tracking_token)
+  `);
+
+  // Indexes for club ratings
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_club_ratings_org_member ON club_ratings(organization_id, member_id)
+  `);
+  
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_club_rating_history_member ON club_rating_history(member_id)
   `);
 
   // Tournament archives table
@@ -942,159 +1126,6 @@ db.serialize(() => {
   `, (err) => {
     // This is just a test query, will fail gracefully if prizes table doesn't exist yet
   });
-
-  // Club Management Features Tables
-  
-  // Club announcements table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS club_announcements (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      priority TEXT DEFAULT 'normal',
-      is_published BOOLEAN DEFAULT 1,
-      published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      expires_at DATETIME,
-      created_by TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations (id),
-      FOREIGN KEY (created_by) REFERENCES users (id)
-    )
-  `);
-
-  // Email campaigns table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS email_campaigns (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      subject TEXT NOT NULL,
-      content TEXT NOT NULL,
-      recipient_type TEXT DEFAULT 'all',
-      recipient_filters TEXT,
-      status TEXT DEFAULT 'draft',
-      scheduled_at DATETIME,
-      sent_at DATETIME,
-      total_recipients INTEGER DEFAULT 0,
-      delivered_count INTEGER DEFAULT 0,
-      opened_count INTEGER DEFAULT 0,
-      clicked_count INTEGER DEFAULT 0,
-      created_by TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations (id),
-      FOREIGN KEY (created_by) REFERENCES users (id)
-    )
-  `);
-
-  // Email tracking table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS email_tracking (
-      id TEXT PRIMARY KEY,
-      campaign_id TEXT NOT NULL,
-      recipient_email TEXT NOT NULL,
-      recipient_name TEXT,
-      status TEXT DEFAULT 'sent',
-      delivered_at DATETIME,
-      opened_at DATETIME,
-      clicked_at DATETIME,
-      bounce_reason TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (campaign_id) REFERENCES email_campaigns (id)
-    )
-  `);
-
-  // Club rating database table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS club_ratings (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      player_id TEXT NOT NULL,
-      player_name TEXT NOT NULL,
-      rating INTEGER NOT NULL,
-      rating_type TEXT DEFAULT 'regular',
-      games_played INTEGER DEFAULT 0,
-      wins INTEGER DEFAULT 0,
-      losses INTEGER DEFAULT 0,
-      draws INTEGER DEFAULT 0,
-      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations (id),
-      UNIQUE(organization_id, player_id, rating_type)
-    )
-  `);
-
-  // Club dues tracking table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS club_dues (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      member_id TEXT NOT NULL,
-      member_name TEXT NOT NULL,
-      amount REAL NOT NULL,
-      due_date DATE NOT NULL,
-      status TEXT DEFAULT 'pending',
-      paid_at DATETIME,
-      payment_method TEXT,
-      payment_reference TEXT,
-      notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations (id)
-    )
-  `);
-
-  // Payment configurations table for organizations
-  db.run(`
-    CREATE TABLE IF NOT EXISTS payment_configurations (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      provider TEXT NOT NULL,
-      account_id TEXT NOT NULL,
-      account_email TEXT,
-      access_token_encrypted TEXT,
-      is_active BOOLEAN DEFAULT 1,
-      is_production BOOLEAN DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations (id),
-      UNIQUE(organization_id, provider)
-    )
-  `);
-
-  // Lichess integration table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS lichess_integrations (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      tournament_id TEXT,
-      lichess_tournament_id TEXT,
-      lichess_username TEXT,
-      access_token TEXT,
-      is_active BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations (id),
-      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
-    )
-  `);
-
-  // Branded documents table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS branded_documents (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      document_type TEXT NOT NULL,
-      template_content TEXT NOT NULL,
-      is_active BOOLEAN DEFAULT 1,
-      created_by TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (organization_id) REFERENCES organizations (id),
-      FOREIGN KEY (created_by) REFERENCES users (id)
-    )
-  `);
 });
 
 module.exports = db;

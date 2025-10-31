@@ -181,6 +181,123 @@ export const tournamentApi = {
     api.get<{success: boolean, results: any[], error?: string}>(`/teams/tournament/${id}/round/${round}/match-results?t=${Date.now()}`),
   getPlayerPerformance: (tournamentId: string, playerId: string) =>
     api.get<{success: boolean, tournament: any, player: any, roundPerformance: any[], positionHistory: any[], standings: any[], statistics: any, error?: string}>(`/tournaments/${tournamentId}/player/${playerId}/performance?t=${Date.now()}`),
+  // Branded PDF exports
+  downloadScoreSheets: (id: string, round: number) => {
+    return api.get(`/tournaments/${id}/score-sheets?round=${round}`, {
+      responseType: 'blob'
+    }).then(response => {
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Round_${round}_Score_Sheets.pdf`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return response;
+    });
+  },
+  downloadQuadForms: (id: string, round: number) => {
+    return api.get(`/tournaments/${id}/quad-forms?round=${round}`, {
+      responseType: 'blob'
+    }).then(response => {
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Round_${round}_Quad_Forms.pdf`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return response;
+    });
+  },
+};
+
+// Club Members API
+export const clubMembersApi = {
+  getAll: (organizationId: string, params?: { status?: string, search?: string }) => {
+    const queryParams = new URLSearchParams({ organizationId });
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+    queryParams.append('t', Date.now().toString());
+    return api.get<{success: boolean, data: {members: any[]}, error?: string}>(`/club-members?${queryParams.toString()}`);
+  },
+  getById: (id: string) => 
+    api.get<{success: boolean, data: {member: any}, error?: string}>(`/club-members/${id}?t=${Date.now()}`),
+  create: (member: any) => 
+    api.post<{success: boolean, data: {member: any}, error?: string}>('/club-members', member),
+  update: (id: string, member: Partial<any>) => 
+    api.put<{success: boolean, message: string, error?: string}>(`/club-members/${id}`, member),
+  delete: (id: string) => 
+    api.delete<{success: boolean, message: string, error?: string}>(`/club-members/${id}`),
+  bulkCreate: (organizationId: string, members: any[]) =>
+    api.post<{success: boolean, message: string, data: {created: any[], errors?: any[]}, error?: string}>('/club-members/bulk', { organizationId, members }),
+  importToTournament: (organizationId: string, tournamentId: string, memberIds: string[], section?: string) =>
+    api.post<{success: boolean, message: string, data: {imported: any[], skipped?: any[]}, error?: string}>('/club-members/import-to-tournament', { organizationId, tournamentId, memberIds, section }),
+};
+
+// Club Features API
+export const clubFeaturesApi = {
+  // Announcements
+  getAnnouncements: (organizationId: string, published?: boolean) => {
+    const queryParams = new URLSearchParams({ organizationId });
+    if (published !== undefined) queryParams.append('published', published.toString());
+    queryParams.append('t', Date.now().toString());
+    return api.get<{success: boolean, data: {announcements: any[]}, error?: string}>(`/club-features/announcements?${queryParams.toString()}`);
+  },
+  createAnnouncement: (announcement: any) =>
+    api.post<{success: boolean, message: string, data: {announcementId: string}, error?: string}>('/club-features/announcements', announcement),
+  updateAnnouncement: (id: string, announcement: Partial<any>) =>
+    api.put<{success: boolean, message: string, error?: string}>(`/club-features/announcements/${id}`, announcement),
+  deleteAnnouncement: (id: string) =>
+    api.delete<{success: boolean, message: string, error?: string}>(`/club-features/announcements/${id}`),
+  
+  // Email Campaigns
+  getEmailCampaigns: (organizationId: string) => {
+    const queryParams = new URLSearchParams({ organizationId });
+    queryParams.append('t', Date.now().toString());
+    return api.get<{success: boolean, data: {campaigns: any[]}, error?: string}>(`/club-features/email-campaigns?${queryParams.toString()}`);
+  },
+  createEmailCampaign: (campaign: any) =>
+    api.post<{success: boolean, message: string, data: {campaignId: string}, error?: string}>('/club-features/email-campaigns', campaign),
+  sendEmailCampaign: (id: string) =>
+    api.post<{success: boolean, message: string, error?: string}>(`/club-features/email-campaigns/${id}/send`),
+  getEmailInsights: (id: string) =>
+    api.get<{success: boolean, data: {campaign: any, metrics: any, tracking: any[]}, error?: string}>(`/club-features/email-campaigns/${id}/insights`),
+  
+  // Club Ratings
+  getRatings: (organizationId: string, ratingType?: string, limit?: number) => {
+    const queryParams = new URLSearchParams({ organizationId });
+    if (ratingType) queryParams.append('ratingType', ratingType);
+    if (limit) queryParams.append('limit', limit.toString());
+    queryParams.append('t', Date.now().toString());
+    return api.get<{success: boolean, data: {leaderboard: any[]}, error?: string}>(`/club-features/ratings?${queryParams.toString()}`);
+  },
+  getMemberRating: (memberId: string, organizationId: string, ratingType?: string) => {
+    const queryParams = new URLSearchParams({ organizationId });
+    if (ratingType) queryParams.append('ratingType', ratingType);
+    queryParams.append('t', Date.now().toString());
+    return api.get<{success: boolean, data: {rating: any, history: any[]}, error?: string}>(`/club-features/ratings/${memberId}?${queryParams.toString()}`);
+  },
+  generateRatingsFromTournament: (organizationId: string, tournamentId: string, ratingType?: string) =>
+    api.post<{success: boolean, message: string, data: any, error?: string}>('/club-features/ratings/generate', { organizationId, tournamentId, ratingType }),
 };
 
 // Player API

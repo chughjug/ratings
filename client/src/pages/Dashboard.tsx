@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   Trophy, Users, Calendar, TrendingUp, Building2, User, 
   Search, X, Plus, ArrowRight, Filter, MapPin, Clock, 
-  Activity, Star, Zap, BarChart3, DollarSign, FileText, Gamepad2
+  Activity, Star, Zap, BarChart3 
 } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -501,124 +501,6 @@ const Dashboard: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* Club Management Features */}
-        {orgState.organizations.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
-            <div className="px-6 py-5 bg-gradient-to-r from-green-50 to-blue-50 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Zap className="h-6 w-6 text-green-600" />
-                Club Management Features
-              </h2>
-              <p className="text-sm text-gray-600 mt-2">Advanced tools for managing your chess club</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Link
-                  to={`/organizations/${orgState.organizations[0].id}/settings`}
-                  className="group p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-blue-200 rounded-lg group-hover:scale-110 transition-transform">
-                      <BarChart3 className="h-5 w-5 text-blue-800" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-blue-800 transition-colors">
-                        Club Announcements
-                      </h3>
-                      <p className="text-xs text-gray-600">Share news with members</p>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  to={`/organizations/${orgState.organizations[0].id}/settings`}
-                  className="group p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 hover:border-green-400 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-green-200 rounded-lg group-hover:scale-110 transition-transform">
-                      <Activity className="h-5 w-5 text-green-800" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-green-800 transition-colors">
-                        Email Campaigns
-                      </h3>
-                      <p className="text-xs text-gray-600">Send branded emails</p>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  to={`/organizations/${orgState.organizations[0].id}/settings`}
-                  className="group p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-200 hover:border-yellow-400 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-yellow-200 rounded-lg group-hover:scale-110 transition-transform">
-                      <Star className="h-5 w-5 text-yellow-800" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-yellow-800 transition-colors">
-                        Club Ratings
-                      </h3>
-                      <p className="text-xs text-gray-600">Track member ratings</p>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  to={`/organizations/${orgState.organizations[0].id}/settings`}
-                  className="group p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 hover:border-purple-400 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-purple-200 rounded-lg group-hover:scale-110 transition-transform">
-                      <DollarSign className="h-5 w-5 text-purple-800" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-purple-800 transition-colors">
-                        Club Dues
-                      </h3>
-                      <p className="text-xs text-gray-600">Track payments</p>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  to={`/organizations/${orgState.organizations[0].id}/settings`}
-                  className="group p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-400 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-indigo-200 rounded-lg group-hover:scale-110 transition-transform">
-                      <FileText className="h-5 w-5 text-indigo-800" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-indigo-800 transition-colors">
-                        Branded Documents
-                      </h3>
-                      <p className="text-xs text-gray-600">Score sheets & forms</p>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  to={`/organizations/${orgState.organizations[0].id}/settings`}
-                  className="group p-4 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl border-2 border-red-200 hover:border-red-400 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-red-200 rounded-lg group-hover:scale-110 transition-transform">
-                      <Gamepad2 className="h-5 w-5 text-red-800" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-red-800 transition-colors">
-                        Lichess Integration
-                      </h3>
-                      <p className="text-xs text-gray-600">Online game challenges</p>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Organizations Section */}
         {orgState.organizations.length > 0 && (

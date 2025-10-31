@@ -6,6 +6,7 @@ const { autoPopulatePrizes } = require('../services/prizeAutoPopulate');
 const { calculateTiebreakers } = require('../utils/tiebreakers');
 const { calculateAndDistributePrizes, getPrizeDistributions, autoAssignPrizesOnRoundCompletion } = require('../services/prizeService');
 const { authenticate, verifyToken } = require('../middleware/auth');
+const { cleanupTournamentData, cleanupAllCompletedTournaments } = require('../services/dataCleanupService');
 
 // Optional authentication middleware - tries to authenticate but doesn't fail if no token
 const optionalAuth = async (req, res, next) => {
@@ -1096,6 +1097,15 @@ router.post('/:id/complete', async (req, res) => {
     // Calculate and distribute prizes based on tournament settings
     const prizeDistributions = await calculateAndDistributePrizes(id, db);
 
+    // Clean up sensitive data (emails and phone numbers) for security
+    try {
+      const cleanupResult = await cleanupTournamentData(id);
+      console.log(`Data cleanup for tournament ${id}: ${cleanupResult.playersCleaned} players, ${cleanupResult.registrationsCleaned} registrations`);
+    } catch (cleanupError) {
+      // Log error but don't fail the completion - data cleanup is important but shouldn't block completion
+      console.error('Error cleaning up tournament data:', cleanupError);
+    }
+
     res.json({
       success: true,
       message: 'Tournament completed successfully',
@@ -1407,7 +1417,7 @@ router.put('/:id/status', (req, res) => {
   db.run(
     'UPDATE tournaments SET status = ? WHERE id = ?',
     [status, id],
-    function(err) {
+    async function(err) {
       if (err) {
         console.error('Error updating tournament status:', err);
         return res.status(500).json({ error: 'Failed to update tournament status' });
@@ -1415,6 +1425,17 @@ router.put('/:id/status', (req, res) => {
 
       if (this.changes === 0) {
         return res.status(404).json({ error: 'Tournament not found' });
+      }
+
+      // If status is being changed to 'completed', clean up sensitive data
+      if (status === 'completed') {
+        try {
+          const cleanupResult = await cleanupTournamentData(id);
+          console.log(`Data cleanup for tournament ${id}: ${cleanupResult.playersCleaned} players, ${cleanupResult.registrationsCleaned} registrations`);
+        } catch (cleanupError) {
+          // Log error but don't fail the status update - data cleanup is important but shouldn't block status change
+          console.error('Error cleaning up tournament data:', cleanupError);
+        }
       }
 
       res.json({
@@ -2234,6 +2255,345 @@ router.get('/:id/embed', async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch embeddable tournament data',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Generate branded score sheets PDF for a tournament round
+ * GET /api/tournaments/:id/score-sheets
+ */
+router.get('/:id/score-sheets', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { round = 1 } = req.query;
+    const roundNum = parseInt(round);
+
+    // Get tournament
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    // Get organization if tournament has one
+    let organization = null;
+    if (tournament.organization_id) {
+      organization = await new Promise((resolve, reject) => {
+        db.get(
+          'SELECT id, name, logo_url, settings FROM organizations WHERE id = ? AND is_active = 1',
+          [tournament.organization_id],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
+      });
+    }
+
+    // Parse organization settings if available
+    if (organization && organization.settings) {
+      try {
+        organization.settings = JSON.parse(organization.settings);
+      } catch (e) {
+        organization.settings = {};
+      }
+    }
+
+    // Get pairings for the round
+    const pairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT 
+          p.id,
+          p.round,
+          p.board,
+          p.section,
+          p.result,
+          white.id as white_id,
+          white.name as white_name,
+          white.rating as white_rating,
+          white.uscf_id as white_uscf_id,
+          black.id as black_id,
+          black.name as black_name,
+          black.rating as black_rating,
+          black.uscf_id as black_uscf_id,
+          p.is_bye
+        FROM pairings p
+        LEFT JOIN players white ON p.white_player_id = white.id
+        LEFT JOIN players black ON p.black_player_id = black.id
+        WHERE p.tournament_id = ? AND p.round = ?
+        ORDER BY p.board`,
+        [id, roundNum],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Generate PDF
+    const brandedPdfService = require('../services/brandedPdfService');
+    const pdfBuffer = await brandedPdfService.generateScoreSheets(
+      tournament,
+      pairings,
+      organization ? {
+        id: organization.id,
+        name: organization.name,
+        logoUrl: organization.logo_url
+      } : null,
+      roundNum
+    );
+
+    // Send PDF response
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${tournament.name.replace(/[^a-zA-Z0-9]/g, '_')}_Round_${roundNum}_Score_Sheets.pdf"`);
+    res.send(pdfBuffer);
+
+  } catch (error) {
+    console.error('Error generating score sheets:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate score sheets'
+    });
+  }
+});
+
+/**
+ * Generate branded quad forms PDF for a quad tournament round
+ * GET /api/tournaments/:id/quad-forms
+ */
+router.get('/:id/quad-forms', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { round = 1 } = req.query;
+    const roundNum = parseInt(round);
+
+    // Get tournament
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    // Verify this is a quad tournament
+    if (tournament.format !== 'quad') {
+      return res.status(400).json({
+        success: false,
+        error: 'Quad forms are only available for quad format tournaments'
+      });
+    }
+
+    // Get organization if tournament has one
+    let organization = null;
+    if (tournament.organization_id) {
+      organization = await new Promise((resolve, reject) => {
+        db.get(
+          'SELECT id, name, logo_url, settings FROM organizations WHERE id = ? AND is_active = 1',
+          [tournament.organization_id],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
+      });
+    }
+
+    // Parse organization settings if available
+    if (organization && organization.settings) {
+      try {
+        organization.settings = JSON.parse(organization.settings);
+      } catch (e) {
+        organization.settings = {};
+      }
+    }
+
+    // Get all players grouped by quad (section)
+    const playersByQuad = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT 
+          COALESCE(section, 'Quad 1') as quad_name,
+          id,
+          name,
+          rating,
+          uscf_id,
+          first_name,
+          last_name
+        FROM players
+        WHERE tournament_id = ? AND status = 'active'
+        ORDER BY section, rating DESC`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Group players by quad
+    const quadsMap = {};
+    playersByQuad.forEach(player => {
+      const quadName = player.quad_name || 'Quad 1';
+      if (!quadsMap[quadName]) {
+        quadsMap[quadName] = {
+          name: quadName,
+          players: []
+        };
+      }
+      quadsMap[quadName].players.push({
+        id: player.id,
+        name: player.name || `${player.first_name || ''} ${player.last_name || ''}`.trim(),
+        rating: player.rating,
+        uscf_id: player.uscf_id
+      });
+    });
+
+    // Get pairings for this round and group by quad
+    const pairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT 
+          p.id,
+          p.round,
+          p.board,
+          p.section as quad_name,
+          p.result,
+          white.id as white_id,
+          white.name as white_name,
+          white.rating as white_rating,
+          white.uscf_id as white_uscf_id,
+          black.id as black_id,
+          black.name as black_name,
+          black.rating as black_rating,
+          black.uscf_id as black_uscf_id,
+          p.is_bye
+        FROM pairings p
+        LEFT JOIN players white ON p.white_player_id = white.id
+        LEFT JOIN players black ON p.black_player_id = black.id
+        WHERE p.tournament_id = ? AND p.round = ?
+        ORDER BY p.section, p.board`,
+        [id, roundNum],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Attach pairings to quads
+    const quads = Object.values(quadsMap).map((quad, index) => {
+      quad.number = index + 1;
+      quad.id = `quad-${index + 1}`;
+      quad.pairings = pairings
+        .filter(p => (p.quad_name || 'Quad 1') === quad.name)
+        .map(p => ({
+          white_id: p.white_id,
+          white_name: p.white_name,
+          white_rating: p.white_rating,
+          black_id: p.black_id,
+          black_name: p.black_name,
+          black_rating: p.black_rating,
+          result: p.result,
+          is_bye: p.is_bye
+        }));
+      return quad;
+    });
+
+    // Generate PDF
+    const brandedPdfService = require('../services/brandedPdfService');
+    const pdfBuffer = await brandedPdfService.generateQuadForms(
+      tournament,
+      quads,
+      organization ? {
+        id: organization.id,
+        name: organization.name,
+        logoUrl: organization.logo_url
+      } : null,
+      roundNum
+    );
+
+    // Send PDF response
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${tournament.name.replace(/[^a-zA-Z0-9]/g, '_')}_Round_${roundNum}_Quad_Forms.pdf"`);
+    res.send(pdfBuffer);
+
+  } catch (error) {
+    console.error('Error generating quad forms:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate quad forms'
+    });
+  }
+});
+
+/**
+ * Cleanup endpoint for existing completed tournaments
+ * Removes emails and phone numbers from all completed tournaments
+ * POST /api/tournaments/cleanup-completed
+ */
+router.post('/cleanup-completed', async (req, res) => {
+  try {
+    console.log('Starting cleanup of all completed tournaments...');
+    const result = await cleanupAllCompletedTournaments();
+
+    res.json({
+      success: true,
+      message: `Cleanup completed successfully`,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error cleaning up completed tournaments:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to cleanup completed tournaments',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * Cleanup endpoint for a specific completed tournament
+ * POST /api/tournaments/:id/cleanup
+ */
+router.post('/:id/cleanup', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await cleanupTournamentData(id);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Cleanup failed',
+        ...result
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully cleaned up data for tournament ${id}`,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error cleaning up tournament data:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to cleanup tournament data',
       details: error.message
     });
   }

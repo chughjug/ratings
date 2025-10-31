@@ -302,16 +302,8 @@ const chess2playerRoutes = require('./routes/chess2player');
 const trfExportRoutes = require('./routes/trfExport');
 const uscfExportRoutes = require('./routes/uscfExport');
 const customPagesRoutes = require('./routes/customPages');
-
-// Club Management Routes
-const clubAnnouncementsRoutes = require('./routes/clubAnnouncements');
-const emailCampaignsRoutes = require('./routes/emailCampaigns');
-const emailTrackingRoutes = require('./routes/emailTracking');
-const clubRatingsRoutes = require('./routes/clubRatings');
-const clubRatingGenerationRoutes = require('./routes/clubRatingGeneration');
-const clubDuesRoutes = require('./routes/clubDues');
-const brandedDocumentsRoutes = require('./routes/brandedDocuments');
-const lichessIntegrationRoutes = require('./routes/lichessIntegration');
+const clubMembersRoutes = require('./routes/clubMembers');
+const clubFeaturesRoutes = require('./routes/clubFeatures');
 
 // Use routes
 console.log('Setting up routes...');
@@ -349,16 +341,9 @@ app.use('/api/chess2player', chess2playerRoutes);
 app.use('/api/export', trfExportRoutes);
 app.use('/api/export', uscfExportRoutes);
 app.use('/api/custom-pages', customPagesRoutes);
-
-// Club Management Routes
-app.use('/api/club-announcements', clubAnnouncementsRoutes);
-app.use('/api/email-campaigns', emailCampaignsRoutes);
-app.use('/api/email-tracking', emailTrackingRoutes);
-app.use('/api/club-ratings', clubRatingsRoutes);
-app.use('/api/club-rating-generation', clubRatingGenerationRoutes);
-app.use('/api/club-dues', clubDuesRoutes);
-app.use('/api/branded-documents', brandedDocumentsRoutes);
-app.use('/api/lichess-integration', lichessIntegrationRoutes);
+app.use('/api/club-members', clubMembersRoutes);
+app.use('/api/club-features', clubFeaturesRoutes);
+app.use('/api/club-email', clubFeaturesRoutes); // Email tracking endpoints
 
 console.log('Routes set up successfully');
 

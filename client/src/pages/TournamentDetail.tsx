@@ -12,6 +12,7 @@ import GoogleImportModal from '../components/GoogleImportModal';
 import GoogleFormsConnector from '../components/GoogleFormsConnector';
 import UnifiedImportModal from '../components/UnifiedImportModal';
 import DBFExportModal from '../components/DBFExportModal';
+import ImportClubMembersModal from '../components/ImportClubMembersModal';
 import PlayerInactiveRoundsModal from '../components/PlayerInactiveRoundsModal';
 import EditPlayerModal from '../components/EditPlayerModal';
 import PrintableView from '../components/PrintableView';
@@ -27,6 +28,7 @@ import NotificationButton from '../components/NotificationButton';
 import SendPairingEmailsButton from '../components/SendPairingEmailsButton';
 import PrizeDisplay from '../components/PrizeDisplay';
 import PrizeConfigurationModal from '../components/PrizeConfigurationModal';
+import ClubRatingsManager from '../components/ClubRatingsManager';
 import SMSManager from '../components/SMSManager';
 import QRCodeGenerator from '../components/QRCodeGenerator';
 import PlayerProfile from '../components/PlayerProfile';
@@ -51,7 +53,7 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'settings' | 'print'>('settings');
+  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'club-ratings' | 'settings' | 'print'>('settings');
   const [printViewTab, setPrintViewTab] = useState<'pairings' | 'standings'>('pairings');
   const [pairingsViewMode, setPairingsViewMode] = useState<'player' | 'board'>('player');
   const [currentRound, setCurrentRound] = useState(1);
@@ -99,6 +101,7 @@ const TournamentDetail: React.FC = () => {
   const [showGoogleImport, setShowGoogleImport] = useState(false);
   const [showGoogleFormsConnector, setShowGoogleFormsConnector] = useState(false);
   const [showUnifiedImport, setShowUnifiedImport] = useState(false);
+  const [showImportClubMembers, setShowImportClubMembers] = useState(false);
   const [showDBFExport, setShowDBFExport] = useState(false);
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
   const [showInactiveRounds, setShowInactiveRounds] = useState(false);
@@ -1911,6 +1914,21 @@ const TournamentDetail: React.FC = () => {
               <span>Prizes</span>
             </button>
 
+            {/* Club Ratings - Only show if tournament has organization */}
+            {tournament?.organization_id && (
+              <button
+                onClick={() => setActiveTab('club-ratings')}
+                className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                  activeTab === 'club-ratings'
+                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>Club Ratings</span>
+              </button>
+            )}
+
             {/* Team-specific tabs - only show if relevant */}
             {tournament && (
               <>
@@ -2017,6 +2035,15 @@ const TournamentDetail: React.FC = () => {
                         <Upload className="h-4 w-4" />
                         <span>Import Players</span>
                       </button>
+                      {tournament?.organization_id && (
+                        <button
+                          onClick={() => setShowImportClubMembers(true)}
+                          className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          <Users className="h-4 w-4" />
+                          <span>Import from Club Members</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowGoogleFormsConnector(true)}
                         className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -2637,6 +2664,40 @@ const TournamentDetail: React.FC = () => {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-4">
+                    <button
+                      onClick={async () => {
+                        if (!id) return;
+                        const round = getCurrentRound();
+                        try {
+                          await tournamentApi.downloadScoreSheets(id, round);
+                        } catch (error: any) {
+                          alert(`Failed to download score sheets: ${error.message || 'Unknown error'}`);
+                        }
+                      }}
+                      className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Download Branded Score Sheets</span>
+                    </button>
+                    {tournament && tournament.format === 'quad' && (
+                      <button
+                        onClick={async () => {
+                          if (!id) return;
+                          const round = getCurrentRound();
+                          try {
+                            await tournamentApi.downloadQuadForms(id, round);
+                          } catch (error: any) {
+                            alert(`Failed to download quad forms: ${error.message || 'Unknown error'}`);
+                          }
+                        }}
+                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>Download Branded Quad Forms</span>
+                      </button>
+                    )}
                   </div>
                   {/* Generate Round buttons - Hidden */}
                   {false && (
@@ -3277,6 +3338,19 @@ const TournamentDetail: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'club-ratings' && tournament?.organization_id && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Club Ratings</h2>
+                <p className="text-gray-600">
+                  Generate and view club ratings based on tournament results. Ratings are automatically calculated from completed games.
+                </p>
+              </div>
+              
+              <ClubRatingsManager organizationId={tournament.organization_id} />
+            </div>
+          )}
+
           {activeTab === 'prizes' && (
             <div>
               <div className="flex justify-between items-center mb-6">
@@ -3488,7 +3562,7 @@ const TournamentDetail: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                  {printViewTab === 'pairings' && (
+                    {printViewTab === 'pairings' && (
                     <>
                       <label className="text-sm font-medium text-gray-700">Round:</label>
                       <select
@@ -3500,6 +3574,36 @@ const TournamentDetail: React.FC = () => {
                           <option key={round} value={round}>Round {round}</option>
                         ))}
                       </select>
+                      <button
+                        onClick={async () => {
+                          if (!id) return;
+                          try {
+                            await tournamentApi.downloadScoreSheets(id, currentRound);
+                          } catch (error: any) {
+                            alert(`Failed to download score sheets: ${error.message || 'Unknown error'}`);
+                          }
+                        }}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>Download Branded Score Sheets</span>
+                      </button>
+                      {tournament && tournament.format === 'quad' && (
+                        <button
+                          onClick={async () => {
+                            if (!id) return;
+                            try {
+                              await tournamentApi.downloadQuadForms(id, currentRound);
+                            } catch (error: any) {
+                              alert(`Failed to download quad forms: ${error.message || 'Unknown error'}`);
+                            }
+                          }}
+                          className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          <FileText className="h-4 w-4" />
+                          <span>Download Branded Quad Forms</span>
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -3990,6 +4094,20 @@ const TournamentDetail: React.FC = () => {
         tournamentId={id || ''}
         tournamentName={tournament?.name || ''}
       />
+
+      {/* Import Club Members Modal */}
+      {tournament?.organization_id && (
+        <ImportClubMembersModal
+          isOpen={showImportClubMembers}
+          onClose={() => setShowImportClubMembers(false)}
+          tournamentId={id || ''}
+          organizationId={tournament.organization_id}
+          onImportComplete={() => {
+            fetchPlayers();
+            fetchStandings();
+          }}
+        />
+      )}
 
       {/* Player Inactive Rounds Modal */}
       {selectedPlayer && (

@@ -27,62 +27,6 @@ class PaymentService {
   }
 
   /**
-   * Get organization commission rate
-   * @param {string} organizationId - Organization ID
-   * @returns {Promise<number>} - Commission rate (0.0 to 1.0)
-   */
-  async getCommissionRate(organizationId) {
-    try {
-      const db = require('../database');
-      return new Promise((resolve, reject) => {
-        db.get(
-          'SELECT commission_rate, subscription_plan FROM organizations WHERE id = ?',
-          [organizationId],
-          (err, row) => {
-            if (err) {
-              reject(err);
-            } else if (row) {
-              // Pro users get 0% commission
-              const rate = row.subscription_plan === 'pro' ? 0.0 : (row.commission_rate || 0.02);
-              resolve(rate);
-            } else {
-              resolve(0.02); // Default 2% commission
-            }
-          }
-        );
-      });
-    } catch (error) {
-      console.error('Error getting commission rate:', error);
-      return 0.02; // Default fallback
-    }
-  }
-
-  /**
-   * Calculate payment amount with commission
-   * @param {number} baseAmount - Base payment amount
-   * @param {string} organizationId - Organization ID
-   * @returns {Promise<Object>} - Payment breakdown
-   */
-  async calculatePaymentBreakdown(baseAmount, organizationId) {
-    try {
-      const commissionRate = await this.getCommissionRate(organizationId);
-      const commissionAmount = baseAmount * commissionRate;
-      const netAmount = baseAmount - commissionAmount;
-
-      return {
-        baseAmount,
-        commissionRate,
-        commissionAmount,
-        netAmount,
-        isProUser: commissionRate === 0.0
-      };
-    } catch (error) {
-      console.error('Error calculating payment breakdown:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Create Stripe payment intent
    * @param {Object} paymentData - Payment information
    * @returns {Promise<Object>} - Payment intent result
@@ -244,45 +188,23 @@ class PaymentService {
    */
   async processEntryFeePayment(paymentData) {
     try {
-      const { method, tournamentId, playerId, amount, currency = 'usd', organizationId } = paymentData;
-
-      // Get organization ID if not provided
-      let orgId = organizationId;
-      if (!orgId) {
-        const db = require('../database');
-        const tournament = await new Promise((resolve, reject) => {
-          db.get('SELECT organization_id FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-          });
-        });
-        orgId = tournament?.organization_id;
-      }
-
-      // Calculate payment breakdown with commission
-      const breakdown = await this.calculatePaymentBreakdown(amount, orgId);
+      const { method, tournamentId, playerId, amount, currency = 'usd' } = paymentData;
 
       let result;
       switch (method.toLowerCase()) {
         case 'stripe':
           result = await this.createStripePaymentIntent({
-            amount: breakdown.baseAmount,
+            amount,
             currency,
             tournamentId,
             playerId,
             description: `Tournament entry fee - ${tournamentId}`,
-            metadata: { 
-              type: 'entry_fee',
-              commission_rate: breakdown.commissionRate,
-              commission_amount: breakdown.commissionAmount,
-              net_amount: breakdown.netAmount,
-              is_pro_user: breakdown.isProUser
-            }
+            metadata: { type: 'entry_fee' }
           });
           break;
         case 'paypal':
           result = await this.createPayPalOrder({
-            amount: breakdown.baseAmount,
+            amount,
             currency: currency.toUpperCase(),
             tournamentId,
             playerId,
@@ -293,25 +215,18 @@ class PaymentService {
           throw new Error(`Unsupported payment method: ${method}`);
       }
 
-      // Log payment attempt with commission details
+      // Log payment attempt
       await this.logPaymentAttempt({
         tournamentId,
         playerId,
-        organizationId: orgId,
         method,
-        amount: breakdown.baseAmount,
-        commissionRate: breakdown.commissionRate,
-        commissionAmount: breakdown.commissionAmount,
-        netAmount: breakdown.netAmount,
+        amount,
         currency,
         status: 'initiated',
         paymentData: result.data
       });
 
-      return {
-        ...result,
-        breakdown
-      };
+      return result;
     } catch (error) {
       console.error('Entry fee payment processing failed:', error);
       throw error;

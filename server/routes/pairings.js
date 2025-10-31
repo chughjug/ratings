@@ -7,6 +7,7 @@ const QuadPairingSystem = require('../utils/quadPairingSystem');
 const TeamSwissPairingSystem = require('../utils/teamSwissPairingSystem');
 const smsService = require('../services/smsService');
 const axios = require('axios');
+const { cleanupTournamentData } = require('../services/dataCleanupService');
 const router = express.Router();
 
 // ============================================================================
@@ -1847,6 +1848,15 @@ router.post('/tournament/:tournamentId/confirm-completion', async (req, res) => 
         }
       );
     });
+
+    // Clean up sensitive data (emails and phone numbers) for security
+    try {
+      const cleanupResult = await cleanupTournamentData(tournamentId);
+      console.log(`Data cleanup for tournament ${tournamentId}: ${cleanupResult.playersCleaned} players, ${cleanupResult.registrationsCleaned} registrations`);
+    } catch (cleanupError) {
+      // Log error but don't fail the completion - data cleanup is important but shouldn't block completion
+      console.error('Error cleaning up tournament data:', cleanupError);
+    }
 
     res.json({
       success: true,
