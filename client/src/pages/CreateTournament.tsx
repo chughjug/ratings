@@ -37,7 +37,7 @@ const CreateTournament: React.FC = () => {
     setSelectedTemplate(template.id);
     
     // Validate and map format to supported formats
-    const validFormats: ('swiss' | 'online' | 'quad' | 'team-swiss')[] = ['swiss', 'online', 'quad', 'team-swiss'];
+    const validFormats: ('swiss' | 'online' | 'quad' | 'team-swiss' | 'team-tournament')[] = ['swiss', 'online', 'quad', 'team-swiss', 'team-tournament'];
     const validFormat = validFormats.includes(template.format as any) 
       ? template.format as any 
       : 'swiss'; // Default to swiss if invalid format
@@ -59,7 +59,7 @@ const CreateTournament: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    format: 'swiss' as 'swiss' | 'online' | 'quad' | 'team-swiss',
+    format: 'swiss' as 'swiss' | 'online' | 'quad' | 'team-swiss' | 'team-tournament',
     rounds: 5,
     time_control: '',
     start_date: '',
@@ -235,7 +235,7 @@ const CreateTournament: React.FC = () => {
       const isQuad = value === 'quad';
       setFormData(prev => ({
         ...prev,
-        format: value as 'swiss' | 'online' | 'quad' | 'team-swiss',
+        format: value as 'swiss' | 'online' | 'quad' | 'team-swiss' | 'team-tournament',
         rounds: isQuad ? 3 : prev.rounds
       }));
     } else {
@@ -550,6 +550,7 @@ const CreateTournament: React.FC = () => {
                 <option value="online">Online (Lichess)</option>
                 <option value="quad">Quad Tournament</option>
                 <option value="team-swiss">Team Swiss</option>
+                <option value="team-tournament">Team Tournament</option>
               </select>
             </div>
 

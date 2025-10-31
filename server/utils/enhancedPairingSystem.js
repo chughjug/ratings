@@ -138,7 +138,7 @@ class EnhancedPairingSystem {
       }
 
       // Team tournaments should use the team-swiss endpoint
-      if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+      if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin' || tournament.format === 'team-tournament') {
         throw new Error(`This tournament is a team tournament (${tournament.format}). Use the team-swiss pairing endpoint instead.`);
       }
 

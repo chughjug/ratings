@@ -1,9 +1,11 @@
 /**
  * Team Management Routes
  * Handles team categories for individual tournaments with team scoring
+ * Also handles team tournaments (team-tournament format) with Team vs Team pairing
  */
 
 const express = require('express');
+const { v4: uuidv4 } = require('uuid');
 const db = require('../database');
 const router = express.Router();
 
@@ -236,6 +238,398 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to calculate team standings'
+    });
+  }
+});
+
+// ============================================================================
+// TEAM TOURNAMENT ENDPOINTS (team-tournament format)
+// ============================================================================
+
+// Create a new team for team-tournament format
+router.post('/team-tournament/:tournamentId/create', async (req, res) => {
+  const { tournamentId } = req.params;
+  const { name, captain_id } = req.body;
+
+  try {
+    // Verify tournament format
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT format FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    if (tournament.format !== 'team-tournament') {
+      return res.status(400).json({
+        success: false,
+        error: 'This endpoint is only for team-tournament format tournaments'
+      });
+    }
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Team name is required'
+      });
+    }
+
+    const teamId = uuidv4();
+    
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO teams (id, tournament_id, name, captain_id, status) VALUES (?, ?, ?, ?, ?)',
+        [teamId, tournamentId, name.trim(), captain_id || null, 'active'],
+        function(err) {
+          if (err) {
+            if (err.message.includes('UNIQUE constraint')) {
+              reject(new Error('A team with this name already exists in this tournament'));
+            } else {
+              reject(err);
+            }
+          } else {
+            resolve(teamId);
+          }
+        }
+      );
+    });
+
+    // Get the created team
+    const team = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM teams WHERE id = ?', [teamId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    res.json({
+      success: true,
+      data: team
+    });
+  } catch (error) {
+    console.error('Error creating team:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create team'
+    });
+  }
+});
+
+// Get all teams for a team-tournament format tournament
+router.get('/team-tournament/:tournamentId', async (req, res) => {
+  const { tournamentId } = req.params;
+
+  try {
+    // Verify tournament format
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT format FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    const teams = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT 
+          t.*,
+          COUNT(tm.id) as member_count,
+          p.name as captain_name
+        FROM teams t
+        LEFT JOIN team_members tm ON t.id = tm.team_id
+        LEFT JOIN players p ON t.captain_id = p.id
+        WHERE t.tournament_id = ?
+        GROUP BY t.id
+        ORDER BY t.name`,
+        [tournamentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    // Get members for each team
+    const teamsWithMembers = await Promise.all(
+      teams.map(async (team) => {
+        const members = await new Promise((resolve, reject) => {
+          db.all(
+            `SELECT 
+              tm.id,
+              tm.board_number,
+              p.id as player_id,
+              p.name as player_name,
+              p.rating,
+              p.uscf_id,
+              p.fide_id
+            FROM team_members tm
+            JOIN players p ON tm.player_id = p.id
+            WHERE tm.team_id = ?
+            ORDER BY p.rating DESC, tm.board_number`,
+            [team.id],
+            (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows);
+            }
+          );
+        });
+
+        return {
+          ...team,
+          members: members
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      teams: teamsWithMembers
+    });
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch teams'
+    });
+  }
+});
+
+// Add a player to a team (team-tournament format)
+router.post('/team-tournament/:teamId/add-player', async (req, res) => {
+  const { teamId } = req.params;
+  const { player_id, board_number } = req.body;
+
+  try {
+    if (!player_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'player_id is required'
+      });
+    }
+
+    // Verify team exists and get tournament format
+    const team = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT t.*, tr.format as tournament_format 
+         FROM teams t 
+         JOIN tournaments tr ON t.tournament_id = tr.id 
+         WHERE t.id = ?`,
+        [teamId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        error: 'Team not found'
+      });
+    }
+
+    if (team.tournament_format !== 'team-tournament') {
+      return res.status(400).json({
+        success: false,
+        error: 'This endpoint is only for team-tournament format'
+      });
+    }
+
+    // Verify player exists and is in the same tournament
+    const player = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM players WHERE id = ? AND tournament_id = ?', 
+        [player_id, team.tournament_id], 
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        error: 'Player not found or not in this tournament'
+      });
+    }
+
+    const memberId = uuidv4();
+    
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO team_members (id, team_id, player_id, board_number) VALUES (?, ?, ?, ?)',
+        [memberId, teamId, player_id, board_number || null],
+        function(err) {
+          if (err) {
+            if (err.message.includes('UNIQUE constraint')) {
+              reject(new Error('Player is already a member of this team'));
+            } else {
+              reject(err);
+            }
+          } else {
+            resolve(memberId);
+          }
+        }
+      );
+    });
+
+    // Get the created team member
+    const member = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT tm.*, p.name as player_name, p.rating, p.uscf_id, p.fide_id
+         FROM team_members tm
+         JOIN players p ON tm.player_id = p.id
+         WHERE tm.id = ?`,
+        [memberId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      data: member
+    });
+  } catch (error) {
+    console.error('Error adding player to team:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to add player to team'
+    });
+  }
+});
+
+// Remove a player from a team (team-tournament format)
+router.delete('/team-tournament/:teamId/remove-player/:playerId', async (req, res) => {
+  const { teamId, playerId } = req.params;
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM team_members WHERE team_id = ? AND player_id = ?',
+        [teamId, playerId],
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      message: 'Player removed from team'
+    });
+  } catch (error) {
+    console.error('Error removing player from team:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove player from team'
+    });
+  }
+});
+
+// Delete a team (team-tournament format)
+router.delete('/team-tournament/:teamId', async (req, res) => {
+  const { teamId } = req.params;
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM teams WHERE id = ?', [teamId], function(err) {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({
+      success: true,
+      message: 'Team deleted'
+    });
+  } catch (error) {
+    console.error('Error deleting team:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete team'
+    });
+  }
+});
+
+// Update team (team-tournament format)
+router.put('/team-tournament/:teamId', async (req, res) => {
+  const { teamId } = req.params;
+  const { name, captain_id, status } = req.body;
+
+  try {
+    const updates = [];
+    const params = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      params.push(name.trim());
+    }
+
+    if (captain_id !== undefined) {
+      updates.push('captain_id = ?');
+      params.push(captain_id || null);
+    }
+
+    if (status !== undefined) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No fields to update'
+      });
+    }
+
+    params.push(teamId);
+
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE teams SET ${updates.join(', ')} WHERE id = ?`,
+        params,
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Get the updated team
+    const team = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM teams WHERE id = ?', [teamId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    res.json({
+      success: true,
+      data: team
+    });
+  } catch (error) {
+    console.error('Error updating team:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update team'
     });
   }
 });

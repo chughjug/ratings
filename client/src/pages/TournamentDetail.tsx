@@ -3427,7 +3427,7 @@ const TournamentDetail: React.FC = () => {
                     sonneborn_berger: team?.sonneborn_berger || 0,
                     team_performance_rating: team?.team_performance_rating || 0
                   }))}
-                  tournamentFormat={tournament?.format || 'swiss'}
+                  tournamentFormat={(tournament?.format === 'team-tournament' ? 'team-swiss' : tournament?.format) || 'swiss'}
                   scoringMethod={teamScoringMethod}
                   topN={teamTopN}
                   showTiebreakers={showTiebreakers}

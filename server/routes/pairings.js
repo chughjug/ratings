@@ -1168,7 +1168,7 @@ router.post('/generate/section', async (req, res) => {
       });
     }
 
-    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin' || tournament.format === 'team-tournament') {
       return res.status(400).json({ 
         error: `Team tournaments must use the /generate/team-swiss endpoint for round ${round}` 
       });
@@ -2310,7 +2310,7 @@ router.delete('/tournament/:tournamentId/round/:round', async (req, res) => {
 
     let deletedCount = 0;
 
-    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin') {
+    if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin' || tournament.format === 'team-tournament') {
       // Clear team pairings
       const teamResult = await new Promise((resolve, reject) => {
         db.run(
@@ -2967,10 +2967,10 @@ router.post('/generate/team-swiss', async (req, res) => {
       });
     }
 
-    if (tournament.format !== 'team-swiss') {
+    if (tournament.format !== 'team-swiss' && tournament.format !== 'team-tournament') {
       return res.status(400).json({
         success: false,
-        error: 'This endpoint is only for team-swiss format tournaments'
+        error: 'This endpoint is only for team-swiss or team-tournament format tournaments'
       });
     }
 

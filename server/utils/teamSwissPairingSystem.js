@@ -337,7 +337,7 @@ class TeamSwissPairingSystem {
         }
 
         // Verify this is a team tournament
-        if (tournament.format !== 'team-swiss' && tournament.format !== 'team-round-robin') {
+        if (tournament.format !== 'team-swiss' && tournament.format !== 'team-round-robin' && tournament.format !== 'team-tournament') {
           reject(new Error(`This tournament is not a team tournament (format: ${tournament.format}). Use the individual pairing system instead.`));
           return;
         }
