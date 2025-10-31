@@ -295,7 +295,7 @@ const TeamTournamentPairingManager: React.FC<TeamTournamentPairingManagerProps> 
     
     try {
       setIsLoading(true);
-      await pairingApi.deleteByRound(tournamentId, currentRound);
+      await pairingApi.resetPairings(tournamentId, currentRound);
       onPairingsUpdate?.(pairings.filter(p => p.round !== currentRound));
       alert('Round reset successfully');
     } catch (error: any) {
