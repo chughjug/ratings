@@ -145,76 +145,150 @@ const draw = lichess.convertGameResult(null); // '1/2-1/2'
 const pairings = lichess.convertPairingsToInternalFormat(lichessPairings);
 ```
 
+## API Endpoints
+
+### Setup Lichess Tournament
+
+Create or setup a Lichess Swiss tournament for your online-rated tournament.
+
+**Endpoint**: `POST /api/pairings/online-rated/setup`
+
+**Request Body**:
+```json
+{
+  "tournamentId": "your-tournament-id",
+  "lichessTeamId": "your-team-slug",
+  "clock": {
+    "limit": 180,
+    "increment": 2
+  },
+  "variant": "standard",
+  "description": "Tournament description",
+  "password": "optional-password"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "lichessTournamentId": "ABC123def",
+  "publicUrl": "https://lichess.org/swiss/ABC123def",
+  "message": "Lichess tournament created successfully"
+}
+```
+
+### Sync Pairings from Lichess
+
+Sync pairings from Lichess for a specific round.
+
+**Endpoint**: `POST /api/pairings/online-rated/sync-pairings`
+
+**Request Body**:
+```json
+{
+  "tournamentId": "your-tournament-id",
+  "round": 1
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Synced 20 pairings from Lichess",
+  "pairings": [...]
+}
+```
+
+### Get Standings from Lichess
+
+Fetch current standings from Lichess.
+
+**Endpoint**: `GET /api/pairings/online-rated/:tournamentId/standings`
+
+**Response**:
+```json
+{
+  "success": true,
+  "standings": [...]
+}
+```
+
+## Configuration
+
+The Lichess integration can be configured in two ways:
+
+### 1. Environment Variable (Global)
+Set `LICHESS_API_TOKEN` environment variable for all online-rated tournaments.
+
+### 2. Tournament-Specific Settings
+Store the API token in tournament settings (recommended for multi-organization setups):
+
+```javascript
+const settings = {
+  online_rated_settings: {
+    lichess_api_token: "lip_YOUR_TOKEN",
+    lichess_team_id: "your-team",
+    clock_limit: 180,
+    clock_increment: 2,
+    variant: "standard",
+    is_rated: true
+  }
+};
+```
+
+**Security Note**: When storing API tokens in tournament settings, ensure they are encrypted at rest.
+
 ## Usage Example
 
 ### Complete Setup
 
+#### Step 1: Create Tournament
+
 ```javascript
-const express = require('express');
-const LichessSwissIntegration = require('./utils/lichessSwissIntegration');
-
-const app = express();
-const lichess = new LichessSwissIntegration({
-  token: process.env.LICHESS_TOKEN
-});
-
-// Create tournament
-app.post('/tournaments/:id/lichess-setup', async (req, res) => {
-  try {
-    const { teamId, name, clock, nbRounds } = req.body;
-    
-    const result = await lichess.createSwissTournament({
-      teamId,
-      name,
-      clock,
-      nbRounds,
-      rated: true
-    });
-
-    if (result.success) {
-      // Store tournamentId in database
-      await saveTournament(req.params.id, {
-        lichessTournamentId: result.id,
-        lichessUrl: result.publicUrl
-      });
-
-      res.json({ success: true, ...result });
-    } else {
-      res.status(400).json(result);
+POST /api/tournaments
+{
+  "name": "Monthly Rapid Swiss",
+  "format": "online-rated",
+  "rounds": 7,
+  "settings": {
+    "online_rated_settings": {
+      "lichess_api_token": "lip_YOUR_TOKEN"
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
-});
+}
+```
 
-// Sync pairings from Lichess
-app.get('/tournaments/:id/pairings/:round', async (req, res) => {
-  try {
-    const tournament = await getTournament(req.params.id);
-    
-    const roundPairings = await lichess.getRoundPairings(
-      tournament.lichessTournamentId,
-      req.params.round
-    );
+#### Step 2: Setup Lichess Tournament
 
-    if (roundPairings.success) {
-      const internalPairings = lichess.convertPairingsToInternalFormat(
-        roundPairings.data.pairings
-      );
+```javascript
+POST /api/pairings/online-rated/setup
+{
+  "tournamentId": "your-tournament-id",
+  "lichessTeamId": "your-team-slug",
+  "clock": {
+    "limit": 180,
+    "increment": 2
+  },
+  "variant": "standard"
+}
+```
 
-      // Store in your database
-      await savePairings(req.params.id, req.params.round, internalPairings);
+#### Step 3: Sync Pairings Each Round
 
-      res.json({ success: true, pairings: internalPairings });
-    } else {
-      res.status(400).json(roundPairings);
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+```javascript
+POST /api/pairings/online-rated/sync-pairings
+{
+  "tournamentId": "your-tournament-id",
+  "round": 1
+}
+```
 
-app.listen(3000);
+#### Step 4: Get Standings Anytime
+
+```javascript
+GET /api/pairings/online-rated/your-tournament-id/standings
 ```
 
 ## Differences from Regular Swiss Format

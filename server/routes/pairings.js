@@ -4054,4 +4054,304 @@ router.post('/notifications/email', async (req, res) => {
   }
 });
 
+// ============================================================================
+// LICHESS ONLINE-RATED TOURNAMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * Create or setup Lichess tournament for online-rated tournament
+ */
+router.post('/online-rated/setup', async (req, res) => {
+  const { tournamentId, lichessTeamId, clock, variant, description, password } = req.body;
+
+  try {
+    // Get tournament info
+    const tournament = await pairingStorage.getTournament(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+
+    // Validate it's an online-rated tournament
+    if (tournament.format !== 'online-rated') {
+      res.status(400).json({ 
+        error: 'This endpoint is only for online-rated tournaments' 
+      });
+      return;
+    }
+
+    // Parse settings
+    const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+    const lichessApiToken = settings.online_rated_settings?.lichess_api_token || process.env.LICHESS_API_TOKEN;
+
+    if (!lichessApiToken) {
+      res.status(400).json({ 
+        error: 'Lichess API token required. Set online_rated_settings.lichess_api_token or LICHESS_API_TOKEN environment variable' 
+      });
+      return;
+    }
+
+    if (!lichessTeamId) {
+      res.status(400).json({ 
+        error: 'Lichess team ID required' 
+      });
+      return;
+    }
+
+    if (!clock || !clock.limit || !clock.increment) {
+      res.status(400).json({ 
+        error: 'Clock settings required: {limit: seconds, increment: seconds}' 
+      });
+      return;
+    }
+
+    // Initialize Lichess integration
+    const lichess = new LichessSwissIntegration({
+      token: lichessApiToken
+    });
+
+    // Create Swiss tournament on Lichess
+    const result = await lichess.createSwissTournament({
+      teamId: lichessTeamId,
+      name: tournament.name,
+      clock: clock,
+      variant: variant || 'standard',
+      rated: true,
+      nbRounds: tournament.rounds,
+      description: description || `Online rated chess tournament: ${tournament.name}`,
+      password: password
+    });
+
+    if (!result.success) {
+      res.status(400).json({ 
+        error: result.error 
+      });
+      return;
+    }
+
+    // Store Lichess tournament info in settings
+    const updatedSettings = {
+      ...settings,
+      online_rated_settings: {
+        ...settings.online_rated_settings,
+        lichess_tournament_id: result.id,
+        lichess_team_id: lichessTeamId,
+        clock_limit: clock.limit,
+        clock_increment: clock.increment,
+        variant: variant || 'standard',
+        is_rated: true,
+        description: description,
+        password: password
+      }
+    };
+
+    // Update tournament with Lichess info
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE tournaments SET settings = ? WHERE id = ?',
+        [JSON.stringify(updatedSettings), tournamentId],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        }
+      );
+    });
+
+    res.json({ 
+      success: true,
+      lichessTournamentId: result.id,
+      publicUrl: result.publicUrl,
+      message: 'Lichess tournament created successfully'
+    });
+
+  } catch (error) {
+    console.error('Error setting up Lichess tournament:', error);
+    res.status(500).json({ 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Sync pairings from Lichess for online-rated tournament
+ */
+router.post('/online-rated/sync-pairings', async (req, res) => {
+  const { tournamentId, round } = req.body;
+
+  try {
+    // Get tournament info
+    const tournament = await pairingStorage.getTournament(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+
+    // Validate it's an online-rated tournament
+    if (tournament.format !== 'online-rated') {
+      res.status(400).json({ 
+        error: 'This endpoint is only for online-rated tournaments' 
+      });
+      return;
+    }
+
+    // Get Lichess tournament ID
+    const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+    const lichessTournamentId = settings.online_rated_settings?.lichess_tournament_id;
+
+    if (!lichessTournamentId) {
+      res.status(400).json({ 
+        error: 'Lichess tournament not set up yet. Use /setup endpoint first.' 
+      });
+      return;
+    }
+
+    const lichessApiToken = settings.online_rated_settings?.lichess_api_token || process.env.LICHESS_API_TOKEN;
+
+    if (!lichessApiToken) {
+      res.status(400).json({ 
+        error: 'Lichess API token required' 
+      });
+      return;
+    }
+
+    // Initialize Lichess integration
+    const lichess = new LichessSwissIntegration({
+      token: lichessApiToken
+    });
+
+    // Get pairings from Lichess
+    const roundResult = await lichess.getRoundPairings(lichessTournamentId, round);
+
+    if (!roundResult.success) {
+      res.status(400).json({ 
+        error: roundResult.error 
+      });
+      return;
+    }
+
+    // Convert to internal format
+    const lichessPairings = lichess.convertPairingsToInternalFormat(roundResult.data.pairings || []);
+
+    // Map Lichess usernames to player IDs in our database
+    const playerMap = await new Promise((resolve, reject) => {
+      db.all(
+        'SELECT id, lichess_username FROM players WHERE tournament_id = ?',
+        [tournamentId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    const usernameToPlayerId = {};
+    playerMap.forEach(player => {
+      if (player.lichess_username) {
+        usernameToPlayerId[player.lichess_username.toLowerCase()] = player.id;
+      }
+    });
+
+    // Map pairings to internal players
+    const internalPairings = lichessPairings.map((pairing, index) => {
+      return {
+        board: index + 1,
+        white_player_id: usernameToPlayerId[pairing.white_player_id?.toLowerCase()] || pairing.white_player_id,
+        black_player_id: usernameToPlayerId[pairing.black_player_id?.toLowerCase()] || pairing.black_player_id,
+        is_bye: pairing.is_bye,
+        round: round
+      };
+    });
+
+    // Store pairings using the pairing storage service
+    const storageResult = await pairingStorage.storePairings(
+      tournamentId,
+      round,
+      internalPairings,
+      { clearExisting: true, validateBeforeStore: false }
+    );
+
+    res.json({ 
+      success: true,
+      message: `Synced ${storageResult.storedCount} pairings from Lichess`,
+      pairings: storageResult.pairings
+    });
+
+  } catch (error) {
+    console.error('Error syncing pairings from Lichess:', error);
+    res.status(500).json({ 
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * Sync standings from Lichess
+ */
+router.get('/online-rated/:tournamentId/standings', async (req, res) => {
+  const { tournamentId } = req.params;
+
+  try {
+    // Get tournament info
+    const tournament = await pairingStorage.getTournament(tournamentId);
+    if (!tournament) {
+      res.status(404).json({ error: 'Tournament not found' });
+      return;
+    }
+
+    // Validate it's an online-rated tournament
+    if (tournament.format !== 'online-rated') {
+      res.status(400).json({ 
+        error: 'This endpoint is only for online-rated tournaments' 
+      });
+      return;
+    }
+
+    // Get Lichess tournament ID
+    const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+    const lichessTournamentId = settings.online_rated_settings?.lichess_tournament_id;
+
+    if (!lichessTournamentId) {
+      res.status(400).json({ 
+        error: 'Lichess tournament not set up yet' 
+      });
+      return;
+    }
+
+    const lichessApiToken = settings.online_rated_settings?.lichess_api_token || process.env.LICHESS_API_TOKEN;
+
+    if (!lichessApiToken) {
+      res.status(400).json({ 
+        error: 'Lichess API token required' 
+      });
+      return;
+    }
+
+    // Initialize Lichess integration
+    const lichess = new LichessSwissIntegration({
+      token: lichessApiToken
+    });
+
+    // Get standings from Lichess
+    const standingsResult = await lichess.getStandings(lichessTournamentId);
+
+    if (!standingsResult.success) {
+      res.status(400).json({ 
+        error: standingsResult.error 
+      });
+      return;
+    }
+
+    res.json({ 
+      success: true,
+      standings: standingsResult.data
+    });
+
+  } catch (error) {
+    console.error('Error getting standings from Lichess:', error);
+    res.status(500).json({ 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
