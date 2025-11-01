@@ -25,6 +25,18 @@ function getSenderEmail() {
 // --- WEB APP HANDLER (REQUIRED FOR WEBHOOK - DO NOT REMOVE) ---
 // ------------------------------------------------------------------
 /**
+ * HTTP GET handler - Test function to verify deployment
+ * Visit the web app URL in a browser to test
+ */
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    message: 'Google Apps Script webhook is deployed and working!',
+    timestamp: new Date().toISOString()
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
  * HTTP POST handler - This function MUST exist for webhook to work
  * Receives POST requests from the backend server
  */

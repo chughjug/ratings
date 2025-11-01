@@ -169,12 +169,21 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                   <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
                     Team Name
                   </th>
-                  <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                    {tournamentFormat === 'team-swiss' ? 'Pts' : 'MP'}
-                  </th>
-                  {tournamentFormat === 'team-swiss' ? null : (
+                  {tournamentFormat === 'team-tournament' ? (
+                    <>
+                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        W-D-L
+                      </th>
+                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        MP
+                      </th>
+                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        GP
+                      </th>
+                    </>
+                  ) : (
                     <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                      GP
+                      Pts
                     </th>
                   )}
                   {roundColumns.map(round => (
@@ -227,15 +236,28 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
-                      <span className="font-semibold">
-                        {formatScore(team.team_total_points || team.score || team.match_points || 0)}
-                      </span>
-                    </td>
-                    {tournamentFormat === 'team-swiss' ? null : (
+                    {tournamentFormat === 'team-tournament' ? (
+                      <>
+                        <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
+                          <span className="text-gray-700">
+                            {team.match_wins || 0}-{team.match_draws || 0}-{team.match_losses || 0}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
+                          <span className="font-semibold">
+                            {formatScore(team.match_points || 0)}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
+                          <span className="text-gray-700">
+                            {formatScore(team.game_points || 0)}
+                          </span>
+                        </td>
+                      </>
+                    ) : (
                       <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
-                        <span className="text-gray-700">
-                          {formatScore(team.game_points || 0)}
+                        <span className="font-semibold">
+                          {formatScore(team.team_total_points || team.score || 0)}
                         </span>
                       </td>
                     )}
