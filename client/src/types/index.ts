@@ -304,6 +304,7 @@ export interface Team {
   name: string;
   captain_id?: string;
   captain_name?: string;
+  section?: string;
   board_count: number;
   status: 'active' | 'withdrawn';
   member_count?: number;
