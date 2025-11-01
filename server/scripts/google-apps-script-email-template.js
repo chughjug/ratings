@@ -22,11 +22,11 @@ function getSenderEmail() {
 }
 
 // ------------------------------------------------------------------
-// --- WEB APP HANDLER (REQUIRED FOR WEBHOOK) ---
+// --- WEB APP HANDLER (REQUIRED FOR WEBHOOK - DO NOT REMOVE) ---
 // ------------------------------------------------------------------
 /**
- * Web App entry point for POST requests from the backend server
- * This function must be deployed as a web app to receive webhook calls
+ * HTTP POST handler - This function MUST exist for webhook to work
+ * Receives POST requests from the backend server
  */
 function doPost(e) {
   try {
@@ -42,10 +42,15 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Temporarily override CONFIG for this request if logoUrl is provided
+    // Temporarily override CONFIG for this request if logoUrl or organizationName is provided
     const originalLogo = CONFIG.ORGANIZATION_LOGO;
+    const originalOrgName = CONFIG.DEFAULT_ORGANIZATION_NAME;
+    
     if (logoUrl && logoUrl.trim()) {
       CONFIG.ORGANIZATION_LOGO = logoUrl;
+    }
+    if (organizationName && organizationName.trim()) {
+      CONFIG.DEFAULT_ORGANIZATION_NAME = organizationName;
     }
 
     try {
@@ -59,8 +64,9 @@ function doPost(e) {
         organizationName || CONFIG.DEFAULT_ORGANIZATION_NAME
       );
       
-      // Restore original logo config
+      // Restore original config
       CONFIG.ORGANIZATION_LOGO = originalLogo;
+      CONFIG.DEFAULT_ORGANIZATION_NAME = originalOrgName;
       
       // Return JSON response
       return ContentService.createTextOutput(JSON.stringify({
@@ -68,8 +74,9 @@ function doPost(e) {
         message: success ? 'Email sent successfully' : 'Failed to send email'
       })).setMimeType(ContentService.MimeType.JSON);
     } catch (error) {
-      // Restore original logo config
+      // Restore original config
       CONFIG.ORGANIZATION_LOGO = originalLogo;
+      CONFIG.DEFAULT_ORGANIZATION_NAME = originalOrgName;
       throw error;
     }
   } catch (error) {
@@ -100,7 +107,7 @@ function sendCustomEmailWithStyledHeader(recipient, subject, plainTextBody, html
     return false;
   }
   try {
-    const html = buildCustomEmailHtml(subject, htmlBodyContent, headerText, organizationName);
+    const html = buildCustomEmailHtml(subject, htmlBodyContent, headerText);
     
     GmailApp.sendEmail(
       recipient,
@@ -127,10 +134,9 @@ function sendCustomEmailWithStyledHeader(recipient, subject, plainTextBody, html
  * @param {string} subject The email subject.
  * @param {string} customBodyHtml The HTML content to inject into the main card.
  * @param {string} headerText The main text to display in the header (e.g., event name).
- * @param {string} organizationName The organization name to use in the footer.
  * @returns {string} The complete HTML email body.
  */
-function buildCustomEmailHtml(subject, customBodyHtml, headerText, organizationName = CONFIG.DEFAULT_ORGANIZATION_NAME) {
+function buildCustomEmailHtml(subject, customBodyHtml, headerText) {
   const logoUrl = CONFIG.ORGANIZATION_LOGO || CONFIG.DEFAULT_LOGO_URL;
   
   return `
@@ -167,7 +173,7 @@ function buildCustomEmailHtml(subject, customBodyHtml, headerText, organizationN
               
               <tr>
                 <td style="text-align: center; font-size: 12px; color: #9CA3AF;">
-                  <p style="margin: 0;">Sent by the ${organizationName} Team.</p>
+                  <p style="margin: 0;">Sent by the ${CONFIG.DEFAULT_ORGANIZATION_NAME} Team.</p>
                 </td>
               </tr>
               

@@ -3016,9 +3016,12 @@ router.post('/generate/team-swiss', async (req, res) => {
           const whitePlayerId = pairing.white_player_id || null;
           const blackPlayerId = pairing.black_player_id || null;
           const board = pairing.board || 1;
-          const sectionName = pairing.team1Name 
+          // Use section from pairing if available, otherwise construct from team names
+          const sectionName = pairing.section 
             ? `${pairing.team1Name} vs ${pairing.team2Name || 'BYE'}`
-            : 'Team Match';
+            : (pairing.team1Name 
+              ? `${pairing.team1Name} vs ${pairing.team2Name || 'BYE'}`
+              : 'Team Match');
 
           db.run(
             `INSERT INTO pairings 
@@ -3032,7 +3035,7 @@ router.post('/generate/team-swiss', async (req, res) => {
               whitePlayerId,
               blackPlayerId,
               null,
-              sectionName // Store as section for display
+              sectionName // Store team match name in section for display
             ],
             (err) => {
               if (err) {

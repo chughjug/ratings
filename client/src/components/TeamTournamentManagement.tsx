@@ -31,11 +31,16 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamSection, setNewTeamSection] = useState('Open');
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState('');
+  const [editingTeamSection, setEditingTeamSection] = useState('Open');
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [selectedPlayerToAdd, setSelectedPlayerToAdd] = useState<string | null>(null);
+  
+  // Get available sections from teams
+  const availableSections = Array.from(new Set(['Open', 'Reserve', 'U1200', 'U1600', ...teams.map(t => t.section || 'Open')].filter(Boolean)));
 
   useEffect(() => {
     if (isVisible && tournamentId) {
@@ -68,11 +73,13 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
     setError(null);
     try {
       const response = await axios.post(`${API_BASE_URL}/teams/team-tournament/${tournamentId}/create`, {
-        name: newTeamName.trim()
+        name: newTeamName.trim(),
+        section: newTeamSection || 'Open'
       });
 
       if (response.data.success) {
         setNewTeamName('');
+        setNewTeamSection('Open');
         setShowCreateTeam(false);
         await fetchTeams();
         if (onTeamsUpdated) onTeamsUpdated();
@@ -87,14 +94,15 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
     }
   };
 
-  const updateTeam = async (teamId: string, name: string) => {
+  const updateTeam = async (teamId: string, name: string, section?: string) => {
     if (!name.trim()) return;
 
     setLoading(true);
     setError(null);
     try {
       const response = await axios.put(`${API_BASE_URL}/teams/team-tournament/${teamId}`, {
-        name: name.trim()
+        name: name.trim(),
+        section: section || 'Open'
       });
 
       if (response.data.success) {
@@ -262,6 +270,15 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                     required
                     autoFocus
                   />
+                  <select
+                    value={newTeamSection}
+                    onChange={(e) => setNewTeamSection(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {availableSections.map(sec => (
+                      <option key={sec} value={sec}>{sec}</option>
+                    ))}
+                  </select>
                   <button
                     type="submit"
                     disabled={loading}
@@ -305,8 +322,17 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                               className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               autoFocus
                             />
+                            <select
+                              value={editingTeamSection}
+                              onChange={(e) => setEditingTeamSection(e.target.value)}
+                              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {availableSections.map(sec => (
+                                <option key={sec} value={sec}>{sec}</option>
+                              ))}
+                            </select>
                             <button
-                              onClick={() => updateTeam(team.id, editingTeamName)}
+                              onClick={() => updateTeam(team.id, editingTeamName, editingTeamSection)}
                               className="p-1 text-green-600 hover:text-green-800"
                               title="Save"
                             >
@@ -328,6 +354,11 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                             <h4 className="text-lg font-medium text-gray-900">{team.name}</h4>
                             <p className="text-sm text-gray-500">
                               {team.member_count || 0} {team.member_count === 1 ? 'member' : 'members'}
+                              {team.section && team.section !== 'Open' && (
+                                <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                                  {team.section}
+                                </span>
+                              )}
                             </p>
                           </div>
                         )}
@@ -338,9 +369,10 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                             onClick={() => {
                               setEditingTeamId(team.id);
                               setEditingTeamName(team.name);
+                              setEditingTeamSection((team as any).section || 'Open');
                             }}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                            title="Edit team name"
+                            title="Edit team name and section"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>

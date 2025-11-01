@@ -117,7 +117,7 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
 
   // Group standings by section
   const groupedStandings = displayStandings.reduce((acc, team) => {
-    const section = team.section || 'All Teams';
+    const section = team.section || 'Open';
     if (!acc[section]) {
       acc[section] = [];
     }

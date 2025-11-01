@@ -112,13 +112,13 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
 
     // For team-tournament format, use team match-based standings
     if (tournament.format === 'team-tournament') {
-      // Get all teams
+      // Get all teams with their sections
       const teams = await new Promise((resolve, reject) => {
         db.all(
-          `SELECT id, name, tournament_id 
+          `SELECT id, name, tournament_id, COALESCE(section, 'Open') as section
            FROM teams 
            WHERE tournament_id = ? AND status = 'active'
-           ORDER BY name`,
+           ORDER BY COALESCE(section, 'Open'), name`,
           [tournamentId],
           (err, rows) => {
             if (err) reject(err);
@@ -184,15 +184,26 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
         );
       });
 
+      // Create a map of team_id to team section
+      const teamSectionMap = {};
+      teams.forEach(team => {
+        teamSectionMap[team.id] = team.section || 'Open';
+      });
+
       // Group pairings by round and section (team match)
+      // Only count matches between teams in the same section
       const matchesByRound = {};
       allPairings.forEach(p => {
+        const whiteTeamSection = teamSectionMap[p.white_team_id];
+        const blackTeamSection = p.black_team_id ? teamSectionMap[p.black_team_id] : null;
+        
         if (p.is_bye && p.white_team_id) {
           // Handle bye - team gets 1 match point
           const key = `bye_${p.round}_${p.white_team_id}`;
           if (!matchesByRound[key]) {
             matchesByRound[key] = {
               round: p.round,
+              section: whiteTeamSection || 'Open',
               team1Id: p.white_team_id,
               team2Id: null,
               isBye: true,
@@ -200,17 +211,20 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
             };
           }
         } else if (p.white_team_id && p.black_team_id) {
-          const key = `${p.round}_${p.section}`;
-          if (!matchesByRound[key]) {
-            matchesByRound[key] = {
-              round: p.round,
-              section: p.section,
-              team1Id: p.white_team_id,
-              team2Id: p.black_team_id,
-              isBye: false,
-              games: []
-            };
-          }
+          // Only count matches between teams in the same section
+          if (whiteTeamSection === blackTeamSection) {
+            const section = whiteTeamSection || 'Open';
+            const key = `${p.round}_${section}_${p.white_team_id}_${p.black_team_id}`;
+            if (!matchesByRound[key]) {
+              matchesByRound[key] = {
+                round: p.round,
+                section: section,
+                team1Id: p.white_team_id,
+                team2Id: p.black_team_id,
+                isBye: false,
+                games: []
+              };
+            }
           
           // Calculate points from result or results table
           let whitePoints = p.white_points || 0;
@@ -355,6 +369,7 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
         return {
           team_id: team.id,
           team_name: team.name,
+          section: team.section || 'Open',
           match_points: score.matchPoints,
           game_points: score.gamePoints,
           match_wins: score.matchWins,
@@ -372,22 +387,38 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
         };
       }));
 
-      // Sort by match points, then game points
-      enhancedStandings.sort((a, b) => {
-        if (b.match_points !== a.match_points) {
-          return b.match_points - a.match_points;
+      // Group standings by section
+      const standingsBySection = {};
+      enhancedStandings.forEach(standing => {
+        const section = standing.section || 'Open';
+        if (!standingsBySection[section]) {
+          standingsBySection[section] = [];
         }
-        return b.game_points - a.game_points;
+        standingsBySection[section].push(standing);
       });
 
-      // Add rank
-      enhancedStandings.forEach((standing, index) => {
-        standing.rank = index + 1;
+      // Sort each section by match points, then game points, and add rank within section
+      Object.keys(standingsBySection).forEach(section => {
+        standingsBySection[section].sort((a, b) => {
+          if (b.match_points !== a.match_points) {
+            return b.match_points - a.match_points;
+          }
+          return b.game_points - a.game_points;
+        });
+
+        // Add rank within section
+        standingsBySection[section].forEach((standing, index) => {
+          standing.rank = index + 1;
+        });
       });
+
+      // Flatten back to array for backward compatibility, but grouped structure is preferred
+      const flatStandings = Object.values(standingsBySection).flat();
 
       return res.json({
         success: true,
-        standings: enhancedStandings,
+        standings: flatStandings,
+        standingsBySection: standingsBySection, // Grouped by section
         type: 'team-match',
         scoring_method: 'match_points',
         total_rounds: totalRounds
@@ -541,7 +572,7 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
 // Create a new team for team-tournament format
 router.post('/team-tournament/:tournamentId/create', async (req, res) => {
   const { tournamentId } = req.params;
-  const { name, captain_id } = req.body;
+  const { name, captain_id, section } = req.body;
 
   try {
     // Verify tournament format
@@ -577,8 +608,8 @@ router.post('/team-tournament/:tournamentId/create', async (req, res) => {
     
     await new Promise((resolve, reject) => {
       db.run(
-        'INSERT INTO teams (id, tournament_id, name, captain_id, status) VALUES (?, ?, ?, ?, ?)',
-        [teamId, tournamentId, name.trim(), captain_id || null, 'active'],
+        'INSERT INTO teams (id, tournament_id, name, captain_id, section, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [teamId, tournamentId, name.trim(), captain_id || null, (section || 'Open').trim(), 'active'],
         function(err) {
           if (err) {
             if (err.message.includes('UNIQUE constraint')) {
@@ -864,7 +895,7 @@ router.delete('/team-tournament/:teamId', async (req, res) => {
 // Update team (team-tournament format)
 router.put('/team-tournament/:teamId', async (req, res) => {
   const { teamId } = req.params;
-  const { name, captain_id, status } = req.body;
+  const { name, captain_id, status, section } = req.body;
 
   try {
     const updates = [];
@@ -883,6 +914,11 @@ router.put('/team-tournament/:teamId', async (req, res) => {
     if (status !== undefined) {
       updates.push('status = ?');
       params.push(status);
+    }
+
+    if (section !== undefined) {
+      updates.push('section = ?');
+      params.push((section || 'Open').trim());
     }
 
     if (updates.length === 0) {

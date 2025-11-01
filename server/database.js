@@ -233,6 +233,7 @@ db.serialize(() => {
       tournament_id TEXT NOT NULL,
       name TEXT NOT NULL,
       captain_id TEXT,
+      section TEXT DEFAULT 'Open',
       status TEXT DEFAULT 'active' CHECK (status IN ('active', 'withdrawn')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
@@ -240,6 +241,13 @@ db.serialize(() => {
       UNIQUE(tournament_id, name)
     )
   `);
+
+  // Add section column to teams table if it doesn't exist (migration for existing databases)
+  db.run(`
+    ALTER TABLE teams ADD COLUMN section TEXT DEFAULT 'Open'
+  `, (err) => {
+    // Ignore error if column already exists
+  });
 
   // Team members table for team tournaments
   db.run(`

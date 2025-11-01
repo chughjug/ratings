@@ -89,6 +89,12 @@ class TeamSwissPairingSystem {
       };
     });
 
+    // Create a map of team_id to team section for filtering
+    const teamSectionMap = {};
+    teams.forEach(team => {
+      teamSectionMap[team.id] = team.section || 'Open';
+    });
+
     // Get all completed pairings from previous rounds
     const previousPairings = await new Promise((resolve, reject) => {
       db.all(
@@ -101,10 +107,13 @@ class TeamSwissPairingSystem {
           COALESCE(r2.points, 0) as black_points,
           tm1.team_id as white_team_id,
           tm2.team_id as black_team_id,
-          p.section
+          t1.section as white_team_section,
+          t2.section as black_team_section
         FROM pairings p
         LEFT JOIN team_members tm1 ON p.white_player_id = tm1.player_id
         LEFT JOIN team_members tm2 ON p.black_player_id = tm2.player_id
+        LEFT JOIN teams t1 ON tm1.team_id = t1.id
+        LEFT JOIN teams t2 ON tm2.team_id = t2.id
         LEFT JOIN results r1 ON p.id = r1.pairing_id AND r1.player_id = p.white_player_id
         LEFT JOIN results r2 ON p.id = r2.pairing_id AND r2.player_id = p.black_player_id
         WHERE p.tournament_id = ? 
@@ -113,7 +122,8 @@ class TeamSwissPairingSystem {
           AND tm1.team_id IS NOT NULL
           AND tm2.team_id IS NOT NULL
           AND (p.result IS NOT NULL OR r1.points IS NOT NULL OR r2.points IS NOT NULL)
-        ORDER BY p.round, p.section, p.board`,
+          AND COALESCE(t1.section, 'Open') = COALESCE(t2.section, 'Open')
+        ORDER BY p.round, COALESCE(t1.section, 'Open'), p.board`,
         [tournamentId, currentRound],
         (err, rows) => {
           if (err) {
@@ -126,44 +136,52 @@ class TeamSwissPairingSystem {
       );
     });
 
-    // Group pairings by round and section (team match)
+    // Group pairings by round and team section (team match)
+    // Only count matches between teams in the same section
     const matchesByRound = {};
     previousPairings.forEach(p => {
-      const key = `${p.round}_${p.section}`;
-      if (!matchesByRound[key]) {
-        matchesByRound[key] = {
-          round: p.round,
-          section: p.section,
-          team1Id: p.white_team_id,
-          team2Id: p.black_team_id,
-          games: []
-        };
-      }
+      const whiteTeamSection = teamSectionMap[p.white_team_id] || 'Open';
+      const blackTeamSection = teamSectionMap[p.black_team_id] || 'Open';
       
-      // Calculate points from result or results table
-      let whitePoints = p.white_points || 0;
-      let blackPoints = p.black_points || 0;
-      
-      // If points not in results table, calculate from pairing result
-      if (whitePoints === 0 && blackPoints === 0 && p.result) {
-        if (p.result === '1-0' || p.result === '1-0F') {
-          whitePoints = 1;
-          blackPoints = 0;
-        } else if (p.result === '0-1' || p.result === '0-1F') {
-          whitePoints = 0;
-          blackPoints = 1;
-        } else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') {
-          whitePoints = 0.5;
-          blackPoints = 0.5;
+      // Only process if teams are in the same section
+      if (whiteTeamSection === blackTeamSection) {
+        const section = whiteTeamSection;
+        const key = `${p.round}_${section}_${p.white_team_id}_${p.black_team_id}`;
+        if (!matchesByRound[key]) {
+          matchesByRound[key] = {
+            round: p.round,
+            section: section,
+            team1Id: p.white_team_id,
+            team2Id: p.black_team_id,
+            games: []
+          };
         }
+        
+        // Calculate points from result or results table
+        let whitePoints = p.white_points || 0;
+        let blackPoints = p.black_points || 0;
+        
+        // If points not in results table, calculate from pairing result
+        if (whitePoints === 0 && blackPoints === 0 && p.result) {
+          if (p.result === '1-0' || p.result === '1-0F') {
+            whitePoints = 1;
+            blackPoints = 0;
+          } else if (p.result === '0-1' || p.result === '0-1F') {
+            whitePoints = 0;
+            blackPoints = 1;
+          } else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') {
+            whitePoints = 0.5;
+            blackPoints = 0.5;
+          }
+        }
+        
+        matchesByRound[key].games.push({
+          whiteTeam: p.white_team_id,
+          blackTeam: p.black_team_id,
+          whitePoints: whitePoints,
+          blackPoints: blackPoints
+        });
       }
-      
-      matchesByRound[key].games.push({
-        whiteTeam: p.white_team_id,
-        blackTeam: p.black_team_id,
-        whitePoints: whitePoints,
-        blackPoints: blackPoints
-      });
     });
 
     // Calculate match results for each team match
@@ -227,63 +245,80 @@ class TeamSwissPairingSystem {
 
   /**
    * Pair teams using Swiss system
+   * Only pairs teams within the same section
    */
   pairTeams(round) {
-    const teams = [...this.teams];
     const pairings = [];
 
-    // Sort teams by score (match points, then game points)
-    teams.sort((a, b) => {
-      const scoreA = this.teamScores[a.id] || { matchPoints: 0, gamePoints: 0 };
-      const scoreB = this.teamScores[b.id] || { matchPoints: 0, gamePoints: 0 };
-
-      if (scoreA.matchPoints !== scoreB.matchPoints) {
-        return scoreB.matchPoints - scoreA.matchPoints;
+    // Group teams by section
+    const teamsBySection = {};
+    this.teams.forEach(team => {
+      const section = team.section || 'Open';
+      if (!teamsBySection[section]) {
+        teamsBySection[section] = [];
       }
-      return scoreB.gamePoints - scoreA.gamePoints;
+      teamsBySection[section].push(team);
     });
 
-    // Handle bye for odd number of teams
-    const needsBye = teams.length % 2 === 1;
-    if (needsBye) {
-      // Lowest scoring team gets bye
-      const byeTeam = teams.pop();
-      pairings.push({
-        team1Id: byeTeam.id,
-        team1Name: byeTeam.name,
-        team2Id: null,
-        team2Name: null,
-        isBye: true,
-        boardCount: 0
+    // Pair teams within each section separately
+    Object.keys(teamsBySection).forEach(section => {
+      const teams = [...teamsBySection[section]];
+      
+      // Sort teams by score (match points, then game points)
+      teams.sort((a, b) => {
+        const scoreA = this.teamScores[a.id] || { matchPoints: 0, gamePoints: 0 };
+        const scoreB = this.teamScores[b.id] || { matchPoints: 0, gamePoints: 0 };
+
+        if (scoreA.matchPoints !== scoreB.matchPoints) {
+          return scoreB.matchPoints - scoreA.matchPoints;
+        }
+        return scoreB.gamePoints - scoreA.gamePoints;
       });
-    }
 
-    // Pair teams in score groups
-    const pairedIndices = new Set();
-    
-    for (let i = 0; i < teams.length; i++) {
-      if (pairedIndices.has(i)) continue;
-
-      // Find opponent in same or adjacent score group
-      let opponentIndex = this.findOpponent(i, teams, pairedIndices, round);
-
-      if (opponentIndex !== -1) {
-        const team1 = teams[i];
-        const team2 = teams[opponentIndex];
-        
+      // Handle bye for odd number of teams in this section
+      const needsBye = teams.length % 2 === 1;
+      if (needsBye) {
+        // Lowest scoring team gets bye
+        const byeTeam = teams.pop();
         pairings.push({
-          team1Id: team1.id,
-          team1Name: team1.name,
-          team2Id: team2.id,
-          team2Name: team2.name,
-          isBye: false,
-          boardCount: this.getBoardCount(team1, team2)
+          team1Id: byeTeam.id,
+          team1Name: byeTeam.name,
+          team2Id: null,
+          team2Name: null,
+          isBye: true,
+          boardCount: 0,
+          section: section
         });
-
-        pairedIndices.add(i);
-        pairedIndices.add(opponentIndex);
       }
-    }
+
+      // Pair teams in score groups within this section
+      const pairedIndices = new Set();
+      
+      for (let i = 0; i < teams.length; i++) {
+        if (pairedIndices.has(i)) continue;
+
+        // Find opponent in same or adjacent score group
+        let opponentIndex = this.findOpponent(i, teams, pairedIndices, round);
+
+        if (opponentIndex !== -1) {
+          const team1 = teams[i];
+          const team2 = teams[opponentIndex];
+          
+          pairings.push({
+            team1Id: team1.id,
+            team1Name: team1.name,
+            team2Id: team2.id,
+            team2Name: team2.name,
+            isBye: false,
+            boardCount: this.getBoardCount(team1, team2),
+            section: section
+          });
+
+          pairedIndices.add(i);
+          pairedIndices.add(opponentIndex);
+        }
+      }
+    });
 
     return pairings;
   }
@@ -381,6 +416,7 @@ class TeamSwissPairingSystem {
       return [];
     }
 
+    const section = teamMatch.section || (team1?.section || 'Open');
     const team1Members = this.getBoardOrderedPlayers(team1);
     const team2Members = this.getBoardOrderedPlayers(team2);
     const boardCount = teamMatch.boardCount;
@@ -410,7 +446,8 @@ class TeamSwissPairingSystem {
         black_player_id: black.id,
         black_name: black.name,
         black_rating: black.rating,
-        is_bye: false
+        is_bye: false,
+        section: section
       });
     }
 
@@ -457,6 +494,7 @@ class TeamSwissPairingSystem {
     const team = this.teams.find(t => t.id === teamMatch.team1Id);
     if (!team) return [];
 
+    const section = teamMatch.section || (team.section || 'Open');
     const members = this.getBoardOrderedPlayers(team);
     const pairings = [];
 
@@ -473,7 +511,8 @@ class TeamSwissPairingSystem {
         black_player_id: null,
         black_name: 'BYE',
         black_rating: 0,
-        is_bye: true
+        is_bye: true,
+        section: section
       });
     });
 
@@ -505,19 +544,20 @@ class TeamSwissPairingSystem {
           return;
         }
 
-        // Get all teams with members
+        // Get all teams with members and sections
         const teams = await new Promise((resolve, reject) => {
           db.all(
             `SELECT 
               t.id,
               t.name,
               t.tournament_id,
+              COALESCE(t.section, 'Open') as section,
               GROUP_CONCAT(p.id) as member_ids
             FROM teams t
             LEFT JOIN team_members tm ON t.id = tm.team_id
             LEFT JOIN players p ON tm.player_id = p.id
             WHERE t.tournament_id = ? AND t.status = 'active'
-            GROUP BY t.id, t.name
+            GROUP BY t.id, t.name, t.section
             HAVING COUNT(p.id) > 0`,
             [tournamentId],
             (err, rows) => {
