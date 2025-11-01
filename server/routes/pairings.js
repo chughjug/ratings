@@ -5,6 +5,7 @@ const { EnhancedPairingSystem } = require('../utils/enhancedPairingSystem');
 const { calculateTournamentTiebreakers, getDefaultTiebreakerOrder } = require('../utils/tiebreakers');
 const QuadPairingSystem = require('../utils/quadPairingSystem');
 const TeamSwissPairingSystem = require('../utils/teamSwissPairingSystem');
+const LichessSwissIntegration = require('../utils/lichessSwissIntegration');
 const smsService = require('../services/smsService');
 const axios = require('axios');
 const { cleanupTournamentData } = require('../services/dataCleanupService');
@@ -1171,6 +1172,13 @@ router.post('/generate/section', async (req, res) => {
     if (tournament.format === 'team-swiss' || tournament.format === 'team-round-robin' || tournament.format === 'team-tournament') {
       return res.status(400).json({ 
         error: `Team tournaments must use the /generate/team-swiss endpoint for round ${round}` 
+      });
+    }
+
+    // Handle online-rated tournaments (Lichess Swiss)
+    if (tournament.format === 'online-rated') {
+      return res.status(400).json({ 
+        error: 'Online-rated tournaments use Lichess Swiss pairings. Please use the Lichess integration to manage pairings directly on Lichess.' 
       });
     }
 

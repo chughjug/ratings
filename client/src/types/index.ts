@@ -219,6 +219,19 @@ export interface TournamentSettings {
     allow_byes_in_groups?: boolean;
     cross_group_pairings?: boolean; // Allow pairings across groups in later rounds
   };
+  // Online-rated tournament settings (Lichess Swiss)
+  online_rated_settings?: {
+    lichess_tournament_id?: string; // Lichess tournament ID
+    lichess_team_id?: string; // Lichess team slug
+    lichess_api_token?: string; // Lichess API token (encrypted)
+    clock_limit?: number; // Initial time in seconds
+    clock_increment?: number; // Increment in seconds
+    variant?: string; // Chess variant (default: standard)
+    is_rated?: boolean; // Whether rated (default: true)
+    minutes?: number; // Tournament duration
+    description?: string; // Tournament description
+    password?: string; // Tournament password
+  };
   // Export and reporting settings
   export_settings?: {
     enable_custom_reports: boolean;
