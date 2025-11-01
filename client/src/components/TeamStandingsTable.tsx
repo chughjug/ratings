@@ -169,7 +169,7 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                   <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
                     Team Name
                   </th>
-                  {tournamentFormat === 'team-tournament' ? (
+                  {(tournamentFormat === 'team-swiss' || tournamentFormat === 'team-round-robin') ? (
                     <>
                       <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
                         W-D-L
@@ -236,7 +236,7 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                         </div>
                       ) : null}
                     </td>
-                    {tournamentFormat === 'team-tournament' ? (
+                    {(tournamentFormat === 'team-swiss' || tournamentFormat === 'team-round-robin') ? (
                       <>
                         <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
                           <span className="text-gray-700">
