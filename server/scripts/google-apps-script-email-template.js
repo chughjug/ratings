@@ -21,9 +21,16 @@ function getSenderEmail() {
   return Session.getEffectiveUser().getEmail(); 
 }
 
-// Web App entry point for POST requests
+// ------------------------------------------------------------------
+// --- WEB APP HANDLER (REQUIRED FOR WEBHOOK) ---
+// ------------------------------------------------------------------
+/**
+ * Web App entry point for POST requests from the backend server
+ * This function must be deployed as a web app to receive webhook calls
+ */
 function doPost(e) {
   try {
+    // Parse the POST request body
     const params = JSON.parse(e.postData.contents);
     const { recipient, subject, plainTextBody, htmlBodyContent, headerText, organizationName, logoUrl } = params;
 
@@ -35,13 +42,14 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Override CONFIG for this request if logoUrl is provided
+    // Temporarily override CONFIG for this request if logoUrl is provided
     const originalLogo = CONFIG.ORGANIZATION_LOGO;
     if (logoUrl && logoUrl.trim()) {
       CONFIG.ORGANIZATION_LOGO = logoUrl;
     }
 
     try {
+      // Call the main email sending function
       const success = sendCustomEmailWithStyledHeader(
         recipient,
         subject,
@@ -54,6 +62,7 @@ function doPost(e) {
       // Restore original logo config
       CONFIG.ORGANIZATION_LOGO = originalLogo;
       
+      // Return JSON response
       return ContentService.createTextOutput(JSON.stringify({
         success: success,
         message: success ? 'Email sent successfully' : 'Failed to send email'
@@ -77,7 +86,7 @@ function doPost(e) {
 // ------------------------------------------------------------------
 /**
  * Sends a custom email using the existing styled HTML header/footer structure.
- * * @param {string} recipient The email address of the recipient.
+ * @param {string} recipient The email address of the recipient.
  * @param {string} subject The subject line of the email.
  * @param {string} plainTextBody The plain text version of the email body.
  * @param {string} htmlBodyContent The custom HTML content (e.g., paragraphs, tables) to place in the main body section.
@@ -91,7 +100,7 @@ function sendCustomEmailWithStyledHeader(recipient, subject, plainTextBody, html
     return false;
   }
   try {
-    const html = buildCustomEmailHtml(subject, htmlBodyContent, headerText);
+    const html = buildCustomEmailHtml(subject, htmlBodyContent, headerText, organizationName);
     
     GmailApp.sendEmail(
       recipient,
@@ -115,12 +124,13 @@ function sendCustomEmailWithStyledHeader(recipient, subject, plainTextBody, html
 
 /**
  * Helper to build the HTML for the custom email, reusing the existing styling.
- * * @param {string} subject The email subject.
+ * @param {string} subject The email subject.
  * @param {string} customBodyHtml The HTML content to inject into the main card.
  * @param {string} headerText The main text to display in the header (e.g., event name).
+ * @param {string} organizationName The organization name to use in the footer.
  * @returns {string} The complete HTML email body.
  */
-function buildCustomEmailHtml(subject, customBodyHtml, headerText) {
+function buildCustomEmailHtml(subject, customBodyHtml, headerText, organizationName = CONFIG.DEFAULT_ORGANIZATION_NAME) {
   const logoUrl = CONFIG.ORGANIZATION_LOGO || CONFIG.DEFAULT_LOGO_URL;
   
   return `
@@ -157,7 +167,7 @@ function buildCustomEmailHtml(subject, customBodyHtml, headerText) {
               
               <tr>
                 <td style="text-align: center; font-size: 12px; color: #9CA3AF;">
-                  <p style="margin: 0;">Sent by the ${CONFIG.DEFAULT_ORGANIZATION_NAME} Team.</p>
+                  <p style="margin: 0;">Sent by the ${organizationName} Team.</p>
                 </td>
               </tr>
               

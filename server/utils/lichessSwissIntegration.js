@@ -49,12 +49,22 @@ class LichessSwissIntegration {
       const params = new URLSearchParams();
       params.append('teamId', tournamentConfig.teamId);
       params.append('name', tournamentConfig.name);
+      // Ensure clock values are integers
+      const clockLimit = parseInt(tournamentConfig.clock.limit);
+      const clockIncrement = parseInt(tournamentConfig.clock.increment);
+      
+      if (isNaN(clockLimit) || isNaN(clockIncrement)) {
+        throw new Error('Clock limit and increment must be valid integers');
+      }
+      
       params.append('clock', JSON.stringify({
-        limit: tournamentConfig.clock.limit,
-        increment: tournamentConfig.clock.increment
+        limit: clockLimit,
+        increment: clockIncrement
       }));
       params.append('variant', tournamentConfig.variant || 'standard');
-      params.append('rated', tournamentConfig.rated !== undefined ? tournamentConfig.rated : true);
+      // Lichess expects rated as 'true' or 'false' string
+      const ratedValue = tournamentConfig.rated !== undefined ? tournamentConfig.rated : true;
+      params.append('rated', ratedValue ? 'true' : 'false');
 
       if (tournamentConfig.nbRounds) {
         params.append('nbRounds', tournamentConfig.nbRounds);
@@ -75,9 +85,12 @@ class LichessSwissIntegration {
         params.append('password', tournamentConfig.password);
       }
 
+      console.log('[Lichess] Creating Swiss tournament with params:', params.toString());
+      console.log('[Lichess] API URL:', `${this.apiBaseUrl}/swiss/new`);
+      
       const response = await axios.post(
         `${this.apiBaseUrl}/swiss/new`,
-        params,
+        params.toString(),
         {
           headers: {
             'Authorization': `Bearer ${this.token}`,
@@ -100,9 +113,13 @@ class LichessSwissIntegration {
       }
     } catch (error) {
       console.error('Error creating Lichess Swiss tournament:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error config:', error.config);
+      
       return {
         success: false,
-        error: error.response?.data?.error || error.message || 'Failed to create tournament'
+        error: error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create tournament'
       };
     }
   }

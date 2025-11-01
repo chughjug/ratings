@@ -3,21 +3,27 @@ import { Trophy, Medal, Award } from 'lucide-react';
 
 interface TeamPlayer {
   name: string;
-  points: number;
+  points?: number;
+  player_points?: number;
   rating?: number;
+  games_played?: number;
 }
 
 interface TeamStanding {
   team_name: string;
-  team_id: string;
+  team_id?: string;
   rank?: number;
   score: number;
-  team_total_points: number;
+  team_total_points?: number;
   total_members: number;
-  counted_players: number;
+  counted_players?: number;
   progressive_scores?: number[]; // Round-by-round cumulative scores
   match_points?: number;
   game_points?: number;
+  match_wins?: number;
+  match_draws?: number;
+  match_losses?: number;
+  matches_played?: number;
   total_game_points?: number;
   avg_game_points?: number;
   games_played?: number;
@@ -98,16 +104,20 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
 
   // Format round result for display (cumulative score)
   const formatRoundResult = (team: TeamStanding, round: number) => {
-    if (!team.progressive_scores || team.progressive_scores.length < round) {
+    if (!team.progressive_scores || team.progressive_scores.length === 0) {
       return '';
     }
-    const score = team.progressive_scores[round - 1];
-    return score ? score.toFixed(1) : '0.0';
+    // progressive_scores is 0-indexed, round is 1-indexed
+    if (round <= team.progressive_scores.length) {
+      const score = team.progressive_scores[round - 1];
+      return score !== undefined && score !== null ? score.toFixed(1) : '';
+    }
+    return '';
   };
 
   // Group standings by section
   const groupedStandings = displayStandings.reduce((acc, team) => {
-    const section = team.section || 'Open';
+    const section = team.section || 'All Teams';
     if (!acc[section]) {
       acc[section] = [];
     }
@@ -188,33 +198,44 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {sectionTeams.map((team, index) => (
-                  <tr key={team.team_name} className="hover:bg-gray-50">
+                {sectionTeams.map((team, index) => {
+                  const rank = team.rank || index + 1;
+                  return (
+                  <tr key={team.team_id || team.team_name} className="hover:bg-gray-50">
                     <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">
                       <div className="flex items-center">
-                        {getRankIcon(index + 1)}
-                        <span className="ml-2">{index + 1}.</span>
+                        {getRankIcon(rank)}
+                        <span className="ml-2">{rank}.</span>
                       </div>
                     </td>
                     <td className="px-3 py-2 text-sm font-medium text-gray-900 border-r border-gray-300">
                       <div className="font-semibold">
                         {formatTeamName(team)}
                       </div>
-                      {team.players && team.players.map((player, playerIndex) => (
-                        <div key={playerIndex} className="text-xs text-gray-600 mt-1 ml-4">
-                          {player.name} ({player.points},{player.rating})
+                      {team.players && team.players.length > 0 ? (
+                        <div className="text-xs text-gray-600 mt-1">
+                          {team.players.slice(0, 3).map((player: any, playerIndex: number) => (
+                            <div key={playerIndex} className="ml-4">
+                              {player.name} ({formatScore(player.points || player.player_points || 0)},{player.rating || 0})
+                            </div>
+                          ))}
+                          {team.players.length > 3 && (
+                            <div className="ml-4 text-gray-500 italic">
+                              +{team.players.length - 3} more
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      ) : null}
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
                       <span className="font-semibold">
-                        {formatScore(team.team_total_points || team.score || team.match_points)}
+                        {formatScore(team.team_total_points || team.score || team.match_points || 0)}
                       </span>
                     </td>
                     {tournamentFormat === 'team-swiss' ? null : (
                       <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
                         <span className="text-gray-700">
-                          {formatScore(team.game_points)}
+                          {formatScore(team.game_points || 0)}
                         </span>
                       </td>
                     )}
@@ -237,7 +258,8 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                       </>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
