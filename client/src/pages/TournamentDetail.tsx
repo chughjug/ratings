@@ -3473,7 +3473,12 @@ const TournamentDetail: React.FC = () => {
                       team_performance_rating: team?.team_performance_rating || 0
                     };
                   })}
-                  tournamentFormat={(tournament?.format === 'team-tournament' ? 'team-swiss' : tournament?.format) || 'swiss'}
+                  tournamentFormat={(() => {
+                    const format = tournament?.format;
+                    if (format === 'team-tournament') return 'team-swiss';
+                    if (format === 'online-rated') return 'online';
+                    return format || 'swiss';
+                  })()}
                   scoringMethod={teamScoringMethod}
                   topN={teamTopN}
                   showTiebreakers={showTiebreakers}
