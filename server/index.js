@@ -57,8 +57,14 @@ app.use((req, res, next) => {
   // Explicitly set CSP frame-ancestors to allow all origins
   const csp = res.getHeader('Content-Security-Policy');
   if (csp && typeof csp === 'string') {
-    // Update existing CSP to ensure frame-ancestors is set to *
-    res.setHeader('Content-Security-Policy', csp.replace(/frame-ancestors[^;]*;?/, '') + 'frame-ancestors *;');
+    // Remove existing frame-ancestors directive (with or without semicolon)
+    let updatedCsp = csp.replace(/frame-ancestors[^;]*;?\s*/g, '');
+    // Clean up any double semicolons that might result
+    updatedCsp = updatedCsp.replace(/;\s*;/g, ';');
+    // Trim trailing semicolons/spaces and add frame-ancestors
+    updatedCsp = updatedCsp.replace(/;\s*$/, '');
+    // Add frame-ancestors directive with proper semicolon
+    res.setHeader('Content-Security-Policy', updatedCsp + (updatedCsp.endsWith(';') ? '' : '; ') + 'frame-ancestors *');
   }
   // Ensure X-Frame-Options is not set (it might interfere)
   res.removeHeader('X-Frame-Options');
