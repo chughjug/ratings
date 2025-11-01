@@ -160,8 +160,13 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                     Team Name
                   </th>
                   <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                    Pts
+                    {tournamentFormat === 'team-swiss' ? 'Pts' : 'MP'}
                   </th>
+                  {tournamentFormat === 'team-swiss' ? null : (
+                    <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                      GP
+                    </th>
+                  )}
                   {roundColumns.map(round => (
                     <th key={round} className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
                       Rnd{round}
@@ -203,9 +208,16 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
                       <span className="font-semibold">
-                        {formatScore(team.team_total_points || team.score)}
+                        {formatScore(team.team_total_points || team.score || team.match_points)}
                       </span>
                     </td>
+                    {tournamentFormat === 'team-swiss' ? null : (
+                      <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
+                        <span className="text-gray-700">
+                          {formatScore(team.game_points)}
+                        </span>
+                      </td>
+                    )}
                     {roundColumns.map(round => (
                       <td key={round} className="px-2 py-2 whitespace-nowrap text-sm text-gray-500 border-r border-gray-300 text-center">
                         {formatRoundResult(team, round)}

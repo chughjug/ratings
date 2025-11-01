@@ -83,33 +83,88 @@ class ClubEmailService {
   }
 
   /**
-   * Send email via Google Apps Script web app
+   * Send email via Google Apps Script webhook/web app
    */
   async sendViaGoogleAppsScript(recipient, subject, plainTextBody, htmlContent, branding, headerText = 'Club Announcement') {
     if (!branding.googleAppsScriptUrl) {
       throw new Error('Google Apps Script URL not configured');
     }
 
+    const webhookUrl = branding.googleAppsScriptUrl;
+    const payload = {
+      recipient: recipient,
+      subject: subject,
+      plainTextBody: plainTextBody || htmlContent.replace(/<[^>]*>/g, ''),
+      htmlBodyContent: htmlContent,
+      headerText: headerText || 'Club Announcement',
+      organizationName: branding.name || 'Chess Club',
+      logoUrl: branding.logoUrl || 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png'
+    };
+
+    console.log(`📧 Sending email via webhook to ${recipient} using ${webhookUrl}`);
+    console.log(`📧 Payload:`, { ...payload, htmlBodyContent: payload.htmlBodyContent.substring(0, 100) + '...' });
+
     try {
-      const response = await axios.post(branding.googleAppsScriptUrl, {
-        recipient: recipient,
-        subject: subject,
-        plainTextBody: plainTextBody || htmlContent.replace(/<[^>]*>/g, ''),
-        htmlBodyContent: htmlContent,
-        headerText: headerText,
-        organizationName: branding.name,
-        logoUrl: branding.logoUrl || 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/new-logo.png'
-      }, {
+      // Google Apps Script webhooks may return HTML error pages or JSON
+      // We need to handle both cases
+      const response = await axios.post(webhookUrl, payload, {
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: 30000 // 30 second timeout
+        timeout: 30000, // 30 second timeout
+        maxRedirects: 5,
+        validateStatus: (status) => status < 500 // Accept any status < 500
       });
 
-      return response.data.success === true;
+      // Check if response is JSON
+      if (typeof response.data === 'object' && response.data !== null) {
+        if (response.data.success === true) {
+          console.log(`✅ Webhook success: ${response.data.message || 'Email sent successfully'}`);
+          return true;
+        } else {
+          const errorMsg = response.data.error || response.data.message || 'Unknown error';
+          console.error(`❌ Webhook returned error: ${errorMsg}`);
+          throw new Error(`Webhook error: ${errorMsg}`);
+        }
+      } else if (typeof response.data === 'string') {
+        // Try to parse as JSON if it's a string
+        try {
+          const parsed = JSON.parse(response.data);
+          if (parsed.success === true) {
+            return true;
+          }
+          throw new Error(parsed.error || parsed.message || 'Unknown error');
+        } catch (parseError) {
+          // If it's HTML or other non-JSON response, check if it contains error
+          if (response.data.includes('Error') || response.data.includes('error')) {
+            throw new Error(`Webhook returned error page: ${response.data.substring(0, 200)}`);
+          }
+          // If no obvious error, assume success (some webhooks just return status 200)
+          console.log(`✅ Webhook returned non-JSON response (assuming success)`);
+          return true;
+        }
+      }
+
+      // Default: assume success if we got a response
+      console.log(`✅ Webhook response received (status ${response.status})`);
+      return true;
+
     } catch (error) {
-      console.error('Google Apps Script email error:', error.message);
-      throw new Error(`Failed to send via Google Apps Script: ${error.message}`);
+      console.error('❌ Google Apps Script webhook error:', {
+        message: error.message,
+        response: error.response?.data ? (typeof error.response.data === 'string' ? error.response.data.substring(0, 200) : error.response.data) : null,
+        status: error.response?.status
+      });
+      
+      // Provide more helpful error message
+      if (error.response?.data && typeof error.response.data === 'string') {
+        if (error.response.data.includes('doPost')) {
+          throw new Error('Webhook script function not found. Please ensure doPost function is deployed in your Google Apps Script.');
+        }
+        throw new Error(`Webhook error: ${error.response.data.substring(0, 200)}`);
+      }
+      
+      throw new Error(`Failed to send via webhook: ${error.message}`);
     }
   }
 
@@ -297,7 +352,7 @@ class ClubEmailService {
               // Extract body content (without tracking wrappers for Apps Script)
               const bodyContent = campaign.content_html || campaign.content_text || '';
               
-              // For Apps Script, we'll send the clean email content
+              // For Apps Script, send the clean email content
               // The Apps Script will add its own styling with organization logo
               emailSent = await this.sendViaGoogleAppsScript(
                 recipient.email,
@@ -305,10 +360,14 @@ class ClubEmailService {
                 campaign.content_text || bodyContent.replace(/<[^>]*>/g, ''),
                 bodyContent,
                 branding,
-                campaign.subject // Use subject as header text
+                campaign.subject || 'Club Announcement' // Use subject as header text, or default
               );
+              
+              if (emailSent) {
+                console.log(`✅ Email sent via Google Apps Script to ${recipient.email}`);
+              }
             } catch (error) {
-              console.error(`Google Apps Script failed for ${recipient.email}, falling back to SMTP:`, error.message);
+              console.error(`❌ Google Apps Script failed for ${recipient.email}:`, error.message);
               // Fall through to SMTP
             }
           }

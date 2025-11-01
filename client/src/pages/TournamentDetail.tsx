@@ -3444,24 +3444,35 @@ const TournamentDetail: React.FC = () => {
               
               {teamStandings && teamStandings.length > 0 ? (
                 <TeamStandingsTable
-                  standings={teamStandings.map((team: any, index: number) => ({
-                    team_name: team?.team_name || 'Unnamed Team',
-                    team_id: team?.team_name || 'unnamed',
-                    rank: index + 1,
-                    score: team?.team_total_points || 0,
-                    team_total_points: team?.team_total_points || 0,
-                    total_members: team?.total_members || 0,
-                    counted_players: team?.counted_players || 0,
-                    progressive_scores: team?.progressive_scores || [],
-                    top_player_score: team?.top_player_score || 0,
-                    top_2_sum: team?.top_2_sum || 0,
-                    top_3_sum: team?.top_3_sum || 0,
-                    players: team?.players || [],
-                    section: team?.section || 'Open',
-                    buchholz: team?.buchholz || 0,
-                    sonneborn_berger: team?.sonneborn_berger || 0,
-                    team_performance_rating: team?.team_performance_rating || 0
-                  }))}
+                  standings={teamStandings.map((team: any, index: number) => {
+                    // Handle both team-tournament format (match_points, game_points) and team-swiss format (team_total_points)
+                    const isTeamTournament = tournament?.format === 'team-tournament';
+                    
+                    return {
+                      team_name: team?.team_name || 'Unnamed Team',
+                      team_id: team?.team_id || team?.team_name || 'unnamed',
+                      rank: team?.rank || index + 1,
+                      score: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
+                      team_total_points: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
+                      match_points: team?.match_points,
+                      game_points: team?.game_points,
+                      match_wins: team?.match_wins,
+                      match_draws: team?.match_draws,
+                      match_losses: team?.match_losses,
+                      matches_played: team?.matches_played,
+                      total_members: team?.total_members || 0,
+                      counted_players: team?.counted_players || 0,
+                      progressive_scores: team?.progressive_scores || [],
+                      top_player_score: team?.top_player_score || 0,
+                      top_2_sum: team?.top_2_sum || 0,
+                      top_3_sum: team?.top_3_sum || 0,
+                      players: team?.players || [],
+                      section: team?.section || 'Open',
+                      buchholz: team?.buchholz || 0,
+                      sonneborn_berger: team?.sonneborn_berger || 0,
+                      team_performance_rating: team?.team_performance_rating || 0
+                    };
+                  })}
                   tournamentFormat={(tournament?.format === 'team-tournament' ? 'team-swiss' : tournament?.format) || 'swiss'}
                   scoringMethod={teamScoringMethod}
                   topN={teamTopN}

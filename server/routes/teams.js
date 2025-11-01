@@ -93,17 +93,309 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
   } = req.query; 
 
   try {
-    const topN = top_n ? parseInt(top_n) : 4;
-    
-    // Get tournament rounds first
+    // Get tournament format to determine which calculation method to use
     const tournament = await new Promise((resolve, reject) => {
-      db.get('SELECT rounds FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+      db.get('SELECT format, rounds FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
     });
     
-    const totalRounds = tournament ? tournament.rounds : 7;
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    const totalRounds = tournament.rounds || 7;
+
+    // For team-tournament format, use team match-based standings
+    if (tournament.format === 'team-tournament') {
+      // Get all teams
+      const teams = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT id, name, tournament_id 
+           FROM teams 
+           WHERE tournament_id = ? AND status = 'active'
+           ORDER BY name`,
+          [tournamentId],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+
+      if (teams.length === 0) {
+        return res.json({
+          success: true,
+          standings: [],
+          type: 'team-match',
+          scoring_method,
+          total_rounds: totalRounds
+        });
+      }
+
+      // Calculate standings from pairings (similar to calculateTeamScoresFromDB)
+      const teamScores = {};
+      
+      // Initialize all teams
+      teams.forEach(team => {
+        teamScores[team.id] = {
+          matchPoints: 0,
+          gamePoints: 0,
+          matchWins: 0,
+          matchDraws: 0,
+          matchLosses: 0,
+          matchesPlayed: 0,
+          progressive: Array(totalRounds).fill(0)
+        };
+      });
+
+      // Get all completed pairings
+      const allPairings = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT 
+            p.round,
+            p.white_player_id,
+            p.black_player_id,
+            p.result,
+            p.is_bye,
+            p.section,
+            COALESCE(r1.points, 0) as white_points,
+            COALESCE(r2.points, 0) as black_points,
+            tm1.team_id as white_team_id,
+            tm2.team_id as black_team_id
+          FROM pairings p
+          LEFT JOIN team_members tm1 ON p.white_player_id = tm1.player_id
+          LEFT JOIN team_members tm2 ON p.black_player_id = tm2.player_id
+          LEFT JOIN results r1 ON p.id = r1.pairing_id AND r1.player_id = p.white_player_id
+          LEFT JOIN results r2 ON p.id = r2.pairing_id AND r2.player_id = p.black_player_id
+          WHERE p.tournament_id = ?
+            AND tm1.team_id IS NOT NULL
+            AND (tm2.team_id IS NOT NULL OR p.is_bye = 1)
+          ORDER BY p.round, p.section, p.board`,
+          [tournamentId],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+
+      // Group pairings by round and section (team match)
+      const matchesByRound = {};
+      allPairings.forEach(p => {
+        if (p.is_bye && p.white_team_id) {
+          // Handle bye - team gets 1 match point
+          const key = `bye_${p.round}_${p.white_team_id}`;
+          if (!matchesByRound[key]) {
+            matchesByRound[key] = {
+              round: p.round,
+              team1Id: p.white_team_id,
+              team2Id: null,
+              isBye: true,
+              games: []
+            };
+          }
+        } else if (p.white_team_id && p.black_team_id) {
+          const key = `${p.round}_${p.section}`;
+          if (!matchesByRound[key]) {
+            matchesByRound[key] = {
+              round: p.round,
+              section: p.section,
+              team1Id: p.white_team_id,
+              team2Id: p.black_team_id,
+              isBye: false,
+              games: []
+            };
+          }
+          
+          // Calculate points from result or results table
+          let whitePoints = p.white_points || 0;
+          let blackPoints = p.black_points || 0;
+          
+          // If points not in results table, calculate from pairing result
+          if (whitePoints === 0 && blackPoints === 0 && p.result) {
+            if (p.result === '1-0' || p.result === '1-0F') {
+              whitePoints = 1;
+              blackPoints = 0;
+            } else if (p.result === '0-1' || p.result === '0-1F') {
+              whitePoints = 0;
+              blackPoints = 1;
+            } else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') {
+              whitePoints = 0.5;
+              blackPoints = 0.5;
+            }
+          }
+          
+          matchesByRound[key].games.push({
+            whiteTeam: p.white_team_id,
+            blackTeam: p.black_team_id,
+            whitePoints: whitePoints,
+            blackPoints: blackPoints,
+            result: p.result
+          });
+        }
+      });
+
+      // Process matches by round to build progressive scores correctly
+      const rounds = [...new Set(Object.values(matchesByRound).map(m => m.round))].sort((a, b) => a - b);
+      
+      rounds.forEach(round => {
+        const roundMatches = Object.values(matchesByRound).filter(m => m.round === round);
+        
+        roundMatches.forEach(match => {
+          if (match.isBye) {
+            // Bye: team gets 1 match point
+            if (teamScores[match.team1Id]) {
+              teamScores[match.team1Id].matchPoints += 1;
+              teamScores[match.team1Id].matchWins++;
+              teamScores[match.team1Id].matchesPlayed++;
+            }
+          } else {
+            let team1Points = 0;
+            let team2Points = 0;
+            
+            match.games.forEach(game => {
+              if (game.whiteTeam === match.team1Id) {
+                team1Points += game.whitePoints;
+                team2Points += game.blackPoints;
+              } else {
+                team1Points += game.blackPoints;
+                team2Points += game.whitePoints;
+              }
+            });
+
+            // Determine match result
+            let team1MatchPoints = 0;
+            let team2MatchPoints = 0;
+            let team1Result = 'loss';
+            let team2Result = 'loss';
+
+            if (team1Points > team2Points) {
+              team1MatchPoints = 1;
+              team2MatchPoints = 0;
+              team1Result = 'win';
+              team2Result = 'loss';
+            } else if (team1Points < team2Points) {
+              team1MatchPoints = 0;
+              team2MatchPoints = 1;
+              team1Result = 'loss';
+              team2Result = 'win';
+            } else {
+              team1MatchPoints = 0.5;
+              team2MatchPoints = 0.5;
+              team1Result = 'draw';
+              team2Result = 'draw';
+            }
+
+            // Update team scores
+            if (teamScores[match.team1Id]) {
+              teamScores[match.team1Id].matchPoints += team1MatchPoints;
+              teamScores[match.team1Id].gamePoints += team1Points;
+              teamScores[match.team1Id].matchesPlayed++;
+              if (team1Result === 'win') teamScores[match.team1Id].matchWins++;
+              else if (team1Result === 'draw') teamScores[match.team1Id].matchDraws++;
+              else teamScores[match.team1Id].matchLosses++;
+            }
+
+            if (match.team2Id && teamScores[match.team2Id]) {
+              teamScores[match.team2Id].matchPoints += team2MatchPoints;
+              teamScores[match.team2Id].gamePoints += team2Points;
+              teamScores[match.team2Id].matchesPlayed++;
+              if (team2Result === 'win') teamScores[match.team2Id].matchWins++;
+              else if (team2Result === 'draw') teamScores[match.team2Id].matchDraws++;
+              else teamScores[match.team2Id].matchLosses++;
+            }
+          }
+        });
+        
+        // After processing all matches in this round, update progressive scores
+        Object.keys(teamScores).forEach(teamId => {
+          teamScores[teamId].progressive[round - 1] = teamScores[teamId].matchPoints;
+        });
+      });
+
+      // Get team members for each team
+      const enhancedStandings = await Promise.all(teams.map(async (team) => {
+        const members = await new Promise((resolve, reject) => {
+          db.all(
+            `SELECT 
+              p.id,
+              p.name,
+              p.rating,
+              COALESCE(SUM(r.points), 0) as player_points,
+              COUNT(r.id) as games_played
+            FROM team_members tm
+            JOIN players p ON tm.player_id = p.id
+            LEFT JOIN results r ON p.id = r.player_id AND r.tournament_id = ?
+            WHERE tm.team_id = ? AND p.status = 'active'
+            GROUP BY p.id, p.name, p.rating
+            ORDER BY COALESCE(SUM(r.points), 0) DESC, p.rating DESC`,
+            [tournamentId, team.id],
+            (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows || []);
+            }
+          );
+        });
+
+        const score = teamScores[team.id] || {
+          matchPoints: 0,
+          gamePoints: 0,
+          matchWins: 0,
+          matchDraws: 0,
+          matchLosses: 0,
+          matchesPlayed: 0,
+          progressive: Array(totalRounds).fill(0)
+        };
+
+        return {
+          team_id: team.id,
+          team_name: team.name,
+          match_points: score.matchPoints,
+          game_points: score.gamePoints,
+          match_wins: score.matchWins,
+          match_draws: score.matchDraws,
+          match_losses: score.matchLosses,
+          matches_played: score.matchesPlayed,
+          progressive_scores: score.progressive,
+          total_members: members.length,
+          players: members.map(m => ({
+            name: m.name,
+            rating: m.rating,
+            points: m.player_points,
+            games_played: m.games_played
+          }))
+        };
+      }));
+
+      // Sort by match points, then game points
+      enhancedStandings.sort((a, b) => {
+        if (b.match_points !== a.match_points) {
+          return b.match_points - a.match_points;
+        }
+        return b.game_points - a.game_points;
+      });
+
+      // Add rank
+      enhancedStandings.forEach((standing, index) => {
+        standing.rank = index + 1;
+      });
+
+      return res.json({
+        success: true,
+        standings: enhancedStandings,
+        type: 'team-match',
+        scoring_method: 'match_points',
+        total_rounds: totalRounds
+      });
+    }
+
+    // For team-swiss format, use the original individual player-based calculation
+    const topN = top_n ? parseInt(top_n) : 4;
     
     const standings = await new Promise((resolve, reject) => {
       db.all(

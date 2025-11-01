@@ -1,0 +1,32 @@
+Name,USCF ID,Rating,Section,Email,City,State,Status
+Grandmaster Alpha,12345,2500,Chess Masters,gmalpha@chess.com,New York,NY,active
+Master Beta,12346,2200,Chess Masters,mbeta@chess.com,New York,NY,active
+Expert Gamma,12347,2000,Chess Masters,egamma@chess.com,New York,NY,active
+Class A Delta,12348,1800,Chess Masters,cdelta@chess.com,New York,NY,active
+Class B Echo,12349,1600,Chess Masters,cecho@chess.com,New York,NY,active
+IM Foxtrot,12350,2400,Tactical Knights,imfoxtrot@chess.com,Boston,MA,active
+FM Golf,12351,2300,Tactical Knights,fmgolf@chess.com,Boston,MA,active
+Expert Hotel,12352,1950,Tactical Knights,ehotel@chess.com,Boston,MA,active
+Class A India,12353,1750,Tactical Knights,cindia@chess.com,Boston,MA,active
+Class B Juliet,12354,1550,Tactical Knights,cjuliet@chess.com,Boston,MA,active
+Master Kilo,12355,2250,Strategic Rooks,mkilo@chess.com,Chicago,IL,active
+Expert Lima,12356,2050,Strategic Rooks,elima@chess.com,Chicago,IL,active
+Expert Mike,12357,1900,Strategic Rooks,emike@chess.com,Chicago,IL,active
+Class A November,12358,1700,Strategic Rooks,cnovember@chess.com,Chicago,IL,active
+Class B Oscar,12359,1500,Strategic Rooks,coscar@chess.com,Chicago,IL,active
+FM Papa,12360,2350,Brilliant Bishops,fmpapa@chess.com,Los Angeles,CA,active
+Expert Quebec,12361,2100,Brilliant Bishops,equebec@chess.com,Los Angeles,CA,active
+Class A Romeo,12362,1850,Brilliant Bishops,cromeo@chess.com,Los Angeles,CA,active
+Class A Sierra,12363,1725,Brilliant Bishops,csierra@chess.com,Los Angeles,CA,active
+Class B Tango,12364,1575,Brilliant Bishops,ctango@chess.com,Los Angeles,CA,active
+IM Uniform,12365,2450,Swift Queens,imuniform@chess.com,Seattle,WA,active
+Expert Victor,12366,2150,Swift Queens,evictor@chess.com,Seattle,WA,active
+Class A Whiskey,12367,1825,Swift Queens,cwhiskey@chess.com,Seattle,WA,active
+Class B Xray,12368,1650,Swift Queens,cxray@chess.com,Seattle,WA,active
+Class C Yankee,12369,1400,Swift Queens,cyankee@chess.com,Seattle,WA,active
+Master Zulu,12370,2280,Checkmate Kings,mzulu@chess.com,Philadelphia,PA,active
+Expert Alpha2,12371,2080,Checkmate Kings,ealpha2@chess.com,Philadelphia,PA,active
+Class A Beta2,12372,1780,Checkmate Kings,cbeta2@chess.com,Philadelphia,PA,active
+Class B Gamma2,12373,1620,Checkmate Kings,cgamma2@chess.com,Philadelphia,PA,active
+Class C Delta2,12374,1420,Checkmate Kings,cdelta2@chess.com,Philadelphia,PA,active
+
