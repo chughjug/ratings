@@ -546,6 +546,13 @@ const TournamentDetail: React.FC = () => {
     }
   }, [tournament, fetchTeamStandings, fetchTeamPairings]);
 
+  // Fetch team standings when standings tab is active for team tournaments
+  useEffect(() => {
+    if (activeTab === 'standings' && tournament?.format === 'team-tournament') {
+      fetchTeamStandings();
+    }
+  }, [activeTab, tournament?.format, fetchTeamStandings]);
+
   // Fetch pairings when component loads or when currentRound changes
   useEffect(() => {
     if (id && currentRound) {
@@ -2898,56 +2905,139 @@ const TournamentDetail: React.FC = () => {
 
           {activeTab === 'standings' && (
             <div>
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-4">
-                  <h2 className="text-lg font-semibold">Standings</h2>
-                  <select
-                    value={selectedSection}
-                    onChange={(e) => setSelectedSection(e.target.value)}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-                  >
-                    {getAvailableSections().map(section => (
-                      <option key={section} value={section}>
-                        {section} Section
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setShowTiebreakers(!showTiebreakers)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                      showTiebreakers 
-                        ? 'bg-chess-board text-white hover:bg-chess-dark' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <Trophy className="h-4 w-4" />
-                    <span>Tiebreakers</span>
-                  </button>
-                  <button
-                    onClick={() => setPrintViewTab('standings')}
-                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span>Print</span>
-                  </button>
-                  <button
-                    onClick={() => setShowLiveStandings(true)}
-                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    <Activity className="h-4 w-4" />
-                    <span>Live Standings</span>
-                  </button>
-                  <button
-                    onClick={() => setShowPaymentManager(true)}
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    <span>Payments</span>
-                  </button>
-                </div>
-              </div>
+              {/* For team tournaments, show team standings instead of individual standings */}
+              {tournament?.format === 'team-tournament' ? (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center space-x-4">
+                      <h2 className="text-lg font-semibold">Team Standings</h2>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={fetchTeamStandings}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        <span>Refresh</span>
+                      </button>
+                      <button
+                        onClick={() => setShowTiebreakers(!showTiebreakers)}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                          showTiebreakers 
+                            ? 'bg-chess-board text-white hover:bg-chess-dark' 
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        <Trophy className="h-4 w-4" />
+                        <span>Tiebreakers</span>
+                      </button>
+                      <button
+                        onClick={() => setPrintViewTab('standings')}
+                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <Printer className="h-4 w-4" />
+                        <span>Print</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {teamStandings && teamStandings.length > 0 ? (
+                    <TeamStandingsTable
+                      standings={teamStandings.map((team: any, index: number) => {
+                        // Handle both team-tournament format (match_points, game_points) and team-swiss format (team_total_points)
+                        const isTeamTournament = tournament?.format === 'team-tournament';
+                        
+                        return {
+                          team_name: team?.team_name || 'Unnamed Team',
+                          team_id: team?.team_id || team?.team_name || 'unnamed',
+                          rank: team?.rank || index + 1,
+                          score: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
+                          team_total_points: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
+                          match_points: team?.match_points,
+                          game_points: team?.game_points,
+                          match_wins: team?.match_wins,
+                          match_draws: team?.match_draws,
+                          match_losses: team?.match_losses,
+                          matches_played: team?.matches_played,
+                          total_members: team?.total_members || 0,
+                          counted_players: team?.counted_players || 0,
+                          progressive_scores: team?.progressive_scores || [],
+                          top_player_score: team?.top_player_score || 0,
+                          top_2_sum: team?.top_2_sum || 0,
+                          top_3_sum: team?.top_3_sum || 0,
+                          players: team?.players || [],
+                          section: team?.section || 'Open',
+                          buchholz: team?.buchholz || 0,
+                          sonneborn_berger: team?.sonneborn_berger || 0,
+                          team_performance_rating: team?.team_performance_rating || 0
+                        };
+                      })}
+                      tournamentFormat={(tournament?.format === 'team-tournament' ? 'team-swiss' : tournament?.format) || 'swiss'}
+                      scoringMethod={teamScoringMethod}
+                      topN={teamTopN}
+                      showTiebreakers={showTiebreakers}
+                      totalRounds={tournament?.rounds}
+                    />
+                  ) : (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                      <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-2">No team standings available</p>
+                      <p className="text-sm text-gray-500">Assign players to teams to see team standings</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center space-x-4">
+                      <h2 className="text-lg font-semibold">Standings</h2>
+                      <select
+                        value={selectedSection}
+                        onChange={(e) => setSelectedSection(e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                      >
+                        {getAvailableSections().map(section => (
+                          <option key={section} value={section}>
+                            {section} Section
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setShowTiebreakers(!showTiebreakers)}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                          showTiebreakers 
+                            ? 'bg-chess-board text-white hover:bg-chess-dark' 
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        <Trophy className="h-4 w-4" />
+                        <span>Tiebreakers</span>
+                      </button>
+                      <button
+                        onClick={() => setPrintViewTab('standings')}
+                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <Printer className="h-4 w-4" />
+                        <span>Print</span>
+                      </button>
+                      <button
+                        onClick={() => setShowLiveStandings(true)}
+                        className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Activity className="h-4 w-4" />
+                        <span>Live Standings</span>
+                      </button>
+                      <button
+                        onClick={() => setShowPaymentManager(true)}
+                        className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        <span>Payments</span>
+                      </button>
+                    </div>
+                  </div>
               
               {!state.standings || !Array.isArray(state.standings) || state.standings.length === 0 ? (
                 <div className="text-center py-8">
@@ -3000,6 +3090,8 @@ const TournamentDetail: React.FC = () => {
                     });
                   })()}
                 </div>
+              )}
+                </>
               )}
             </div>
           )}
