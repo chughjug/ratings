@@ -226,31 +226,32 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
               };
             }
           
-          // Calculate points from result or results table
-          let whitePoints = p.white_points || 0;
-          let blackPoints = p.black_points || 0;
-          
-          // If points not in results table, calculate from pairing result
-          if (whitePoints === 0 && blackPoints === 0 && p.result) {
-            if (p.result === '1-0' || p.result === '1-0F') {
-              whitePoints = 1;
-              blackPoints = 0;
-            } else if (p.result === '0-1' || p.result === '0-1F') {
-              whitePoints = 0;
-              blackPoints = 1;
-            } else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') {
-              whitePoints = 0.5;
-              blackPoints = 0.5;
+            // Calculate points from result or results table
+            let whitePoints = p.white_points || 0;
+            let blackPoints = p.black_points || 0;
+            
+            // If points not in results table, calculate from pairing result
+            if (whitePoints === 0 && blackPoints === 0 && p.result) {
+              if (p.result === '1-0' || p.result === '1-0F') {
+                whitePoints = 1;
+                blackPoints = 0;
+              } else if (p.result === '0-1' || p.result === '0-1F') {
+                whitePoints = 0;
+                blackPoints = 1;
+              } else if (p.result === '1/2-1/2' || p.result === '1/2-1/2F') {
+                whitePoints = 0.5;
+                blackPoints = 0.5;
+              }
             }
+            
+            matchesByRound[key].games.push({
+              whiteTeam: p.white_team_id,
+              blackTeam: p.black_team_id,
+              whitePoints: whitePoints,
+              blackPoints: blackPoints,
+              result: p.result
+            });
           }
-          
-          matchesByRound[key].games.push({
-            whiteTeam: p.white_team_id,
-            blackTeam: p.black_team_id,
-            whitePoints: whitePoints,
-            blackPoints: blackPoints,
-            result: p.result
-          });
         }
       });
 
