@@ -158,6 +158,7 @@ Create or setup a Lichess Swiss tournament for your online-rated tournament.
 {
   "tournamentId": "your-tournament-id",
   "lichessTeamId": "your-team-slug",
+  "lichessApiToken": "lip_xxx",
   "clock": {
     "limit": 180,
     "increment": 2
@@ -167,6 +168,8 @@ Create or setup a Lichess Swiss tournament for your online-rated tournament.
   "password": "optional-password"
 }
 ```
+
+**Note**: The `lichessApiToken` is optional if you've set it in tournament settings, organization settings, or environment variable.
 
 **Response**:
 ```json
@@ -217,13 +220,13 @@ Fetch current standings from Lichess.
 
 ## Configuration
 
-The Lichess integration can be configured in two ways:
+The Lichess integration can be configured in multiple ways (checked in this order):
 
-### 1. Environment Variable (Global)
-Set `LICHESS_API_TOKEN` environment variable for all online-rated tournaments.
+### 1. Request Body (Per-Request)
+Include `lichessApiToken` in the setup request body (most flexible)
 
-### 2. Tournament-Specific Settings
-Store the API token in tournament settings (recommended for multi-organization setups):
+### 2. Tournament Settings (Tournament-Specific)
+Store the API token in tournament settings:
 
 ```javascript
 const settings = {
@@ -238,7 +241,23 @@ const settings = {
 };
 ```
 
-**Security Note**: When storing API tokens in tournament settings, ensure they are encrypted at rest.
+### 3. Organization Settings (Organization-Wide)
+Store the API token in organization settings for all tournaments in that org:
+
+```javascript
+// In organization settings
+const orgSettings = {
+  online_rated_settings: {
+    lichess_api_token: "lip_YOUR_TOKEN",
+    lichess_team_id: "your-team"
+  }
+};
+```
+
+### 4. Environment Variable (Global Fallback)
+Set `LICHESS_API_TOKEN` environment variable for all online-rated tournaments.
+
+**Security Note**: When storing API tokens in settings, ensure they are encrypted at rest. Consider using environment variables or secure key management for production.
 
 ## Usage Example
 

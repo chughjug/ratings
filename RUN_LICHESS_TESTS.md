@@ -81,6 +81,7 @@ curl -X POST http://localhost:5000/api/pairings/online-rated/setup \
   -d '{
     "tournamentId": "YOUR_TOURNAMENT_ID",
     "lichessTeamId": "your-team-slug",
+    "lichessApiToken": "lip_xxx",
     "clock": {
       "limit": 180,
       "increment": 2

@@ -95,28 +95,58 @@ class LichessSwissIntegration {
           headers: {
             'Authorization': `Bearer ${this.token}`,
             'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          timeout: 30000, // 30 second timeout
+          validateStatus: function (status) {
+            return status < 500; // Don't throw on 4xx errors
           }
         }
       );
 
-      if (response.data && response.data.ok && response.data.id) {
-        return {
-          success: true,
-          id: response.data.id,
-          publicUrl: `https://lichess.org/swiss/${response.data.id}`
-        };
+      // Check response status
+      if (response.status >= 200 && response.status < 300) {
+        if (response.data && response.data.ok && response.data.id) {
+          return {
+            success: true,
+            id: response.data.id,
+            publicUrl: `https://lichess.org/swiss/${response.data.id}`
+          };
+        } else {
+          return {
+            success: false,
+            error: 'Failed to create tournament: Invalid response from Lichess'
+          };
+        }
       } else {
+        // 4xx error from Lichess
+        const errorMsg = response.data?.error || response.data?.message || `HTTP ${response.status}`;
         return {
           success: false,
-          error: 'Failed to create tournament: Invalid response from Lichess'
+          error: `Lichess API error: ${errorMsg}`
         };
       }
     } catch (error) {
-      console.error('Error creating Lichess Swiss tournament:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Error config:', error.config);
+      console.error('[Lichess] Error creating Swiss tournament:', error.message);
+      console.error('[Lichess] Error code:', error.code);
+      console.error('[Lichess] Error response:', error.response?.data);
+      console.error('[Lichess] Error status:', error.response?.status);
       
+      // Handle network errors specifically
+      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        return {
+          success: false,
+          error: 'Network error: Could not connect to Lichess API. Check your internet connection.'
+        };
+      }
+      
+      if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
+        return {
+          success: false,
+          error: 'Network error: Connection to Lichess API timed out.'
+        };
+      }
+      
+      // Handle other errors
       return {
         success: false,
         error: error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to create tournament'

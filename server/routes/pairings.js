@@ -4085,11 +4085,42 @@ router.post('/online-rated/setup', async (req, res) => {
 
     // Parse settings
     const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
-    const lichessApiToken = settings.online_rated_settings?.lichess_api_token || process.env.LICHESS_API_TOKEN;
+    
+    // Try to get API token from: request -> tournament settings -> organization settings -> environment
+    let lichessApiToken = null;
+    
+    // First check if provided in request
+    if (req.body.lichessApiToken) {
+      lichessApiToken = req.body.lichessApiToken;
+    }
+    // Then check tournament settings
+    else if (settings.online_rated_settings?.lichess_api_token) {
+      lichessApiToken = settings.online_rated_settings.lichess_api_token;
+    }
+    // Then check organization settings
+    else if (tournament.organization_id) {
+      const organization = await new Promise((resolve, reject) => {
+        db.get('SELECT settings FROM organizations WHERE id = ?', [tournament.organization_id], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      
+      if (organization && organization.settings) {
+        const orgSettings = JSON.parse(organization.settings);
+        if (orgSettings.online_rated_settings?.lichess_api_token) {
+          lichessApiToken = orgSettings.online_rated_settings.lichess_api_token;
+        }
+      }
+    }
+    // Finally check environment variable
+    else {
+      lichessApiToken = process.env.LICHESS_API_TOKEN;
+    }
 
     if (!lichessApiToken) {
       res.status(400).json({ 
-        error: 'Lichess API token required. Set online_rated_settings.lichess_api_token or LICHESS_API_TOKEN environment variable' 
+        error: 'Lichess API token required. Provide lichessApiToken in request, set in tournament/organization settings, or set LICHESS_API_TOKEN environment variable' 
       });
       return;
     }
@@ -4208,7 +4239,30 @@ router.post('/online-rated/sync-pairings', async (req, res) => {
       return;
     }
 
-    const lichessApiToken = settings.online_rated_settings?.lichess_api_token || process.env.LICHESS_API_TOKEN;
+    // Try to get API token from tournament settings -> organization settings -> environment
+    let lichessApiToken = null;
+    
+    if (settings.online_rated_settings?.lichess_api_token) {
+      lichessApiToken = settings.online_rated_settings.lichess_api_token;
+    }
+    else if (tournament.organization_id) {
+      const organization = await new Promise((resolve, reject) => {
+        db.get('SELECT settings FROM organizations WHERE id = ?', [tournament.organization_id], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      
+      if (organization && organization.settings) {
+        const orgSettings = JSON.parse(organization.settings);
+        if (orgSettings.online_rated_settings?.lichess_api_token) {
+          lichessApiToken = orgSettings.online_rated_settings.lichess_api_token;
+        }
+      }
+    }
+    else {
+      lichessApiToken = process.env.LICHESS_API_TOKEN;
+    }
 
     if (!lichessApiToken) {
       res.status(400).json({ 
@@ -4320,7 +4374,30 @@ router.get('/online-rated/:tournamentId/standings', async (req, res) => {
       return;
     }
 
-    const lichessApiToken = settings.online_rated_settings?.lichess_api_token || process.env.LICHESS_API_TOKEN;
+    // Try to get API token from tournament settings -> organization settings -> environment
+    let lichessApiToken = null;
+    
+    if (settings.online_rated_settings?.lichess_api_token) {
+      lichessApiToken = settings.online_rated_settings.lichess_api_token;
+    }
+    else if (tournament.organization_id) {
+      const organization = await new Promise((resolve, reject) => {
+        db.get('SELECT settings FROM organizations WHERE id = ?', [tournament.organization_id], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      
+      if (organization && organization.settings) {
+        const orgSettings = JSON.parse(organization.settings);
+        if (orgSettings.online_rated_settings?.lichess_api_token) {
+          lichessApiToken = orgSettings.online_rated_settings.lichess_api_token;
+        }
+      }
+    }
+    else {
+      lichessApiToken = process.env.LICHESS_API_TOKEN;
+    }
 
     if (!lichessApiToken) {
       res.status(400).json({ 

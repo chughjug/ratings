@@ -13,6 +13,8 @@
    - Scopes: ✅ Check `tournament:write`
    - Copy the token (starts with `lip_...`)
 
+**Important**: Save your Lichess API token and team slug - you'll need them!
+
 ### Step 2: Configure Environment
 
 Create a `.env` file in your project root:

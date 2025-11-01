@@ -1,5 +1,47 @@
 # Lichess API 400 Error Troubleshooting
 
+## Common Network Errors
+
+### "Network error: Could not connect to Lichess API"
+
+**Causes**:
+- No internet connection
+- Firewall blocking Lichess API
+- Lichess API is down
+- DNS resolution issues
+
+**Solutions**:
+1. **Check Internet**: Verify your connection
+2. **Test Connectivity**: Run `node test-lichess-connectivity.js`
+3. **Check Firewall**: Ensure `lichess.org` is not blocked
+4. **Check DNS**: Try accessing https://lichess.org in browser
+5. **Check Lichess Status**: Visit https://lichess.org/api/status
+
+### "Network error: Connection to Lichess API timed out"
+
+**Causes**:
+- Slow network connection
+- Lichess API overload
+- Proxy/VPN issues
+
+**Solutions**:
+1. **Increase Timeout**: Edit timeout in `lichessSwissIntegration.js`
+2. **Check Network**: Use faster connection
+3. **Retry**: Wait and try again
+4. **Check Proxy**: Verify proxy settings
+
+### Test Connectivity
+
+Run the connectivity test:
+```bash
+node test-lichess-connectivity.js
+```
+
+Expected output:
+```
+✅ Connected successfully
+```
+
 ## Common Causes of 400 Bad Request
 
 When you encounter a 400 error creating a Lichess Swiss tournament, check the following:
