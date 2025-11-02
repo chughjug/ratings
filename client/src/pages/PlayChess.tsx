@@ -92,6 +92,11 @@ const PlayChess: React.FC = () => {
       setShowRoomCreation(false);
     });
 
+    newSocket.on('username', (username: string) => {
+      console.log('Received username:', username);
+      // Player 1 receives this after creating a room
+    });
+
     newSocket.on('username2', (name: string, opponent: string, room: string, rematch: boolean, rejoin: boolean, moveObj?: any, moveCount?: string) => {
       console.log('Both players present!', name, opponent, room, 'rematch:', rematch, 'rejoin:', rejoin);
       setWaitingForOpponent(false);
