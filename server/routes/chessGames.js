@@ -40,8 +40,6 @@ router.post('/create-custom', async (req, res) => {
     organizationLogo // Optional: organization logo URL
   } = req.body;
 
-  console.log('Create-custom game request received with organization logo:', organizationLogo);
-
   // Validate inputs
   if (!whiteName || !blackName) {
     return res.status(400).json({ 
@@ -158,9 +156,6 @@ router.post('/create-custom', async (req, res) => {
     if (organizationLogo) {
       blackLink += `&logo=${encodeURIComponent(organizationLogo)}`;
     }
-    
-    console.log('Generated white link:', whiteLink);
-    console.log('Generated black link:', blackLink);
     
     res.json({
       success: true,
