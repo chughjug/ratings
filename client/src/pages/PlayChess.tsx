@@ -185,7 +185,9 @@ const PlayChess: React.FC = () => {
     });
 
     newSocket.on('resign', () => {
-      const currentRoomId = gameRoomId || roomParam;
+      // Get room ID from URL params if gameRoomId state isn't set yet
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentRoomId = gameRoomId || urlParams.get('room');
       const resignResult = playerColor === 'white' ? 'White wins by resignation!' : 'Black wins by resignation!';
       setGameStatus({
         isGameOver: true,
@@ -200,7 +202,9 @@ const PlayChess: React.FC = () => {
     });
 
     newSocket.on('game-over', (data: { result: string }) => {
-      const currentRoomId = gameRoomId || roomParam;
+      // Get room ID from URL params if gameRoomId state isn't set yet
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentRoomId = gameRoomId || urlParams.get('room');
       setGameStatus({
         isGameOver: true,
         result: data.result,
