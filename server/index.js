@@ -33,43 +33,13 @@ app.set('trust proxy', 1);
 
 // Security middleware - Configure helmet to allow iframe embedding
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://www.paypal.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.paypal.com", "https://js.stripe.com", "https://www.paypalobjects.com", "https://code.jquery.com"],
-      imgSrc: ["'self'", "data:", "https:", "https://www.paypal.com", "https://www.paypalobjects.com"],
-      connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000", "ws://localhost:*", "http:", "https:", "ws:", "wss:", "https://api-m.sandbox.paypal.com", "https://api-m.paypal.com"],
-      frameSrc: ["'self'", "https://www.paypal.com", "https://js.stripe.com", "https://hooks.stripe.com", "https://www.paypalobjects.com"],
-      frameAncestors: ["*"], // Allow embedding in iframes from any origin
-      fontSrc: ["'self'", "data:", "https:", "https://www.paypal.com"],
-      childSrc: ["'self'", "https://www.paypal.com"],
-      objectSrc: ["'none'"],
-    },
-  },
+  contentSecurityPolicy: false, // Disable CSP for now to debug Socket.io issues
   crossOriginEmbedderPolicy: false,
   xFrameOptions: false, // Explicitly disable X-Frame-Options to allow iframe embedding
   originAgentCluster: false,
 }));
 
-// Add custom header middleware AFTER helmet to ensure iframe headers are set correctly
-app.use((req, res, next) => {
-  // Explicitly set CSP frame-ancestors to allow all origins
-  const csp = res.getHeader('Content-Security-Policy');
-  if (csp && typeof csp === 'string') {
-    // Remove existing frame-ancestors directive (with or without semicolon)
-    let updatedCsp = csp.replace(/frame-ancestors[^;]*;?\s*/g, '');
-    // Clean up any double semicolons that might result
-    updatedCsp = updatedCsp.replace(/;\s*;/g, ';');
-    // Trim trailing semicolons/spaces and add frame-ancestors
-    updatedCsp = updatedCsp.replace(/;\s*$/, '');
-    // Add frame-ancestors directive with proper semicolon
-    res.setHeader('Content-Security-Policy', updatedCsp + (updatedCsp.endsWith(';') ? '' : '; ') + 'frame-ancestors *');
-  }
-  // Ensure X-Frame-Options is not set (it might interfere)
-  res.removeHeader('X-Frame-Options');
-  next();
-});
+// Note: CSP middleware removed to debug Socket.io issues
 
 // Rate limiting - more generous for development
 const limiter = rateLimit({
