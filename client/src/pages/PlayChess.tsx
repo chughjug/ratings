@@ -74,10 +74,13 @@ const PlayChess: React.FC = () => {
   // Initialize Socket.io connection
   useEffect(() => {
     const socketUrl = process.env.NODE_ENV === 'production'
-      ? ''
+      ? window.location.origin
       : 'http://localhost:5000';
     
+    console.log('Connecting to socket.io at:', socketUrl);
+    
     const newSocket = io(socketUrl, {
+      path: '/socket.io/',
       transports: ['polling', 'websocket'], // Prefer polling first for Heroku compatibility
       upgrade: true,
       rememberUpgrade: false,
@@ -85,7 +88,9 @@ const PlayChess: React.FC = () => {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 20000
+      timeout: 20000,
+      forceNew: false,
+      multiplex: true
     });
     
     newSocket.on('connect', () => {
