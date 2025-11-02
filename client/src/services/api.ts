@@ -85,17 +85,42 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error('❌ API Response Error:', {
+    // Log detailed error information
+    const errorDetails = {
       status: error.response?.status,
       statusText: error.response?.statusText,
       url: error.config?.url,
+      method: error.config?.method,
       message: error.message,
       code: error.code,
       timeout: error.code === 'ECONNABORTED',
       networkError: !error.response,
-      fullError: error,
+      responseData: error.response?.data,
+      requestData: error.config?.data,
+      headers: error.response?.headers,
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    console.error('❌ API Response Error:', errorDetails);
+    
+    // Log request payload if available
+    if (error.config?.data) {
+      try {
+        const requestPayload = typeof error.config.data === 'string' 
+          ? JSON.parse(error.config.data) 
+          : error.config.data;
+        console.error('📤 Request payload that failed:', requestPayload);
+      } catch (e) {
+        console.error('📤 Request payload (raw):', error.config.data);
+      }
+    }
+    
+    // Log response body if available
+    if (error.response?.data) {
+      console.error('📥 Server response body:', error.response.data);
+    } else {
+      console.error('⚠️ No response data received from server');
+    }
     
     // Handle network errors with retry logic
     if (error.code === 'NETWORK_ERROR' || error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || !error.response) {
