@@ -163,6 +163,9 @@ class LichessApiService {
    * Create a Lichess challenge using OAuth token
    * Requires both players to have granted permission (via OAuth tokens)
    * 
+   * According to Lichess API docs: POST /api/challenge
+   * With acceptByToken, the game starts automatically without manual acceptance
+   * 
    * @param {string} accessToken - The challenger's OAuth token
    * @param {Object} whitePlayer - Player with white pieces
    * @param {Object} blackPlayer - Player with black pieces
@@ -198,7 +201,8 @@ class LichessApiService {
         challengeData.acceptByToken = blackPlayerToken;
       }
 
-      // Create challenge by sending from white to black player
+      // Create challenge using POST /api/challenge/{username} endpoint
+      // This creates a challenge FROM the white player TO the black player
       const response = await fetch(`${this.baseUrl}/api/challenge/${blackPlayer.lichess_username}`, {
         method: 'POST',
         headers: {

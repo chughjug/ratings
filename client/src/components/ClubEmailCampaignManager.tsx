@@ -425,21 +425,25 @@ const EmailCampaignModal: React.FC<EmailCampaignModalProps> = ({ organizationId,
     return htmlParts.join('\n');
   };
   
-  // Helper to convert URLs and emails to links
+  // Helper to convert URLs and emails to links, with proper HTML escaping
   const processLinks = (text: string): string => {
-    // Auto-detect URLs and make them links
-    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/gi;
-    let formatted = text.replace(urlRegex, '<a href="$1" style="color: #2563EB; text-decoration: underline;">$1</a>');
+    // First escape HTML to prevent XSS
+    let formatted = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
     
-    // Auto-detect email addresses and make them links
+    // Then convert URLs to links (using a more specific regex)
+    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]&]+)/gi;
+    formatted = formatted.replace(urlRegex, (match) => {
+      return `<a href="${match.replace(/&amp;/g, '&')}" style="color: #2563EB; text-decoration: underline;">${match}</a>`;
+    });
+    
+    // Convert email addresses to links
     const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
-    formatted = formatted.replace(emailRegex, '<a href="mailto:$1" style="color: #2563EB; text-decoration: underline;">$1</a>');
-    
-    // Escape any remaining HTML
-    formatted = formatted.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    
-    // Re-apply links (since we escaped HTML)
-    formatted = formatted.replace(/&lt;a href="([^"]+)"[^&]*&gt;([^&]+)&lt;\/a&gt;/g, '<a href="$1" style="color: #2563EB; text-decoration: underline;">$2</a>');
+    formatted = formatted.replace(emailRegex, (match) => {
+      return `<a href="mailto:${match}" style="color: #2563EB; text-decoration: underline;">${match}</a>`;
+    });
     
     return formatted;
   };
