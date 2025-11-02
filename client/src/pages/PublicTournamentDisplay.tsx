@@ -145,6 +145,7 @@ const PublicTournamentDisplay: React.FC = () => {
       const response = await tournamentApi.getPublic(id);
       console.log('Public API response:', response.data);
       if (response.data.success) {
+        console.log('Tournament format:', response.data.data.tournament?.format);
         setData(response.data.data);
         const customPagesData = response.data.data.customPages || [];
         console.log('Custom pages from API:', customPagesData);
@@ -1654,11 +1655,15 @@ const PublicTournamentDisplay: React.FC = () => {
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                       Score
                                     </th>
-                                    {data?.tournament?.format === 'online-rated' && (
-                                      <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                        Game
-                                      </th>
-                                    )}
+                                    {(() => {
+                                      const shouldShowGame = data?.tournament?.format === 'online-rated';
+                                      console.log('Should show Game column:', shouldShowGame, 'format:', data?.tournament?.format);
+                                      return shouldShowGame && (
+                                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                          Game
+                                        </th>
+                                      );
+                                    })()}
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                       Result
                                     </th>
