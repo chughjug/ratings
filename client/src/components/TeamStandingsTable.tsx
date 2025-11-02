@@ -43,7 +43,7 @@ interface TeamStanding {
 
 interface TeamStandingsTableProps {
   standings: TeamStanding[];
-  tournamentFormat: 'team-swiss' | 'team-round-robin' | 'swiss' | 'online' | 'quad';
+  tournamentFormat: 'team-swiss' | 'team-round-robin' | 'team-tournament' | 'swiss' | 'online' | 'quad';
   scoringMethod?: 'all_players' | 'top_players';
   topN?: number;
   showTiebreakers?: boolean;
@@ -169,12 +169,12 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                   <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
                     Team Name
                   </th>
-                  {(tournamentFormat === 'team-swiss' || tournamentFormat === 'team-round-robin') ? (
+                  {(tournamentFormat === 'team-swiss' || tournamentFormat === 'team-round-robin' || tournamentFormat === 'team-tournament') ? (
                     <>
                       <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
                         W-D-L
                       </th>
-                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300" title="Match Points: Win=2, Draw=1, Loss=0">
                         MP
                       </th>
                       <th className="px-2 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
@@ -236,7 +236,7 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
                         </div>
                       ) : null}
                     </td>
-                    {(tournamentFormat === 'team-swiss' || tournamentFormat === 'team-round-robin') ? (
+                    {(tournamentFormat === 'team-swiss' || tournamentFormat === 'team-round-robin' || tournamentFormat === 'team-tournament') ? (
                       <>
                         <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300 text-center">
                           <span className="text-gray-700">

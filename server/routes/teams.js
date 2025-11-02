@@ -2,6 +2,17 @@
  * Team Management Routes
  * Handles team categories for individual tournaments with team scoring
  * Also handles team tournaments (team-tournament format) with Team vs Team pairing
+ * 
+ * FORMATS:
+ * - 'team-tournament': Chess Olympiad style - Teams play team vs team matches
+ *   - Match Points: Win=2, Draw=1, Loss=0
+ *   - Board Points: Individual game results (1, 0.5, 0)
+ *   - Supports sections (teams compete within their section)
+ *   - Tiebreakers: Sonneborn-Berger, Total Board Points, Buchholz
+ * 
+ * - 'team-swiss': Individual players grouped into teams
+ *   - Players play individually, scores aggregated by team
+ *   - Uses sum of top N player scores for team standings
  */
 
 const express = require('express');
@@ -111,6 +122,7 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
     const totalRounds = tournament.rounds || 7;
 
     // For team-tournament format, use team match-based standings
+    // This is the Chess Olympiad style tournament with match points (2/1/0) and sections
     if (tournament.format === 'team-tournament') {
       // Get all teams with their sections
       const teams = await new Promise((resolve, reject) => {
