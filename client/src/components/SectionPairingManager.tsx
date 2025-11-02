@@ -97,6 +97,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
           const notificationsEnabled = (response.data as any).notifications_enabled || false;
           setEmailsEnabled(notificationsEnabled);
           console.log('📧 Email notifications:', { enabled: notificationsEnabled });
+          console.log('🏆 Tournament format:', response.data.format);
         }
       } catch (error) {
         console.error('Error fetching tournament:', error);
@@ -776,17 +777,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {(() => {
-                      const isOnline = isOnlineTournament(tournament?.format);
-                      console.log('Tournament format check:', { 
-                        format: tournament?.format, 
-                        isOnline, 
-                        pairingId: pairing.id,
-                        hasWhiteLink: !!pairing.white_link,
-                        hasBlackLink: !!pairing.black_link
-                      });
-                      return isOnline;
-                    })() && (tournament?.format === 'online' || tournament?.format === 'online-rated') ? (
+                    {isOnlineTournament(tournament?.format) ? (
                       // Online tournament: Show custom game links or creation button
                       pairing.white_link && pairing.black_link ? (
                         // Game ready - show links
