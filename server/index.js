@@ -319,6 +319,7 @@ const uscfExportRoutes = require('./routes/uscfExport');
 const customPagesRoutes = require('./routes/customPages');
 const clubMembersRoutes = require('./routes/clubMembers');
 const clubFeaturesRoutes = require('./routes/clubFeatures');
+const chessGamesRoutes = require('./routes/chessGames');
 
 // Use routes
 console.log('Setting up routes...');
@@ -359,6 +360,7 @@ app.use('/api/custom-pages', customPagesRoutes);
 app.use('/api/club-members', clubMembersRoutes);
 app.use('/api/club-features', clubFeaturesRoutes);
 app.use('/api/club-email', clubFeaturesRoutes); // Email tracking endpoints
+app.use('/api/games', chessGamesRoutes);
 
 console.log('Routes set up successfully');
 

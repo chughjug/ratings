@@ -163,6 +163,23 @@ db.serialize(() => {
     )
   `);
 
+  // Chess games table for saved games
+  db.run(`
+    CREATE TABLE IF NOT EXISTS chess_games (
+      id TEXT PRIMARY KEY,
+      white_player TEXT,
+      black_player TEXT,
+      pgn TEXT,
+      result TEXT,
+      white_time_ms INTEGER,
+      black_time_ms INTEGER,
+      initial_time_ms INTEGER,
+      move_count INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Add expiration_date column if it doesn't exist (for existing databases)
   db.run(`
     ALTER TABLE players ADD COLUMN expiration_date TEXT

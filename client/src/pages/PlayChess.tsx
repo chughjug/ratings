@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Chess, Move } from 'chess.js';
 import ChessBoard from '../components/chess/ChessBoard';
-import { RotateCcw, FlipHorizontal, Square } from 'lucide-react';
+import { RotateCcw, FlipHorizontal, Square, Clock, Save } from 'lucide-react';
+import axios from 'axios';
+
+interface ClockTimes {
+  white: number; // in milliseconds
+  black: number; // in milliseconds
+}
 
 const PlayChess: React.FC = () => {
   const [chess] = useState(() => {
@@ -35,6 +41,18 @@ const PlayChess: React.FC = () => {
     result: null,
     inCheck: false,
   });
+  
+  // Clock state
+  const initialTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+  const [clockTimes, setClockTimes] = useState<ClockTimes>({
+    white: initialTime,
+    black: initialTime,
+  });
+  const [isClockRunning, setIsClockRunning] = useState(false);
+  const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
+  const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const updateGameStatus = () => {
     try {
@@ -66,6 +84,53 @@ const PlayChess: React.FC = () => {
     }
   };
 
+  // Clock effect
+  useEffect(() => {
+    if (isClockRunning && !gameStatus.isGameOver) {
+      clockIntervalRef.current = setInterval(() => {
+        setClockTimes((prev) => {
+          const newTimes = { ...prev };
+          if (activeColor === 'white') {
+            newTimes.white = Math.max(0, prev.white - 100);
+          } else {
+            newTimes.black = Math.max(0, prev.black - 100);
+          }
+          
+          // Check if time ran out
+          if (newTimes[activeColor] === 0) {
+            setIsClockRunning(false);
+            setGameStatus({
+              isGameOver: true,
+              result: activeColor === 'white' ? 'Black wins on time!' : 'White wins on time!',
+              inCheck: false,
+            });
+          }
+          
+          return newTimes;
+        });
+      }, 100);
+
+      return () => {
+        if (clockIntervalRef.current) {
+          clearInterval(clockIntervalRef.current);
+        }
+      };
+    } else {
+      if (clockIntervalRef.current) {
+        clearInterval(clockIntervalRef.current);
+      }
+    }
+  }, [isClockRunning, gameStatus.isGameOver, activeColor]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (clockIntervalRef.current) {
+        clearInterval(clockIntervalRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     updateGameStatus();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,6 +139,8 @@ const PlayChess: React.FC = () => {
   const handleMove = (move: Move) => {
     try {
       setMoveHistory((prev) => [...prev, move]);
+      // Switch active color for clock
+      setActiveColor(move.color === 'w' ? 'black' : 'white');
       updateGameStatus();
     } catch (error) {
       console.error('Error handling move:', error);
@@ -86,9 +153,61 @@ const PlayChess: React.FC = () => {
       setMoveHistory([]);
       const newBoard = chess.board();
       setBoard(newBoard);
+      setClockTimes({ white: initialTime, black: initialTime });
+      setActiveColor('white');
+      setIsClockRunning(false);
       updateGameStatus();
     } catch (error) {
       console.error('Error resetting game:', error);
+    }
+  };
+  
+  const handleStartClock = () => {
+    setIsClockRunning(true);
+  };
+  
+  const handlePauseClock = () => {
+    setIsClockRunning(false);
+  };
+  
+  const formatTime = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  const handleSaveGame = async () => {
+    setIsSaving(true);
+    setSaveMessage(null);
+    
+    try {
+      const pgn = chess.pgn();
+      const result = gameStatus.result || null;
+      
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? '/api/games'
+        : 'http://localhost:5000/api/games';
+      
+      const response = await axios.post(apiUrl, {
+        whitePlayer: 'White',
+        blackPlayer: 'Black',
+        pgn,
+        result,
+        whiteTimeMs: clockTimes.white,
+        blackTimeMs: clockTimes.black,
+        initialTimeMs: initialTime,
+        moveCount: moveHistory.length
+      });
+      
+      setSaveMessage('Game saved successfully!');
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      console.error('Error saving game:', error);
+      setSaveMessage('Failed to save game');
+      setTimeout(() => setSaveMessage(null), 3000);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -155,6 +274,35 @@ const PlayChess: React.FC = () => {
                   )}
                 </div>
 
+                {/* Chess Clocks */}
+                <div className="w-full mb-4 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1 text-center">
+                      <div className={`text-2xl font-mono font-bold ${activeColor === 'white' && isClockRunning ? 'text-yellow-400 animate-pulse' : 'text-white'}`}>
+                        {formatTime(clockTimes.white)}
+                      </div>
+                      <div className="text-sm text-gray-300 mt-1">White</div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={isClockRunning ? handlePauseClock : handleStartClock}
+                        disabled={gameStatus.isGameOver}
+                        className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={isClockRunning ? "Pause Clock" : "Start Clock"}
+                      >
+                        <Clock className="w-4 h-4" />
+                        {isClockRunning ? 'Pause' : 'Start'}
+                      </button>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <div className={`text-2xl font-mono font-bold ${activeColor === 'black' && isClockRunning ? 'text-yellow-400 animate-pulse' : 'text-white'}`}>
+                        {formatTime(clockTimes.black)}
+                      </div>
+                      <div className="text-sm text-gray-300 mt-1">Black</div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Control Buttons */}
                 <div className="flex gap-2 mb-4">
                   <button
@@ -182,7 +330,27 @@ const PlayChess: React.FC = () => {
                     <FlipHorizontal className="w-4 h-4" />
                     Flip
                   </button>
+                  <button
+                    onClick={handleSaveGame}
+                    disabled={isSaving || moveHistory.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Save Game"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
                 </div>
+                
+                {/* Save Message */}
+                {saveMessage && (
+                  <div className={`mt-2 px-4 py-2 rounded-lg text-center font-semibold ${
+                    saveMessage.includes('successfully') 
+                      ? 'bg-green-100 text-green-800 border border-green-400' 
+                      : 'bg-red-100 text-red-800 border border-red-400'
+                  }`}>
+                    {saveMessage}
+                  </div>
+                )}
 
                 {/* Chess Board */}
                 <div className="p-4 bg-gray-800 rounded-lg shadow-xl">
