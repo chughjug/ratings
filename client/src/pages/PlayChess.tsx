@@ -627,10 +627,9 @@ const PlayChess: React.FC = () => {
                       <input
                         type="number"
                         value={initialTimeMinutes}
-                        onChange={(e) => setInitialTimeMinutes(Number(e.target.value))}
-                        min="1"
-                        max="120"
-                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 text-white rounded-lg opacity-50 cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -640,10 +639,9 @@ const PlayChess: React.FC = () => {
                       <input
                         type="number"
                         value={incrementSeconds}
-                        onChange={(e) => setIncrementSeconds(Number(e.target.value))}
-                        min="0"
-                        max="60"
-                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 text-white rounded-lg opacity-50 cursor-not-allowed"
                       />
                     </div>
                   </div>
