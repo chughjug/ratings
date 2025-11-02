@@ -148,7 +148,6 @@ const PlayChess: React.FC = () => {
       return;
     }
 
-    setIsCreating(true);
     socket.emit('newroom', playerName);
     socket.emit('game-options', '10', false, true, false);
   };
@@ -471,15 +470,14 @@ const PlayChess: React.FC = () => {
                 <div className="flex gap-4 mt-6">
                   <button
                     onClick={handleStartGame}
-                    disabled={isCreating || !socket}
+                    disabled={!socket}
                     className="flex-1 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isCreating ? 'Creating...' : 'Start Game'}
+                    Start Game
                   </button>
                   <button
                     onClick={() => setShowJoinGame(true)}
-                    disabled={isCreating}
-                    className="flex-1 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold text-lg hover:from-red-700 hover:to-red-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold text-lg hover:from-red-700 hover:to-red-800 transition-all"
                   >
                     Join Game
                   </button>
