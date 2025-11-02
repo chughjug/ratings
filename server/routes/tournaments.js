@@ -395,10 +395,10 @@ router.put('/:id', (req, res) => {
       });
     }
 
-    if (!['swiss', 'online', 'quad', 'team-swiss', 'team-tournament'].includes(format)) {
+    if (!['swiss', 'online', 'online-rated', 'quad', 'team-swiss', 'team-tournament'].includes(format)) {
       return res.status(400).json({
         success: false,
-        error: 'Format must be one of: swiss, online, quad, team-swiss, team-tournament'
+        error: 'Format must be one of: swiss, online, online-rated, quad, team-swiss, team-tournament'
       });
     }
 
