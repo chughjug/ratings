@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Chess, Move } from 'chess.js';
 import ChessBoard from '../components/chess/ChessBoard';
-import { RotateCcw, Square, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import axios from 'axios';
 import ErrorBoundary from '../components/ErrorBoundary';
 
