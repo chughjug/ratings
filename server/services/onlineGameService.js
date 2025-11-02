@@ -98,12 +98,14 @@ class OnlineGameService {
           });
           // Use branding_logo if available, otherwise fall back to logo_url
           organizationLogo = org?.branding_logo || org?.logo_url || null;
+          console.log('Organization logo fetched:', organizationLogo);
         } catch (error) {
           console.error('Error fetching organization logo:', error);
         }
       }
 
       // Create custom game via API with player IDs for password generation
+      console.log('Creating game with organization logo:', organizationLogo);
       const gameResponse = await axios.post(`${baseUrl}/api/games/create-custom`, {
         whiteName: whitePlayer.name,
         blackName: blackPlayer.name,

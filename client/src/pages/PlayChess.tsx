@@ -167,6 +167,8 @@ const PlayChess: React.FC = () => {
     const blackRatingParam = urlParams.get('blackRating');
     const logoParam = urlParams.get('logo');
     
+    console.log('PlayChess: URL params received', { roomParam, nameParam, colorParam, whiteRatingParam, blackRatingParam, logoParam });
+    
     // Set player name from URL if provided
     if (nameParam && !playerName) {
       setPlayerName(nameParam);
@@ -211,7 +213,10 @@ const PlayChess: React.FC = () => {
     // Set organization logo from URL if provided
     if (logoParam) {
       const decodedLogo = decodeURIComponent(logoParam);
+      console.log('Setting organization logo from URL param:', decodedLogo);
       setOrganizationLogo(decodedLogo);
+    } else {
+      console.log('No logo param in URL');
     }
     
     const newSocket = io(socketUrl, {
@@ -1329,6 +1334,10 @@ const PlayChess: React.FC = () => {
               )}
 
               {/* Organization Logo */}
+              {(() => {
+                console.log('Rendering organization logo section, organizationLogo state:', organizationLogo);
+                return null;
+              })()}
               {organizationLogo && (
                 <div className="pt-2 border-t border-gray-700">
                   <div className="flex justify-center items-center p-4">
@@ -1337,8 +1346,12 @@ const PlayChess: React.FC = () => {
                       alt="Organization"
                       className="h-12 w-auto"
                       onError={(e) => {
+                        console.error('Error loading organization logo:', e);
                         // Hide the image if it fails to load
                         (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log('Organization logo loaded successfully');
                       }}
                     />
                   </div>
