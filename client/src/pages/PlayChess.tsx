@@ -398,6 +398,8 @@ const PlayChess: React.FC = () => {
   };
 
   // Show room creation UI if not in a game
+  console.log('Render check:', { showRoomCreation, waitingForOpponent, gameRoomId, boardLength: board?.length });
+  
   if (showRoomCreation) {
     return (
       <div className="min-h-screen bg-black py-12 px-4">
