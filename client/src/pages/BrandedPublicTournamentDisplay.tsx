@@ -5,7 +5,7 @@ import {
   Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
   Crown, Award, BarChart3, TrendingUp, Activity, Star, MapPin, 
-  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings, CheckCircle
+  UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings, CheckCircle, Play
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
@@ -1145,6 +1145,9 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">White</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Black</th>
+                                    {data?.tournament?.format === 'online-rated' && (
+                                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Game</th>
+                                    )}
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
                                   </tr>
                                 </thead>
@@ -1184,6 +1187,42 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                                           </div>
                                         </div>
                                       </td>
+                                      {data?.tournament?.format === 'online-rated' && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                          {pairing.white_link && pairing.black_link ? (
+                                            <div className="flex flex-col space-y-1">
+                                              <div className="flex items-center justify-center space-x-1 text-xs text-green-600">
+                                                <CheckCircle className="w-3 h-3" />
+                                                <span>Game Ready</span>
+                                              </div>
+                                              <div className="flex flex-col space-y-1">
+                                                <a
+                                                  href={pairing.white_link}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="flex items-center justify-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+                                                  title="Join game as White player"
+                                                >
+                                                  <Play className="w-3 h-3" />
+                                                  <span>Join as White</span>
+                                                </a>
+                                                <a
+                                                  href={pairing.black_link}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="flex items-center justify-center space-x-1 text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900 transition-colors"
+                                                  title="Join game as Black player"
+                                                >
+                                                  <Play className="w-3 h-3" />
+                                                  <span>Join as Black</span>
+                                                </a>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <span className="text-xs text-gray-400">Not Ready</span>
+                                          )}
+                                        </td>
+                                      )}
                                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {pairing.result || '-'}
                                       </td>
