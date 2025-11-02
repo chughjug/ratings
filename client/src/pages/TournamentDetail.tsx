@@ -130,6 +130,8 @@ const TournamentDetail: React.FC = () => {
   const [showTeamStandings, setShowTeamStandings] = useState(false);
   const [teamStandings, setTeamStandings] = useState<any[]>([]);
   const [teamPairings, setTeamPairings] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [teamScoringMethod, setTeamScoringMethod] = useState<'all_players' | 'top_players'>('all_players');
   const [teamTopN, setTeamTopN] = useState<number>(4);
   const [showPrizeConfiguration, setShowPrizeConfiguration] = useState(false);
@@ -213,6 +215,31 @@ const TournamentDetail: React.FC = () => {
       setSortField(field);
       setSortDirection('asc');
     }
+  };
+
+  // Group teams by section for team tournaments
+  const groupTeamsBySection = (teams: any[]) => {
+    const grouped = teams.reduce((acc, team) => {
+      const section = team.section || 'Open';
+      if (!acc[section]) {
+        acc[section] = [];
+      }
+      acc[section].push(team);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Sort sections: "Open" first, then alphabetically
+    const sortedSections = Object.keys(grouped).sort((a, b) => {
+      if (a === 'Open') return -1;
+      if (b === 'Open') return 1;
+      return a.localeCompare(b);
+    });
+    
+    return sortedSections.map(section => ({
+      section,
+      teams: grouped[section],
+      count: grouped[section].length
+    }));
   };
 
   // Group players by section - include ALL sections from tournament settings AND all sections with players
@@ -468,6 +495,27 @@ const TournamentDetail: React.FC = () => {
     }
   }, [id, tournament, currentRound]);
 
+  const fetchTeams = useCallback(async () => {
+    if (!id || !tournament) return;
+    
+    // Only fetch teams for team tournaments
+    if (!['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format)) {
+      return;
+    }
+    
+    try {
+      const axios = require('axios');
+      const API_BASE_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
+      const response = await axios.get(`${API_BASE_URL}/teams/team-tournament/${id}`);
+      if (response.data.success) {
+        // Teams should include members from the API
+        setTeams(response.data.teams || []);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch teams:', error);
+    }
+  }, [id, tournament]);
+
   useEffect(() => {
     if (id) {
       console.log('TournamentDetail: Fetching data for tournament ID:', id);
@@ -477,6 +525,7 @@ const TournamentDetail: React.FC = () => {
       fetchTournament();
       fetchPlayers();
       fetchStandings();
+      fetchTeams();
     }
   }, [id, dispatch, fetchTournament, fetchPlayers, fetchStandings]);
 
@@ -550,8 +599,9 @@ const TournamentDetail: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'standings' && tournament?.format === 'team-tournament') {
       fetchTeamStandings();
+      fetchTeams();
     }
-  }, [activeTab, tournament?.format, fetchTeamStandings]);
+  }, [activeTab, tournament?.format, fetchTeamStandings, fetchTeams]);
 
   // Fetch pairings when component loads or when currentRound changes
   useEffect(() => {
@@ -2225,8 +2275,136 @@ const TournamentDetail: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Sectioned Players Display */}
-                  {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
+                  {/* Sectioned Teams Display for Team Tournaments */}
+                  {tournament?.format && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) ? (
+                    groupTeamsBySection(teams).map((sectionGroup) => (
+                      <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        {/* Section Header */}
+                        <div 
+                          className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-blue-100 hover:to-indigo-100 transition-colors"
+                          onClick={() => toggleSectionCollapse(sectionGroup.section)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <button className="text-gray-600 hover:text-gray-800 transition-colors">
+                                {collapsedSections.has(sectionGroup.section) ? (
+                                  <ChevronRight className="h-5 w-5" />
+                                ) : (
+                                  <ChevronDown className="h-5 w-5" />
+                                )}
+                              </button>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {sectionGroup.section}
+                              </h3>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {sectionGroup.count} team{sectionGroup.count !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Click to {collapsedSections.has(sectionGroup.section) ? 'expand' : 'collapse'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section Content - Teams */}
+                        {!collapsedSections.has(sectionGroup.section) && (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Team Name
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Members
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Section
+                                  </th>
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {sectionGroup.teams.map((team: any) => (
+                                  <tr key={team.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <button
+                                        onClick={() => {
+                                          const newExpanded = new Set(expandedTeams);
+                                          if (newExpanded.has(team.id)) {
+                                            newExpanded.delete(team.id);
+                                          } else {
+                                            newExpanded.add(team.id);
+                                          }
+                                          setExpandedTeams(newExpanded);
+                                        }}
+                                        className="flex items-center space-x-2 text-sm font-medium text-gray-900 hover:text-blue-600"
+                                      >
+                                        {expandedTeams.has(team.id) ? (
+                                          <ChevronDown className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4" />
+                                        )}
+                                        <span>{team.name}</span>
+                                      </button>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                      {team.member_count || team.members?.length || 0} player{team.member_count !== 1 && team.members?.length !== 1 ? 's' : ''}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                      {team.section || 'Open'}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                      <button
+                                        onClick={() => setShowTeamTournamentManagement(true)}
+                                        className="text-blue-600 hover:text-blue-800"
+                                      >
+                                        Manage
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                                {sectionGroup.teams.map((team: any) => (
+                                  expandedTeams.has(team.id) && team.members && team.members.length > 0 && (
+                                    <tr key={`${team.id}-members`} className="bg-gray-50">
+                                      <td colSpan={4} className="px-6 py-4">
+                                        <div className="ml-8">
+                                          <h4 className="text-sm font-medium text-gray-700 mb-2">Team Members:</h4>
+                                          <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-100">
+                                              <tr>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">USCF ID</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                              {team.members.map((member: any, idx: number) => (
+                                                <tr key={member.id || idx}>
+                                                  <td className="px-4 py-2 text-sm text-gray-900">{member.player_name || member.name}</td>
+                                                  <td className="px-4 py-2 text-sm text-gray-500">{member.rating || 'Unrated'}</td>
+                                                  <td className="px-4 py-2 text-sm text-gray-500">{member.uscf_id || '-'}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    /* Regular Players Display for Non-Team Tournaments */
+                    <>
+                    {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
                     <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                       {/* Section Header */}
                       <div 
@@ -2655,6 +2833,8 @@ const TournamentDetail: React.FC = () => {
                       )}
                     </div>
                   ))}
+                    </>
+                  )}
                 </div>
               )}
             </div>
