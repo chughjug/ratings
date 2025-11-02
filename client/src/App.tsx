@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { TournamentProvider } from './contexts/TournamentContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { OrganizationProvider } from './contexts/OrganizationContext';
@@ -36,6 +36,31 @@ import ErrorBoundary from './components/ErrorBoundary';
 import './styles/print.css';
 import './styles/pairing-system.css';
 import './styles/branding.css';
+
+const PlayChessWrapper: React.FC = () => {
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const isFullscreen = urlParams.get('fullscreen') === 'true' || urlParams.has('room');
+  
+  if (isFullscreen) {
+    return (
+      <ErrorBoundary>
+        <PlayChess />
+      </ErrorBoundary>
+    );
+  }
+  
+  return (
+    <>
+      <Navbar />
+      <main className="container mx-auto px-4 py-8">
+        <ErrorBoundary>
+          <PlayChess />
+        </ErrorBoundary>
+      </main>
+    </>
+  );
+};
 
 function App() {
   useEffect(() => {
@@ -188,14 +213,7 @@ function App() {
                       <Route 
                         path="/play-chess" 
                         element={
-                          <>
-                            <Navbar />
-                            <main className="container mx-auto px-4 py-8">
-                              <ErrorBoundary>
-                                <PlayChess />
-                              </ErrorBoundary>
-                            </main>
-                          </>
+                          <PlayChessWrapper />
                         } 
                       />
                     </Routes>
