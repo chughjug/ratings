@@ -45,6 +45,7 @@ const PlayChess: React.FC = () => {
 
   // Socket.io state
   const [socket, setSocket] = useState<any>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [gameRoomId, setGameRoomId] = useState<string | null>(null);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
@@ -82,6 +83,7 @@ const PlayChess: React.FC = () => {
     
     newSocket.on('connect', () => {
       console.log('Connected to socket server');
+      setSocketConnected(true);
     });
 
     newSocket.on('newroom', (roomCode) => {
@@ -153,7 +155,7 @@ const PlayChess: React.FC = () => {
       return;
     }
 
-    if (!socket) {
+    if (!socket || !socketConnected) {
       alert('Not connected to server. Please wait...');
       return;
     }
@@ -483,7 +485,7 @@ const PlayChess: React.FC = () => {
                 <div className="flex gap-4 mt-6">
                   <button
                     onClick={handleStartGame}
-                    disabled={!socket}
+                    disabled={!socket || !socketConnected}
                     className="flex-1 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Start Game
