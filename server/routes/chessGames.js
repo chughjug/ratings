@@ -9,12 +9,31 @@ function generateSecureToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// Helper function to generate password from email or phone
+function generatePlayerPassword(email, phone) {
+  if (email && email.trim()) {
+    return email.trim().toLowerCase();
+  }
+  if (phone && phone.trim()) {
+    // Extract last 4 digits of phone number
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.length >= 4) {
+      return digitsOnly.slice(-4);
+    }
+  }
+  return null; // No password if neither email nor phone available
+}
+
 // Create a new custom chess game with socket.io room and player links
-router.post('/create-custom', (req, res) => {
+router.post('/create-custom', async (req, res) => {
   const {
     whiteName,
     blackName,
-    timeControl // Format: "10+0" or { minutes: 10, increment: 0 }
+    timeControl, // Format: "10+0" or { minutes: 10, increment: 0 }
+    whitePlayerId, // Optional: player ID to look up email/phone
+    blackPlayerId, // Optional: player ID to look up email/phone
+    whitePassword, // Optional: pre-generated password
+    blackPassword // Optional: pre-generated password
   } = req.body;
 
   // Validate inputs
@@ -41,6 +60,42 @@ router.post('/create-custom', (req, res) => {
     }
   }
 
+  // Fetch player emails/phones if player IDs provided and passwords not already set
+  let whitePass = whitePassword;
+  let blackPass = blackPassword;
+
+  if (!whitePass && whitePlayerId) {
+    try {
+      const whitePlayer = await new Promise((resolve, reject) => {
+        db.get('SELECT email, phone FROM players WHERE id = ?', [whitePlayerId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      if (whitePlayer) {
+        whitePass = generatePlayerPassword(whitePlayer.email, whitePlayer.phone);
+      }
+    } catch (error) {
+      console.error('Error fetching white player info:', error);
+    }
+  }
+
+  if (!blackPass && blackPlayerId) {
+    try {
+      const blackPlayer = await new Promise((resolve, reject) => {
+        db.get('SELECT email, phone FROM players WHERE id = ?', [blackPlayerId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      if (blackPlayer) {
+        blackPass = generatePlayerPassword(blackPlayer.email, blackPlayer.phone);
+      }
+    } catch (error) {
+      console.error('Error fetching black player info:', error);
+    }
+  }
+
   // Generate unique room code
   const roomCode = Math.random().toString(36).substr(2, 10).toUpperCase();
   
@@ -56,6 +111,10 @@ router.post('/create-custom', (req, res) => {
     secondID: '', // Will be set when black player connects
     moveObj: [],
     moveCount: 0,
+    passwords: {
+      white: whitePass,
+      black: blackPass
+    },
     options: {
       timeControls: `${initialTimeMinutes}+${incrementSeconds}`,
       initialTimeMinutes,
@@ -67,12 +126,18 @@ router.post('/create-custom', (req, res) => {
   chessRoomsService.setRoom(roomCode, roomData).then(() => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
-    // Generate links with room code and player info
-    // White link includes name and room code
-    const whiteLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
+    // Generate links with room code, player info, and password
+    // White link includes name, room code, and password (if available)
+    let whiteLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
+    if (whitePass) {
+      whiteLink += `&password=${encodeURIComponent(whitePass)}`;
+    }
     
-    // Black link includes name and room code  
-    const blackLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
+    // Black link includes name, room code, and password (if available)
+    let blackLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
+    if (blackPass) {
+      blackLink += `&password=${encodeURIComponent(blackPass)}`;
+    }
     
     res.json({
       success: true,
@@ -81,6 +146,8 @@ router.post('/create-custom', (req, res) => {
       blackLink,
       whiteName,
       blackName,
+      whitePassword: whitePass,
+      blackPassword: blackPass,
       timeControl: {
         minutes: initialTimeMinutes,
         increment: incrementSeconds,
@@ -182,6 +249,75 @@ router.post('/create-for-pairing', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Internal server error'
+    });
+  }
+});
+
+// Verify game password
+router.post('/verify-password', async (req, res) => {
+  const { roomCode, password, playerColor } = req.body;
+
+  if (!roomCode || !playerColor) {
+    return res.status(400).json({
+      success: false,
+      error: 'roomCode and playerColor are required'
+    });
+  }
+
+  if (playerColor !== 'white' && playerColor !== 'black') {
+    return res.status(400).json({
+      success: false,
+      error: 'playerColor must be "white" or "black"'
+    });
+  }
+
+  try {
+    const chessRoomsService = require('../services/chessRooms');
+    const room = await chessRoomsService.getRoom(roomCode.toUpperCase());
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: 'Room not found'
+      });
+    }
+
+    const expectedPassword = room.passwords?.[playerColor];
+
+    if (!expectedPassword) {
+      // No password required for this player
+      return res.json({
+        success: true,
+        verified: true,
+        passwordRequired: false
+      });
+    }
+
+    // Password is required
+    if (!password) {
+      return res.json({
+        success: true,
+        verified: false,
+        passwordRequired: true
+      });
+    }
+
+    // Normalize password comparison (case-insensitive, trimmed)
+    const normalizedInput = password.trim().toLowerCase();
+    const normalizedExpected = expectedPassword.trim().toLowerCase();
+
+    const verified = normalizedInput === normalizedExpected;
+
+    return res.json({
+      success: true,
+      verified,
+      passwordRequired: true
+    });
+  } catch (error) {
+    console.error('Error verifying password:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to verify password'
     });
   }
 });

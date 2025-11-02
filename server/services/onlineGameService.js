@@ -36,20 +36,37 @@ class OnlineGameService {
   }
 
   /**
+   * Helper function to generate password from email or phone
+   */
+  static generatePlayerPassword(email, phone) {
+    if (email && email.trim()) {
+      return email.trim().toLowerCase();
+    }
+    if (phone && phone.trim()) {
+      // Extract last 4 digits of phone number
+      const digitsOnly = phone.replace(/\D/g, '');
+      if (digitsOnly.length >= 4) {
+        return digitsOnly.slice(-4);
+      }
+    }
+    return null; // No password if neither email nor phone available
+  }
+
+  /**
    * Create custom game for a pairing
    */
   static async createGameForPairing(pairing, tournament, baseUrl) {
     try {
-      // Get player names
+      // Get player names and contact info
       const [whitePlayer, blackPlayer] = await Promise.all([
         new Promise((resolve, reject) => {
-          db.get('SELECT name FROM players WHERE id = ?', [pairing.white_player_id], (err, row) => {
+          db.get('SELECT name, email, phone FROM players WHERE id = ?', [pairing.white_player_id], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });
         }),
         new Promise((resolve, reject) => {
-          db.get('SELECT name FROM players WHERE id = ?', [pairing.black_player_id], (err, row) => {
+          db.get('SELECT name, email, phone FROM players WHERE id = ?', [pairing.black_player_id], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });
@@ -60,14 +77,20 @@ class OnlineGameService {
         throw new Error(`Could not find players for pairing ${pairing.id}`);
       }
 
+      // Generate passwords from email or phone
+      const whitePassword = this.generatePlayerPassword(whitePlayer.email, whitePlayer.phone);
+      const blackPassword = this.generatePlayerPassword(blackPlayer.email, blackPlayer.phone);
+
       // Parse time control
       const { minutes, increment } = this.parseTimeControl(tournament.time_control);
       const timeControlString = `${minutes}+${increment}`;
 
-      // Create custom game via API
+      // Create custom game via API with player IDs for password generation
       const gameResponse = await axios.post(`${baseUrl}/api/games/create-custom`, {
         whiteName: whitePlayer.name,
         blackName: blackPlayer.name,
+        whitePlayerId: pairing.white_player_id,
+        blackPlayerId: pairing.black_player_id,
         timeControl: timeControlString
       });
 

@@ -78,6 +78,36 @@ const PlayChess: React.FC = () => {
   const [opponentDrawOffer, setOpponentDrawOffer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [passwordVerified, setPasswordVerified] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+
+  // Helper function to verify password
+  const verifyPassword = async (roomCode: string, password: string, playerColor: 'white' | 'black'): Promise<{ verified: boolean; passwordRequired?: boolean } | null> => {
+    try {
+      const apiUrl = process.env.NODE_ENV === 'production'
+        ? '/api/games/verify-password'
+        : 'http://localhost:5000/api/games/verify-password';
+      
+      const response = await axios.post(apiUrl, {
+        roomCode,
+        password,
+        playerColor
+      });
+      
+      if (response.data.success) {
+        return {
+          verified: response.data.verified,
+          passwordRequired: response.data.passwordRequired
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error verifying password:', error);
+      return null;
+    }
+  };
 
   // Helper function to update pairing result
   const updatePairingResult = async (gameId: string, result: string) => {
@@ -140,14 +170,31 @@ const PlayChess: React.FC = () => {
       console.log('Connected to socket server');
       setSocketConnected(true);
       
-      // Check if we have a room in URL params and auto-join
+      // Check if we have a room in URL params and verify password first
       if (roomParam && !gameRoomId) {
         const playerNameToUse = nameParam || playerName;
+        const colorFromUrl = colorParam === 'white' || colorParam === 'black' ? colorParam : 'white';
+        const passwordFromUrl = urlParams.get('password');
+        
         if (playerNameToUse) {
-          console.log('Auto-joining room from URL:', roomParam, 'as', playerNameToUse);
-          setGameRoomId(roomParam.toUpperCase());
-          setShowRoomCreation(false);
-          newSocket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
+          // Check if password is in URL and verify it
+          if (passwordFromUrl) {
+            verifyPassword(roomParam.toUpperCase(), passwordFromUrl, colorFromUrl).then((result) => {
+              if (result && result.verified) {
+                setPasswordVerified(true);
+                setGameRoomId(roomParam.toUpperCase());
+                setShowRoomCreation(false);
+                newSocket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
+              } else {
+                setPasswordError('Invalid password. Please enter your email or last 4 digits of your phone number.');
+              }
+            });
+          } else {
+            // No password in URL - check if password is required
+            // We'll show password prompt if needed (handled in render)
+            setGameRoomId(roomParam.toUpperCase());
+            setShowRoomCreation(false);
+          }
         }
       }
     });
@@ -635,8 +682,126 @@ const PlayChess: React.FC = () => {
     return `${minutes}`;
   };
 
+  // Check if password is required when we have a room from URL but haven't verified yet
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    const passwordFromUrl = urlParams.get('password');
+    const colorFromUrl = urlParams.get('color') === 'white' || urlParams.get('color') === 'black' ? urlParams.get('color') as 'white' | 'black' : 'white';
+    
+    if (roomParam && gameRoomId && !passwordVerified && !passwordFromUrl && socketConnected) {
+      // Check if password is required by verifying with no password
+      verifyPassword(roomParam.toUpperCase(), '', colorFromUrl).then((response) => {
+        // If no password required or already verified, proceed
+        if (response && (!response.passwordRequired || response.verified)) {
+          setPasswordVerified(true);
+          if (socket) {
+            const playerNameToUse = urlParams.get('name') || playerName;
+            if (playerNameToUse) {
+              socket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
+            }
+          }
+        }
+        // If password required and not verified, password prompt will be shown
+      });
+    }
+  }, [gameRoomId, passwordVerified, socketConnected, socket, playerName]);
+
+  // Handle password submission
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    const colorFromUrl = urlParams.get('color') === 'white' || urlParams.get('color') === 'black' ? urlParams.get('color') as 'white' | 'black' : 'white';
+    
+    if (!roomParam || !passwordInput.trim()) {
+      setPasswordError('Please enter your password');
+      return;
+    }
+
+    setIsVerifyingPassword(true);
+    setPasswordError(null);
+
+    const result = await verifyPassword(roomParam.toUpperCase(), passwordInput.trim(), colorFromUrl);
+    
+    setIsVerifyingPassword(false);
+
+    if (result && result.verified) {
+      setPasswordVerified(true);
+      // Update URL to include password for future visits
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('password', passwordInput.trim());
+      window.history.replaceState({}, '', newUrl.toString());
+      
+      // Now join the game
+      if (socket) {
+        const playerNameToUse = urlParams.get('name') || playerName;
+        if (playerNameToUse) {
+          socket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
+        }
+      }
+    } else {
+      setPasswordError('Invalid password. Please enter your email or last 4 digits of your phone number.');
+    }
+  };
+
   // Show room creation UI if not in a game
-  console.log('Render check:', { showRoomCreation, waitingForOpponent, gameRoomId, boardLength: board?.length });
+  console.log('Render check:', { showRoomCreation, waitingForOpponent, gameRoomId, boardLength: board?.length, passwordVerified });
+  
+  // Show password verification form if password is required
+  if (gameRoomId && !passwordVerified && !showRoomCreation) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const playerNameToUse = urlParams.get('name') || playerName;
+    const colorFromUrl = urlParams.get('color') === 'white' || urlParams.get('color') === 'black' ? urlParams.get('color') as 'white' | 'black' : 'white';
+    
+    return (
+      <div className="min-h-screen bg-[#262421] flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full bg-[#1f1d1b] rounded-lg shadow-xl p-8 border border-[#3d3935]">
+          <h2 className="text-2xl font-bold text-white mb-2 text-center">
+            Game Access Verification
+          </h2>
+          <p className="text-gray-400 mb-6 text-center text-sm">
+            To join this game as <span className="font-semibold text-white">{playerNameToUse}</span> ({colorFromUrl === 'white' ? 'White' : 'Black'}), please enter your password.
+          </p>
+          
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">
+                Password (Email or Last 4 Digits of Phone)
+              </label>
+              <input
+                type="text"
+                value={passwordInput}
+                onChange={(e) => {
+                  setPasswordInput(e.target.value);
+                  setPasswordError(null);
+                }}
+                placeholder="Enter your email or last 4 digits of phone"
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                autoFocus
+                disabled={isVerifyingPassword}
+              />
+              {passwordError && (
+                <p className="mt-2 text-sm text-red-400">{passwordError}</p>
+              )}
+            </div>
+            
+            <button
+              type="submit"
+              disabled={isVerifyingPassword || !passwordInput.trim()}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isVerifyingPassword ? 'Verifying...' : 'Join Game'}
+            </button>
+          </form>
+          
+          <p className="mt-4 text-xs text-gray-500 text-center">
+            The password is your email address or the last 4 digits of your phone number.
+          </p>
+        </div>
+      </div>
+    );
+  }
   
   if (showRoomCreation) {
     return (
