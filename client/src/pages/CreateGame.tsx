@@ -78,7 +78,7 @@ const CreateGame: React.FC = () => {
     socket.emit('validate', joinGameRoomCode.toUpperCase());
     
     // Wait for validation response
-    socket.once('validate', (isValid) => {
+    socket.once('validate', (isValid: boolean) => {
       if (isValid) {
         socket.emit('join', joinGameRoomCode.toUpperCase(), playerName, false, 0);
         setIsCreating(false);
