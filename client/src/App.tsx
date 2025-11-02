@@ -27,8 +27,10 @@ import UserProfile from './pages/UserProfile';
 import LandingPage from './pages/LandingPage';
 import PublicUserLandingPage from './pages/PublicUserLandingPage';
 import ChessGame from './pages/ChessGame';
+import PlayChess from './pages/PlayChess';
 import PlayerPerformance from './components/PlayerPerformance';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import './styles/print.css';
 import './styles/pairing-system.css';
 import './styles/branding.css';
@@ -176,6 +178,19 @@ function App() {
                           <>
                             <Navbar />
                             <ChessGame />
+                          </>
+                        } 
+                      />
+                      <Route 
+                        path="/play-chess" 
+                        element={
+                          <>
+                            <Navbar />
+                            <main className="container mx-auto px-4 py-8">
+                              <ErrorBoundary>
+                                <PlayChess />
+                              </ErrorBoundary>
+                            </main>
                           </>
                         } 
                       />

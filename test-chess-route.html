@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Chess Route</title>
+</head>
+<body>
+    <h1>Testing Chess Route</h1>
+    <p><a href="http://localhost:3000/play-chess" target="_blank">Open /play-chess</a></p>
+    <p><a href="http://localhost:3000" target="_blank">Open Home</a></p>
+    <script>
+        fetch('http://localhost:3000/play-chess')
+            .then(r => console.log('Status:', r.status))
+            .catch(e => console.error('Error:', e));
+    </script>
+</body>
+</html>

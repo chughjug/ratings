@@ -1,0 +1,63 @@
+<link href="css/chatStyle.css" rel="stylesheet" />
+<link href="css/animation.css" rel="stylesheet" />
+<div class="container" id="chessGamePage" ng-init="init()">
+  <div class="row">
+    <div class="col-md-5">
+      <div class="panel">
+        <div class="panel-heading customHeading">{{game.whitePlayer}} Vs {{game.blackPlayer}}</div>
+        <chess-game gameid="{{gameid}}" userid="{{userid}}" opponentid="{{opponentuserid}}" mycolor="{{game.myColorCode}}"></chess-game>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <chess-chat game="{{gameid}}" userid="{{userid}}"></chess-chat>
+    </div>
+    <div class="col-md-3">
+      <div class="panel">
+        <div class="panel-heading customHeading3">Game Details</div>
+        <table class="table table-striped">
+          <tr>
+            <td>Your Color</td>
+            <td>{{game.myColor}}</td>
+          </tr>
+          <tr>
+            <td>Play Status</td>
+            <td>{{status}}</td>
+          </tr>
+          <tr>
+            <td colspan="2">
+                <a class="btn btn-primary" ng-click="requestDraw()" role="button">Request Draw</a>
+                <a class="btn btn-primary" ng-click="resign()" role="button">Resign</a>
+            </td>
+          </tr>
+        </table>
+        <div class="panel-heading customHeading3">Game History</div>
+        <div class="panel-body">
+          <div style="word-spacing:20px;">{{notations}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" style="color:#EEE" id="statusModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+<div class="modal-dialog">
+    <div class="vertical-center">
+      <div class="container">
+        <center><h2 class="dropShadowOnText">{{statusMessage}}<br/><br/><i class="spinAnimation dpchaticons-spin1 animate-spin noShadowOnText" style="font-size:50px"></i></h2></center>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" style="color:#EEE" id="statusNonModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+<div class="modal-dialog">
+    <div class="vertical-center">
+      <div class="container">
+        <center><h2 class="dropShadowOnText">{{statusMessage}}</h2></center>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+$('body').scrollspy({ target: '.customHeading' })
+</script>

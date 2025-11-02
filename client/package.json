@@ -3,17 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^27.5.2",
     "@types/node": "^16.18.68",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.2.42",
     "@types/react-dom": "^18.2.17",
     "@types/react-router-dom": "^5.3.3",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/jest": "^27.5.2",
     "autoprefixer": "^10.4.16",
     "axios": "^1.6.2",
+    "chess.js": "^1.4.0",
     "exceljs": "^4.4.0",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.263.1",
@@ -28,9 +29,9 @@
     "typescript": "^4.9.5"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "react-app-rewired start",
     "prebuild": "node scripts/update-service-worker-version.js && node scripts/update-manifest-version.js",
-    "build": "react-scripts build",
+    "build": "react-app-rewired build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -52,5 +53,10 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5000"
+  "proxy": "http://localhost:5000",
+  "devDependencies": {
+    "@types/chess.js": "^0.13.7",
+    "customize-cra": "^1.0.0",
+    "react-app-rewired": "^2.2.1"
+  }
 }
