@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X, GripVertical, ExternalLink } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, Play, RotateCcw, Users, Trophy, Settings, Plus, ArrowUpDown, Trash2, Edit3, X, GripVertical, ExternalLink, Loader2 } from 'lucide-react';
 import { pairingApi, playerApi, tournamentApi } from '../services/api';
 import LichessGameCreator from './LichessGameCreator';
 import SendPairingEmailsButton from './SendPairingEmailsButton';
+
+// Helper function to check if tournament is online format
+const isOnlineTournament = (format: string | undefined): boolean => {
+  return format === 'online' || format === 'online-rated';
+};
 
 interface SectionPairingManagerProps {
   tournamentId: string;
@@ -768,36 +773,47 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {(tournament?.format === 'online' || tournament?.format === 'online-rated') && pairing.white_link && pairing.black_link ? (
-                      // Show game links for online tournaments
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center space-x-1 text-xs text-green-600">
-                          <CheckCircle className="w-3 h-3" />
-                          <span>Game Ready</span>
-                        </div>
+                    {isOnlineTournament(tournament?.format) ? (
+                      // Online tournament: Show custom game links or creation status
+                      pairing.white_link && pairing.black_link ? (
+                        // Game ready - show links
                         <div className="flex flex-col space-y-1">
-                          <a
-                            href={pairing.white_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-                          >
-                            <Play className="w-3 h-3" />
-                            <span>Join as White</span>
-                          </a>
-                          <a
-                            href={pairing.black_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-1 text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900"
-                          >
-                            <Play className="w-3 h-3" />
-                            <span>Join as Black</span>
-                          </a>
+                          <div className="flex items-center space-x-1 text-xs text-green-600">
+                            <CheckCircle className="w-3 h-3" />
+                            <span>Game Ready</span>
+                          </div>
+                          <div className="flex flex-col space-y-1">
+                            <a
+                              href={pairing.white_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+                              title="Join game as White player"
+                            >
+                              <Play className="w-3 h-3" />
+                              <span>Join as White</span>
+                            </a>
+                            <a
+                              href={pairing.black_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center space-x-1 text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900 transition-colors"
+                              title="Join game as Black player"
+                            >
+                              <Play className="w-3 h-3" />
+                              <span>Join as Black</span>
+                            </a>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        // Game not created yet - show status
+                        <div className="flex items-center space-x-1 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          <span>Game pending...</span>
+                        </div>
+                      )
                     ) : (
-                      // Show Lichess game creator for other tournament formats
+                      // Non-online tournament: Show Lichess game creator
                       <LichessGameCreator
                         pairingId={pairing.id}
                         whitePlayer={{
@@ -813,7 +829,6 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                         timeControl="G/45+15"
                         onGameCreated={(gameData) => {
                           console.log('Lichess game created:', gameData);
-                          // You could update the pairing with game data here
                         }}
                         onError={(error) => {
                           console.error('Lichess game creation error:', error);

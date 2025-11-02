@@ -9,6 +9,7 @@ const LichessSwissIntegration = require('../utils/lichessSwissIntegration');
 const smsService = require('../services/smsService');
 const axios = require('axios');
 const { cleanupTournamentData } = require('../services/dataCleanupService');
+const OnlineGameService = require('../services/onlineGameService');
 const router = express.Router();
 
 // ============================================================================
@@ -1398,82 +1399,24 @@ router.post('/generate/section', async (req, res) => {
     });
 
     // For online and online-rated tournaments, create custom games for each pairing
-    if (tournament.format === 'online' || tournament.format === 'online-rated') {
-      console.log(`[Online Tournament] Creating custom games for ${generatedPairings.length} pairings`);
-      
-      // Get stored pairings to get their IDs
-      const storedPairings = await pairingStorage.getRoundPairingsForSection(tournamentId, currentRound, sectionName);
-      
-      // Parse time control from tournament (default to 3+2)
-      let timeControl = '3+2';
-      if (tournament.time_control) {
-        timeControl = tournament.time_control;
-      }
+    if (OnlineGameService.isOnlineTournament(tournament.format)) {
+      try {
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const gameCreationResult = await OnlineGameService.createGamesForRound(
+          tournamentId,
+          currentRound,
+          sectionName,
+          tournament,
+          baseUrl
+        );
 
-      // Create games for each stored pairing (skip byes)
-      for (const pairing of storedPairings) {
-        if (pairing.is_bye || !pairing.white_player_id || !pairing.black_player_id) {
-          continue; // Skip byes
+        if (gameCreationResult.failed > 0) {
+          console.warn(`[Pairing Generation] ${gameCreationResult.failed} games failed to create out of ${gameCreationResult.created + gameCreationResult.failed}`);
         }
-
-        try {
-          // Get player names
-          const [whitePlayer, blackPlayer] = await Promise.all([
-            new Promise((resolve, reject) => {
-              db.get('SELECT name FROM players WHERE id = ?', [pairing.white_player_id], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-              });
-            }),
-            new Promise((resolve, reject) => {
-              db.get('SELECT name FROM players WHERE id = ?', [pairing.black_player_id], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-              });
-            })
-          ]);
-
-          if (!whitePlayer || !blackPlayer) {
-            console.error(`[Online Tournament] Could not find players for pairing ${pairing.id}`);
-            continue;
-          }
-
-          // Create custom game
-          const baseUrl = `${req.protocol}://${req.get('host')}`;
-          const gameResponse = await axios.post(`${baseUrl}/api/games/create-custom`, {
-            whiteName: whitePlayer.name,
-            blackName: blackPlayer.name,
-            timeControl: timeControl
-          });
-
-          if (gameResponse.data.success) {
-            // Update pairing with game information
-            await new Promise((resolve, reject) => {
-              db.run(
-                `UPDATE pairings 
-                 SET game_id = ?, white_link = ?, black_link = ? 
-                 WHERE id = ?`,
-                [
-                  gameResponse.data.gameId,
-                  gameResponse.data.whiteLink,
-                  gameResponse.data.blackLink,
-                  pairing.id
-                ],
-                (err) => {
-                  if (err) reject(err);
-                  else resolve();
-                }
-              );
-            });
-
-            console.log(`[Online Tournament] Created game ${gameResponse.data.gameId} for pairing ${pairing.id}`);
-          } else {
-            console.error(`[Online Tournament] Failed to create game for pairing ${pairing.id}:`, gameResponse.data.error);
-          }
-        } catch (error) {
-          console.error(`[Online Tournament] Error creating game for pairing ${pairing.id}:`, error.message);
-          // Continue with other pairings even if one fails
-        }
+      } catch (error) {
+        console.error('[Pairing Generation] Error creating online games:', error);
+        // Don't fail the entire pairing generation if game creation fails
+        // The games can be created manually later if needed
       }
     }
 
