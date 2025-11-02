@@ -41,8 +41,8 @@ const CreateGame: React.FC = () => {
     newSocket.on('username2', (name: string, opponent: string, room: string) => {
       console.log('Both players present!', name, opponent, room);
       setWaitingForOpponent(false);
-      // Navigate to /play-chess when both players are ready
-      navigate('/play-chess');
+      // Navigate to 2PlayerChess when both players are ready
+      navigate('/chess');
     });
 
     setSocket(newSocket);
