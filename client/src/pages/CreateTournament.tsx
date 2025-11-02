@@ -550,7 +550,7 @@ const CreateTournament: React.FC = () => {
                 <option value="online">Online (Lichess)</option>
                 <option value="online-rated">Online Rated (Lichess Swiss)</option>
                 <option value="quad">Quad Tournament</option>
-                <option value="team-swiss">Team Swiss (Individual players, team scoring)</option>
+                <option value="team-swiss">Team Swiss (Team vs Team matches with sections)</option>
                 <option value="team-tournament">Team Tournament (Team vs Team matches with sections)</option>
               </select>
             </div>

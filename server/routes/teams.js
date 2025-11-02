@@ -1,18 +1,15 @@
 /**
  * Team Management Routes
  * Handles team categories for individual tournaments with team scoring
- * Also handles team tournaments (team-tournament format) with Team vs Team pairing
+ * Also handles team tournaments (team-swiss and team-tournament formats) with Team vs Team pairing
  * 
  * FORMATS:
- * - 'team-tournament': Chess Olympiad style - Teams play team vs team matches
+ * - 'team-swiss' and 'team-tournament': Chess Olympiad style - Teams play team vs team matches
  *   - Match Points: Win=2, Draw=1, Loss=0
  *   - Board Points: Individual game results (1, 0.5, 0)
  *   - Supports sections (teams compete within their section)
  *   - Tiebreakers: Sonneborn-Berger, Total Board Points, Buchholz
- * 
- * - 'team-swiss': Individual players grouped into teams
- *   - Players play individually, scores aggregated by team
- *   - Uses sum of top N player scores for team standings
+ *   - Both formats are identical and use the same team match-based standings
  */
 
 const express = require('express');
@@ -121,9 +118,9 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
 
     const totalRounds = tournament.rounds || 7;
 
-    // For team-tournament format, use team match-based standings
+    // For team-swiss and team-tournament formats, use team match-based standings
     // This is the Chess Olympiad style tournament with match points (2/1/0) and sections
-    if (tournament.format === 'team-tournament') {
+    if (tournament.format === 'team-tournament' || tournament.format === 'team-swiss') {
       // Get all teams with their sections
       const teams = await new Promise((resolve, reject) => {
         db.all(
@@ -677,10 +674,10 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
 });
 
 // ============================================================================
-// TEAM TOURNAMENT ENDPOINTS (team-tournament format)
+// TEAM TOURNAMENT ENDPOINTS (team-swiss and team-tournament formats)
 // ============================================================================
 
-// Create a new team for team-tournament format
+// Create a new team for team-swiss or team-tournament format
 router.post('/team-tournament/:tournamentId/create', async (req, res) => {
   const { tournamentId } = req.params;
   const { name, captain_id, section } = req.body;
@@ -701,10 +698,10 @@ router.post('/team-tournament/:tournamentId/create', async (req, res) => {
       });
     }
 
-    if (tournament.format !== 'team-tournament') {
+    if (tournament.format !== 'team-tournament' && tournament.format !== 'team-swiss') {
       return res.status(400).json({
         success: false,
-        error: 'This endpoint is only for team-tournament format tournaments'
+        error: 'This endpoint is only for team-swiss or team-tournament format tournaments'
       });
     }
 
@@ -756,12 +753,12 @@ router.post('/team-tournament/:tournamentId/create', async (req, res) => {
   }
 });
 
-// Get all teams for a team-tournament format tournament
+// Get all teams for a team-swiss or team-tournament format tournament
 router.get('/team-tournament/:tournamentId', async (req, res) => {
   const { tournamentId } = req.params;
 
   try {
-    // Verify tournament format
+    // Accept both team-swiss and team-tournament formats (they are identical)
     const tournament = await new Promise((resolve, reject) => {
       db.get('SELECT format FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
         if (err) reject(err);
@@ -876,10 +873,10 @@ router.post('/team-tournament/:teamId/add-player', async (req, res) => {
       });
     }
 
-    if (team.tournament_format !== 'team-tournament') {
+    if (team.tournament_format !== 'team-tournament' && team.tournament_format !== 'team-swiss') {
       return res.status(400).json({
         success: false,
-        error: 'This endpoint is only for team-tournament format'
+        error: 'This endpoint is only for team-swiss or team-tournament format'
       });
     }
 
