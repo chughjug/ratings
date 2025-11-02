@@ -58,16 +58,16 @@ class OnlineGameService {
    */
   static async createGameForPairing(pairing, tournament, baseUrl) {
     try {
-      // Get player names and contact info
+      // Get player names, contact info, and ratings
       const [whitePlayer, blackPlayer] = await Promise.all([
         new Promise((resolve, reject) => {
-          db.get('SELECT name, email, phone FROM players WHERE id = ?', [pairing.white_player_id], (err, row) => {
+          db.get('SELECT name, email, phone, rating FROM players WHERE id = ?', [pairing.white_player_id], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });
         }),
         new Promise((resolve, reject) => {
-          db.get('SELECT name, email, phone FROM players WHERE id = ?', [pairing.black_player_id], (err, row) => {
+          db.get('SELECT name, email, phone, rating FROM players WHERE id = ?', [pairing.black_player_id], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });
@@ -92,6 +92,8 @@ class OnlineGameService {
         blackName: blackPlayer.name,
         whitePlayerId: pairing.white_player_id,
         blackPlayerId: pairing.black_player_id,
+        whiteRating: whitePlayer.rating,
+        blackRating: blackPlayer.rating,
         timeControl: timeControlString
       });
 

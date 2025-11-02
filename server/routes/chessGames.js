@@ -34,7 +34,9 @@ router.post('/create-custom', async (req, res) => {
     whitePlayerId, // Optional: player ID to look up email/phone
     blackPlayerId, // Optional: player ID to look up email/phone
     whitePassword, // Optional: pre-generated password
-    blackPassword // Optional: pre-generated password
+    blackPassword, // Optional: pre-generated password
+    whiteRating, // Optional: player rating
+    blackRating // Optional: player rating
   } = req.body;
 
   // Validate inputs
@@ -128,11 +130,23 @@ router.post('/create-custom', async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
     // Generate links with room code and player info (passwords handled by PlayChess component)
-    // White link includes name, room code, and color
-    const whiteLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
+    // White link includes name, room code, color, and ratings
+    let whiteLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
+    if (whiteRating) {
+      whiteLink += `&whiteRating=${whiteRating}`;
+    }
+    if (blackRating) {
+      whiteLink += `&blackRating=${blackRating}`;
+    }
     
-    // Black link includes name, room code, and color
-    const blackLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
+    // Black link includes name, room code, color, and ratings
+    let blackLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
+    if (whiteRating) {
+      blackLink += `&whiteRating=${whiteRating}`;
+    }
+    if (blackRating) {
+      blackLink += `&blackRating=${blackRating}`;
+    }
     
     res.json({
       success: true,

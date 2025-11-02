@@ -82,6 +82,8 @@ const PlayChess: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+  const [playerRating, setPlayerRating] = useState<number | null>(null);
+  const [opponentRating, setOpponentRating] = useState<number | null>(null);
 
   // Helper function to verify password
   const verifyPassword = async (roomCode: string, password: string, playerColor: 'white' | 'black'): Promise<{ verified: boolean; passwordRequired?: boolean } | null> => {
@@ -141,6 +143,8 @@ const PlayChess: React.FC = () => {
     const roomParam = urlParams.get('room');
     const nameParam = urlParams.get('name');
     const colorParam = urlParams.get('color');
+    const whiteRatingParam = urlParams.get('whiteRating');
+    const blackRatingParam = urlParams.get('blackRating');
     
     // Set player name from URL if provided
     if (nameParam && !playerName) {
@@ -150,6 +154,20 @@ const PlayChess: React.FC = () => {
     // Set player color from URL if provided
     if (colorParam && (colorParam === 'white' || colorParam === 'black')) {
       setPlayerColor(colorParam);
+    }
+    
+    // Set ratings from URL if provided
+    if (whiteRatingParam) {
+      const rating = parseInt(whiteRatingParam);
+      if (!isNaN(rating)) {
+        setPlayerRating(rating);
+      }
+    }
+    if (blackRatingParam) {
+      const rating = parseInt(blackRatingParam);
+      if (!isNaN(rating)) {
+        setOpponentRating(rating);
+      }
     }
     
     const newSocket = io(socketUrl, {
@@ -307,6 +325,33 @@ const PlayChess: React.FC = () => {
       setPlayerColor(rejoin ? 'black' : 'white');
       
       console.log(`Player ${playerName} assigned color: ${rejoin ? 'black' : 'white'}`);
+      
+      // Set ratings based on color assignment
+      const urlParams = new URLSearchParams(window.location.search);
+      const whiteRatingParam = urlParams.get('whiteRating');
+      const blackRatingParam = urlParams.get('blackRating');
+      
+      if (rejoin) {
+        // Player is black
+        if (blackRatingParam) {
+          const rating = parseInt(blackRatingParam);
+          if (!isNaN(rating)) setPlayerRating(rating);
+        }
+        if (whiteRatingParam) {
+          const rating = parseInt(whiteRatingParam);
+          if (!isNaN(rating)) setOpponentRating(rating);
+        }
+      } else {
+        // Player is white
+        if (whiteRatingParam) {
+          const rating = parseInt(whiteRatingParam);
+          if (!isNaN(rating)) setPlayerRating(rating);
+        }
+        if (blackRatingParam) {
+          const rating = parseInt(blackRatingParam);
+          if (!isNaN(rating)) setOpponentRating(rating);
+        }
+      }
       
       // If there are existing moves, restore the game state
       if (moveObj && moveCount && parseInt(moveCount) > 0) {
@@ -1143,7 +1188,9 @@ const PlayChess: React.FC = () => {
                           )}
                         </div>
                         {opponentName && (
-                          <div className="text-xs text-gray-400">Rating: 1500</div>
+                          <div className="text-xs text-gray-400">
+                            Rating: {opponentRating ? opponentRating : 1500}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1178,6 +1225,8 @@ const PlayChess: React.FC = () => {
                     (playerColor === 'white' && chess.turn() !== 'w') || 
                     (playerColor === 'black' && chess.turn() !== 'b')
                   }
+                  averageRating={playerRating && opponentRating ? (playerRating + opponentRating) / 2 : undefined}
+                  boxSize={60}
                 />
               </div>
 
@@ -1199,7 +1248,9 @@ const PlayChess: React.FC = () => {
                             <span className="ml-2 text-xs text-gray-400">(White)</span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-400">Rating: 1500</div>
+                        <div className="text-xs text-gray-400">
+                          Rating: {playerRating ? playerRating : 1500}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">

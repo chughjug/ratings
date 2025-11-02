@@ -13,6 +13,8 @@ interface ChessBoardProps {
   isFlipped?: boolean;
   onMove?: (move: Move) => void;
   disabled?: boolean;
+  averageRating?: number;
+  boxSize?: number;
 }
 
 export const isPromoting = (chess: Chess, from: Square, to: Square): boolean => {
@@ -37,6 +39,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   isFlipped = false,
   onMove,
   disabled = false,
+  averageRating,
+  boxSize: providedBoxSize,
 }) => {
   const [from, setFrom] = useState<Square | null>(null);
   const [legalMoves, setLegalMoves] = useState<string[]>([]);
@@ -46,7 +50,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const moveHistoryRef = useRef<Move[]>([]);
 
-  const boxSize = 80;
+  // Calculate box size based on rating or use provided size (default 60 for smaller board)
+  const boxSize = providedBoxSize || 60;
   const labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
   const isMyTurn = !disabled;
