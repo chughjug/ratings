@@ -3579,9 +3579,14 @@ const TournamentDetail: React.FC = () => {
                           customFields_count: registrationFormData.customFields.length
                         });
                         
-                        // Save registration settings only
+                        // Save registration settings only (include required fields)
                         try {
-                          const response = await tournamentApi.update(id, allFields as any);
+                          const response = await tournamentApi.update(id, {
+                            ...allFields,
+                            name: tournament.name || '',
+                            format: tournament.format || 'swiss',
+                            rounds: tournament.rounds || 5
+                          } as any);
                           console.log('Update response:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
@@ -3606,7 +3611,13 @@ const TournamentDetail: React.FC = () => {
                         console.log('💾 Saving SMS settings:', settingsData);
                         
                         try {
-                          const response = await tournamentApi.update(id, settingsData);
+                          // Include required fields (name, format, rounds) along with SMS settings
+                          const response = await tournamentApi.update(id, {
+                            ...settingsData,
+                            name: tournament.name || '',
+                            format: tournament.format || 'swiss',
+                            rounds: tournament.rounds || 5
+                          });
                           console.log('Update response:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
@@ -4716,7 +4727,13 @@ const TournamentDetail: React.FC = () => {
           tournamentSettings={tournament.settings}
           onUpdateTournamentSettings={async (settings: any) => {
             try {
-              await tournamentApi.update(id, { settings });
+              // Include required fields (name, format, rounds) along with settings
+              await tournamentApi.update(id, {
+                settings,
+                name: tournament.name || '',
+                format: tournament.format || 'swiss',
+                rounds: tournament.rounds || 5
+              });
               await fetchTournament();
             } catch (error) {
               console.error('Failed to update tournament settings:', error);
