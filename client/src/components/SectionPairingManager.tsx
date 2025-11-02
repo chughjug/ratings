@@ -1083,6 +1083,14 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                 onClick={async () => {
                   try {
                     setIsLoading(true);
+                    
+                    // Check if this is an online-rated tournament
+                    if (tournament?.format === 'online-rated') {
+                      alert('Online-rated tournaments use Lichess Swiss pairings.\n\nPlease use the Lichess Integration in the Overview tab to manage pairings directly on Lichess.');
+                      setIsLoading(false);
+                      return;
+                    }
+                    
                     const response = await pairingApi.generateForSection(
                       tournamentId, 
                       currentRound, 
