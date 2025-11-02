@@ -28,6 +28,8 @@ import LandingPage from './pages/LandingPage';
 import PublicUserLandingPage from './pages/PublicUserLandingPage';
 import ChessGame from './pages/ChessGame';
 import PlayChess from './pages/PlayChess';
+import GameView from './pages/GameView';
+import CreateGame from './pages/CreateGame';
 import PlayerPerformance from './components/PlayerPerformance';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -62,6 +64,8 @@ function App() {
                 <Route path="/public/organizations/:slug/tournaments/:tournamentId" element={<PublicOrganizationTournament />} />
                 <Route path="/embed-demo" element={<EmbedDemo />} />
                 <Route path="/register/:tournamentId" element={<Registration />} />
+                <Route path="/game/:gameId/:color/:token" element={<GameView />} />
+                <Route path="/create-game" element={<CreateGame />} />
                 <Route path="/*" element={
                   <OrganizationProvider>
                     <Routes>

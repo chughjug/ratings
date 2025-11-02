@@ -229,6 +229,25 @@ db.serialize(() => {
     // Ignore error if column already exists
   });
 
+  // Add game link columns to chess_games table
+  db.run(`
+    ALTER TABLE chess_games ADD COLUMN white_token TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE chess_games ADD COLUMN black_token TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE chess_games ADD COLUMN time_control_settings TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
   // Add team_name column for individual tournaments with team scoring
   db.run(`
     ALTER TABLE players ADD COLUMN team_name TEXT
