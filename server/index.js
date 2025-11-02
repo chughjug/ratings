@@ -598,15 +598,30 @@ io.on('connection', (socket) => {
 
     const currentRoom = await chessRoomsService.getRoom(gameRoomId);
     if (io.sockets.adapter.rooms.get(gameRoomId) && io.sockets.adapter.rooms.get(gameRoomId).size == 2 && currentRoom) {
-      io.in(gameRoomId).emit('username2',
-        user1,
-        opponent,
+      // Emit to both players with proper color assignment
+      // First player (who created room) is white, second player (who joined) is black
+      // Send to first player (white)
+      io.to(currentRoom.firstID).emit('username2',
+        currentRoom.first, // player name
+        currentRoom.second, // opponent name
         room,
-        false,
-        rejoin,
+        false, // rematch
+        false, // rejoin (first player, created room)
         currentRoom.moveObj,
         currentRoom.moveCount.toString()
       );
+      // Send to second player (black)
+      if (currentRoom.secondID) {
+        io.to(currentRoom.secondID).emit('username2',
+          currentRoom.second, // player name
+          currentRoom.first, // opponent name
+          room,
+          false, // rematch
+          true, // rejoin (second player, joined room)
+          currentRoom.moveObj,
+          currentRoom.moveCount.toString()
+        );
+      }
     }
   });
 

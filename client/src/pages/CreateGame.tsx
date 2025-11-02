@@ -66,11 +66,11 @@ const CreateGame: React.FC = () => {
     });
 
     // Listen for second player to join
-    newSocket.on('username2', (name: string, opponent: string, room: string) => {
-      console.log('Both players present!', name, opponent, room);
+    newSocket.on('username2', (name: string, opponent: string, room: string, rematch: boolean, rejoin: boolean, moveObj?: any, moveCount?: string) => {
+      console.log('Both players present!', name, opponent, room, 'rematch:', rematch, 'rejoin:', rejoin);
       setWaitingForOpponent(false);
-      // Navigate to 2PlayerChess when both players are ready
-      navigate('/chess');
+      // Navigate to play-chess with room parameter
+      navigate(`/play-chess?room=${room}`);
     });
 
     setSocket(newSocket);

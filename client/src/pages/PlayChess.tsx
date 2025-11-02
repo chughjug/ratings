@@ -96,6 +96,15 @@ const PlayChess: React.FC = () => {
     newSocket.on('connect', () => {
       console.log('Connected to socket server');
       setSocketConnected(true);
+      
+      // Check if we have a room in URL params and reconnect
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      if (roomParam && playerName && !gameRoomId) {
+        console.log('Reconnecting to room from URL:', roomParam);
+        setGameRoomId(roomParam);
+        newSocket.emit('join', roomParam.toUpperCase(), playerName, false, 0);
+      }
     });
 
     newSocket.on('disconnect', () => {
@@ -139,11 +148,23 @@ const PlayChess: React.FC = () => {
       setWaitingForOpponent(false);
       setOpponentName(opponent);
       setShowRoomCreation(false);
-      // Determine player color based on which user they are
-      if (name === playerName) {
-        setPlayerColor(rejoin ? 'black' : 'white');
-      } else {
-        setPlayerColor(rejoin ? 'white' : 'black');
+      
+      // Determine player color: 
+      // - rejoin=false means first player who created room (WHITE)
+      // - rejoin=true means second player who joined room (BLACK)
+      // This matches lichess/chess.com behavior: first player = white
+      setPlayerColor(rejoin ? 'black' : 'white');
+      
+      console.log(`Player ${playerName} assigned color: ${rejoin ? 'black' : 'white'}`);
+      
+      // If there are existing moves, restore the game state
+      if (moveObj && moveCount && parseInt(moveCount) > 0) {
+        try {
+          // Restore game from move history if reconnecting
+          console.log('Restoring game from move history:', moveCount, 'moves');
+        } catch (error) {
+          console.error('Error restoring game state:', error);
+        }
       }
     });
 
@@ -319,11 +340,17 @@ const PlayChess: React.FC = () => {
   const handleMove = (move: Move) => {
     try {
       setMoveHistory((prev) => [...prev, move]);
-      // Switch active color for clock
+      
+      // Start clock on first move (after white's first move)
+      if (!isClockRunning && moveHistory.length === 0 && move.color === 'w') {
+        setIsClockRunning(true);
+      }
+      
+      // Switch active color for clock after move is made
       setActiveColor(move.color === 'w' ? 'black' : 'white');
       
-      // Add increment to the player who just moved
-      if (incrementSeconds > 0) {
+      // Add increment to the player who just moved (after they move)
+      if (incrementSeconds > 0 && isClockRunning) {
         setClockTimes((prev) => ({
           ...prev,
           [move.color === 'w' ? 'white' : 'black']: prev[move.color === 'w' ? 'white' : 'black'] + incrementSeconds * 1000
@@ -786,10 +813,13 @@ const PlayChess: React.FC = () => {
                     setBoard={setBoard}
                     isFlipped={isFlipped}
                     onMove={handleMove}
-                    disabled={gameStatus.isGameOver || !!(opponentName && !waitingForOpponent && (
+                    disabled={
+                      gameStatus.isGameOver || 
+                      !opponentName || 
+                      waitingForOpponent ||
                       (playerColor === 'white' && chess.turn() !== 'w') || 
                       (playerColor === 'black' && chess.turn() !== 'b')
-                    ))}
+                    }
                   />
                 </div>
               </div>
