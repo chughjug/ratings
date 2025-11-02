@@ -1226,7 +1226,7 @@ const PlayChess: React.FC = () => {
                     (playerColor === 'black' && chess.turn() !== 'b')
                   }
                   averageRating={playerRating && opponentRating ? (playerRating + opponentRating) / 2 : undefined}
-                  boxSize={60}
+                  boxSize={75}
                 />
               </div>
 

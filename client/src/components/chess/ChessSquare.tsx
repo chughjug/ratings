@@ -7,6 +7,7 @@ interface ChessSquareProps {
     type: PieceSymbol;
     color: Color;
   } | null;
+  boxSize?: number;
 }
 
 // Unicode chess pieces as fallback
@@ -19,7 +20,7 @@ const pieceUnicode: Record<string, { white: string; black: string }> = {
   k: { white: '♔', black: '♚' },
 };
 
-const ChessSquare: React.FC<ChessSquareProps> = ({ square }) => {
+const ChessSquare: React.FC<ChessSquareProps> = ({ square, boxSize = 75 }) => {
   const [imageError, setImageError] = useState(false);
   
   if (!square) return null;
@@ -29,6 +30,9 @@ const ChessSquare: React.FC<ChessSquareProps> = ({ square }) => {
   const imagePath = `/${pieceKey}.png`;
   const unicodePiece = pieceUnicode[square.type]?.[square.color === 'w' ? 'white' : 'black'] || '';
   
+  // Calculate piece size based on box size (roughly 75-80% of box)
+  const pieceSize = Math.round(boxSize * 0.8);
+  
   return (
     <div className="h-full justify-center flex flex-col items-center">
       <div className="relative">
@@ -36,11 +40,12 @@ const ChessSquare: React.FC<ChessSquareProps> = ({ square }) => {
           <img
             src={imagePath}
             alt={`${square.color} ${square.type}`}
-            className="w-12 h-12 object-contain"
+            style={{ width: `${pieceSize}px`, height: `${pieceSize}px` }}
+            className="object-contain"
             onError={() => setImageError(true)}
           />
         ) : (
-          <span className="text-5xl">{unicodePiece}</span>
+          <span style={{ fontSize: `${pieceSize}px` }}>{unicodePiece}</span>
         )}
       </div>
     </div>

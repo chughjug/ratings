@@ -50,8 +50,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const moveHistoryRef = useRef<Move[]>([]);
 
-  // Calculate box size based on rating or use provided size (default 60 for smaller board)
-  const boxSize = providedBoxSize || 60;
+  // Calculate box size based on rating or use provided size (default 75 for larger board)
+  const boxSize = providedBoxSize || 75;
   const labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
   const isMyTurn = !disabled;
@@ -247,7 +247,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
                     }}
                   >
                     <div className="w-full justify-center flex h-full relative">
-                      {square && <ChessSquare square={square} />}
+                      {square && <ChessSquare square={square} boxSize={boxSize} />}
                       {isFlipped
                         ? rowNum === 8 && (
                             <LetterNotation
