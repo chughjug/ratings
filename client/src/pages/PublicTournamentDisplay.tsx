@@ -1654,7 +1654,7 @@ const PublicTournamentDisplay: React.FC = () => {
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                       Score
                                     </th>
-                                    {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && (
+                                    {data?.tournament?.format === 'online-rated' && (
                                       <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                         Game
                                       </th>
@@ -1685,7 +1685,7 @@ const PublicTournamentDisplay: React.FC = () => {
                                             {displayOptions.showUscfIds && pairing.white_uscf_id && (
                                               <div className="text-xs text-gray-500">USCF: {pairing.white_uscf_id}</div>
                                             )}
-                                            {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && pairing.white_link && (
+                                            {data?.tournament?.format === 'online-rated' && pairing.white_link && (
                                               <a 
                                                 href={pairing.white_link} 
                                                 target="_blank" 
@@ -1715,7 +1715,7 @@ const PublicTournamentDisplay: React.FC = () => {
                                             {displayOptions.showUscfIds && pairing.black_uscf_id && (
                                               <div className="text-xs text-gray-500">USCF: {pairing.black_uscf_id}</div>
                                             )}
-                                            {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && pairing.black_link && (
+                                            {data?.tournament?.format === 'online-rated' && pairing.black_link && (
                                               <a 
                                                 href={pairing.black_link} 
                                                 target="_blank" 
@@ -1734,8 +1734,8 @@ const PublicTournamentDisplay: React.FC = () => {
                                           {pairing.black_player_id ? calculatePlayerScores()[pairing.black_player_id] || 0 : '-'}
                                         </div>
                                       </td>
-                                      {/* Game column for online tournaments */}
-                                      {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && (
+                                      {/* Game column for online-rated tournaments */}
+                                      {data?.tournament?.format === 'online-rated' && (
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                           {pairing.white_link && pairing.black_link ? (
                                             <div className="flex flex-col space-y-1">
@@ -1812,8 +1812,8 @@ const PublicTournamentDisplay: React.FC = () => {
                                         }`}>
                                           {pairing.result || 'TBD'}
                                         </div>
-                                        {/* Join Game buttons for online tournaments (mobile view) */}
-                                        {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && 
+                                        {/* Join Game buttons for online-rated tournaments (mobile view) */}
+                                        {data?.tournament?.format === 'online-rated' && 
                                          (pairing.white_link || pairing.black_link) && (
                                           <div className="flex flex-col gap-1.5 w-full">
                                             {pairing.white_link && (
@@ -1857,7 +1857,7 @@ const PublicTournamentDisplay: React.FC = () => {
                                               {displayOptions.showRatings && pairing.white_rating && (
                                                 <div className="text-xs text-gray-600">Rating: {pairing.white_rating}</div>
                                               )}
-                                              {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && pairing.white_link && (
+                                              {data?.tournament?.format === 'online-rated' && pairing.white_link && (
                                                 <a 
                                                   href={pairing.white_link} 
                                                   target="_blank" 
@@ -1900,7 +1900,7 @@ const PublicTournamentDisplay: React.FC = () => {
                                               {displayOptions.showRatings && pairing.black_rating && (
                                                 <div className="text-xs text-gray-300">Rating: {pairing.black_rating}</div>
                                               )}
-                                              {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && pairing.black_link && (
+                                              {data?.tournament?.format === 'online-rated' && pairing.black_link && (
                                                 <a 
                                                   href={pairing.black_link} 
                                                   target="_blank" 
