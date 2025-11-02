@@ -33,6 +33,7 @@ declare module 'chess.js' {
     reset(): void;
     load(fen: string): void;
     fen(): string;
+    pgn(options?: { newline?: string; maxWidth?: number }): string;
     board(): ({ square: Square; type: PieceSymbol; color: Color } | null)[][];
     moves(options?: { square?: Square; verbose?: boolean }): Move[] | string[];
     move(move: { from: Square; to: Square; promotion?: PieceSymbol } | string): Move | null;
