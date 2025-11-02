@@ -255,9 +255,7 @@ const PlayChess: React.FC = () => {
       reconnectionDelayMax: 5000,
       timeout: 20000,
       forceNew: false,
-      multiplex: true,
-      // Heroku-specific configuration
-      perMessageDeflate: false // Disable compression to avoid frame header issues
+      multiplex: true
     });
     
     newSocket.on('connect', () => {
