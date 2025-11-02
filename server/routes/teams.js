@@ -800,7 +800,6 @@ router.get('/team-tournament/:tournamentId', async (req, res) => {
           db.all(
             `SELECT 
               tm.id,
-              tm.board_number,
               p.id as player_id,
               p.name as player_name,
               p.rating,
@@ -809,7 +808,7 @@ router.get('/team-tournament/:tournamentId', async (req, res) => {
             FROM team_members tm
             JOIN players p ON tm.player_id = p.id
             WHERE tm.team_id = ?
-            ORDER BY p.rating DESC, tm.board_number`,
+            ORDER BY p.rating DESC`,
             [team.id],
             (err, rows) => {
               if (err) reject(err);
