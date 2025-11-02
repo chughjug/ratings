@@ -1397,9 +1397,9 @@ router.post('/generate/section', async (req, res) => {
       section: sectionName
     });
 
-    // For online-rated tournaments, create custom games for each pairing
-    if (tournament.format === 'online-rated') {
-      console.log(`[Online-Rated] Creating custom games for ${generatedPairings.length} pairings`);
+    // For online and online-rated tournaments, create custom games for each pairing
+    if (tournament.format === 'online' || tournament.format === 'online-rated') {
+      console.log(`[Online Tournament] Creating custom games for ${generatedPairings.length} pairings`);
       
       // Get stored pairings to get their IDs
       const storedPairings = await pairingStorage.getRoundPairingsForSection(tournamentId, currentRound, sectionName);
@@ -1434,7 +1434,7 @@ router.post('/generate/section', async (req, res) => {
           ]);
 
           if (!whitePlayer || !blackPlayer) {
-            console.error(`[Online-Rated] Could not find players for pairing ${pairing.id}`);
+            console.error(`[Online Tournament] Could not find players for pairing ${pairing.id}`);
             continue;
           }
 
@@ -1466,12 +1466,12 @@ router.post('/generate/section', async (req, res) => {
               );
             });
 
-            console.log(`[Online-Rated] Created game ${gameResponse.data.gameId} for pairing ${pairing.id}`);
+            console.log(`[Online Tournament] Created game ${gameResponse.data.gameId} for pairing ${pairing.id}`);
           } else {
-            console.error(`[Online-Rated] Failed to create game for pairing ${pairing.id}:`, gameResponse.data.error);
+            console.error(`[Online Tournament] Failed to create game for pairing ${pairing.id}:`, gameResponse.data.error);
           }
         } catch (error) {
-          console.error(`[Online-Rated] Error creating game for pairing ${pairing.id}:`, error.message);
+          console.error(`[Online Tournament] Error creating game for pairing ${pairing.id}:`, error.message);
           // Continue with other pairings even if one fails
         }
       }

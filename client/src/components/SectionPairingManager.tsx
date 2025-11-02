@@ -768,8 +768,8 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {tournament?.format === 'online-rated' && pairing.white_link && pairing.black_link ? (
-                      // Show game links for online-rated tournaments
+                    {(tournament?.format === 'online' || tournament?.format === 'online-rated') && pairing.white_link && pairing.black_link ? (
+                      // Show game links for online tournaments
                       <div className="flex flex-col space-y-1">
                         <div className="flex items-center space-x-1 text-xs text-green-600">
                           <CheckCircle className="w-3 h-3" />
