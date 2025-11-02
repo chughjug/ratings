@@ -1087,7 +1087,9 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
           rating: p.black_rating || 0,
           email: blackEmail
         },
-        section: p.section || 'Open'
+        section: p.section || 'Open',
+        white_link: p.white_link || null,
+        black_link: p.black_link || null
       };
     }));
 
@@ -1451,7 +1453,9 @@ router.post('/generate/section', async (req, res) => {
 
     // Send webhook notification for pairings generated (only if enabled)
     if (tournament?.notifications_enabled) {
-      await sendPairingNotificationWebhook(tournamentId, currentRound, generatedPairings, tournament);
+      // Fetch pairings from database to ensure we have the latest data including game links
+      const pairingsForNotification = await pairingStorage.getRoundPairingsForSection(tournamentId, currentRound, sectionName);
+      await sendPairingNotificationWebhook(tournamentId, currentRound, pairingsForNotification, tournament);
     } else {
       console.log(`Notifications disabled for tournament ${tournamentId}, skipping webhook`);
     }

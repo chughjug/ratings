@@ -7,7 +7,7 @@ import {
   UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield,
   Settings, Filter, ChevronDown, ChevronUp, Maximize2, 
   Minimize2, Smartphone, Monitor, Tablet, Wifi, WifiOff, X,
-  FileText, ExternalLink, Play
+  FileText, ExternalLink, Play, CheckCircle
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
