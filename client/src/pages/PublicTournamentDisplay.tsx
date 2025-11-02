@@ -1730,14 +1730,44 @@ const PublicTournamentDisplay: React.FC = () => {
                                         </div>
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
-                                          pairing.result === '1-0' ? 'bg-green-100 text-green-800' :
-                                          pairing.result === '0-1' ? 'bg-red-100 text-red-800' :
-                                          pairing.result === '1/2-1/2' ? 'bg-yellow-100 text-yellow-800' :
-                                          'bg-gray-100 text-gray-800'
-                                        }`}>
-                                          {pairing.result || 'TBD'}
-                                        </span>
+                                        <div className="flex flex-col items-center gap-2">
+                                          <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
+                                            pairing.result === '1-0' ? 'bg-green-100 text-green-800' :
+                                            pairing.result === '0-1' ? 'bg-red-100 text-red-800' :
+                                            pairing.result === '1/2-1/2' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-gray-100 text-gray-800'
+                                          }`}>
+                                            {pairing.result || 'TBD'}
+                                          </span>
+                                          {/* Join Game buttons for online tournaments */}
+                                          {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && 
+                                           (pairing.white_link || pairing.black_link) && (
+                                            <div className="flex flex-col gap-1">
+                                              {pairing.white_link && (
+                                                <a
+                                                  href={pairing.white_link}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                                                >
+                                                  <Play className="w-3 h-3" />
+                                                  Join as White
+                                                </a>
+                                              )}
+                                              {pairing.black_link && (
+                                                <a
+                                                  href={pairing.black_link}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-md transition-colors"
+                                                >
+                                                  <Play className="w-3 h-3" />
+                                                  Join as Black
+                                                </a>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
                                       </td>
                                     </tr>
                                   ))}
@@ -1761,13 +1791,43 @@ const PublicTournamentDisplay: React.FC = () => {
                                           <div className="text-sm font-bold text-gray-900">{sectionName}</div>
                                         </div>
                                       </div>
-                                      <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
-                                        pairing.result === '1-0' ? 'bg-green-500 text-white' :
-                                        pairing.result === '0-1' ? 'bg-red-500 text-white' :
-                                        pairing.result === '1/2-1/2' ? 'bg-yellow-500 text-white' :
-                                        'bg-gray-300 text-gray-700'
-                                      }`}>
-                                        {pairing.result || 'TBD'}
+                                      <div className="flex flex-col items-center gap-2">
+                                        <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                                          pairing.result === '1-0' ? 'bg-green-500 text-white' :
+                                          pairing.result === '0-1' ? 'bg-red-500 text-white' :
+                                          pairing.result === '1/2-1/2' ? 'bg-yellow-500 text-white' :
+                                          'bg-gray-300 text-gray-700'
+                                        }`}>
+                                          {pairing.result || 'TBD'}
+                                        </div>
+                                        {/* Join Game buttons for online tournaments (mobile view) */}
+                                        {(data?.tournament?.format === 'online' || data?.tournament?.format === 'online-rated') && 
+                                         (pairing.white_link || pairing.black_link) && (
+                                          <div className="flex flex-col gap-1.5 w-full">
+                                            {pairing.white_link && (
+                                              <a
+                                                href={pairing.white_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                                              >
+                                                <Play className="w-3 h-3" />
+                                                Join as White
+                                              </a>
+                                            )}
+                                            {pairing.black_link && (
+                                              <a
+                                                href={pairing.black_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-md transition-colors"
+                                              >
+                                                <Play className="w-3 h-3" />
+                                                Join as Black
+                                              </a>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                     
