@@ -607,21 +607,29 @@ router.post('/email-campaigns/:id/send', authenticate, async (req, res) => {
     }
 
     // Send campaign asynchronously
-    emailService.sendCampaign(id, campaign.organization_id).catch(err => {
-      console.error('Error sending campaign:', err);
-      // Update campaign status to failed
-      db.run(
-        'UPDATE club_email_campaigns SET status = ? WHERE id = ?',
-        ['failed', id],
-        (updateErr) => {
-          if (updateErr) console.error('Failed to update campaign status:', updateErr);
-        }
-      );
-    });
+    emailService.sendCampaign(id, campaign.organization_id)
+      .then(() => {
+        console.log(`✅ Campaign ${id} sent successfully`);
+      })
+      .catch(err => {
+        console.error('❌ Error sending campaign:', err);
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack
+        });
+        // Update campaign status to failed with error message
+        db.run(
+          'UPDATE club_email_campaigns SET status = ?, error_message = ? WHERE id = ?',
+          ['failed', err.message?.substring(0, 500) || 'Unknown error', id],
+          (updateErr) => {
+            if (updateErr) console.error('Failed to update campaign status:', updateErr);
+          }
+        );
+      });
 
     res.json({
       success: true,
-      message: 'Email campaign is being sent'
+      message: 'Email campaign is being sent. Check the campaign status to see if it completes successfully.'
     });
   } catch (error) {
     console.error('Send email campaign error:', error);
