@@ -547,6 +547,83 @@ const PlayChess: React.FC = () => {
     }
   };
 
+  // Clock sync effect - sync with server every second
+  useEffect(() => {
+    if (!socket || !gameRoomId || !opponentName) return;
+
+    const syncInterval = setInterval(() => {
+      if (isClockRunning) {
+        const minsB = Math.floor(clockTimes.black / 60000);
+        const secsB = Math.floor((clockTimes.black % 60000) / 1000);
+        const minsW = Math.floor(clockTimes.white / 60000);
+        const secsW = Math.floor((clockTimes.white % 60000) / 1000);
+        const zeroB = clockTimes.black === 0;
+        const zeroW = clockTimes.white === 0;
+        
+        socket.emit('get-current-time', minsB, minsW, secsB, secsW, zeroB, zeroW);
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(syncInterval);
+    };
+  }, [socket, gameRoomId, opponentName, isClockRunning, clockTimes]);
+
+  // Clock sync handler - receive updates from server
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleClockSync = (minsB: number, minsW: number, secsB: number, secsW: number, zeroB: boolean, zeroW: boolean) => {
+      const newBlackTime = minsB * 60000 + secsB * 1000;
+      const newWhiteTime = minsW * 60000 + secsW * 1000;
+      
+      // Only update if the difference is significant (more than 1 second) to avoid jitter
+      setClockTimes((prev) => {
+        const blackDiff = Math.abs(prev.black - newBlackTime);
+        const whiteDiff = Math.abs(prev.white - newWhiteTime);
+        
+        if (blackDiff > 1000 || whiteDiff > 1000) {
+          return {
+            black: newBlackTime,
+            white: newWhiteTime,
+          };
+        }
+        return prev;
+      });
+      
+      // Handle time running out
+      if (zeroB && !gameStatus.isGameOver) {
+        setIsClockRunning(false);
+        const timeResult = 'White wins on time!';
+        setGameStatus({
+          isGameOver: true,
+          result: timeResult,
+          inCheck: false,
+        });
+        if (gameRoomId) {
+          updatePairingResult(gameRoomId, timeResult);
+        }
+      } else if (zeroW && !gameStatus.isGameOver) {
+        setIsClockRunning(false);
+        const timeResult = 'Black wins on time!';
+        setGameStatus({
+          isGameOver: true,
+          result: timeResult,
+          inCheck: false,
+        });
+        if (gameRoomId) {
+          updatePairingResult(gameRoomId, timeResult);
+        }
+      }
+    };
+
+    socket.on('get-current-time', handleClockSync);
+
+    return () => {
+      socket.off('get-current-time', handleClockSync);
+    };
+  }, [socket, gameStatus.isGameOver, gameRoomId]);
+
   // Clock effect
   useEffect(() => {
     if (isClockRunning && !gameStatus.isGameOver) {
