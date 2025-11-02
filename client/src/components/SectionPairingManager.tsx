@@ -776,7 +776,17 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {isOnlineTournament(tournament?.format) ? (
+                    {(() => {
+                      const isOnline = isOnlineTournament(tournament?.format);
+                      console.log('Tournament format check:', { 
+                        format: tournament?.format, 
+                        isOnline, 
+                        pairingId: pairing.id,
+                        hasWhiteLink: !!pairing.white_link,
+                        hasBlackLink: !!pairing.black_link
+                      });
+                      return isOnline;
+                    })() && (tournament?.format === 'online' || tournament?.format === 'online-rated') ? (
                       // Online tournament: Show custom game links or creation button
                       pairing.white_link && pairing.black_link ? (
                         // Game ready - show links
