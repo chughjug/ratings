@@ -92,12 +92,13 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
       try {
         const response = await tournamentApi.getById(tournamentId);
         if (response.data) {
-          setTournament(response.data);
+          const tournamentData = (response.data as any).data || response.data;
+          setTournament(tournamentData);
           // Access properties safely
-          const notificationsEnabled = (response.data as any).notifications_enabled || false;
+          const notificationsEnabled = tournamentData.notifications_enabled || false;
           setEmailsEnabled(notificationsEnabled);
           console.log('📧 Email notifications:', { enabled: notificationsEnabled });
-          console.log('🏆 Tournament format:', response.data.format);
+          console.log('🏆 Tournament format:', tournamentData.format);
         }
       } catch (error) {
         console.error('Error fetching tournament:', error);
