@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Chess, Move } from 'chess.js';
 import ChessBoard from '../components/chess/ChessBoard';
 import { RotateCcw, FlipHorizontal, Square, Clock, Save, Copy, Check, Users, X, Minus } from 'lucide-react';
@@ -9,6 +9,21 @@ interface ClockTimes {
   white: number; // in milliseconds
   black: number; // in milliseconds
 }
+
+// Parse time control from URL or default to 3+2
+const getTimeControlFromURL = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const timeParam = urlParams.get('time');
+  if (timeParam) {
+    const parts = timeParam.split('+');
+    if (parts.length >= 1) {
+      const minutes = parseInt(parts[0]) || 3;
+      const increment = parts[1] ? parseInt(parts[1]) : 2;
+      return { minutes, increment };
+    }
+  }
+  return { minutes: 3, increment: 2 };
+};
 
 const PlayChess: React.FC = () => {
   const [chess] = useState(() => {
@@ -62,10 +77,11 @@ const PlayChess: React.FC = () => {
     return (colorParam === 'white' || colorParam === 'black') ? colorParam : 'white';
   });
   
-  // Clock state - 3+2 time control
-  const initialTimeMinutes = 3;
-  const initialIncrementSeconds = 2;
-  const initialTime = initialTimeMinutes * 60 * 1000; // 3 minutes in milliseconds
+  // Clock state - parse time control from URL or default to 3+2
+  const timeControl = useMemo(() => getTimeControlFromURL(), []);
+  const initialTimeMinutes = timeControl.minutes;
+  const initialIncrementSeconds = timeControl.increment;
+  const initialTime = initialTimeMinutes * 60 * 1000; // minutes in milliseconds
   const [clockTimes, setClockTimes] = useState<ClockTimes>({
     white: initialTime,
     black: initialTime,

@@ -86,6 +86,23 @@ class OnlineGameService {
       const { minutes, increment } = this.parseTimeControl(tournament.time_control);
       const timeControlString = `${minutes}+${increment}`;
 
+      // Fetch organization logo if organization_id exists
+      let organizationLogo = null;
+      if (tournament.organization_id) {
+        try {
+          const org = await new Promise((resolve, reject) => {
+            db.get('SELECT logo_url, branding_logo FROM organizations WHERE id = ?', [tournament.organization_id], (err, row) => {
+              if (err) reject(err);
+              else resolve(row);
+            });
+          });
+          // Use branding_logo if available, otherwise fall back to logo_url
+          organizationLogo = org?.branding_logo || org?.logo_url || null;
+        } catch (error) {
+          console.error('Error fetching organization logo:', error);
+        }
+      }
+
       // Create custom game via API with player IDs for password generation
       const gameResponse = await axios.post(`${baseUrl}/api/games/create-custom`, {
         whiteName: whitePlayer.name,
@@ -94,7 +111,8 @@ class OnlineGameService {
         blackPlayerId: pairing.black_player_id,
         whiteRating: whitePlayer.rating,
         blackRating: blackPlayer.rating,
-        timeControl: timeControlString
+        timeControl: timeControlString,
+        organizationLogo: organizationLogo
       });
 
       if (!gameResponse.data.success) {
