@@ -55,7 +55,12 @@ const PlayChess: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [opponentName, setOpponentName] = useState('');
-  const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
+  const [playerColor, setPlayerColor] = useState<'white' | 'black'>(() => {
+    // Check URL params for initial color
+    const urlParams = new URLSearchParams(window.location.search);
+    const colorParam = urlParams.get('color');
+    return (colorParam === 'white' || colorParam === 'black') ? colorParam : 'white';
+  });
   
   // Clock state
   const initialTime = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -79,6 +84,22 @@ const PlayChess: React.FC = () => {
     
     console.log('Connecting to socket.io at:', socketUrl);
     
+    // Check URL parameters for custom game setup
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    const nameParam = urlParams.get('name');
+    const colorParam = urlParams.get('color');
+    
+    // Set player name from URL if provided
+    if (nameParam && !playerName) {
+      setPlayerName(nameParam);
+    }
+    
+    // Set player color from URL if provided
+    if (colorParam && (colorParam === 'white' || colorParam === 'black')) {
+      setPlayerColor(colorParam);
+    }
+    
     const newSocket = io(socketUrl, {
       path: '/socket.io/',
       transports: ['polling', 'websocket'], // Prefer polling first for Heroku compatibility
@@ -97,13 +118,15 @@ const PlayChess: React.FC = () => {
       console.log('Connected to socket server');
       setSocketConnected(true);
       
-      // Check if we have a room in URL params and reconnect
-      const urlParams = new URLSearchParams(window.location.search);
-      const roomParam = urlParams.get('room');
-      if (roomParam && playerName && !gameRoomId) {
-        console.log('Reconnecting to room from URL:', roomParam);
-        setGameRoomId(roomParam);
-        newSocket.emit('join', roomParam.toUpperCase(), playerName, false, 0);
+      // Check if we have a room in URL params and auto-join
+      if (roomParam && !gameRoomId) {
+        const playerNameToUse = nameParam || playerName;
+        if (playerNameToUse) {
+          console.log('Auto-joining room from URL:', roomParam, 'as', playerNameToUse);
+          setGameRoomId(roomParam.toUpperCase());
+          setShowRoomCreation(false);
+          newSocket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
+        }
       }
     });
 

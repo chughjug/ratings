@@ -9,6 +9,94 @@ function generateSecureToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// Create a new custom chess game with socket.io room and player links
+router.post('/create-custom', (req, res) => {
+  const {
+    whiteName,
+    blackName,
+    timeControl // Format: "10+0" or { minutes: 10, increment: 0 }
+  } = req.body;
+
+  // Validate inputs
+  if (!whiteName || !blackName) {
+    return res.status(400).json({ 
+      success: false,
+      error: 'whiteName and blackName are required' 
+    });
+  }
+
+  // Parse time control
+  let initialTimeMinutes = 10;
+  let incrementSeconds = 0;
+  
+  if (timeControl) {
+    if (typeof timeControl === 'string') {
+      // Format: "10+0" or "10"
+      const parts = timeControl.split('+');
+      initialTimeMinutes = parseInt(parts[0]) || 10;
+      incrementSeconds = parseInt(parts[1]) || 0;
+    } else if (typeof timeControl === 'object') {
+      initialTimeMinutes = timeControl.minutes || 10;
+      incrementSeconds = timeControl.increment || 0;
+    }
+  }
+
+  // Generate unique room code
+  const roomCode = Math.random().toString(36).substr(2, 10).toUpperCase();
+  
+  // Import chessRoomsService
+  const chessRoomsService = require('../services/chessRooms');
+  
+  // Create room with both players pre-set
+  // Note: first player (white) will connect first, second (black) will connect second
+  const roomData = {
+    first: whiteName,
+    firstID: '', // Will be set when white player connects
+    second: blackName,
+    secondID: '', // Will be set when black player connects
+    moveObj: [],
+    moveCount: 0,
+    options: {
+      timeControls: `${initialTimeMinutes}+${incrementSeconds}`,
+      initialTimeMinutes,
+      incrementSeconds
+    }
+  };
+
+  // Set room asynchronously
+  chessRoomsService.setRoom(roomCode, roomData).then(() => {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    // Generate links with room code and player info
+    // White link includes name and room code
+    const whiteLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
+    
+    // Black link includes name and room code  
+    const blackLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
+    
+    res.json({
+      success: true,
+      gameId: roomCode,
+      whiteLink,
+      blackLink,
+      whiteName,
+      blackName,
+      timeControl: {
+        minutes: initialTimeMinutes,
+        increment: incrementSeconds,
+        display: incrementSeconds > 0 ? `${initialTimeMinutes}+${incrementSeconds}` : `${initialTimeMinutes}`
+      },
+      createdAt: new Date().toISOString()
+    });
+  }).catch((error) => {
+    console.error('Error creating custom game room:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create game room'
+    });
+  });
+});
+
 // Create a new custom chess game with links
 router.post('/create', (req, res) => {
   const {
