@@ -79,6 +79,25 @@ const PlayChess: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // Helper function to update pairing result
+  const updatePairingResult = async (gameId: string, result: string) => {
+    try {
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? '/api/games/update-result'
+        : 'http://localhost:5000/api/games/update-result';
+      
+      await axios.post(apiUrl, {
+        gameId,
+        result
+      });
+      
+      console.log('Pairing result updated successfully');
+    } catch (error) {
+      console.error('Error updating pairing result:', error);
+      // Don't show error to user - this is a background operation
+    }
+  };
+
   // Initialize Socket.io connection
   useEffect(() => {
     const socketUrl = process.env.NODE_ENV === 'production'
@@ -166,15 +185,22 @@ const PlayChess: React.FC = () => {
     });
 
     newSocket.on('resign', () => {
+      const currentRoomId = gameRoomId || roomParam;
+      const resignResult = playerColor === 'white' ? 'White wins by resignation!' : 'Black wins by resignation!';
       setGameStatus({
         isGameOver: true,
-        result: playerColor === 'white' ? 'White wins by resignation!' : 'Black wins by resignation!',
+        result: resignResult,
         inCheck: false,
       });
       setIsClockRunning(false);
+      // Update pairing result when opponent resigns
+      if (currentRoomId) {
+        updatePairingResult(currentRoomId, resignResult);
+      }
     });
 
     newSocket.on('game-over', (data: { result: string }) => {
+      const currentRoomId = gameRoomId || roomParam;
       setGameStatus({
         isGameOver: true,
         result: data.result,
@@ -183,6 +209,10 @@ const PlayChess: React.FC = () => {
       setIsClockRunning(false);
       setDrawOffered(false);
       setOpponentDrawOffer(false);
+      // Update pairing result when game ends
+      if (currentRoomId && data.result) {
+        updatePairingResult(currentRoomId, data.result);
+      }
     });
 
     newSocket.on('newroom', (roomCode) => {
@@ -337,6 +367,7 @@ const PlayChess: React.FC = () => {
       const isGameOver = chess.isGameOver();
       const inCheck = chess.inCheck();
       let result: string | null = null;
+      const wasGameOver = gameStatus.isGameOver;
 
       if (isGameOver) {
         if (chess.isCheckmate()) {
@@ -357,6 +388,11 @@ const PlayChess: React.FC = () => {
       setGameStatus({ isGameOver, result, inCheck });
       const newBoard = chess.board();
       setBoard(newBoard);
+
+      // If game just ended and we have a gameId (from URL room parameter), update pairing result
+      if (isGameOver && !wasGameOver && result && gameRoomId) {
+        updatePairingResult(gameRoomId, result);
+      }
     } catch (error) {
       console.error('Error updating game status:', error);
     }
@@ -377,11 +413,16 @@ const PlayChess: React.FC = () => {
           // Check if time ran out
           if (newTimes[activeColor] === 0) {
             setIsClockRunning(false);
+            const timeResult = activeColor === 'white' ? 'Black wins on time!' : 'White wins on time!';
             setGameStatus({
               isGameOver: true,
-              result: activeColor === 'white' ? 'Black wins on time!' : 'White wins on time!',
+              result: timeResult,
               inCheck: false,
             });
+            // Update pairing result when time runs out
+            if (gameRoomId) {
+              updatePairingResult(gameRoomId, timeResult);
+            }
           }
           
           return newTimes;
@@ -455,12 +496,17 @@ const PlayChess: React.FC = () => {
       if (socket && gameRoomId) {
         socket.emit('resign');
       }
+      const resignResult = playerColor === 'white' ? 'Black wins by resignation!' : 'White wins by resignation!';
       setGameStatus({
         isGameOver: true,
-        result: playerColor === 'white' ? 'Black wins by resignation!' : 'White wins by resignation!',
+        result: resignResult,
         inCheck: false,
       });
       setIsClockRunning(false);
+      // Update pairing result when resigning
+      if (gameRoomId) {
+        updatePairingResult(gameRoomId, resignResult);
+      }
     }
   };
 
@@ -475,14 +521,19 @@ const PlayChess: React.FC = () => {
     if (socket && gameRoomId) {
       socket.emit('accept-draw');
     }
+    const drawResult = 'Draw by agreement!';
     setGameStatus({
       isGameOver: true,
-      result: 'Draw by agreement!',
+      result: drawResult,
       inCheck: false,
     });
     setIsClockRunning(false);
     setDrawOffered(false);
     setOpponentDrawOffer(false);
+    // Update pairing result when draw is accepted
+    if (gameRoomId) {
+      updatePairingResult(gameRoomId, drawResult);
+    }
   };
 
   const handleDeclineDraw = () => {

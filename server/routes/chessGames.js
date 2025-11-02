@@ -97,6 +97,80 @@ router.post('/create-custom', (req, res) => {
   });
 });
 
+// Update pairing result when game ends
+router.post('/update-result', (req, res) => {
+  const { gameId, result } = req.body;
+
+  if (!gameId || !result) {
+    return res.status(400).json({
+      success: false,
+      error: 'gameId and result are required'
+    });
+  }
+
+  // Convert result string to standard chess notation
+  let pairingResult = null;
+  
+  if (result.includes('White wins') || result.includes('Black wins by resignation') || result.includes('Black wins on time')) {
+    pairingResult = '1-0'; // White wins
+  } else if (result.includes('Black wins') || result.includes('White wins by resignation') || result.includes('White wins on time')) {
+    pairingResult = '0-1'; // Black wins
+  } else if (result.includes('Draw')) {
+    pairingResult = '1/2-1/2'; // Draw
+  }
+
+  if (!pairingResult) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid result format. Expected game result string.'
+    });
+  }
+
+  // Find pairing by game_id and update result
+  db.get('SELECT * FROM pairings WHERE game_id = ?', [gameId], (err, pairing) => {
+    if (err) {
+      console.error('Error finding pairing:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to find pairing'
+      });
+    }
+
+    if (!pairing) {
+      return res.status(404).json({
+        success: false,
+        error: 'Pairing not found for this game'
+      });
+    }
+
+    // Update pairing result
+    db.run(
+      'UPDATE pairings SET result = ? WHERE game_id = ?',
+      [pairingResult, gameId],
+      function(updateErr) {
+        if (updateErr) {
+          console.error('Error updating pairing result:', updateErr);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to update pairing result'
+          });
+        }
+
+        console.log(`[Game Result] Updated pairing ${pairing.id} with result ${pairingResult} from game ${gameId}`);
+
+        // Also update results table if needed
+        // This ensures standings are calculated correctly
+        res.json({
+          success: true,
+          message: 'Pairing result updated successfully',
+          pairingId: pairing.id,
+          result: pairingResult
+        });
+      }
+    );
+  });
+});
+
 // Create a new custom chess game with links
 router.post('/create', (req, res) => {
   const {
