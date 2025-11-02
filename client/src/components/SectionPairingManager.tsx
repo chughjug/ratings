@@ -774,7 +774,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {isOnlineTournament(tournament?.format) ? (
-                      // Online tournament: Show custom game links or creation status
+                      // Online tournament: Show custom game links or creation button
                       pairing.white_link && pairing.black_link ? (
                         // Game ready - show links
                         <div className="flex flex-col space-y-1">
@@ -806,11 +806,49 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                           </div>
                         </div>
                       ) : (
-                        // Game not created yet - show status
-                        <div className="flex items-center space-x-1 text-xs text-gray-500">
-                          <Clock className="w-3 h-3" />
-                          <span>Game pending...</span>
-                        </div>
+                        // Game not created yet - show create button
+                        <button
+                          onClick={async () => {
+                            if (creatingGames.has(pairing.id)) return;
+                            setCreatingGames(prev => new Set(prev).add(pairing.id));
+                            try {
+                              const response = await pairingApi.createGameForPairing(pairing.id);
+                              if (response.data.success) {
+                                // Refresh pairings to show new game links
+                                const pairingsResponse = await pairingApi.getByRound(tournamentId, currentRound, sectionName);
+                                onPairingsUpdate?.(pairingsResponse.data || []);
+                              } else {
+                                alert(`Failed to create game: ${response.data.error || 'Unknown error'}`);
+                              }
+                            } catch (error: any) {
+                              console.error('Error creating game:', error);
+                              alert(`Failed to create game: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+                            } finally {
+                              setCreatingGames(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(pairing.id);
+                                return newSet;
+                              });
+                            }
+                          }}
+                          disabled={creatingGames.has(pairing.id) || pairing.is_bye || !pairing.white_player_id || !pairing.black_player_id}
+                          className="flex items-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={pairing.is_bye || !pairing.white_player_id || !pairing.black_player_id 
+                            ? "Cannot create game for bye or incomplete pairing" 
+                            : "Create game for this pairing"}
+                        >
+                          {creatingGames.has(pairing.id) ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>Creating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3 h-3" />
+                              <span>Create Game</span>
+                            </>
+                          )}
+                        </button>
                       )
                     ) : (
                       // Non-online tournament: Show Lichess game creator

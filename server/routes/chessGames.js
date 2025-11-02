@@ -97,6 +97,95 @@ router.post('/create-custom', (req, res) => {
   });
 });
 
+// Create game for a specific pairing (manual creation)
+router.post('/create-for-pairing', async (req, res) => {
+  const { pairingId } = req.body;
+
+  if (!pairingId) {
+    return res.status(400).json({
+      success: false,
+      error: 'pairingId is required'
+    });
+  }
+
+  try {
+    // Get pairing details
+    db.get('SELECT * FROM pairings WHERE id = ?', [pairingId], async (err, pairing) => {
+      if (err) {
+        console.error('Error finding pairing:', err);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to find pairing'
+        });
+      }
+
+      if (!pairing) {
+        return res.status(404).json({
+          success: false,
+          error: 'Pairing not found'
+        });
+      }
+
+      // Check if game already exists
+      if (pairing.game_id && pairing.white_link && pairing.black_link) {
+        return res.json({
+          success: true,
+          message: 'Game already exists for this pairing',
+          gameId: pairing.game_id,
+          whiteLink: pairing.white_link,
+          blackLink: pairing.black_link
+        });
+      }
+
+      // Get tournament to get time control
+      db.get('SELECT * FROM tournaments WHERE id = ?', [pairing.tournament_id], async (tournamentErr, tournament) => {
+        if (tournamentErr || !tournament) {
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to find tournament'
+          });
+        }
+
+        // Use OnlineGameService to create the game
+        const OnlineGameService = require('../services/onlineGameService');
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        
+        try {
+          const result = await OnlineGameService.createGameForPairing(pairing, tournament, baseUrl);
+          
+          if (result.success) {
+            res.json({
+              success: true,
+              message: 'Game created successfully',
+              gameId: result.gameId,
+              whiteLink: result.whiteLink,
+              blackLink: result.blackLink,
+              pairingId: result.pairingId
+            });
+          } else {
+            res.status(500).json({
+              success: false,
+              error: result.error || 'Failed to create game'
+            });
+          }
+        } catch (error) {
+          console.error('Error creating game for pairing:', error);
+          res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to create game'
+          });
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error in create-for-pairing:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 // Update pairing result when game ends
 router.post('/update-result', (req, res) => {
   const { gameId, result } = req.body;
