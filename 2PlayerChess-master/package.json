@@ -1,10 +1,15 @@
 {
   "name": "2p-games-with-chat",
   "version": "1.0.0",
-  "description": "",
+  "description": "A two-player real-time chess game with timer, rules, a game clock, and a chat",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=12.0.0",
+    "npm": ">=6.0.0"
   },
   "author": "",
   "license": "ISC",

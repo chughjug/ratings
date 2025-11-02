@@ -5,7 +5,13 @@ const url = require("url")
 const fs = require("fs")
 const path = require("path")
 const port = 8080
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  },
+  transports: ['websocket', 'polling']
+});
 
 let userCount = 0
 let firstPlayer=""
