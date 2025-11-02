@@ -7,7 +7,7 @@ import {
   UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield,
   Settings, Filter, ChevronDown, ChevronUp, Maximize2, 
   Minimize2, Smartphone, Monitor, Tablet, Wifi, WifiOff, X,
-  FileText
+  FileText, ExternalLink, Play
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
@@ -1672,13 +1672,24 @@ const PublicTournamentDisplay: React.FC = () => {
                                       <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                           <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded mr-3 shadow-sm"></div>
-                                          <div>
+                                          <div className="flex-1">
                                             <div className="text-sm font-medium text-gray-900">{pairing.white_name || 'TBD'}</div>
                                             {displayOptions.showRatings && pairing.white_rating && (
                                               <div className="text-xs text-gray-500">Rating: {pairing.white_rating}</div>
                                             )}
                                             {displayOptions.showUscfIds && pairing.white_uscf_id && (
                                               <div className="text-xs text-gray-500">USCF: {pairing.white_uscf_id}</div>
+                                            )}
+                                            {data?.tournament?.format === 'online-rated' && pairing.white_link && (
+                                              <a 
+                                                href={pairing.white_link} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                              >
+                                                <Play className="w-3 h-3" />
+                                                Join Game
+                                              </a>
                                             )}
                                           </div>
                                         </div>
@@ -1691,13 +1702,24 @@ const PublicTournamentDisplay: React.FC = () => {
                                       <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                           <div className="w-4 h-4 bg-gray-800 border-2 border-gray-300 rounded mr-3 shadow-sm"></div>
-                                          <div>
+                                          <div className="flex-1">
                                             <div className="text-sm font-medium text-gray-900">{pairing.black_name || 'TBD'}</div>
                                             {displayOptions.showRatings && pairing.black_rating && (
                                               <div className="text-xs text-gray-500">Rating: {pairing.black_rating}</div>
                                             )}
                                             {displayOptions.showUscfIds && pairing.black_uscf_id && (
                                               <div className="text-xs text-gray-500">USCF: {pairing.black_uscf_id}</div>
+                                            )}
+                                            {data?.tournament?.format === 'online-rated' && pairing.black_link && (
+                                              <a 
+                                                href={pairing.black_link} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                              >
+                                                <Play className="w-3 h-3" />
+                                                Join Game
+                                              </a>
                                             )}
                                           </div>
                                         </div>
@@ -1763,6 +1785,17 @@ const PublicTournamentDisplay: React.FC = () => {
                                               {displayOptions.showRatings && pairing.white_rating && (
                                                 <div className="text-xs text-gray-600">Rating: {pairing.white_rating}</div>
                                               )}
+                                              {data?.tournament?.format === 'online-rated' && pairing.white_link && (
+                                                <a 
+                                                  href={pairing.white_link} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                                >
+                                                  <Play className="w-3 h-3" />
+                                                  Join Game
+                                                </a>
+                                              )}
                                             </div>
                                           </div>
                                           <div className="ml-3">
@@ -1794,6 +1827,17 @@ const PublicTournamentDisplay: React.FC = () => {
                                               </div>
                                               {displayOptions.showRatings && pairing.black_rating && (
                                                 <div className="text-xs text-gray-300">Rating: {pairing.black_rating}</div>
+                                              )}
+                                              {data?.tournament?.format === 'online-rated' && pairing.black_link && (
+                                                <a 
+                                                  href={pairing.black_link} 
+                                                  target="_blank" 
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 mt-1 text-xs text-blue-400 hover:text-blue-300 font-medium"
+                                                >
+                                                  <Play className="w-3 h-3" />
+                                                  Join Game
+                                                </a>
                                               )}
                                             </div>
                                           </div>

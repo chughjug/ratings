@@ -450,6 +450,25 @@ db.serialize(() => {
     // Ignore error if column already exists
   });
 
+  // Add game_id, white_link, and black_link columns for online-rated tournament games
+  db.run(`
+    ALTER TABLE pairings ADD COLUMN game_id TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE pairings ADD COLUMN white_link TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE pairings ADD COLUMN black_link TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
   // Results table
   db.run(`
     CREATE TABLE IF NOT EXISTS results (

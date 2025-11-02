@@ -387,8 +387,8 @@ class PairingStorageService {
   insertPairings(tournamentId, round, pairings) {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
-        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section, is_bye, bye_type, result)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO pairings (id, tournament_id, round, board, white_player_id, black_player_id, section, is_bye, bye_type, result, game_id, white_link, black_link)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const storedPairings = [];
@@ -397,7 +397,7 @@ class PairingStorageService {
       pairings.forEach((pairing, index) => {
         if (errorOccurred) return;
 
-        const id = uuidv4();
+        const id = pairing.id || uuidv4();
         const pairingData = [
           id,
           tournamentId,
@@ -408,7 +408,10 @@ class PairingStorageService {
           pairing.section || 'Open',
           pairing.is_bye || false,
           pairing.bye_type || null,
-          pairing.result || null
+          pairing.result || null,
+          pairing.game_id || null,
+          pairing.white_link || null,
+          pairing.black_link || null
         ];
 
         stmt.run(pairingData, function(err) {
@@ -429,7 +432,10 @@ class PairingStorageService {
               section: pairing.section || 'Open',
               is_bye: pairing.is_bye || false,
               bye_type: pairing.bye_type || null,
-              result: pairing.result || null
+              result: pairing.result || null,
+              game_id: pairing.game_id || null,
+              white_link: pairing.white_link || null,
+              black_link: pairing.black_link || null
             });
           }
       });
@@ -490,9 +496,9 @@ class PairingStorageService {
       );
     });
   }
-
+  
   /**
-   * Get all pairings for a tournament with round independence
+   * Get all pairings for a tournament with round independence - includes game links
    */
   getAllTournamentPairings(tournamentId) {
     return new Promise((resolve, reject) => {
@@ -1175,12 +1181,7 @@ router.post('/generate/section', async (req, res) => {
       });
     }
 
-    // Handle online-rated tournaments (Lichess Swiss)
-    if (tournament.format === 'online-rated') {
-      return res.status(400).json({ 
-        error: 'Online-rated tournaments use Lichess Swiss pairings. Please use the Lichess integration to manage pairings directly on Lichess.' 
-      });
-    }
+    // Online-rated tournaments now use internal custom game system instead of Lichess
 
     // Get players for the specific section
     console.log(`[PairingGeneration] Fetching players for tournament ${tournamentId}, section "${sectionName}"`);
@@ -1395,6 +1396,86 @@ router.post('/generate/section', async (req, res) => {
       validateRoundSeparation: false, // Allow section independence
       section: sectionName
     });
+
+    // For online-rated tournaments, create custom games for each pairing
+    if (tournament.format === 'online-rated') {
+      console.log(`[Online-Rated] Creating custom games for ${generatedPairings.length} pairings`);
+      
+      // Get stored pairings to get their IDs
+      const storedPairings = await pairingStorage.getRoundPairingsForSection(tournamentId, currentRound, sectionName);
+      
+      // Parse time control from tournament (default to 3+2)
+      let timeControl = '3+2';
+      if (tournament.time_control) {
+        timeControl = tournament.time_control;
+      }
+
+      // Create games for each stored pairing (skip byes)
+      for (const pairing of storedPairings) {
+        if (pairing.is_bye || !pairing.white_player_id || !pairing.black_player_id) {
+          continue; // Skip byes
+        }
+
+        try {
+          // Get player names
+          const [whitePlayer, blackPlayer] = await Promise.all([
+            new Promise((resolve, reject) => {
+              db.get('SELECT name FROM players WHERE id = ?', [pairing.white_player_id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+              });
+            }),
+            new Promise((resolve, reject) => {
+              db.get('SELECT name FROM players WHERE id = ?', [pairing.black_player_id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+              });
+            })
+          ]);
+
+          if (!whitePlayer || !blackPlayer) {
+            console.error(`[Online-Rated] Could not find players for pairing ${pairing.id}`);
+            continue;
+          }
+
+          // Create custom game
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+          const gameResponse = await axios.post(`${baseUrl}/api/games/create-custom`, {
+            whiteName: whitePlayer.name,
+            blackName: blackPlayer.name,
+            timeControl: timeControl
+          });
+
+          if (gameResponse.data.success) {
+            // Update pairing with game information
+            await new Promise((resolve, reject) => {
+              db.run(
+                `UPDATE pairings 
+                 SET game_id = ?, white_link = ?, black_link = ? 
+                 WHERE id = ?`,
+                [
+                  gameResponse.data.gameId,
+                  gameResponse.data.whiteLink,
+                  gameResponse.data.blackLink,
+                  pairing.id
+                ],
+                (err) => {
+                  if (err) reject(err);
+                  else resolve();
+                }
+              );
+            });
+
+            console.log(`[Online-Rated] Created game ${gameResponse.data.gameId} for pairing ${pairing.id}`);
+          } else {
+            console.error(`[Online-Rated] Failed to create game for pairing ${pairing.id}:`, gameResponse.data.error);
+          }
+        } catch (error) {
+          console.error(`[Online-Rated] Error creating game for pairing ${pairing.id}:`, error.message);
+          // Continue with other pairings even if one fails
+        }
+      }
+    }
 
     // Automatically record bye results for players with byes
     for (const pairing of generatedPairings) {
