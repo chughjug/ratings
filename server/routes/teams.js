@@ -901,9 +901,10 @@ router.post('/team-tournament/:teamId/add-player', async (req, res) => {
     const memberId = uuidv4();
     
     await new Promise((resolve, reject) => {
+      // board_number column was dropped from schema, so don't include it
       db.run(
-        'INSERT INTO team_members (id, team_id, player_id, board_number) VALUES (?, ?, ?, ?)',
-        [memberId, teamId, player_id, board_number || null],
+        'INSERT INTO team_members (id, team_id, player_id) VALUES (?, ?, ?)',
+        [memberId, teamId, player_id],
         function(err) {
           if (err) {
             if (err.message.includes('UNIQUE constraint')) {

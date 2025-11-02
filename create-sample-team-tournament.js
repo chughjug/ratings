@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
 
 // Color codes for console output
 const colors = {
@@ -57,7 +57,7 @@ async function createTournament() {
 async function importPlayersFromCSV(tournamentId, csvPath) {
   log('\n=== Importing Players from CSV ===', 'blue');
   
-  const players = [];
+  const playerData = []; // Store original CSV data with team_name
   const sections = new Set();
   const teamsBySection = {}; // Track teams per section
   
@@ -76,12 +76,13 @@ async function importPlayersFromCSV(tournamentId, csvPath) {
           }
           teamsBySection[section].add(teamName);
           
-          players.push({
+          // Store original data including team_name for later use
+          playerData.push({
             name: row.Name.trim(),
             uscf_id: row['USCF ID'] || null,
             rating: parseInt(row.Rating) || 0,
             section: section,
-            team_name: teamName, // Store team name with player
+            team_name: teamName, // Keep for team assignment
             email: row.Email || null,
             city: row.City || null,
             state: row.State || null,
@@ -90,7 +91,7 @@ async function importPlayersFromCSV(tournamentId, csvPath) {
         }
       })
       .on('end', async () => {
-        log(`✓ Parsed ${players.length} players from ${sections.size} sections`, 'green');
+        log(`✓ Parsed ${playerData.length} players from ${sections.size} sections`, 'green');
         log(`  Sections: ${Array.from(sections).join(', ')}`, 'yellow');
         
         // Log teams per section
@@ -98,23 +99,36 @@ async function importPlayersFromCSV(tournamentId, csvPath) {
           log(`  ${section}: ${teams.size} teams (${Array.from(teams).join(', ')})`, 'yellow');
         }
         
-        // Import players
+        // Import players (without team_name - that's handled separately)
         try {
-          const importPromises = players.map(player => 
-            axios.post(`${API_BASE_URL}/players`, {
+          const importPromises = playerData.map(player => {
+            const { team_name, ...playerForImport } = player;
+            return axios.post(`${API_BASE_URL}/players`, {
               tournament_id: tournamentId,
-              ...player
+              ...playerForImport
             }).catch(err => {
               log(`  ⚠ Error importing ${player.name}: ${err.response?.data?.error || err.message}`, 'yellow');
               return null;
-            })
-          );
+            });
+          });
           
           const results = await Promise.all(importPromises);
           const successful = results.filter(r => r !== null);
-          log(`✓ Imported ${successful.length}/${players.length} players`, 'green');
+          log(`✓ Imported ${successful.length}/${playerData.length} players`, 'green');
+          
+          // Map imported players back to their original data including team_name
+          const playersWithTeamInfo = successful.map((result, index) => {
+            const importedPlayer = result?.data?.data || result?.data;
+            const originalData = playerData[results.indexOf(result)];
+            return {
+              ...importedPlayer,
+              originalTeamName: originalData.team_name, // Preserve team assignment info
+              originalSection: originalData.section
+            };
+          });
+          
           resolve({ 
-            players: successful.map(r => r?.data?.data || r?.data), 
+            players: playersWithTeamInfo, 
             sections: Array.from(sections),
             teamsBySection: Object.fromEntries(
               Object.entries(teamsBySection).map(([section, teams]) => [section, Array.from(teams)])
@@ -130,22 +144,33 @@ async function importPlayersFromCSV(tournamentId, csvPath) {
 
 async function createTeamsFromSections(tournamentId, sections, players, teamsBySection) {
   log('\n=== Creating Teams from Sections ===', 'blue');
+  log(`  Total players available: ${players.length}`, 'yellow');
   
   const teams = {};
+  let totalTeamsCreated = 0;
   
   // Group players by section and team name
   for (const section of sections) {
     const sectionTeams = teamsBySection[section] || [];
+    log(`  Processing section: ${section} (${sectionTeams.length} teams)`, 'yellow');
     
     for (const teamName of sectionTeams) {
       // Get players for this specific team in this section
+      // Players now have originalTeamName and originalSection preserved
       const teamPlayers = players.filter(p => {
         const playerData = p.data || p;
-        return (playerData.section || 'Open') === section && 
-               (playerData.team_name || playerData.team) === teamName;
+        const playerSection = playerData.originalSection || playerData.section || 'Open';
+        const playerTeamName = playerData.originalTeamName || playerData.team_name || playerData.team || '';
+        const matches = playerSection === section && playerTeamName === teamName;
+        return matches;
       });
       
-      if (teamPlayers.length === 0) continue;
+      if (teamPlayers.length === 0) {
+        log(`  ⚠ No players found for team ${teamName} in section ${section}`, 'yellow');
+        continue;
+      }
+      
+      log(`  Found ${teamPlayers.length} players for ${teamName}`, 'yellow');
       
       // Sort players by rating (descending) for board order
       teamPlayers.sort((a, b) => {
@@ -155,22 +180,32 @@ async function createTeamsFromSections(tournamentId, sections, players, teamsByS
       });
       
       try {
+        const captainId = teamPlayers[0]?.data?.id || teamPlayers[0]?.id;
+        if (!captainId) {
+          log(`  ⚠ Skipping team ${teamName} - no captain ID available`, 'yellow');
+          continue;
+        }
+        
         const response = await axios.post(`${API_BASE_URL}/teams/team-tournament/${tournamentId}/create`, {
           name: teamName,
           section: section,
-          captain_id: teamPlayers[0].data?.id || teamPlayers[0].id
+          captain_id: captainId
         });
         
         const team = response.data.data;
         const key = `${section}_${teamName}`;
         teams[key] = { team, players: teamPlayers, section };
-        log(`✓ Created team: ${teamName} in ${section} section (${teamPlayers.length} players)`, 'green');
+        totalTeamsCreated++;
+        log(`✓ Created team: ${teamName} in ${section} section (${teamPlayers.length} players, ID: ${team.id})`, 'green');
       } catch (error) {
-        log(`✗ Error creating team ${teamName} in ${section}: ${error.response?.data?.error || error.message}`, 'red');
+        const errorMsg = error.response?.data?.error || error.message;
+        log(`✗ Error creating team ${teamName} in ${section}: ${errorMsg}`, 'red');
+        // Continue with other teams even if one fails
       }
     }
   }
   
+  log(`\n✓ Total teams created: ${totalTeamsCreated}`, 'green');
   return teams;
 }
 
@@ -187,8 +222,7 @@ async function addPlayersToTeams(tournamentId, teams) {
       
       try {
         await axios.post(`${API_BASE_URL}/teams/team-tournament/${team.id}/add-player`, {
-          player_id: playerId,
-          board_number: boardNumber
+          player_id: playerId
         });
         // Only log first few players to avoid spam
         if (i < 3 || i === players.length - 1) {
@@ -206,7 +240,10 @@ async function generatePairings(tournamentId, round) {
   log(`\n=== Generating Pairings for Round ${round} ===`, 'blue');
   
   try {
-    const response = await axios.post(`${API_BASE_URL}/pairings/generate/team-swiss/${tournamentId}/${round}`);
+    const response = await axios.post(`${API_BASE_URL}/pairings/generate/team-swiss`, {
+      tournamentId: tournamentId,
+      round: round
+    });
     log(`✓ Generated ${response.data.pairings?.length || 0} pairings`, 'green');
     
     if (response.data.pairings) {
@@ -216,6 +253,9 @@ async function generatePairings(tournamentId, round) {
     return response.data;
   } catch (error) {
     log(`✗ Error generating pairings: ${error.response?.data?.error || error.message}`, 'red');
+    if (error.response?.data) {
+      log(`  Details: ${JSON.stringify(error.response.data, null, 2)}`, 'yellow');
+    }
     throw error;
   }
 }
