@@ -112,21 +112,44 @@ const PlayChess: React.FC = () => {
         ? '/api/games/verify-password'
         : 'http://localhost:5000/api/games/verify-password';
       
+      console.log('[verifyPassword] Calling API:', { apiUrl, roomCode, playerColor, hasPassword: !!password });
+      
       const response = await axios.post(apiUrl, {
         roomCode,
         password,
         playerColor
+      }, {
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
-      if (response.data.success) {
+      console.log('[verifyPassword] Response received:', response.data);
+      
+      if (response.data && response.data.success) {
         return {
           verified: response.data.verified,
           passwordRequired: response.data.passwordRequired
         };
       }
       return null;
-    } catch (error) {
-      console.error('Error verifying password:', error);
+    } catch (error: any) {
+      console.error('[verifyPassword] Error verifying password:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        roomCode,
+        playerColor
+      });
+      
+      // If room not found (404), return null to indicate verification failed
+      if (error.response?.status === 404) {
+        console.warn('[verifyPassword] Room not found:', roomCode);
+        return null;
+      }
+      
       return null;
     }
   };
@@ -211,7 +234,14 @@ const PlayChess: React.FC = () => {
     // Set organization logo from URL if provided
     if (logoParam) {
       const decodedLogo = decodeURIComponent(logoParam);
+      console.log('[PlayChess] Logo decoding:', {
+        encoded: logoParam,
+        decoded: decodedLogo,
+        length: logoParam.length
+      });
       setOrganizationLogo(decodedLogo);
+    } else {
+      console.log('[PlayChess] No logo param found in URL');
     }
     
     const newSocket = io(socketUrl, {
@@ -220,12 +250,14 @@ const PlayChess: React.FC = () => {
       upgrade: true,
       rememberUpgrade: false,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
       forceNew: false,
-      multiplex: true
+      multiplex: true,
+      // Heroku-specific configuration
+      perMessageDeflate: false // Disable compression to avoid frame header issues
     });
     
     newSocket.on('connect', () => {
@@ -1331,14 +1363,22 @@ const PlayChess: React.FC = () => {
               {/* Organization Logo */}
               <div className="pt-2 border-t border-gray-700">
                 <div className="flex justify-center items-center p-4">
+                  {(() => {
+                    console.log('[Render] Checking organizationLogo:', organizationLogo);
+                    return null;
+                  })()}
                   {organizationLogo ? (
                     <img
                       src={organizationLogo}
                       alt="Organization"
                       className="h-12 w-auto"
                       onError={(e) => {
+                        console.error('[Render] Error loading organization logo:', organizationLogo);
                         // Fallback to PairCraft logo if image fails to load
                         (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
+                      }}
+                      onLoad={() => {
+                        console.log('[Render] Organization logo loaded successfully:', organizationLogo);
                       }}
                     />
                   ) : (

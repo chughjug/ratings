@@ -337,6 +337,7 @@ app.use('/api/club-email', clubFeaturesRoutes); // Email tracking endpoints
 app.use('/api/games', chessGamesRoutes);
 
 console.log('Routes set up successfully');
+console.log('Registered /api/games routes including /verify-password');
 
 // Serve React app for non-API routes
 app.get('*', (req, res, next) => {
@@ -448,7 +449,11 @@ const io = socketIo(server, {
   allowEIO3: true, // Allow Engine.IO v3 clients for compatibility
   pingTimeout: 60000, // Increase timeout for Heroku
   pingInterval: 25000,
-  connectTimeout: 45000
+  connectTimeout: 45000,
+  // Heroku-specific configuration
+  perMessageDeflate: false, // Disable compression to avoid frame header issues
+  httpCompression: false, // Disable HTTP compression for WebSocket
+  serveClient: false // Don't serve client files
 });
 
 // Verify socket.io is loaded

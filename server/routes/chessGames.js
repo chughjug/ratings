@@ -141,7 +141,13 @@ router.post('/create-custom', async (req, res) => {
       whiteLink += `&blackRating=${blackRating}`;
     }
     if (organizationLogo) {
-      whiteLink += `&logo=${encodeURIComponent(organizationLogo)}`;
+      const encodedLogo = encodeURIComponent(organizationLogo);
+      console.log('[create-custom] Logo encoding:', {
+        original: organizationLogo,
+        encoded: encodedLogo,
+        decoded: decodeURIComponent(encodedLogo)
+      });
+      whiteLink += `&logo=${encodedLogo}`;
     }
     
     // Black link includes name, room code, color, ratings, time control, and logo
@@ -154,7 +160,8 @@ router.post('/create-custom', async (req, res) => {
       blackLink += `&blackRating=${blackRating}`;
     }
     if (organizationLogo) {
-      blackLink += `&logo=${encodeURIComponent(organizationLogo)}`;
+      const encodedLogo = encodeURIComponent(organizationLogo);
+      blackLink += `&logo=${encodedLogo}`;
     }
     
     res.json({
@@ -273,9 +280,17 @@ router.post('/create-for-pairing', async (req, res) => {
 
 // Verify game password
 router.post('/verify-password', async (req, res) => {
+  console.log('[verify-password] Request received:', {
+    roomCode: req.body.roomCode,
+    playerColor: req.body.playerColor,
+    hasPassword: !!req.body.password,
+    timestamp: new Date().toISOString()
+  });
+
   const { roomCode, password, playerColor } = req.body;
 
   if (!roomCode || !playerColor) {
+    console.log('[verify-password] Missing required fields');
     return res.status(400).json({
       success: false,
       error: 'roomCode and playerColor are required'
@@ -283,6 +298,7 @@ router.post('/verify-password', async (req, res) => {
   }
 
   if (playerColor !== 'white' && playerColor !== 'black') {
+    console.log('[verify-password] Invalid playerColor:', playerColor);
     return res.status(400).json({
       success: false,
       error: 'playerColor must be "white" or "black"'
@@ -291,19 +307,25 @@ router.post('/verify-password', async (req, res) => {
 
   try {
     const chessRoomsService = require('../services/chessRooms');
-    const room = await chessRoomsService.getRoom(roomCode.toUpperCase());
+    const normalizedRoomCode = roomCode.toUpperCase();
+    console.log('[verify-password] Looking up room:', normalizedRoomCode);
+    
+    const room = await chessRoomsService.getRoom(normalizedRoomCode);
 
     if (!room) {
+      console.log('[verify-password] Room not found:', normalizedRoomCode);
       return res.status(404).json({
         success: false,
         error: 'Room not found'
       });
     }
 
+    console.log('[verify-password] Room found, checking password for:', playerColor);
     const expectedPassword = room.passwords?.[playerColor];
 
     if (!expectedPassword) {
       // No password required for this player
+      console.log('[verify-password] No password required');
       return res.json({
         success: true,
         verified: true,
@@ -313,6 +335,7 @@ router.post('/verify-password', async (req, res) => {
 
     // Password is required
     if (!password) {
+      console.log('[verify-password] Password required but not provided');
       return res.json({
         success: true,
         verified: false,
@@ -325,6 +348,7 @@ router.post('/verify-password', async (req, res) => {
     const normalizedExpected = expectedPassword.trim().toLowerCase();
 
     const verified = normalizedInput === normalizedExpected;
+    console.log('[verify-password] Password verification result:', verified);
 
     return res.json({
       success: true,
@@ -332,10 +356,11 @@ router.post('/verify-password', async (req, res) => {
       passwordRequired: true
     });
   } catch (error) {
-    console.error('Error verifying password:', error);
+    console.error('[verify-password] Error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to verify password'
+      error: 'Failed to verify password',
+      message: error.message
     });
   }
 });
