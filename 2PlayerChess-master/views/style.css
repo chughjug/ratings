@@ -713,12 +713,13 @@ li{
 @media only screen and (min-device-width: 970px) {
     .row.layout-row{
         display:grid;
-        grid-template-columns: 25% 50% 25%;
+        grid-template-columns: 1fr 2fr 1fr;
         height:100vh;
         width:100vw;
+        gap: 0;
     }
     .layout-row > .col:empty {
-        background: black !important;
+        display: none !important;
     }
     .username-container.a{
         width:50vw !important;
