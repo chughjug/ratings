@@ -84,6 +84,9 @@ const PlayChess: React.FC = () => {
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   const [playerRating, setPlayerRating] = useState<number | null>(null);
   const [opponentRating, setOpponentRating] = useState<number | null>(null);
+  const [chatMessages, setChatMessages] = useState<Array<{sender: string, message: string}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Helper function to verify password
   const verifyPassword = async (roomCode: string, password: string, playerColor: 'white' | 'black'): Promise<{ verified: boolean; passwordRequired?: boolean } | null> => {
@@ -364,6 +367,11 @@ const PlayChess: React.FC = () => {
       }
     });
 
+    // Chat handler
+    newSocket.on('chat-msg', (msg: string, sender: string) => {
+      setChatMessages(prev => [...prev, { sender, message: msg }]);
+    });
+
     setSocket(newSocket);
 
     return () => {
@@ -371,6 +379,20 @@ const PlayChess: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Send chat message
+  const sendChatMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (chatInput.trim() && socket) {
+      socket.emit('chat-msg', chatInput.trim());
+      setChatInput('');
+    }
+  };
 
   // Handle incoming moves from socket
   useEffect(() => {
@@ -1096,121 +1118,98 @@ const PlayChess: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Left Panel - Move History */}
-            <div className="lg:w-80 bg-[#1f1d1b] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Moves</h3>
-                <button
-                  onClick={handleReset}
-                  className="px-3 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-sm transition-colors"
-                  title="New Game"
-                >
-                  New
-                </button>
-              </div>
-              
-              <div className="bg-[#262421] rounded p-3 max-h-[500px] overflow-y-auto">
-                {moveHistory.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8 text-sm">Starting Position</p>
-                ) : (
-                  <div className="space-y-1">
-                    {Array.from({ length: Math.ceil(moveHistory.length / 2) }, (_, i) => {
-                      const whiteMove = moveHistory[i * 2];
-                      const blackMove = moveHistory[i * 2 + 1];
-                      return (
-                        <div key={i} className="flex items-center gap-2 py-1 px-2 hover:bg-[#3d3935] rounded">
-                          <span className="text-gray-400 w-6 text-sm">{i + 1}.</span>
-                          {whiteMove && (
-                            <span className="text-white text-sm cursor-pointer hover:text-blue-400">
-                              {whiteMove.san}
-                            </span>
-                          )}
-                          {blackMove && (
-                            <span className="text-white text-sm cursor-pointer hover:text-blue-400">
-                              {blackMove.san}
-                            </span>
-                          )}
+          {/* 3-Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6">
+            {/* Left Panel - Player Info & Clocks */}
+            <div className="bg-[#1f1d1b] rounded-lg p-4 space-y-4">
+              {/* Opponent Info */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center">
+                      <Users className="w-3 h-3" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold">
+                        {opponentName || 'Waiting...'}
+                      </div>
+                      {opponentRating && (
+                        <div className="text-xs text-gray-400">
+                          {opponentRating}
                         </div>
-                      );
-                    })}
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* Draw Offer Notification */}
-              {opponentDrawOffer && (
-                <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded">
-                  <p className="text-sm mb-2">Your opponent offers a draw</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleAcceptDraw}
-                      className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={handleDeclineDraw}
-                      className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm"
-                    >
-                      Decline
-                    </button>
+                  <div className="text-right">
+                    <div className={`text-xl font-mono font-bold ${
+                      activeColor === (isFlipped ? 'white' : 'black') && isClockRunning && !gameStatus.isGameOver
+                        ? 'text-yellow-400' 
+                        : 'text-white'
+                    }`}>
+                      {formatTime(isFlipped ? clockTimes.white : clockTimes.black)}
+                    </div>
+                    {incrementSeconds > 0 && (
+                      <div className="text-xs text-gray-400">+{incrementSeconds}s</div>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Game Result */}
-              {gameStatus.result && (
-                <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded">
-                  <p className="text-sm font-semibold">{gameStatus.result}</p>
+              {/* Your Info */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                      <Users className="w-3 h-3" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold">
+                        {playerName || 'You'}
+                      </div>
+                      {playerRating && (
+                        <div className="text-xs text-gray-400">
+                          {playerRating}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`text-xl font-mono font-bold ${
+                      activeColor === (isFlipped ? 'black' : 'white') && isClockRunning && !gameStatus.isGameOver
+                        ? 'text-yellow-400' 
+                        : 'text-white'
+                    }`}>
+                      {formatTime(isFlipped ? clockTimes.black : clockTimes.white)}
+                    </div>
+                    {incrementSeconds > 0 && (
+                      <div className="text-xs text-gray-400">+{incrementSeconds}s</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Game Status */}
+              {!gameStatus.isGameOver && opponentName && !waitingForOpponent && (
+                <div className="pt-2 border-t border-gray-700">
+                  {gameStatus.inCheck && (
+                    <div className="px-3 py-2 bg-red-900/50 border border-red-700 rounded text-xs text-red-300 text-center">
+                      Check!
+                    </div>
+                  )}
+                  {!gameStatus.inCheck && (
+                    <div className="text-xs text-gray-400 text-center">
+                      {chess.turn() === 'w' && playerColor === 'white' && "Your turn"}
+                      {chess.turn() === 'w' && playerColor === 'black' && "Opponent's turn"}
+                      {chess.turn() === 'b' && playerColor === 'black' && "Your turn"}
+                      {chess.turn() === 'b' && playerColor === 'white' && "Opponent's turn"}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Center - Chess Board */}
-            <div className="flex-1 flex flex-col items-center">
-              {/* Opponent Info and Clock (Top) */}
-              <div className="w-full mb-4">
-                <div className="bg-[#1f1d1b] rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-                        <Users className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold">
-                          {opponentName || 'Waiting for opponent...'}
-                          {!isFlipped && playerColor === 'white' && (
-                            <span className="ml-2 text-xs text-gray-400">(Black)</span>
-                          )}
-                          {isFlipped && playerColor === 'black' && (
-                            <span className="ml-2 text-xs text-gray-400">(Black)</span>
-                          )}
-                        </div>
-                        {opponentName && (
-                          <div className="text-xs text-gray-400">
-                            Rating: {opponentRating ? opponentRating : 1500}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`text-3xl font-mono font-bold ${
-                        activeColor === (isFlipped ? 'white' : 'black') && isClockRunning && !gameStatus.isGameOver
-                          ? 'text-yellow-400' 
-                          : 'text-white'
-                      }`}>
-                        {formatTime(isFlipped ? clockTimes.white : clockTimes.black)}
-                      </div>
-                      {incrementSeconds > 0 && (
-                        <div className="text-xs text-gray-400 mt-1">+{incrementSeconds}s</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chess Board */}
+            <div className="flex justify-center items-center">
               <div className="bg-[#1f1d1b] rounded-lg p-4 shadow-2xl">
                 <ChessBoard
                   chess={chess}
@@ -1229,97 +1228,150 @@ const PlayChess: React.FC = () => {
                   boxSize={75}
                 />
               </div>
+            </div>
 
-              {/* Your Info and Clock (Bottom) */}
-              <div className="w-full mt-4">
-                <div className="bg-[#1f1d1b] rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                        <Users className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold">
-                          {playerName || 'You'}
-                          {!isFlipped && playerColor === 'white' && (
-                            <span className="ml-2 text-xs text-gray-400">(White)</span>
-                          )}
-                          {isFlipped && playerColor === 'black' && (
-                            <span className="ml-2 text-xs text-gray-400">(White)</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          Rating: {playerRating ? playerRating : 1500}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`text-3xl font-mono font-bold ${
-                        activeColor === (isFlipped ? 'black' : 'white') && isClockRunning && !gameStatus.isGameOver
-                          ? 'text-yellow-400' 
-                          : 'text-white'
-                      }`}>
-                        {formatTime(isFlipped ? clockTimes.black : clockTimes.white)}
-                      </div>
-                      {incrementSeconds > 0 && (
-                        <div className="text-xs text-gray-400 mt-1">+{incrementSeconds}s</div>
-                      )}
-                    </div>
-                  </div>
+            {/* Right Panel - Move History, Chat, and Actions */}
+            <div className="bg-[#1f1d1b] rounded-lg p-4 space-y-4">
+              {/* Game Controls */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Game</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleFlip}
+                    className="px-2 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-xs transition-colors"
+                    title="Flip Board"
+                  >
+                    <FlipHorizontal className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="px-2 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-xs transition-colors"
+                    title="New Game"
+                  >
+                    New
+                  </button>
                 </div>
               </div>
 
-              {/* Game Actions */}
+              {/* Actions */}
               {opponentName && !waitingForOpponent && (
-                <div className="w-full mt-4 flex items-center justify-center gap-3">
+                <div className="flex gap-2">
                   {!gameStatus.isGameOver && (
                     <>
                       <button
                         onClick={handleResign}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                        title="Resign"
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3 h-3" />
                         Resign
                       </button>
                       <button
                         onClick={handleOfferDraw}
                         disabled={drawOffered}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Offer Draw"
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm transition-colors disabled:opacity-50"
                       >
-                        <Minus className="w-4 h-4" />
-                        {drawOffered ? 'Draw Offered' : 'Offer Draw'}
+                        <Minus className="w-3 h-3" />
+                        Draw
                       </button>
                     </>
-                  )}
-                  {gameStatus.isGameOver && (
-                    <button
-                      onClick={handleReset}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      New Game
-                    </button>
                   )}
                 </div>
               )}
 
-              {/* Game Status Message */}
-              {!gameStatus.isGameOver && opponentName && !waitingForOpponent && (
-                <div className="mt-3 text-center">
-                  {gameStatus.inCheck && (
-                    <div className="px-4 py-2 bg-red-900/50 border border-red-700 rounded text-sm text-red-300">
-                      Check!
+              {/* Draw Offer Notification */}
+              {opponentDrawOffer && (
+                <div className="p-3 bg-yellow-900/50 border border-yellow-700 rounded">
+                  <p className="text-xs mb-2">Opponent offers draw</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAcceptDraw}
+                      className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-xs"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={handleDeclineDraw}
+                      className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-xs"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Game Result */}
+              {gameStatus.result && (
+                <div className="p-3 bg-yellow-900/50 border border-yellow-700 rounded">
+                  <p className="text-xs font-semibold">{gameStatus.result}</p>
+                </div>
+              )}
+
+              {/* Move History */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Moves</h3>
+                <div className="bg-[#262421] rounded p-2 max-h-[250px] overflow-y-auto">
+                  {moveHistory.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4 text-xs">Starting Position</p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {Array.from({ length: Math.ceil(moveHistory.length / 2) }, (_, i) => {
+                        const whiteMove = moveHistory[i * 2];
+                        const blackMove = moveHistory[i * 2 + 1];
+                        return (
+                          <div key={i} className="flex items-center gap-2 py-1 px-1 hover:bg-[#3d3935] rounded">
+                            <span className="text-gray-400 w-5 text-xs">{i + 1}.</span>
+                            {whiteMove && (
+                              <span className="text-white text-xs cursor-pointer hover:text-blue-400">
+                                {whiteMove.san}
+                              </span>
+                            )}
+                            {blackMove && (
+                              <span className="text-white text-xs cursor-pointer hover:text-blue-400">
+                                {blackMove.san}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                  {!gameStatus.inCheck && (
-                    <div className="text-sm text-gray-400">
-                      {chess.turn() === 'w' && playerColor === 'white' && "It's your turn!"}
-                      {chess.turn() === 'w' && playerColor === 'black' && "Waiting for opponent..."}
-                      {chess.turn() === 'b' && playerColor === 'black' && "It's your turn!"}
-                      {chess.turn() === 'b' && playerColor === 'white' && "Waiting for opponent..."}
-                    </div>
-                  )}
+                </div>
+              </div>
+
+              {/* Chat */}
+              {opponentName && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Chat</h3>
+                  <div className="bg-[#262421] rounded p-2 max-h-[150px] overflow-y-auto mb-2">
+                    {chatMessages.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4 text-xs">No messages yet</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {chatMessages.map((msg, idx) => (
+                          <div key={idx} className="text-xs">
+                            <span className="font-semibold text-blue-400">{msg.sender}:</span>{' '}
+                            <span className="text-gray-300">{msg.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+                  <form onSubmit={sendChatMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Type message..."
+                      className="flex-1 px-2 py-1.5 bg-[#262421] border border-gray-600 text-white rounded text-xs focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors"
+                    >
+                      Send
+                    </button>
+                  </form>
                 </div>
               )}
             </div>
