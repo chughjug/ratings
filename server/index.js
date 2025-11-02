@@ -166,8 +166,12 @@ app.use(cors({
   maxAge: 86400 // 24 hours
 }));
 
-// Add request timeout handling
+// Add request timeout handling (skip for Socket.io)
 app.use((req, res, next) => {
+  // Don't set timeout for Socket.io connections
+  if (req.path.startsWith('/socket.io/')) {
+    return next();
+  }
   req.setTimeout(30000, () => {
     res.status(408).json({
       success: false,
