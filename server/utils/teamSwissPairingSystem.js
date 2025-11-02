@@ -261,9 +261,13 @@ class TeamSwissPairingSystem {
       teamsBySection[section].push(team);
     });
 
+    console.log(`Pairing teams by section: ${Object.keys(teamsBySection).join(', ')}`);
+
     // Pair teams within each section separately
     Object.keys(teamsBySection).forEach(section => {
-      const teams = [...teamsBySection[section]];
+      const teamsInSection = teamsBySection[section];
+      console.log(`Section "${section}": ${teamsInSection.length} teams`);
+      const teams = [...teamsInSection];
       
       // Sort teams by score (match points, then game points)
       teams.sort((a, b) => {
@@ -380,7 +384,17 @@ class TeamSwissPairingSystem {
   getPreviousOpponents(teamId) {
     const opponents = new Set();
     
+    // Get team's section to filter previous pairings by section
+    const team = this.teams.find(t => t.id === teamId);
+    const teamSection = team ? (team.section || 'Open') : 'Open';
+    
     this.options.previousPairings.forEach(pairing => {
+      // Only consider opponents from the same section
+      const pairingSection = pairing.section || 'Open';
+      if (pairingSection !== teamSection) {
+        return; // Skip pairings from different sections
+      }
+      
       if (pairing.team1Id === teamId) {
         opponents.add(pairing.team2Id);
       } else if (pairing.team2Id === teamId) {
@@ -613,11 +627,13 @@ class TeamSwissPairingSystem {
         console.log(`Valid teams with members: ${validTeams.length}`);
 
         // Get previous team pairings by looking up teams from players in previous pairings
+        // IMPORTANT: Only count pairings where teams are in the same section
         const previousPairings = await new Promise((resolve, reject) => {
           db.all(
             `SELECT DISTINCT 
               t1.id as team1Id,
-              t2.id as team2Id
+              t2.id as team2Id,
+              COALESCE(t1.section, 'Open') as section
             FROM pairings p
             JOIN team_members tm1 ON p.white_player_id = tm1.player_id
             JOIN teams t1 ON tm1.team_id = t1.id AND t1.tournament_id = ?
@@ -628,7 +644,8 @@ class TeamSwissPairingSystem {
               AND p.is_bye = 0
               AND p.white_player_id IS NOT NULL
               AND p.black_player_id IS NOT NULL
-            GROUP BY t1.id, t2.id`,
+              AND COALESCE(t1.section, 'Open') = COALESCE(t2.section, 'Open')
+            GROUP BY t1.id, t2.id, COALESCE(t1.section, 'Open')`,
             [tournamentId, tournamentId, tournamentId, round],
             (err, rows) => {
               if (err) {
@@ -641,6 +658,8 @@ class TeamSwissPairingSystem {
             }
           );
         });
+        
+        console.log(`Found ${previousPairings.length} previous team pairings (same section only)`);
 
         // Calculate team scores from previous rounds
         const teamScores = await TeamSwissPairingSystem.calculateTeamScoresFromDB(
