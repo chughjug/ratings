@@ -263,9 +263,9 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
         
         roundMatches.forEach(match => {
           if (match.isBye) {
-            // Bye: team gets 1 match point
+            // Bye: team gets 2 match points (equivalent to a win)
             if (teamScores[match.team1Id]) {
-              teamScores[match.team1Id].matchPoints += 1;
+              teamScores[match.team1Id].matchPoints += 2;
               teamScores[match.team1Id].matchWins++;
               teamScores[match.team1Id].matchesPlayed++;
             }
@@ -284,24 +284,25 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
             });
 
             // Determine match result
+            // Chess Olympiad standard: Win = 2 MP, Draw = 1 MP, Loss = 0 MP
             let team1MatchPoints = 0;
             let team2MatchPoints = 0;
             let team1Result = 'loss';
             let team2Result = 'loss';
 
             if (team1Points > team2Points) {
-              team1MatchPoints = 1;
+              team1MatchPoints = 2;
               team2MatchPoints = 0;
               team1Result = 'win';
               team2Result = 'loss';
             } else if (team1Points < team2Points) {
               team1MatchPoints = 0;
-              team2MatchPoints = 1;
+              team2MatchPoints = 2;
               team1Result = 'loss';
               team2Result = 'win';
             } else {
-              team1MatchPoints = 0.5;
-              team2MatchPoints = 0.5;
+              team1MatchPoints = 1;
+              team2MatchPoints = 1;
               team1Result = 'draw';
               team2Result = 'draw';
             }
@@ -388,6 +389,85 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
         };
       }));
 
+      // Calculate tiebreakers: Sonneborn-Berger and Buchholz for each team
+      // Sonneborn-Berger: Sum of (opponent's match points * result multiplier)
+      //   - Win: full opponent's MP
+      //   - Draw: half of opponent's MP
+      //   - Loss: 0
+      // Buchholz: Sum of all opponents' board points
+      
+      const teamStandingsMap = {};
+      enhancedStandings.forEach(standing => {
+        teamStandingsMap[standing.team_id] = standing;
+        standing.sonneborn_berger = 0;
+        standing.buchholz = 0;
+      });
+
+      // Calculate Sonneborn-Berger and Buchholz by examining all matches
+      Object.values(matchesByRound).forEach(match => {
+        if (match.isBye) {
+          // Bye doesn't contribute to tiebreakers
+          return;
+        }
+
+        const team1Standing = teamStandingsMap[match.team1Id];
+        const team2Standing = teamStandingsMap[match.team2Id];
+        
+        if (!team1Standing || !team2Standing) {
+          return;
+        }
+
+        // Calculate match result
+        let team1Points = 0;
+        let team2Points = 0;
+        
+        match.games.forEach(game => {
+          if (game.whiteTeam === match.team1Id) {
+            team1Points += game.whitePoints;
+            team2Points += game.blackPoints;
+          } else {
+            team1Points += game.blackPoints;
+            team2Points += game.whitePoints;
+          }
+        });
+
+        // Determine match result and calculate Sonneborn-Berger
+        if (team1Points > team2Points) {
+          // Team 1 wins: add full opponent's MP to Team 1's SB
+          team1Standing.sonneborn_berger += team2Standing.match_points;
+          // Team 2 loses: no SB points
+        } else if (team1Points < team2Points) {
+          // Team 2 wins: add full opponent's MP to Team 2's SB
+          team2Standing.sonneborn_berger += team1Standing.match_points;
+          // Team 1 loses: no SB points
+        } else {
+          // Draw: add half of opponent's MP to each team's SB
+          team1Standing.sonneborn_berger += team2Standing.match_points * 0.5;
+          team2Standing.sonneborn_berger += team1Standing.match_points * 0.5;
+        }
+
+        // Buchholz: sum of opponents' board points (calculated separately below)
+      });
+
+      // Calculate Buchholz: sum of all opponents' board points
+      // For each team, find all teams they played against and sum their board points
+      Object.values(matchesByRound).forEach(match => {
+        if (match.isBye) {
+          return;
+        }
+
+        const team1Standing = teamStandingsMap[match.team1Id];
+        const team2Standing = teamStandingsMap[match.team2Id];
+        
+        if (!team1Standing || !team2Standing) {
+          return;
+        }
+
+        // Add opponent's board points to Buchholz
+        team1Standing.buchholz += team2Standing.game_points;
+        team2Standing.buchholz += team1Standing.game_points;
+      });
+
       // Group standings by section
       const standingsBySection = {};
       enhancedStandings.forEach(standing => {
@@ -398,13 +478,31 @@ router.get('/tournament/:tournamentId/standings', async (req, res) => {
         standingsBySection[section].push(standing);
       });
 
-      // Sort each section by match points, then game points, and add rank within section
+      // Sort each section by match points, then tiebreakers, and add rank within section
       Object.keys(standingsBySection).forEach(section => {
         standingsBySection[section].sort((a, b) => {
+          // Primary: Match Points
           if (b.match_points !== a.match_points) {
             return b.match_points - a.match_points;
           }
-          return b.game_points - a.game_points;
+          
+          // Secondary: Sonneborn-Berger
+          if (b.sonneborn_berger !== a.sonneborn_berger) {
+            return b.sonneborn_berger - a.sonneborn_berger;
+          }
+          
+          // Tertiary: Total Board Points
+          if (b.game_points !== a.game_points) {
+            return b.game_points - a.game_points;
+          }
+          
+          // Quaternary: Buchholz
+          if (b.buchholz !== a.buchholz) {
+            return b.buchholz - a.buchholz;
+          }
+          
+          // Final: Team name (alphabetical)
+          return a.team_name.localeCompare(b.team_name);
         });
 
         // Add rank within section

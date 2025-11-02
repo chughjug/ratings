@@ -200,24 +200,25 @@ class TeamSwissPairingSystem {
       });
 
       // Determine match result
+      // Chess Olympiad standard: Win = 2 MP, Draw = 1 MP, Loss = 0 MP
       let team1MatchPoints = 0;
       let team2MatchPoints = 0;
       let team1Result = 'loss';
       let team2Result = 'loss';
 
       if (team1Points > team2Points) {
-        team1MatchPoints = 1;
+        team1MatchPoints = 2;
         team2MatchPoints = 0;
         team1Result = 'win';
         team2Result = 'loss';
       } else if (team1Points < team2Points) {
         team1MatchPoints = 0;
-        team2MatchPoints = 1;
+        team2MatchPoints = 2;
         team1Result = 'loss';
         team2Result = 'win';
       } else {
-        team1MatchPoints = 0.5;
-        team2MatchPoints = 0.5;
+        team1MatchPoints = 1;
+        team2MatchPoints = 1;
         team1Result = 'draw';
         team2Result = 'draw';
       }

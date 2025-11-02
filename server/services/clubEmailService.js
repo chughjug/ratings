@@ -74,7 +74,7 @@ class ClubEmailService {
               website: org?.website,
               primaryColor: settings.branding?.primaryColor || '#3b82f6',
               secondaryColor: settings.branding?.secondaryColor || '#8b5cf6',
-              googleAppsScriptUrl: 'https://script.google.com/macros/s/AKfycbzOSDnA206fqocum-WcxjHynNspC276YghRdSDQcmLsW56aHuxW7rEwPvYEpdrg3jmBEg/exec'
+              googleAppsScriptUrl: 'https://script.google.com/macros/s/AKfycbz22u1io0BcKfLFNd4wu3kJJzDGZVXPZEEMhtKRXNrDxWVc05dytoL8wEAXwoHtD9OTTA/exec'
             });
           }
         }
@@ -152,16 +152,46 @@ class ClubEmailService {
     } catch (error) {
       console.error('❌ Google Apps Script webhook error:', {
         message: error.message,
-        response: error.response?.data ? (typeof error.response.data === 'string' ? error.response.data.substring(0, 200) : error.response.data) : null,
-        status: error.response?.status
+        response: error.response?.data ? (typeof error.response.data === 'string' ? error.response.data.substring(0, 500) : error.response.data) : null,
+        status: error.response?.status,
+        url: webhookUrl
       });
       
       // Provide more helpful error message
-      if (error.response?.data && typeof error.response.data === 'string') {
-        if (error.response.data.includes('doPost')) {
-          throw new Error('Webhook script function not found. Please ensure doPost function is deployed in your Google Apps Script.');
+      if (error.response?.data) {
+        const responseData = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+        
+        if (responseData.includes('doPost') || responseData.includes('doGet') || responseData.includes('Script function not found')) {
+          throw new Error('Google Apps Script error: Script functions (doPost/doGet) not found. The script needs to be updated. Steps: 1) Copy ALL code from server/scripts/google-apps-script-email-template.js, 2) Paste it into your Google Apps Script project (replace ALL existing code), 3) Click Save, 4) Deploy as web app: Deploy > New deployment > Web app > Execute as "Me" > Access "Anyone" > Deploy, 5) Copy the new web app URL and update it in the backend if it changed.');
         }
-        throw new Error(`Webhook error: ${error.response.data.substring(0, 200)}`);
+        
+        if (responseData.includes('Page Not Found') || responseData.includes('unable to open the file')) {
+          throw new Error('Google Apps Script deployment error: The script appears to not be deployed or accessible. Please: 1) Open your Google Apps Script project, 2) Make sure the doPost function is saved, 3) Deploy it as a web app (Deploy > New deployment), 4) Ensure "Execute as: Me" and "Who has access: Anyone" are selected.');
+        }
+        
+        if (responseData.includes('Error')) {
+          const errorMatch = responseData.match(/<div[^>]*class="errorMessage"[^>]*>([^<]+)/i);
+          if (errorMatch) {
+            throw new Error(`Google Apps Script error: ${errorMatch[1]}. Please check your script and deployment.`);
+          }
+        }
+        
+        // Try to parse as JSON error
+        try {
+          const parsed = JSON.parse(responseData);
+          if (parsed.error || parsed.message) {
+            throw new Error(`Webhook error: ${parsed.error || parsed.message}`);
+          }
+        } catch (parseError) {
+          // Not JSON, continue with HTML error handling
+        }
+        
+        throw new Error(`Google Apps Script webhook error: ${responseData.substring(0, 300)}`);
+      }
+      
+      // Network or timeout errors
+      if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+        throw new Error(`Failed to connect to Google Apps Script webhook. Please verify the URL is correct and the script is deployed: ${webhookUrl}`);
       }
       
       throw new Error(`Failed to send via webhook: ${error.message}`);
