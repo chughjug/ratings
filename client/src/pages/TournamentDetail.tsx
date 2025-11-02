@@ -1245,14 +1245,43 @@ const TournamentDetail: React.FC = () => {
     if (!id) return;
     
     try {
-      // Include required fields (name, format, rounds) along with the field being updated
-      const updateData: any = { [field]: value };
-      if (tournament) {
-        // Only include required fields if not already being updated
-        if (field !== 'name') updateData.name = tournament.name || '';
-        if (field !== 'format') updateData.format = tournament.format || 'swiss';
-        if (field !== 'rounds') updateData.rounds = tournament.rounds || 5;
+      // Always include required fields - use tournament from state or fallback to currentTournament
+      let currentTournament = tournament || state.currentTournament;
+      
+      // If tournament data not loaded, fetch it first
+      if (!currentTournament) {
+        const tournamentResponse = await tournamentApi.getById(id);
+        if (!tournamentResponse.data.success || !tournamentResponse.data.data) {
+          throw new Error('Failed to load tournament data');
+        }
+        currentTournament = tournamentResponse.data.data;
       }
+      
+      // Build update data with required fields
+      const updateData: any = { [field]: value };
+      
+      // Always include required fields (server validation requires them)
+      if (field !== 'name') {
+        updateData.name = currentTournament.name || '';
+      }
+      if (field !== 'format') {
+        updateData.format = currentTournament.format || 'swiss';
+      }
+      if (field !== 'rounds') {
+        updateData.rounds = typeof currentTournament.rounds === 'number' 
+          ? currentTournament.rounds 
+          : (parseInt(currentTournament.rounds) || 5);
+      }
+      
+      console.log('Updating tournament with data:', {
+        field,
+        value,
+        includedFields: {
+          name: updateData.name,
+          format: updateData.format,
+          rounds: updateData.rounds
+        }
+      });
       
       const response = await tournamentApi.update(id, updateData);
       if (response.data.success) {
@@ -1262,6 +1291,11 @@ const TournamentDetail: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to update tournament:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       alert(`Failed to update tournament: ${error.message || error}`);
     }
   };
