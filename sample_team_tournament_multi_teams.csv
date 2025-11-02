@@ -1,0 +1,47 @@
+Name,USCF ID,Rating,Section,Team Name,Email,City,State,Status
+Alice Anderson,12345,1200,Elementary,Red Dragons,alice@example.com,New York,NY,active
+Bob Brown,12346,1150,Elementary,Red Dragons,bob@example.com,New York,NY,active
+Charlie Chen,12347,1100,Elementary,Red Dragons,charlie@example.com,New York,NY,active
+Diana Davis,12348,1050,Elementary,Red Dragons,diana@example.com,New York,NY,active
+Eve Evans,12349,1000,Elementary,Red Dragons,eve@example.com,New York,NY,active
+Frank Foster,12350,1180,Elementary,Blue Knights,frank@example.com,Boston,MA,active
+Grace Green,12351,1130,Elementary,Blue Knights,grace@example.com,Boston,MA,active
+Henry Hill,12352,1080,Elementary,Blue Knights,henry@example.com,Boston,MA,active
+Ivy Irving,12353,1030,Elementary,Blue Knights,ivy@example.com,Boston,MA,active
+Jack Jones,12354,980,Elementary,Blue Knights,jack@example.com,Boston,MA,active
+Kelly King,12355,1160,Elementary,Green Tigers,kelly@example.com,Chicago,IL,active
+Liam Lee,12356,1110,Elementary,Green Tigers,liam@example.com,Chicago,IL,active
+Mia Moore,12357,1060,Elementary,Green Tigers,mia@example.com,Chicago,IL,active
+Noah Nelson,12358,1010,Elementary,Green Tigers,noah@example.com,Chicago,IL,active
+Olivia Olson,12359,960,Elementary,Green Tigers,olivia@example.com,Chicago,IL,active
+Paul Parker,12360,1600,Middle,Wildcats,paul@example.com,Los Angeles,CA,active
+Quinn Quinn,12361,1550,Middle,Wildcats,quinn@example.com,Los Angeles,CA,active
+Rachel Reed,12362,1500,Middle,Wildcats,rachel@example.com,Los Angeles,CA,active
+Sam Smith,12363,1450,Middle,Wildcats,sam@example.com,Los Angeles,CA,active
+Tina Taylor,12364,1400,Middle,Wildcats,tina@example.com,Los Angeles,CA,active
+Uma Underwood,12365,1580,Middle,Thunderbolts,uma@example.com,Seattle,WA,active
+Victor Vega,12366,1530,Middle,Thunderbolts,victor@example.com,Seattle,WA,active
+Wendy White,12367,1480,Middle,Thunderbolts,wendy@example.com,Seattle,WA,active
+Xander Xeno,12368,1430,Middle,Thunderbolts,xander@example.com,Seattle,WA,active
+Yara Young,12369,1380,Middle,Thunderbolts,yara@example.com,Seattle,WA,active
+Zoe Zhang,12370,1620,Middle,Lightning,zoe@example.com,Philadelphia,PA,active
+Adam Adams,12371,1570,Middle,Lightning,adam@example.com,Philadelphia,PA,active
+Ben Baker,12372,1520,Middle,Lightning,ben@example.com,Philadelphia,PA,active
+Cara Cruz,12373,1470,Middle,Lightning,cara@example.com,Philadelphia,PA,active
+Dan Diaz,12374,1420,Middle,Lightning,dan@example.com,Philadelphia,PA,active
+Emma East,12375,2000,High,Chess Champions,emma@example.com,New York,NY,active
+Finn Ford,12376,1950,High,Chess Champions,finn@example.com,New York,NY,active
+Gina Garcia,12377,1900,High,Chess Champions,gina@example.com,New York,NY,active
+Hank Hall,12378,1850,High,Chess Champions,hank@example.com,New York,NY,active
+Ian Ivey,12379,1800,High,Chess Champions,ian@example.com,New York,NY,active
+Jill James,12380,1980,High,Grandmasters,jill@example.com,Boston,MA,active
+Kyle Kim,12381,1930,High,Grandmasters,kyle@example.com,Boston,MA,active
+Luna Lee,12382,1880,High,Grandmasters,luna@example.com,Boston,MA,active
+Max Martin,12383,1830,High,Grandmasters,max@example.com,Boston,MA,active
+Nina North,12384,1780,High,Grandmasters,nina@example.com,Boston,MA,active
+Oscar O'Brien,12385,2020,High,Checkmate Kings,oscar@example.com,Chicago,IL,active
+Penny Price,12386,1970,High,Checkmate Kings,penny@example.com,Chicago,IL,active
+Quincy Quick,12387,1920,High,Checkmate Kings,quincy@example.com,Chicago,IL,active
+Rob Ryan,12388,1870,High,Checkmate Kings,rob@example.com,Chicago,IL,active
+Sara Stone,12389,1820,High,Checkmate Kings,sara@example.com,Chicago,IL,active
+
