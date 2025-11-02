@@ -189,7 +189,7 @@ const PlayChess: React.FC = () => {
         ? '/api/games'
         : 'http://localhost:5000/api/games';
       
-      const response = await axios.post(apiUrl, {
+      await axios.post(apiUrl, {
         whitePlayer: 'White',
         blackPlayer: 'Black',
         pgn,
