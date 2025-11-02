@@ -738,7 +738,7 @@ const PlayChess: React.FC = () => {
                     setBoard={setBoard}
                     isFlipped={isFlipped}
                     onMove={handleMove}
-                    disabled={gameStatus.isGameOver || (opponentName && !waitingForOpponent && (
+                    disabled={gameStatus.isGameOver || !!(opponentName && !waitingForOpponent && (
                       (playerColor === 'white' && chess.turn() !== 'w') || 
                       (playerColor === 'black' && chess.turn() !== 'b')
                     ))}
