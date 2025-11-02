@@ -436,11 +436,17 @@ ensureDBFFilesReady();
 setInterval(ensureDBFFilesReady, 5 * 60 * 1000); // 5 minutes
 
 // Initialize Socket.io for 2PlayerChess
+// Configure for Heroku proxy compatibility
 const io = socketIo(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['polling', 'websocket'], // Prefer polling first for Heroku compatibility
+  allowEIO3: true, // Allow Engine.IO v3 clients for compatibility
+  pingTimeout: 60000, // Increase timeout for Heroku
+  pingInterval: 25000
 });
 
 // 2PlayerChess game state (shared with routes)

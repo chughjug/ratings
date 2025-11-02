@@ -23,11 +23,34 @@ const CreateGame: React.FC = () => {
       : 'http://localhost:5000';
     
     const newSocket = io(socketUrl, {
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket'], // Prefer polling first for Heroku compatibility
+      upgrade: true,
+      rememberUpgrade: false,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
     });
     
     newSocket.on('connect', () => {
       console.log('Connected to socket server');
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('Socket reconnected after', attemptNumber, 'attempts');
+    });
+
+    newSocket.on('reconnect_error', (error) => {
+      console.error('Socket reconnection error:', error);
+    });
+
+    newSocket.on('reconnect_failed', () => {
+      console.error('Socket reconnection failed');
     });
 
     newSocket.on('newroom', (roomCode) => {
