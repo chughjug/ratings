@@ -482,14 +482,9 @@ io.on('connection', (socket) => {
   userCount++;
   console.log("2PlayerChess users:", userCount);
 
-  socket.on('disconnect', () => {
-    userCount--;
-    console.log("2PlayerChess users:", userCount);
-  });
-
-  socket.on('newroom', (name) => {
+  socket.on('newroom', async (name) => {
     let newRoom = Math.random().toString(36).substr(2, 10).toUpperCase();
-    chessRoomsService.setRoom(newRoom, { first: name, firstID: socket.id });
+    await chessRoomsService.setRoom(newRoom, { first: name, firstID: socket.id, second: '', secondID: '', moveObj: [], moveCount: 0, options: {} });
     gameRoomId = newRoom;
     socket.room = gameRoomId;
     socket.name = name;
@@ -500,8 +495,8 @@ io.on('connection', (socket) => {
     io.in(gameRoomId).emit('newroom', newRoom);
   });
 
-  socket.on('get-current-time', (minsB, minsW, secsB, secsW, zeroB, zeroW) => {
-    const room = chessRoomsService.getRoom(gameRoomId);
+  socket.on('get-current-time', async (minsB, minsW, secsB, secsW, zeroB, zeroW) => {
+    const room = await chessRoomsService.getRoom(gameRoomId);
     if (room) {
       room.time = {
         minsB: minsB,
@@ -511,8 +506,8 @@ io.on('connection', (socket) => {
         zeroB: zeroB,
         zeroW: zeroW
       };
-      chessRoomsService.setRoom(gameRoomId, room);
-      const updatedRoom = chessRoomsService.getRoom(gameRoomId);
+      await chessRoomsService.setRoom(gameRoomId, room);
+      const updatedRoom = await chessRoomsService.getRoom(gameRoomId);
       console.log(updatedRoom.time);
       const time = room.time;
       io.in(gameRoomId).emit("get-current-time",
@@ -526,8 +521,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on("game-options", (radioVal, plus5Val, colorVal, rematch, id) => {
-    const room = chessRoomsService.getRoom(gameRoomId);
+  socket.on("game-options", async (radioVal, plus5Val, colorVal, rematch, id) => {
+    const room = await chessRoomsService.getRoom(gameRoomId);
     if (radioVal && room) {
       room.options = {
         playerOneIsWhite: colorVal,
@@ -537,7 +532,7 @@ io.on('connection', (socket) => {
       room.options.playerOneIsWhite;
       room.options.timeControls;
       room.options.plus5secs;
-      chessRoomsService.setRoom(gameRoomId, room);
+      await chessRoomsService.setRoom(gameRoomId, room);
 
       io.in(gameRoomId).emit("game-options",
         room.options.timeControls,
@@ -551,8 +546,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('validate', val => {
-    let roomsKeys = Object.keys(chessRoomsService.getRooms());
+  socket.on('validate', async val => {
+    let rooms = await chessRoomsService.getRooms();
+    let roomsKeys = Object.keys(rooms);
     let valIsTrue = roomsKeys.some((room) => {
       return room == val;
     });
@@ -567,39 +563,39 @@ io.on('connection', (socket) => {
     io.in(gameRoomId).emit("drawn-game");
   });
 
-  socket.on("send-current-position", (moveObj, moveCount) => {
-    const room = chessRoomsService.getRoom(gameRoomId);
+  socket.on("send-current-position", async (moveObj, moveCount) => {
+    const room = await chessRoomsService.getRoom(gameRoomId);
     if (room) {
       room.moveObj = moveObj;
       room.moveCount = moveCount;
-      chessRoomsService.setRoom(gameRoomId, room);
+      await chessRoomsService.setRoom(gameRoomId, room);
       console.log(room.moveObj, room.moveCount);
     }
   });
 
-  socket.on('join', (room, user, restart, moveCtClient, rematch) => {
+  socket.on('join', async (room, user, restart, moveCtClient, rematch) => {
     let user1 = "";
     let opponent = "";
     let rejoin = false;
     if (!restart) {
       moveCt = moveCtClient;
       console.log(moveCt);
-      const existingRoom = chessRoomsService.getRoom(room);
+      const existingRoom = await chessRoomsService.getRoom(room);
       if (existingRoom && existingRoom.firstID != "") {
         existingRoom.second = user;
         existingRoom.secondID = socket.id;
-        chessRoomsService.setRoom(room, existingRoom);
+        await chessRoomsService.setRoom(room, existingRoom);
         socket.emit('this-user', existingRoom.secondID);
         user1 = user;
         opponent = existingRoom.first;
       } else {
         if (!existingRoom) {
-          chessRoomsService.setRoom(room, {});
+          await chessRoomsService.setRoom(room, { first: '', firstID: '', second: '', secondID: '', moveObj: [], moveCount: 0, options: {} });
         }
-        const newRoom = chessRoomsService.getRoom(room);
+        const newRoom = await chessRoomsService.getRoom(room);
         newRoom.first = user;
         newRoom.firstID = socket.id;
-        chessRoomsService.setRoom(room, newRoom);
+        await chessRoomsService.setRoom(room, newRoom);
         user1 = user;
         socket.emit('this-user', newRoom.firstID);
         opponent = newRoom.second || '';
@@ -614,7 +610,7 @@ io.on('connection', (socket) => {
       });
     }
 
-    const currentRoom = chessRoomsService.getRoom(gameRoomId);
+    const currentRoom = await chessRoomsService.getRoom(gameRoomId);
     if (io.sockets.adapter.rooms.get(gameRoomId) && io.sockets.adapter.rooms.get(gameRoomId).size == 2 && currentRoom) {
       io.in(gameRoomId).emit('username2',
         user1,
@@ -666,22 +662,31 @@ io.on('connection', (socket) => {
     socket.to(gameRoomId).emit("rematch-response", val, id);
   });
 
-  // GAME FUNCTIONS
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
+    userCount--;
+    console.log("2PlayerChess users:", userCount);
     console.log(`${socket.id} has disconnected!`);
 
-    if (io.sockets.adapter.rooms.get(gameRoomId) == undefined || io.sockets.adapter.rooms.get(gameRoomId).size === 0) {
-      chessRoomsService.deleteRoom(gameRoomId);
-      console.log(chessRoomsService.getRooms());
-    } else {
-      const room = chessRoomsService.getRoom(gameRoomId);
-      let firstPlayerGone = Boolean(room && room.firstID == socket.id);
-      if (firstPlayerGone && room) {
-        room.firstID = "";
-        room.first = "";
-        chessRoomsService.setRoom(gameRoomId, room);
+    // Handle room cleanup on disconnect
+    if (socket.room) {
+      const room = await chessRoomsService.getRoom(socket.room);
+      if (room) {
+        if (room.firstID === socket.id) {
+          room.firstID = "";
+          room.first = "";
+        } else if (room.secondID === socket.id) {
+          room.secondID = "";
+          room.second = "";
+        }
+        await chessRoomsService.setRoom(socket.room, room);
+        // Notify opponent of disconnection
+        socket.to(socket.room).emit("p-disconnected", socket.name, room.firstID === "" || room.secondID === "");
       }
-      socket.to(gameRoomId).emit("p-disconnected", socket.name, firstPlayerGone);
+      // If both players are gone, delete the room
+      if (io.sockets.adapter.rooms.get(socket.room) === undefined || io.sockets.adapter.rooms.get(socket.room).size === 0) {
+        await chessRoomsService.deleteRoom(socket.room);
+        console.log(`Room ${socket.room} deleted.`);
+      }
     }
   });
 });
