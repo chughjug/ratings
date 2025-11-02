@@ -1655,15 +1655,9 @@ const PublicTournamentDisplay: React.FC = () => {
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                       Score
                                     </th>
-                                    {(() => {
-                                      const shouldShowGame = data?.tournament?.format === 'online-rated';
-                                      console.log('Should show Game column:', shouldShowGame, 'format:', data?.tournament?.format);
-                                      return shouldShowGame && (
-                                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                          Game
-                                        </th>
-                                      );
-                                    })()}
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                      Game
+                                    </th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                       Result
                                     </th>
@@ -1740,42 +1734,40 @@ const PublicTournamentDisplay: React.FC = () => {
                                         </div>
                                       </td>
                                       {/* Game column for online-rated tournaments */}
-                                      {data?.tournament?.format === 'online-rated' && (
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                          {pairing.white_link && pairing.black_link ? (
-                                            <div className="flex flex-col space-y-1">
-                                              <div className="flex items-center justify-center space-x-1 text-xs text-green-600">
-                                                <CheckCircle className="w-3 h-3" />
-                                                <span>Game Ready</span>
-                                              </div>
-                                              <div className="flex flex-col space-y-1">
-                                                <a
-                                                  href={pairing.white_link}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="flex items-center justify-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
-                                                  title="Join game as White player"
-                                                >
-                                                  <Play className="w-3 h-3" />
-                                                  <span>Join as White</span>
-                                                </a>
-                                                <a
-                                                  href={pairing.black_link}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="flex items-center justify-center space-x-1 text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900 transition-colors"
-                                                  title="Join game as Black player"
-                                                >
-                                                  <Play className="w-3 h-3" />
-                                                  <span>Join as Black</span>
-                                                </a>
-                                              </div>
+                                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        {pairing.white_link && pairing.black_link ? (
+                                          <div className="flex flex-col space-y-1">
+                                            <div className="flex items-center justify-center space-x-1 text-xs text-green-600">
+                                              <CheckCircle className="w-3 h-3" />
+                                              <span>Game Ready</span>
                                             </div>
-                                          ) : (
-                                            <span className="text-xs text-gray-400">Not Ready</span>
-                                          )}
-                                        </td>
-                                      )}
+                                            <div className="flex flex-col space-y-1">
+                                              <a
+                                                href={pairing.white_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center justify-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+                                                title="Join game as White player"
+                                              >
+                                                <Play className="w-3 h-3" />
+                                                <span>Join as White</span>
+                                              </a>
+                                              <a
+                                                href={pairing.black_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center justify-center space-x-1 text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-900 transition-colors"
+                                                title="Join game as Black player"
+                                              >
+                                                <Play className="w-3 h-3" />
+                                                <span>Join as Black</span>
+                                              </a>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <span className="text-xs text-gray-400">Not Ready</span>
+                                        )}
+                                      </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-center">
                                         <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
                                           pairing.result === '1-0' ? 'bg-green-100 text-green-800' :
