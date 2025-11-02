@@ -187,13 +187,28 @@ const PlayChess: React.FC = () => {
                 newSocket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
               } else {
                 setPasswordError('Invalid password. Please enter your email or last 4 digits of your phone number.');
+                // Make sure gameRoomId is set so password prompt shows
+                setGameRoomId(roomParam.toUpperCase());
+                setShowRoomCreation(false);
               }
             });
           } else {
-            // No password in URL - check if password is required
-            // We'll show password prompt if needed (handled in render)
+            // No password in URL - set gameRoomId and check if password is required
             setGameRoomId(roomParam.toUpperCase());
             setShowRoomCreation(false);
+            // Check if password is required by verifying with empty password
+            verifyPassword(roomParam.toUpperCase(), '', colorFromUrl).then((result) => {
+              if (result) {
+                if (result.passwordRequired && !result.verified) {
+                  // Password is required but not provided - prompt will be shown
+                  // Don't set passwordVerified to true
+                } else {
+                  // No password required - auto verify
+                  setPasswordVerified(true);
+                  newSocket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
+                }
+              }
+            });
           }
         }
       }
@@ -682,30 +697,8 @@ const PlayChess: React.FC = () => {
     return `${minutes}`;
   };
 
-  // Check if password is required when we have a room from URL but haven't verified yet
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
-    const passwordFromUrl = urlParams.get('password');
-    const colorFromUrl = urlParams.get('color') === 'white' || urlParams.get('color') === 'black' ? urlParams.get('color') as 'white' | 'black' : 'white';
-    
-    if (roomParam && gameRoomId && !passwordVerified && !passwordFromUrl && socketConnected) {
-      // Check if password is required by verifying with no password
-      verifyPassword(roomParam.toUpperCase(), '', colorFromUrl).then((response) => {
-        // If no password required or already verified, proceed
-        if (response && (!response.passwordRequired || response.verified)) {
-          setPasswordVerified(true);
-          if (socket) {
-            const playerNameToUse = urlParams.get('name') || playerName;
-            if (playerNameToUse) {
-              socket.emit('join', roomParam.toUpperCase(), playerNameToUse, false, 0);
-            }
-          }
-        }
-        // If password required and not verified, password prompt will be shown
-      });
-    }
-  }, [gameRoomId, passwordVerified, socketConnected, socket, playerName]);
+  // This effect is handled in the socket connect handler above
+  // Removed duplicate logic to avoid race conditions
 
   // Handle password submission
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -749,6 +742,8 @@ const PlayChess: React.FC = () => {
   console.log('Render check:', { showRoomCreation, waitingForOpponent, gameRoomId, boardLength: board?.length, passwordVerified });
   
   // Show password verification form if password is required
+  // Show it if we have a gameRoomId but haven't verified password yet
+  // Also show it if there was a password error (user tried but failed)
   if (gameRoomId && !passwordVerified && !showRoomCreation) {
     const urlParams = new URLSearchParams(window.location.search);
     const playerNameToUse = urlParams.get('name') || playerName;
