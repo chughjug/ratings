@@ -127,18 +127,12 @@ router.post('/create-custom', async (req, res) => {
   chessRoomsService.setRoom(roomCode, roomData).then(() => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
-    // Generate links with room code, player info, and password
-    // White link includes name, room code, and password (if available)
-    let whiteLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
-    if (whitePass) {
-      whiteLink += `&password=${encodeURIComponent(whitePass)}`;
-    }
+    // Generate links with room code and player info (passwords handled by PlayChess component)
+    // White link includes name, room code, and color
+    const whiteLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
     
-    // Black link includes name, room code, and password (if available)
-    let blackLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
-    if (blackPass) {
-      blackLink += `&password=${encodeURIComponent(blackPass)}`;
-    }
+    // Black link includes name, room code, and color
+    const blackLink = `${baseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
     
     res.json({
       success: true,
