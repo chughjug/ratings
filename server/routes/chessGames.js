@@ -141,13 +141,7 @@ router.post('/create-custom', async (req, res) => {
       whiteLink += `&blackRating=${blackRating}`;
     }
     if (organizationLogo) {
-      const encodedLogo = encodeURIComponent(organizationLogo);
-      console.log('[create-custom] Logo encoding:', {
-        original: organizationLogo,
-        encoded: encodedLogo,
-        decoded: decodeURIComponent(encodedLogo)
-      });
-      whiteLink += `&logo=${encodedLogo}`;
+      whiteLink += `&logo=${encodeURIComponent(organizationLogo)}`;
     }
     
     // Black link includes name, room code, color, ratings, time control, and logo
@@ -160,8 +154,7 @@ router.post('/create-custom', async (req, res) => {
       blackLink += `&blackRating=${blackRating}`;
     }
     if (organizationLogo) {
-      const encodedLogo = encodeURIComponent(organizationLogo);
-      blackLink += `&logo=${encodedLogo}`;
+      blackLink += `&logo=${encodeURIComponent(organizationLogo)}`;
     }
     
     res.json({

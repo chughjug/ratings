@@ -232,14 +232,10 @@ const PlayChess: React.FC = () => {
     }
     
     // Set organization logo from URL if provided
+    // URLSearchParams.get() already decodes the value, so no need for decodeURIComponent
     if (logoParam) {
-      const decodedLogo = decodeURIComponent(logoParam);
-      console.log('[PlayChess] Logo decoding:', {
-        encoded: logoParam,
-        decoded: decodedLogo,
-        length: logoParam.length
-      });
-      setOrganizationLogo(decodedLogo);
+      console.log('[PlayChess] Logo from URL:', logoParam);
+      setOrganizationLogo(logoParam);
     } else {
       console.log('[PlayChess] No logo param found in URL');
     }
@@ -611,29 +607,35 @@ const PlayChess: React.FC = () => {
     }
   };
 
-  // Clock sync effect - sync with server every second
+  // Clock sync effect - send updates to server every second
+  // Removed clockTimes from dependencies to prevent interval recreation
   useEffect(() => {
-    if (!socket || !gameRoomId || !opponentName) return;
+    if (!socket || !gameRoomId || !opponentName || !isClockRunning) return;
 
     const syncInterval = setInterval(() => {
-      if (isClockRunning) {
-        const minsB = Math.floor(clockTimes.black / 60000);
-        const secsB = Math.floor((clockTimes.black % 60000) / 1000);
-        const minsW = Math.floor(clockTimes.white / 60000);
-        const secsW = Math.floor((clockTimes.white % 60000) / 1000);
-        const zeroB = clockTimes.black === 0;
-        const zeroW = clockTimes.white === 0;
+      // Only send updates when clock is running
+      // Use a ref to get current clock times without recreating interval
+      setClockTimes((current) => {
+        const minsB = Math.floor(current.black / 60000);
+        const secsB = Math.floor((current.black % 60000) / 1000);
+        const minsW = Math.floor(current.white / 60000);
+        const secsW = Math.floor((current.white % 60000) / 1000);
+        const zeroB = current.black === 0;
+        const zeroW = current.white === 0;
         
-        socket.emit('get-current-time', minsB, minsW, secsB, secsW, zeroB, zeroW);
-      }
+        // Send update with active color so server knows which player is updating
+        socket.emit('update-clock', minsB, minsW, secsB, secsW, zeroB, zeroW, activeColor);
+        
+        return current; // Return unchanged to avoid triggering state update
+      });
     }, 1000);
 
     return () => {
       clearInterval(syncInterval);
     };
-  }, [socket, gameRoomId, opponentName, isClockRunning, clockTimes]);
+  }, [socket, gameRoomId, opponentName, isClockRunning, activeColor]);
 
-  // Clock sync handler - receive updates from server
+  // Clock sync handler - receive authoritative updates from server
   useEffect(() => {
     if (!socket) return;
 
@@ -641,10 +643,20 @@ const PlayChess: React.FC = () => {
       const newBlackTime = minsB * 60000 + secsB * 1000;
       const newWhiteTime = minsW * 60000 + secsW * 1000;
       
-      // Always update from server - trust server as source of truth
-      setClockTimes({
-        black: newBlackTime,
-        white: newWhiteTime,
+      // Always update from server - trust server as authoritative source of truth
+      setClockTimes((prev) => {
+        // Only update if there's a significant difference to avoid jitter
+        const blackDiff = Math.abs(prev.black - newBlackTime);
+        const whiteDiff = Math.abs(prev.white - newWhiteTime);
+        
+        // Update if difference is more than 100ms (to handle rounding differences)
+        if (blackDiff > 100 || whiteDiff > 100 || prev.black !== newBlackTime || prev.white !== newWhiteTime) {
+          return {
+            black: newBlackTime,
+            white: newWhiteTime,
+          };
+        }
+        return prev;
       });
       
       // Handle time running out
@@ -754,13 +766,8 @@ const PlayChess: React.FC = () => {
       // Switch active color for clock after move is made
       setActiveColor(move.color === 'w' ? 'black' : 'white');
       
-      // Add increment to the player who just moved (after they move)
-      if (incrementSeconds > 0 && isClockRunning) {
-        setClockTimes((prev) => ({
-          ...prev,
-          [move.color === 'w' ? 'white' : 'black']: prev[move.color === 'w' ? 'white' : 'black'] + incrementSeconds * 1000
-        }));
-      }
+      // Note: Increment is now handled server-side when move is received
+      // Server will broadcast updated times back to all clients
       
       // Send move to opponent via socket (move.to is the destination square)
       if (socket && gameRoomId) {
@@ -1361,22 +1368,14 @@ const PlayChess: React.FC = () => {
               {/* Organization Logo */}
               <div className="pt-2 border-t border-gray-700">
                 <div className="flex justify-center items-center p-4">
-                  {(() => {
-                    console.log('[Render] Checking organizationLogo:', organizationLogo);
-                    return null;
-                  })()}
                   {organizationLogo ? (
                     <img
                       src={organizationLogo}
                       alt="Organization"
                       className="h-12 w-auto"
                       onError={(e) => {
-                        console.error('[Render] Error loading organization logo:', organizationLogo);
                         // Fallback to PairCraft logo if image fails to load
                         (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
-                      }}
-                      onLoad={() => {
-                        console.log('[Render] Organization logo loaded successfully:', organizationLogo);
                       }}
                     />
                   ) : (

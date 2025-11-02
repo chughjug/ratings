@@ -486,30 +486,102 @@ io.on('connection', (socket) => {
     io.in(gameRoomId).emit('newroom', newRoom);
   });
 
+  // Server-side authoritative clock management
+  socket.on('update-clock', async (minsB, minsW, secsB, secsW, zeroB, zeroW, activeColor) => {
+    const room = await chessRoomsService.getRoom(gameRoomId);
+    if (!room) return;
+    
+    // Only accept updates from the active player to prevent conflicts
+    // Convert client time to milliseconds for server storage
+    const blackTimeMs = minsB * 60000 + secsB * 1000;
+    const whiteTimeMs = minsW * 60000 + secsW * 1000;
+    
+    // Store authoritative time in room
+    if (!room.clock) {
+      room.clock = {
+        blackTimeMs: blackTimeMs,
+        whiteTimeMs: whiteTimeMs,
+        activeColor: activeColor || 'white',
+        lastUpdate: Date.now(),
+        isRunning: true
+      };
+    } else {
+      // Only update if this is from the active player or within reasonable bounds
+      const timeDiff = Date.now() - room.clock.lastUpdate;
+      if (timeDiff > 0 && timeDiff < 2000) { // Accept updates within 2 seconds
+        room.clock.blackTimeMs = blackTimeMs;
+        room.clock.whiteTimeMs = whiteTimeMs;
+        room.clock.activeColor = activeColor || room.clock.activeColor;
+        room.clock.lastUpdate = Date.now();
+      }
+    }
+    
+    await chessRoomsService.setRoom(gameRoomId, room);
+    
+    // Broadcast authoritative time to all clients in room
+    const broadcastMinsB = Math.floor(room.clock.blackTimeMs / 60000);
+    const broadcastSecsB = Math.floor((room.clock.blackTimeMs % 60000) / 1000);
+    const broadcastMinsW = Math.floor(room.clock.whiteTimeMs / 60000);
+    const broadcastSecsW = Math.floor((room.clock.whiteTimeMs % 60000) / 1000);
+    const broadcastZeroB = room.clock.blackTimeMs <= 0;
+    const broadcastZeroW = room.clock.whiteTimeMs <= 0;
+    
+    io.in(gameRoomId).emit("get-current-time",
+      broadcastMinsB,
+      broadcastMinsW,
+      broadcastSecsB,
+      broadcastSecsW,
+      broadcastZeroB,
+      broadcastZeroW
+    );
+  });
+  
+  // Legacy handler for backwards compatibility - but make it authoritative
   socket.on('get-current-time', async (minsB, minsW, secsB, secsW, zeroB, zeroW) => {
     const room = await chessRoomsService.getRoom(gameRoomId);
-    if (room) {
-      room.time = {
-        minsB: minsB,
-        minsW: minsW,
-        secsB: secsB,
-        secsW: secsW,
-        zeroB: zeroB,
-        zeroW: zeroW
+    if (!room) return;
+    
+    // Convert client time to milliseconds for server storage
+    const blackTimeMs = minsB * 60000 + secsB * 1000;
+    const whiteTimeMs = minsW * 60000 + secsW * 1000;
+    
+    // Store authoritative time in room
+    if (!room.clock) {
+      room.clock = {
+        blackTimeMs: blackTimeMs,
+        whiteTimeMs: whiteTimeMs,
+        activeColor: 'white',
+        lastUpdate: Date.now(),
+        isRunning: true
       };
-      await chessRoomsService.setRoom(gameRoomId, room);
-      const updatedRoom = await chessRoomsService.getRoom(gameRoomId);
-      console.log(updatedRoom.time);
-      const time = room.time;
-      io.in(gameRoomId).emit("get-current-time",
-        time.minsB,
-        time.minsW,
-        time.secsB,
-        time.secsW,
-        time.zeroB,
-        time.zeroW
-      );
+    } else {
+      // Only update if within reasonable bounds to prevent conflicts
+      const timeDiff = Date.now() - room.clock.lastUpdate;
+      if (timeDiff > 0 && timeDiff < 2000) {
+        room.clock.blackTimeMs = blackTimeMs;
+        room.clock.whiteTimeMs = whiteTimeMs;
+        room.clock.lastUpdate = Date.now();
+      }
     }
+    
+    await chessRoomsService.setRoom(gameRoomId, room);
+    
+    // Broadcast authoritative time to all clients in room
+    const broadcastMinsB = Math.floor(room.clock.blackTimeMs / 60000);
+    const broadcastSecsB = Math.floor((room.clock.blackTimeMs % 60000) / 1000);
+    const broadcastMinsW = Math.floor(room.clock.whiteTimeMs / 60000);
+    const broadcastSecsW = Math.floor((room.clock.whiteTimeMs % 60000) / 1000);
+    const broadcastZeroB = room.clock.blackTimeMs <= 0;
+    const broadcastZeroW = room.clock.whiteTimeMs <= 0;
+    
+    io.in(gameRoomId).emit("get-current-time",
+      broadcastMinsB,
+      broadcastMinsW,
+      broadcastSecsB,
+      broadcastSecsW,
+      broadcastZeroB,
+      broadcastZeroW
+    );
   });
 
   socket.on("game-options", async (radioVal, plus5Val, colorVal, rematch, id) => {
@@ -603,6 +675,26 @@ io.on('connection', (socket) => {
 
     const currentRoom = await chessRoomsService.getRoom(gameRoomId);
     if (io.sockets.adapter.rooms.get(gameRoomId) && io.sockets.adapter.rooms.get(gameRoomId).size == 2 && currentRoom) {
+      // Initialize clock if not already set, using time control from options or default
+      if (!currentRoom.clock && currentRoom.options) {
+        // Parse time control (format: "10+5" or minutes+increment)
+        const timeControl = currentRoom.options.timeControls || "3+2";
+        const parts = timeControl.split('+');
+        const minutes = parseInt(parts[0]) || 3;
+        const increment = parseInt(parts[1]) || 2;
+        const initialTimeMs = minutes * 60 * 1000;
+        
+        currentRoom.clock = {
+          blackTimeMs: initialTimeMs,
+          whiteTimeMs: initialTimeMs,
+          activeColor: 'white',
+          lastUpdate: Date.now(),
+          isRunning: false,
+          incrementMs: increment * 1000
+        };
+        await chessRoomsService.setRoom(gameRoomId, currentRoom);
+      }
+      
       // Emit to both players with proper color assignment
       // First player (who created room) is white, second player (who joined) is black
       // Send to first player (white)
@@ -646,8 +738,45 @@ io.on('connection', (socket) => {
     io.in(gameRoomId).emit('game-over', { result: 'Draw by agreement!' });
   });
 
-  socket.on('move', (piece, pos, color, simulation, atk, server, move, pawnPromote) => {
+  socket.on('move', async (piece, pos, color, simulation, atk, server, move, pawnPromote) => {
     moveCt++;
+    
+    // Update clock active color on move
+    const room = await chessRoomsService.getRoom(gameRoomId);
+    if (room && room.clock) {
+      // Switch active color: if move was white, now it's black's turn, and vice versa
+      room.clock.activeColor = color === 'w' ? 'black' : 'white';
+      room.clock.lastUpdate = Date.now();
+      
+      // Add increment if configured
+      if (room.clock.incrementMs && room.clock.incrementMs > 0) {
+        if (color === 'w') {
+          room.clock.whiteTimeMs += room.clock.incrementMs;
+        } else {
+          room.clock.blackTimeMs += room.clock.incrementMs;
+        }
+      }
+      
+      await chessRoomsService.setRoom(gameRoomId, room);
+      
+      // Broadcast updated clock state
+      const broadcastMinsB = Math.floor(room.clock.blackTimeMs / 60000);
+      const broadcastSecsB = Math.floor((room.clock.blackTimeMs % 60000) / 1000);
+      const broadcastMinsW = Math.floor(room.clock.whiteTimeMs / 60000);
+      const broadcastSecsW = Math.floor((room.clock.whiteTimeMs % 60000) / 1000);
+      const broadcastZeroB = room.clock.blackTimeMs <= 0;
+      const broadcastZeroW = room.clock.whiteTimeMs <= 0;
+      
+      io.in(gameRoomId).emit("get-current-time",
+        broadcastMinsB,
+        broadcastMinsW,
+        broadcastSecsB,
+        broadcastSecsW,
+        broadcastZeroB,
+        broadcastZeroW
+      );
+    }
+    
     socket.to(gameRoomId).emit('move', piece, pos, color, simulation, atk, true, move, pawnPromote);
   });
 
