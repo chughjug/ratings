@@ -131,15 +131,33 @@ class ClubEmailService {
         try {
           const parsed = JSON.parse(response.data);
           if (parsed.success === true) {
+            console.log(`✅ Webhook returned JSON success: ${parsed.message || 'Email sent'}`);
             return true;
           }
           throw new Error(parsed.error || parsed.message || 'Unknown error');
         } catch (parseError) {
-          // If it's HTML or other non-JSON response, check if it contains error
-          if (response.data.includes('Error') || response.data.includes('error')) {
-            throw new Error(`Webhook returned error page: ${response.data.substring(0, 200)}`);
+          // Check if it's an HTML error page
+          const responseLower = response.data.toLowerCase();
+          if (responseLower.includes('script function not found') || 
+              responseLower.includes('doPost') || 
+              responseLower.includes('doGet') ||
+              responseLower.includes('page not found') ||
+              responseLower.includes('unable to open') ||
+              responseLower.includes('<title>error</title>') ||
+              responseLower.includes('error message')) {
+            console.error('❌ Webhook returned HTML error page:', response.data.substring(0, 500));
+            throw new Error(`Webhook returned error page. Response preview: ${response.data.substring(0, 300)}`);
           }
-          // If no obvious error, assume success (some webhooks just return status 200)
+          
+          // If it's HTML but not an obvious error, log it but don't assume success
+          if (response.data.includes('<html') || response.data.includes('<!DOCTYPE')) {
+            console.warn('⚠️ Webhook returned HTML (non-error page). This might indicate a deployment issue.');
+            console.warn('Response preview:', response.data.substring(0, 500));
+            // Still throw an error so it can be handled properly
+            throw new Error('Webhook returned unexpected HTML response. Please verify the script is deployed correctly.');
+          }
+          
+          // If no obvious error and not HTML, assume success
           console.log(`✅ Webhook returned non-JSON response (assuming success)`);
           return true;
         }
@@ -398,7 +416,18 @@ class ClubEmailService {
               }
             } catch (error) {
               console.error(`❌ Google Apps Script failed for ${recipient.email}:`, error.message);
-              // Fall through to SMTP
+              console.error(`Full error:`, error);
+              // Don't fall through to SMTP if it's a deployment/configuration error
+              // Only fall through for network/timeout errors
+              if (error.message.includes('not found') || 
+                  error.message.includes('deployment') || 
+                  error.message.includes('Page Not Found') ||
+                  error.message.includes('unable to open')) {
+                // Re-throw deployment errors so they're visible
+                throw new Error(`Google Apps Script deployment issue: ${error.message}. Please check your script deployment.`);
+              }
+              // For other errors (network, timeout), fall through to SMTP
+              console.warn(`⚠️ Falling back to SMTP for ${recipient.email} due to: ${error.message}`);
             }
           }
 
