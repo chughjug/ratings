@@ -34,6 +34,7 @@ declare module 'chess.js' {
     load(fen: string): void;
     fen(): string;
     pgn(options?: { newline?: string; maxWidth?: number }): string;
+    loadPgn(pgn: string): boolean;
     board(): ({ square: Square; type: PieceSymbol; color: Color } | null)[][];
     moves(options?: { square?: Square; verbose?: boolean }): Move[] | string[];
     move(move: { from: Square; to: Square; promotion?: PieceSymbol } | string): Move | null;
