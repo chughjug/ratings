@@ -87,6 +87,7 @@ const PlayChess: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<Array<{sender: string, message: string}>>([]);
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
 
   // Helper function to verify password
   const verifyPassword = async (roomCode: string, password: string, playerColor: 'white' | 'black'): Promise<{ verified: boolean; passwordRequired?: boolean } | null> => {
@@ -148,6 +149,7 @@ const PlayChess: React.FC = () => {
     const colorParam = urlParams.get('color');
     const whiteRatingParam = urlParams.get('whiteRating');
     const blackRatingParam = urlParams.get('blackRating');
+    const logoParam = urlParams.get('logo');
     
     // Set player name from URL if provided
     if (nameParam && !playerName) {
@@ -171,6 +173,11 @@ const PlayChess: React.FC = () => {
       if (!isNaN(rating)) {
         setOpponentRating(rating);
       }
+    }
+    
+    // Set organization logo from URL if provided
+    if (logoParam) {
+      setOrganizationLogo(decodeURIComponent(logoParam));
     }
     
     const newSocket = io(socketUrl, {
@@ -384,6 +391,15 @@ const PlayChess: React.FC = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // Auto-flip board if joining as black
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const colorParam = urlParams.get('color');
+    if (colorParam === 'black') {
+      setIsFlipped(true);
+    }
+  }, []);
 
   // Send chat message
   const sendChatMessage = (e: React.FormEvent) => {
@@ -1226,6 +1242,7 @@ const PlayChess: React.FC = () => {
                   }
                   averageRating={playerRating && opponentRating ? (playerRating + opponentRating) / 2 : undefined}
                   boxSize={75}
+                  organizationLogo={organizationLogo || undefined}
                 />
               </div>
             </div>
@@ -1243,13 +1260,16 @@ const PlayChess: React.FC = () => {
                   >
                     <FlipHorizontal className="w-3 h-3" />
                   </button>
-                  <button
-                    onClick={handleReset}
-                    className="px-2 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-xs transition-colors"
-                    title="New Game"
-                  >
-                    New
-                  </button>
+                  {/* Only show New button when not joining from tournament link */}
+                  {!gameRoomId && (
+                    <button
+                      onClick={handleReset}
+                      className="px-2 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-xs transition-colors"
+                      title="New Game"
+                    >
+                      New
+                    </button>
+                  )}
                 </div>
               </div>
 
