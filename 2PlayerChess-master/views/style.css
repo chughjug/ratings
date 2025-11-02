@@ -713,7 +713,7 @@ li{
 @media only screen and (min-device-width: 970px) {
     .row.layout-row{
         display:grid;
-        grid-template-columns: 1fr 2fr 1fr;
+        grid-template-columns: 300px 1fr;
         height:100vh;
         width:100vw;
         gap: 0;
