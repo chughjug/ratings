@@ -206,15 +206,24 @@ app.use(express.static(path.join(__dirname, '../client/build'), {
   }
 }));
 
-// Serve 2PlayerChess static files
-app.use('/2playerchess', express.static(path.join(__dirname, '../2PlayerChess-master/views')));
+// Serve 2PlayerChess static files (at /chess)
+app.use('/chess', express.static(path.join(__dirname, '../2PlayerChess-master/views')));
 
 // Serve 2PlayerChess main HTML
-app.get('/2playerchess/', (req, res) => {
+app.get('/chess', (req, res) => {
   res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
 });
 
 // Serve 2PlayerChess chess.html directly (for game links)
+app.get('/chess/chess.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
+});
+
+// Also serve at legacy /2playerchess path for backwards compatibility
+app.use('/2playerchess', express.static(path.join(__dirname, '../2PlayerChess-master/views')));
+app.get('/2playerchess/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
+});
 app.get('/2playerchess/chess.html', (req, res) => {
   res.sendFile(path.join(__dirname, '../2PlayerChess-master/views/chess.html'));
 });
