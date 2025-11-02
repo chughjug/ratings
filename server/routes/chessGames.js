@@ -21,7 +21,8 @@ function generatePlayerPassword(email, phone) {
       return digitsOnly.slice(-4);
     }
   }
-  return null; // No password if neither email nor phone available
+  // Default password if neither email nor phone available
+  return '1234';
 }
 
 // Create a new custom chess game with socket.io room and player links

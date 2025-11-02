@@ -49,7 +49,8 @@ class OnlineGameService {
         return digitsOnly.slice(-4);
       }
     }
-    return null; // No password if neither email nor phone available
+    // Default password if neither email nor phone available
+    return '1234';
   }
 
   /**
