@@ -182,7 +182,7 @@ const GameView: React.FC = () => {
       if (incrementSeconds > 0) {
         setClockTimes((prev) => ({
           ...prev,
-          [move.color]: prev[move.color] + incrementSeconds * 1000
+          [move.color === 'w' ? 'white' : 'black']: prev[move.color === 'w' ? 'white' : 'black'] + incrementSeconds * 1000
         }));
       }
       
