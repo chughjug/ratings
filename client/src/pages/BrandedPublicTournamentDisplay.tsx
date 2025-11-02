@@ -221,7 +221,10 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                 points: getPlayerPointsForRound(pairing.black_player_id)
               },
               white_player_id: pairing.white_player_id,
-              black_player_id: pairing.black_player_id
+              black_player_id: pairing.black_player_id,
+              white_link: pairing.white_link,
+              black_link: pairing.black_link,
+              game_id: pairing.game_id
             }));
           } else {
             roundsData[round] = [];
