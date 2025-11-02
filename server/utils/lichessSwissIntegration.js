@@ -191,17 +191,57 @@ class LichessSwissIntegration {
    */
   async getRoundPairings(tournamentId, roundNum) {
     try {
-      const response = await axios.get(
-        `${this.apiBaseUrl}/swiss/${tournamentId}/${roundNum}`,
-        {
-          headers: this.token ? { 'Authorization': `Bearer ${this.token}` } : {}
-        }
-      );
+      // First try as ND-JSON (typical format for Lichess Swiss rounds)
+      try {
+        const response = await axios.get(
+          `${this.apiBaseUrl}/swiss/${tournamentId}/${roundNum}`,
+          {
+            headers: this.token ? { 'Authorization': `Bearer ${this.token}` } : {},
+            responseType: 'text'
+          }
+        );
 
-      return {
-        success: true,
-        data: response.data
-      };
+        // Try to parse as ND-JSON
+        const pairings = response.data
+          .trim()
+          .split('\n')
+          .filter(line => line.trim())
+          .map(line => JSON.parse(line));
+
+        console.log(`[Lichess] Retrieved ${pairings.length} pairings for round ${roundNum} (ND-JSON)`);
+        
+        return {
+          success: true,
+          data: { pairings }
+        };
+      } catch (ndjsonError) {
+        // If ND-JSON parsing fails, try as regular JSON
+        console.log('[Lichess] ND-JSON parsing failed, trying regular JSON');
+        
+        const response = await axios.get(
+          `${this.apiBaseUrl}/swiss/${tournamentId}/${roundNum}`,
+          {
+            headers: this.token ? { 'Authorization': `Bearer ${this.token}` } : {}
+          }
+        );
+
+        console.log('[Lichess] Response data:', JSON.stringify(response.data).substring(0, 500));
+        
+        // Handle different possible response formats
+        let pairings = [];
+        if (response.data.pairings) {
+          pairings = response.data.pairings;
+        } else if (Array.isArray(response.data)) {
+          pairings = response.data;
+        }
+
+        console.log(`[Lichess] Retrieved ${pairings.length} pairings for round ${roundNum} (JSON)`);
+        
+        return {
+          success: true,
+          data: { pairings: Array.isArray(pairings) ? pairings : [] }
+        };
+      }
     } catch (error) {
       console.error('Error getting round pairings:', error);
       return {

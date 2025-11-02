@@ -357,6 +357,92 @@ const EmailCampaignModal: React.FC<EmailCampaignModalProps> = ({ organizationId,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usePlainText, setUsePlainText] = useState(true); // Default to plain text mode
+  const [plainTextContent, setPlainTextContent] = useState('');
+
+  // Convert plain text to HTML
+  const convertPlainTextToHtml = (text: string): string => {
+    if (!text.trim()) return '';
+    
+    const lines = text.split('\n');
+    const htmlParts: string[] = [];
+    let currentList: string[] = [];
+    let inList = false;
+    
+    const flushList = () => {
+      if (currentList.length > 0) {
+        htmlParts.push(`<ul style="line-height: 1.8; color: #4B5563; margin: 16px 0; padding-left: 24px;">`);
+        currentList.forEach(item => {
+          htmlParts.push(`<li style="margin-bottom: 8px;">${item}</li>`);
+        });
+        htmlParts.push(`</ul>`);
+        currentList = [];
+      }
+      inList = false;
+    };
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Empty line - flush list and create paragraph break
+      if (!line) {
+        flushList();
+        continue;
+      }
+      
+      // Detect list items (lines starting with -, *, or •, or numbered lists)
+      const listMatch = line.match(/^[-*•]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+      if (listMatch) {
+        if (!inList) {
+          flushList();
+          inList = true;
+        }
+        // Process links in list items
+        let itemText = processLinks(listMatch[1]);
+        currentList.push(itemText);
+        continue;
+      }
+      
+      // Regular paragraph line
+      flushList();
+      
+      // Check for headings (lines that are short and might be headings)
+      if (line.length < 80 && (i === 0 || !lines[i - 1].trim())) {
+        // Could be a heading, but be conservative - only if it looks like one
+        if (line.match(/^[A-Z][^.!?]*$/) && line.length < 60) {
+          htmlParts.push(`<h3 style="color: #2563EB; margin-top: 24px; margin-bottom: 12px; font-size: 18px; font-weight: 600;">${processLinks(line)}</h3>`);
+          continue;
+        }
+      }
+      
+      // Regular paragraph
+      htmlParts.push(`<p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 16px;">${processLinks(line)}</p>`);
+    }
+    
+    // Flush any remaining list
+    flushList();
+    
+    return htmlParts.join('\n');
+  };
+  
+  // Helper to convert URLs and emails to links
+  const processLinks = (text: string): string => {
+    // Auto-detect URLs and make them links
+    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/gi;
+    let formatted = text.replace(urlRegex, '<a href="$1" style="color: #2563EB; text-decoration: underline;">$1</a>');
+    
+    // Auto-detect email addresses and make them links
+    const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    formatted = formatted.replace(emailRegex, '<a href="mailto:$1" style="color: #2563EB; text-decoration: underline;">$1</a>');
+    
+    // Escape any remaining HTML
+    formatted = formatted.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    
+    // Re-apply links (since we escaped HTML)
+    formatted = formatted.replace(/&lt;a href="([^"]+)"[^&]*&gt;([^&]+)&lt;\/a&gt;/g, '<a href="$1" style="color: #2563EB; text-decoration: underline;">$2</a>');
+    
+    return formatted;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -364,9 +450,20 @@ const EmailCampaignModal: React.FC<EmailCampaignModalProps> = ({ organizationId,
     setError(null);
 
     try {
+      // Convert plain text to HTML if in plain text mode
+      let finalContentHtml = formData.contentHtml;
+      let finalContentText = formData.contentText || plainTextContent;
+      
+      if (usePlainText && plainTextContent) {
+        finalContentHtml = convertPlainTextToHtml(plainTextContent);
+        finalContentText = plainTextContent;
+      }
+
       const response = await clubFeaturesApi.createEmailCampaign({
         organizationId,
         ...formData,
+        contentHtml: finalContentHtml,
+        contentText: finalContentText,
       });
 
       if (response.data.success) {
@@ -410,27 +507,63 @@ const EmailCampaignModal: React.FC<EmailCampaignModalProps> = ({ organizationId,
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email Content (HTML) *</label>
-            <textarea
-              required
-              value={formData.contentHtml}
-              onChange={(e) => setFormData({ ...formData, contentHtml: e.target.value })}
-              rows={12}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
-              placeholder="<h1>Hello Club Members!</h1><p>Your email content here...</p>"
-            />
-            <p className="text-xs text-gray-500 mt-1">You can use HTML formatting. The email will be wrapped with your club's branding.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Plain Text Version (Optional)</label>
-            <textarea
-              value={formData.contentText}
-              onChange={(e) => setFormData({ ...formData, contentText: e.target.value })}
-              rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="Plain text version for email clients that don't support HTML"
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Email Content *</label>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setUsePlainText(true)}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    usePlainText
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Plain Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUsePlainText(false)}
+                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                    !usePlainText
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  HTML
+                </button>
+              </div>
+            </div>
+            
+            {usePlainText ? (
+              <>
+                <textarea
+                  required
+                  value={plainTextContent}
+                  onChange={(e) => setPlainTextContent(e.target.value)}
+                  rows={15}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Type your email content here. Use line breaks to create new paragraphs.&#10;&#10;URLs and email addresses will be automatically converted to links.&#10;&#10;Example:&#10;&#10;Hello Club Members!&#10;&#10;We hope this message finds you well. We're excited to share some important updates with you.&#10;&#10;Visit our website at https://example.com for more information.&#10;&#10;If you have questions, email us at contact@example.com."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Tip: Use double line breaks to create new paragraphs. URLs and email addresses will automatically become clickable links.
+                </p>
+              </>
+            ) : (
+              <>
+                <textarea
+                  required
+                  value={formData.contentHtml}
+                  onChange={(e) => setFormData({ ...formData, contentHtml: e.target.value })}
+                  rows={15}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+                  placeholder="<h1>Hello Club Members!</h1>&#10;<p>Your HTML email content here...</p>&#10;<ul>&#10;  <li>Item 1</li>&#10;  <li>Item 2</li>&#10;</ul>"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  You can use HTML formatting. The email will be wrapped with your club's branding.
+                </p>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

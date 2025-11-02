@@ -161,8 +161,15 @@ class LichessApiService {
 
   /**
    * Create a Lichess challenge using OAuth token
+   * Requires both players to have granted permission (via OAuth tokens)
+   * 
+   * @param {string} accessToken - The challenger's OAuth token
+   * @param {Object} whitePlayer - Player with white pieces
+   * @param {Object} blackPlayer - Player with black pieces
+   * @param {string} timeControl - Time control string (e.g., "G/45+15")
+   * @param {string} blackPlayerToken - Optional: black player's token for auto-accept
    */
-  async createChallengeWithToken(accessToken, whitePlayer, blackPlayer, timeControl) {
+  async createChallengeWithToken(accessToken, whitePlayer, blackPlayer, timeControl, blackPlayerToken = null) {
     try {
       // Parse time control (e.g., "G/45+15" -> 45 minutes, 15 increment)
       const timeMatch = timeControl.match(/G\/(\d+)\+(\d+)/);
@@ -174,6 +181,8 @@ class LichessApiService {
         throw new Error('Both players must have Lichess usernames to create games');
       }
 
+      // Build challenge data according to Lichess API documentation
+      // See: https://lichess.org/api#operation/challengeCreate
       const challengeData = {
         rated: true,
         clock: {
@@ -181,10 +190,15 @@ class LichessApiService {
           increment: increment
         },
         color: 'white',
-        variant: 'standard',
-        users: [whitePlayer.lichess_username, blackPlayer.lichess_username]
+        variant: 'standard'
       };
 
+      // If black player token is provided, include it for auto-accept
+      if (blackPlayerToken) {
+        challengeData.acceptByToken = blackPlayerToken;
+      }
+
+      // Create challenge by sending from white to black player
       const response = await fetch(`${this.baseUrl}/api/challenge/${blackPlayer.lichess_username}`, {
         method: 'POST',
         headers: {
@@ -210,10 +224,12 @@ class LichessApiService {
         white: whitePlayer.lichess_username,
         black: blackPlayer.lichess_username,
         timeControl: timeControl,
-        status: 'challenge_created',
+        status: blackPlayerToken ? 'game_started' : 'challenge_created',
         createdAt: new Date().toISOString(),
         type: 'lichess_challenge',
-        instructions: `Challenge created! The game will start when ${blackPlayer.lichess_username} accepts the challenge.`,
+        instructions: blackPlayerToken 
+          ? `Game created and started automatically!`
+          : `Challenge created! The game will start when ${blackPlayer.lichess_username} accepts the challenge.`,
         timeControlMinutes: timeLimit,
         timeControlIncrement: increment
       };

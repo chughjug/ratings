@@ -130,10 +130,11 @@ router.post('/tournament/create', async (req, res) => {
 
 /**
  * Create Lichess game for a pairing
+ * Requires OAuth tokens from both players for automatic challenge creation
  */
 router.post('/create-game', async (req, res) => {
   try {
-    const { pairingId, whitePlayer, blackPlayer, timeControl, accessToken } = req.body;
+    const { pairingId, whitePlayer, blackPlayer, timeControl, accessToken, blackPlayerToken } = req.body;
     
     if (!pairingId || !whitePlayer || !blackPlayer) {
       return res.status(400).json({
@@ -149,7 +150,8 @@ router.post('/create-game', async (req, res) => {
           accessToken,
           { lichess_username: whitePlayer, name: whitePlayer },
           { lichess_username: blackPlayer, name: blackPlayer },
-          timeControl || 'G/45+15'
+          timeControl || 'G/45+15',
+          blackPlayerToken // Pass black player token for auto-accept if provided
         );
         
         return res.json({
@@ -162,7 +164,7 @@ router.post('/create-game', async (req, res) => {
       }
     }
 
-    // Create a simple game challenge (no OAuth required)
+    // Create a simple game challenge (no OAuth required, but manual acceptance needed)
     const game = await lichessApi.createSimpleGame(
       { lichess_username: whitePlayer, name: whitePlayer },
       { lichess_username: blackPlayer, name: blackPlayer },
@@ -171,7 +173,8 @@ router.post('/create-game', async (req, res) => {
     
     res.json({
       success: true,
-      game: game
+      game: game,
+      note: 'Manual acceptance required from both players'
     });
   } catch (error) {
     console.error('Error creating Lichess game:', error);
