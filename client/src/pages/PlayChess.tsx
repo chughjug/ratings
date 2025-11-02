@@ -173,6 +173,7 @@ const PlayChess: React.FC = () => {
     return () => {
       newSocket.close();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle incoming moves from socket
@@ -188,8 +189,29 @@ const PlayChess: React.FC = () => {
           const moveNotation = `${pos}${move}`;
           const moveResult = chess.move(moveNotation);
           if (moveResult) {
+            // Update move history
             setMoveHistory((prev) => [...prev, moveResult]);
+            
+            // Update board state
+            const newBoard = chess.board();
+            setBoard(newBoard);
+            
+            // Switch active color for clock
             setActiveColor(moveResult.color === 'w' ? 'black' : 'white');
+            
+            // Start clock on first move (if it's white's first move)
+            if (!isClockRunning && moveHistory.length === 0 && moveResult.color === 'w') {
+              setIsClockRunning(true);
+            }
+            
+            // Add increment to the player who just moved (if clock is running)
+            if (incrementSeconds > 0 && isClockRunning) {
+              setClockTimes((prev) => ({
+                ...prev,
+                [moveResult.color === 'w' ? 'white' : 'black']: prev[moveResult.color === 'w' ? 'white' : 'black'] + incrementSeconds * 1000
+              }));
+            }
+            
             updateGameStatus();
           }
         } catch (error) {
@@ -203,7 +225,7 @@ const PlayChess: React.FC = () => {
     return () => {
       socket.off('move', handleSocketMove);
     };
-  }, [socket, chess]);
+  }, [socket, chess, isClockRunning, moveHistory.length, incrementSeconds]);
 
   const handleStartGame = () => {
     if (!playerName.trim()) {
@@ -339,7 +361,12 @@ const PlayChess: React.FC = () => {
 
   const handleMove = (move: Move) => {
     try {
+      // Update move history
       setMoveHistory((prev) => [...prev, move]);
+      
+      // Update board state immediately
+      const newBoard = chess.board();
+      setBoard(newBoard);
       
       // Start clock on first move (after white's first move)
       if (!isClockRunning && moveHistory.length === 0 && move.color === 'w') {
