@@ -110,7 +110,7 @@ const PlayChess: React.FC = () => {
     return () => {
       newSocket.close();
     };
-  }, [playerName]);
+  }, []);
 
   // Handle incoming moves from socket
   useEffect(() => {
