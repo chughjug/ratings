@@ -148,6 +148,12 @@ const PlayChess: React.FC = () => {
       return;
     }
 
+    if (!socket) {
+      alert('Not connected to server. Please wait...');
+      return;
+    }
+
+    console.log('Starting game for player:', playerName);
     socket.emit('newroom', playerName);
     socket.emit('game-options', '10', false, true, false);
   };
