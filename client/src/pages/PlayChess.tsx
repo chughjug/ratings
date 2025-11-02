@@ -167,6 +167,8 @@ const PlayChess: React.FC = () => {
     const blackRatingParam = urlParams.get('blackRating');
     const logoParam = urlParams.get('logo');
     
+    console.log('PlayChess URL params:', { roomParam, nameParam, colorParam, whiteRatingParam, blackRatingParam, logoParam });
+    
     // Set player name from URL if provided
     if (nameParam && !playerName) {
       setPlayerName(nameParam);
@@ -175,25 +177,44 @@ const PlayChess: React.FC = () => {
     // Set player color from URL if provided
     if (colorParam && (colorParam === 'white' || colorParam === 'black')) {
       setPlayerColor(colorParam);
-    }
-    
-    // Set ratings from URL if provided
-    if (whiteRatingParam) {
-      const rating = parseInt(whiteRatingParam);
-      if (!isNaN(rating)) {
-        setPlayerRating(rating);
-      }
-    }
-    if (blackRatingParam) {
-      const rating = parseInt(blackRatingParam);
-      if (!isNaN(rating)) {
-        setOpponentRating(rating);
+      
+      // Set ratings based on color assignment
+      if (colorParam === 'white') {
+        // Player is white
+        if (whiteRatingParam) {
+          const rating = parseInt(whiteRatingParam);
+          if (!isNaN(rating)) {
+            setPlayerRating(rating);
+          }
+        }
+        if (blackRatingParam) {
+          const rating = parseInt(blackRatingParam);
+          if (!isNaN(rating)) {
+            setOpponentRating(rating);
+          }
+        }
+      } else {
+        // Player is black
+        if (blackRatingParam) {
+          const rating = parseInt(blackRatingParam);
+          if (!isNaN(rating)) {
+            setPlayerRating(rating);
+          }
+        }
+        if (whiteRatingParam) {
+          const rating = parseInt(whiteRatingParam);
+          if (!isNaN(rating)) {
+            setOpponentRating(rating);
+          }
+        }
       }
     }
     
     // Set organization logo from URL if provided
     if (logoParam) {
-      setOrganizationLogo(decodeURIComponent(logoParam));
+      const decodedLogo = decodeURIComponent(logoParam);
+      console.log('Setting organization logo:', decodedLogo);
+      setOrganizationLogo(decodedLogo);
     }
     
     const newSocket = io(socketUrl, {
@@ -408,6 +429,11 @@ const PlayChess: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // Debug: Log organization logo changes
+  useEffect(() => {
+    console.log('Organization logo state changed:', organizationLogo);
+  }, [organizationLogo]);
+
   // Auto-flip board if joining as black
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -593,18 +619,10 @@ const PlayChess: React.FC = () => {
       const newBlackTime = minsB * 60000 + secsB * 1000;
       const newWhiteTime = minsW * 60000 + secsW * 1000;
       
-      // Only update if the difference is significant (more than 1 second) to avoid jitter
-      setClockTimes((prev) => {
-        const blackDiff = Math.abs(prev.black - newBlackTime);
-        const whiteDiff = Math.abs(prev.white - newWhiteTime);
-        
-        if (blackDiff > 1000 || whiteDiff > 1000) {
-          return {
-            black: newBlackTime,
-            white: newWhiteTime,
-          };
-        }
-        return prev;
+      // Always update from server - trust server as source of truth
+      setClockTimes({
+        black: newBlackTime,
+        white: newWhiteTime,
       });
       
       // Handle time running out
@@ -1326,6 +1344,8 @@ const PlayChess: React.FC = () => {
                       src={organizationLogo}
                       alt="Organization"
                       className="max-h-20 max-w-full object-contain opacity-80"
+                      onLoad={() => console.log('Organization logo loaded successfully')}
+                      onError={(e) => console.error('Error loading organization logo:', e)}
                     />
                   </div>
                 </div>
