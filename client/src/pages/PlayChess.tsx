@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Chess, Move } from 'chess.js';
 import ChessBoard from '../components/chess/ChessBoard';
-import { RotateCcw, FlipHorizontal, Square, Clock, Save, Copy, Check, Users } from 'lucide-react';
+import { RotateCcw, FlipHorizontal, Square, Clock, Save, Copy, Check, Users, X, Minus } from 'lucide-react';
 import axios from 'axios';
 import io from 'socket.io-client';
 
@@ -62,8 +62,10 @@ const PlayChess: React.FC = () => {
     return (colorParam === 'white' || colorParam === 'black') ? colorParam : 'white';
   });
   
-  // Clock state
-  const initialTime = 10 * 60 * 1000; // 10 minutes in milliseconds
+  // Clock state - 3+2 time control
+  const initialTimeMinutes = 3;
+  const initialIncrementSeconds = 2;
+  const initialTime = initialTimeMinutes * 60 * 1000; // 3 minutes in milliseconds
   const [clockTimes, setClockTimes] = useState<ClockTimes>({
     white: initialTime,
     black: initialTime,
@@ -71,10 +73,11 @@ const PlayChess: React.FC = () => {
   const [isClockRunning, setIsClockRunning] = useState(false);
   const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
   const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [incrementSeconds, setIncrementSeconds] = useState(0);
+  const [incrementSeconds, setIncrementSeconds] = useState(initialIncrementSeconds);
+  const [drawOffered, setDrawOffered] = useState(false);
+  const [opponentDrawOffer, setOpponentDrawOffer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [initialTimeMinutes, setInitialTimeMinutes] = useState(10);
 
   // Initialize Socket.io connection
   useEffect(() => {
@@ -151,6 +154,35 @@ const PlayChess: React.FC = () => {
     newSocket.on('reconnect_failed', () => {
       console.error('Socket reconnection failed');
       setSocketConnected(false);
+    });
+
+    newSocket.on('offer-draw', () => {
+      setOpponentDrawOffer(true);
+    });
+
+    newSocket.on('decline-draw', () => {
+      setOpponentDrawOffer(false);
+      setDrawOffered(false);
+    });
+
+    newSocket.on('resign', () => {
+      setGameStatus({
+        isGameOver: true,
+        result: playerColor === 'white' ? 'White wins by resignation!' : 'Black wins by resignation!',
+        inCheck: false,
+      });
+      setIsClockRunning(false);
+    });
+
+    newSocket.on('game-over', (data: { result: string }) => {
+      setGameStatus({
+        isGameOver: true,
+        result: data.result,
+        inCheck: false,
+      });
+      setIsClockRunning(false);
+      setDrawOffered(false);
+      setOpponentDrawOffer(false);
     });
 
     newSocket.on('newroom', (roomCode) => {
@@ -418,6 +450,49 @@ const PlayChess: React.FC = () => {
     }
   };
 
+  const handleResign = () => {
+    if (window.confirm('Are you sure you want to resign?')) {
+      if (socket && gameRoomId) {
+        socket.emit('resign');
+      }
+      setGameStatus({
+        isGameOver: true,
+        result: playerColor === 'white' ? 'Black wins by resignation!' : 'White wins by resignation!',
+        inCheck: false,
+      });
+      setIsClockRunning(false);
+    }
+  };
+
+  const handleOfferDraw = () => {
+    if (socket && gameRoomId) {
+      socket.emit('offer-draw');
+      setDrawOffered(true);
+    }
+  };
+
+  const handleAcceptDraw = () => {
+    if (socket && gameRoomId) {
+      socket.emit('accept-draw');
+    }
+    setGameStatus({
+      isGameOver: true,
+      result: 'Draw by agreement!',
+      inCheck: false,
+    });
+    setIsClockRunning(false);
+    setDrawOffered(false);
+    setOpponentDrawOffer(false);
+  };
+
+  const handleDeclineDraw = () => {
+    if (socket && gameRoomId) {
+      socket.emit('decline-draw');
+    }
+    setDrawOffered(false);
+    setOpponentDrawOffer(false);
+  };
+
   const handleReset = () => {
     try {
       chess.reset();
@@ -427,18 +502,12 @@ const PlayChess: React.FC = () => {
       setClockTimes({ white: initialTime, black: initialTime });
       setActiveColor('white');
       setIsClockRunning(false);
+      setDrawOffered(false);
+      setOpponentDrawOffer(false);
       updateGameStatus();
     } catch (error) {
       console.error('Error resetting game:', error);
     }
-  };
-  
-  const handleStartClock = () => {
-    setIsClockRunning(true);
-  };
-  
-  const handlePauseClock = () => {
-    setIsClockRunning(false);
   };
   
   const formatTime = (ms: number): string => {
@@ -516,9 +585,9 @@ const PlayChess: React.FC = () => {
   
   if (showRoomCreation) {
     return (
-      <div className="min-h-screen bg-black py-12 px-4">
+      <div className="min-h-screen bg-[#262421] py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-gray-900 rounded-lg shadow-xl p-8 border border-gray-700">
+          <div className="bg-[#1f1d1b] rounded-lg shadow-xl p-8 border border-[#3d3935]">
             <h1 className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-3">
               <Users className="w-8 h-8 text-green-500" />
               <span>2-Player Chess</span>
@@ -668,9 +737,9 @@ const PlayChess: React.FC = () => {
   // Show waiting for opponent UI
   if (waitingForOpponent && gameRoomId) {
     return (
-      <div className="min-h-screen bg-black py-12 px-4">
+      <div className="min-h-screen bg-[#262421] py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-gray-900 rounded-lg shadow-xl p-8 border border-gray-700">
+          <div className="bg-[#1f1d1b] rounded-lg shadow-xl p-8 border border-[#3d3935]">
             <div className="space-y-6">
               <div className="bg-yellow-900 rounded-lg p-6 border border-yellow-700">
                 <h2 className="text-2xl font-bold text-yellow-400 mb-4 flex items-center justify-center gap-2">
@@ -744,171 +813,251 @@ const PlayChess: React.FC = () => {
 
   try {
     return (
-      <div className="min-h-screen bg-gray-100 py-8">
-        <div className="container mx-auto px-4">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            {/* Players */}
-            {opponentName && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-blue-800">
-                    {playerName} (You) as {playerColor === 'white' ? 'White' : 'Black'}
-                  </span>
-                  <span className="text-sm font-semibold text-blue-800">
-                    vs {opponentName} as {playerColor === 'white' ? 'Black' : 'White'}
-                  </span>
+      <div className="min-h-screen bg-[#262421] text-white">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Top Bar - Time Control and Game Info */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-300">
+                {initialTimeMinutes}+{incrementSeconds} • Unrated
+              </span>
+              {opponentName && (
+                <span className="text-sm text-gray-400">
+                  {playerName} vs {opponentName}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleFlip}
+                className="px-3 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-sm transition-colors"
+                title="Flip Board"
+              >
+                <FlipHorizontal className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left Panel - Move History */}
+            <div className="lg:w-80 bg-[#1f1d1b] rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Moves</h3>
+                <button
+                  onClick={handleReset}
+                  className="px-3 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-sm transition-colors"
+                  title="New Game"
+                >
+                  New
+                </button>
+              </div>
+              
+              <div className="bg-[#262421] rounded p-3 max-h-[500px] overflow-y-auto">
+                {moveHistory.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8 text-sm">Starting Position</p>
+                ) : (
+                  <div className="space-y-1">
+                    {Array.from({ length: Math.ceil(moveHistory.length / 2) }, (_, i) => {
+                      const whiteMove = moveHistory[i * 2];
+                      const blackMove = moveHistory[i * 2 + 1];
+                      return (
+                        <div key={i} className="flex items-center gap-2 py-1 px-2 hover:bg-[#3d3935] rounded">
+                          <span className="text-gray-400 w-6 text-sm">{i + 1}.</span>
+                          {whiteMove && (
+                            <span className="text-white text-sm cursor-pointer hover:text-blue-400">
+                              {whiteMove.san}
+                            </span>
+                          )}
+                          {blackMove && (
+                            <span className="text-white text-sm cursor-pointer hover:text-blue-400">
+                              {blackMove.san}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Draw Offer Notification */}
+              {opponentDrawOffer && (
+                <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded">
+                  <p className="text-sm mb-2">Your opponent offers a draw</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAcceptDraw}
+                      className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={handleDeclineDraw}
+                      className="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Game Result */}
+              {gameStatus.result && (
+                <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-700 rounded">
+                  <p className="text-sm font-semibold">{gameStatus.result}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Center - Chess Board */}
+            <div className="flex-1 flex flex-col items-center">
+              {/* Opponent Info and Clock (Top) */}
+              <div className="w-full mb-4">
+                <div className="bg-[#1f1d1b] rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold">
+                          {opponentName || 'Waiting for opponent...'}
+                          {!isFlipped && playerColor === 'white' && (
+                            <span className="ml-2 text-xs text-gray-400">(Black)</span>
+                          )}
+                          {isFlipped && playerColor === 'black' && (
+                            <span className="ml-2 text-xs text-gray-400">(Black)</span>
+                          )}
+                        </div>
+                        {opponentName && (
+                          <div className="text-xs text-gray-400">Rating: 1500</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-3xl font-mono font-bold ${
+                        activeColor === (isFlipped ? 'white' : 'black') && isClockRunning && !gameStatus.isGameOver
+                          ? 'text-yellow-400' 
+                          : 'text-white'
+                      }`}>
+                        {formatTime(isFlipped ? clockTimes.white : clockTimes.black)}
+                      </div>
+                      {incrementSeconds > 0 && (
+                        <div className="text-xs text-gray-400 mt-1">+{incrementSeconds}s</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="flex flex-col lg:flex-row gap-6">
-              {/* Chess Board Section */}
-              <div className="flex flex-col items-center">
-                {/* Game Status */}
-                <div className="mb-4 w-full">
-                  <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-2xl font-bold text-gray-800">
-                      {gameStatus.isGameOver ? 'Game Over' : chess.turn() === 'w' ? "White's Turn" : "Black's Turn"}
-                    </h2>
-                    {gameStatus.inCheck && !gameStatus.isGameOver && (
-                      <span className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold">
-                        Check!
-                      </span>
-                    )}
+              {/* Chess Board */}
+              <div className="bg-[#1f1d1b] rounded-lg p-4 shadow-2xl">
+                <ChessBoard
+                  chess={chess}
+                  board={board}
+                  setBoard={setBoard}
+                  isFlipped={isFlipped}
+                  onMove={handleMove}
+                  disabled={
+                    gameStatus.isGameOver || 
+                    !opponentName || 
+                    waitingForOpponent ||
+                    (playerColor === 'white' && chess.turn() !== 'w') || 
+                    (playerColor === 'black' && chess.turn() !== 'b')
+                  }
+                />
+              </div>
+
+              {/* Your Info and Clock (Bottom) */}
+              <div className="w-full mt-4">
+                <div className="bg-[#1f1d1b] rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold">
+                          {playerName || 'You'}
+                          {!isFlipped && playerColor === 'white' && (
+                            <span className="ml-2 text-xs text-gray-400">(White)</span>
+                          )}
+                          {isFlipped && playerColor === 'black' && (
+                            <span className="ml-2 text-xs text-gray-400">(White)</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-400">Rating: 1500</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-3xl font-mono font-bold ${
+                        activeColor === (isFlipped ? 'black' : 'white') && isClockRunning && !gameStatus.isGameOver
+                          ? 'text-yellow-400' 
+                          : 'text-white'
+                      }`}>
+                        {formatTime(isFlipped ? clockTimes.black : clockTimes.white)}
+                      </div>
+                      {incrementSeconds > 0 && (
+                        <div className="text-xs text-gray-400 mt-1">+{incrementSeconds}s</div>
+                      )}
+                    </div>
                   </div>
-                  {gameStatus.result && (
-                    <div className="px-4 py-3 bg-yellow-100 border border-yellow-400 rounded-lg mb-4">
-                      <p className="text-lg font-semibold text-yellow-800">{gameStatus.result}</p>
+                </div>
+              </div>
+
+              {/* Game Actions */}
+              {opponentName && !waitingForOpponent && (
+                <div className="w-full mt-4 flex items-center justify-center gap-3">
+                  {!gameStatus.isGameOver && (
+                    <>
+                      <button
+                        onClick={handleResign}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        title="Resign"
+                      >
+                        <X className="w-4 h-4" />
+                        Resign
+                      </button>
+                      <button
+                        onClick={handleOfferDraw}
+                        disabled={drawOffered}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Offer Draw"
+                      >
+                        <Minus className="w-4 h-4" />
+                        {drawOffered ? 'Draw Offered' : 'Offer Draw'}
+                      </button>
+                    </>
+                  )}
+                  {gameStatus.isGameOver && (
+                    <button
+                      onClick={handleReset}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    >
+                      New Game
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Game Status Message */}
+              {!gameStatus.isGameOver && opponentName && !waitingForOpponent && (
+                <div className="mt-3 text-center">
+                  {gameStatus.inCheck && (
+                    <div className="px-4 py-2 bg-red-900/50 border border-red-700 rounded text-sm text-red-300">
+                      Check!
+                    </div>
+                  )}
+                  {!gameStatus.inCheck && (
+                    <div className="text-sm text-gray-400">
+                      {chess.turn() === 'w' && playerColor === 'white' && "It's your turn!"}
+                      {chess.turn() === 'w' && playerColor === 'black' && "Waiting for opponent..."}
+                      {chess.turn() === 'b' && playerColor === 'black' && "It's your turn!"}
+                      {chess.turn() === 'b' && playerColor === 'white' && "Waiting for opponent..."}
                     </div>
                   )}
                 </div>
-
-                {/* Chess Clocks */}
-                <div className="w-full mb-4 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1 text-center">
-                      <div className={`text-2xl font-mono font-bold ${activeColor === 'white' && isClockRunning ? 'text-yellow-400 animate-pulse' : 'text-white'}`}>
-                        {formatTime(clockTimes.white)}
-                      </div>
-                      <div className="text-sm text-gray-300 mt-1">White</div>
-                    </div>
-                    <div className="flex flex-col gap-2 items-center">
-                      <button
-                        onClick={isClockRunning ? handlePauseClock : handleStartClock}
-                        disabled={gameStatus.isGameOver}
-                        className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={isClockRunning ? "Pause Clock" : "Start Clock"}
-                      >
-                        <Clock className="w-4 h-4" />
-                        {isClockRunning ? 'Pause' : 'Start'}
-                      </button>
-                      {incrementSeconds > 0 && (
-                        <span className="text-xs text-gray-300">+{incrementSeconds}s</span>
-                      )}
-                    </div>
-                    <div className="flex-1 text-center">
-                      <div className={`text-2xl font-mono font-bold ${activeColor === 'black' && isClockRunning ? 'text-yellow-400 animate-pulse' : 'text-white'}`}>
-                        {formatTime(clockTimes.black)}
-                      </div>
-                      <div className="text-sm text-gray-300 mt-1">Black</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Control Buttons */}
-                <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={handleReset}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    title="Reset Game"
-                  >
-                    <Square className="w-4 h-4" />
-                    New Game
-                  </button>
-                  <button
-                    onClick={handleFlip}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    title="Flip Board"
-                  >
-                    <FlipHorizontal className="w-4 h-4" />
-                    Flip
-                  </button>
-                  <button
-                    onClick={handleSaveGame}
-                    disabled={isSaving || moveHistory.length === 0}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Save Game"
-                  >
-                    <Save className="w-4 h-4" />
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-                
-                {/* Save Message */}
-                {saveMessage && (
-                  <div className={`mt-2 px-4 py-2 rounded-lg text-center font-semibold ${
-                    saveMessage.includes('successfully') 
-                      ? 'bg-green-100 text-green-800 border border-green-400' 
-                      : 'bg-red-100 text-red-800 border border-red-400'
-                  }`}>
-                    {saveMessage}
-                  </div>
-                )}
-
-                {/* Chess Board */}
-                <div className="p-4 bg-gray-800 rounded-lg shadow-xl">
-                  <ChessBoard
-                    chess={chess}
-                    board={board}
-                    setBoard={setBoard}
-                    isFlipped={isFlipped}
-                    onMove={handleMove}
-                    disabled={
-                      gameStatus.isGameOver || 
-                      !opponentName || 
-                      waitingForOpponent ||
-                      (playerColor === 'white' && chess.turn() !== 'w') || 
-                      (playerColor === 'black' && chess.turn() !== 'b')
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Move History Section */}
-              <div className="flex-1">
-                <div className="bg-gray-50 rounded-lg p-4 h-full">
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">Move History</h3>
-                  <div className="bg-white rounded-lg p-4 max-h-[600px] overflow-y-auto">
-                    {moveHistory.length === 0 ? (
-                      <p className="text-gray-500 text-center py-8">No moves yet. Start playing!</p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        {moveHistory.map((move, index) => (
-                          <div
-                            key={index}
-                            className={`p-2 rounded ${
-                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                            }`}
-                          >
-                            <span className="font-mono text-sm">
-                              {getMoveNotation(move, index)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Game Info */}
-                  <div className="mt-4 space-y-2">
-                    <div className="bg-white rounded-lg p-3">
-                      <p className="text-sm text-gray-600">
-                        <strong>Moves:</strong> {moveHistory.length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -917,11 +1066,11 @@ const PlayChess: React.FC = () => {
   } catch (error) {
     console.error('Render error:', error);
     return (
-      <div className="min-h-screen bg-gray-100 py-8">
+      <div className="min-h-screen bg-[#262421] text-white py-8">
         <div className="container mx-auto px-4">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Chess Game</h1>
-            <p className="text-gray-700 mb-4">Error: {(error as Error).message}</p>
+          <div className="bg-[#1f1d1b] rounded-lg shadow-lg p-6">
+            <h1 className="text-2xl font-bold text-red-400 mb-4">Error Loading Chess Game</h1>
+            <p className="text-gray-300 mb-4">Error: {(error as Error).message}</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

@@ -637,6 +637,10 @@ io.on('connection', (socket) => {
     socket.to(gameRoomId).emit("decline-draw");
   });
 
+  socket.on('accept-draw', () => {
+    io.in(gameRoomId).emit('game-over', { result: 'Draw by agreement!' });
+  });
+
   socket.on('move', (piece, pos, color, simulation, atk, server, move, pawnPromote) => {
     moveCt++;
     socket.to(gameRoomId).emit('move', piece, pos, color, simulation, atk, true, move, pawnPromote);

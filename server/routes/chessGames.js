@@ -25,19 +25,19 @@ router.post('/create-custom', (req, res) => {
     });
   }
 
-  // Parse time control
-  let initialTimeMinutes = 10;
-  let incrementSeconds = 0;
+  // Parse time control (default to 3+2)
+  let initialTimeMinutes = 3;
+  let incrementSeconds = 2;
   
   if (timeControl) {
     if (typeof timeControl === 'string') {
-      // Format: "10+0" or "10"
+      // Format: "3+2" or "3"
       const parts = timeControl.split('+');
-      initialTimeMinutes = parseInt(parts[0]) || 10;
-      incrementSeconds = parseInt(parts[1]) || 0;
+      initialTimeMinutes = parseInt(parts[0]) || 3;
+      incrementSeconds = parseInt(parts[1]) || 2;
     } else if (typeof timeControl === 'object') {
-      initialTimeMinutes = timeControl.minutes || 10;
-      incrementSeconds = timeControl.increment || 0;
+      initialTimeMinutes = timeControl.minutes || 3;
+      incrementSeconds = timeControl.increment || 2;
     }
   }
 
