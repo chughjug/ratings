@@ -86,6 +86,15 @@ const PlayChess: React.FC = () => {
       setSocketConnected(true);
     });
 
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from socket server');
+      setSocketConnected(false);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
+
     newSocket.on('newroom', (roomCode) => {
       console.log('Received room code:', roomCode);
       setGameRoomId(roomCode);
