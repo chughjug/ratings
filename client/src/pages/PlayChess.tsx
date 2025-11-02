@@ -167,8 +167,6 @@ const PlayChess: React.FC = () => {
     const blackRatingParam = urlParams.get('blackRating');
     const logoParam = urlParams.get('logo');
     
-    console.log('PlayChess URL params:', { roomParam, nameParam, colorParam, whiteRatingParam, blackRatingParam, logoParam });
-    
     // Set player name from URL if provided
     if (nameParam && !playerName) {
       setPlayerName(nameParam);
@@ -213,7 +211,6 @@ const PlayChess: React.FC = () => {
     // Set organization logo from URL if provided
     if (logoParam) {
       const decodedLogo = decodeURIComponent(logoParam);
-      console.log('Setting organization logo:', decodedLogo);
       setOrganizationLogo(decodedLogo);
     }
     
@@ -428,11 +425,6 @@ const PlayChess: React.FC = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
-
-  // Debug: Log organization logo changes
-  useEffect(() => {
-    console.log('Organization logo state changed:', organizationLogo);
-  }, [organizationLogo]);
 
   // Auto-flip board if joining as black
   useEffect(() => {
@@ -1343,9 +1335,11 @@ const PlayChess: React.FC = () => {
                     <img
                       src={organizationLogo}
                       alt="Organization"
-                      className="max-h-20 max-w-full object-contain opacity-80"
-                      onLoad={() => console.log('Organization logo loaded successfully')}
-                      onError={(e) => console.error('Error loading organization logo:', e)}
+                      className="h-12 w-auto"
+                      onError={(e) => {
+                        // Hide the image if it fails to load
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   </div>
                 </div>
