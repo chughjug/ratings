@@ -42,7 +42,7 @@ const CreateGame: React.FC = () => {
       console.log('Both players present!', name, opponent, room);
       setWaitingForOpponent(false);
       // Navigate to game when second player joins
-      navigate('/chess');
+      navigate('/play-chess');
     });
 
     setSocket(newSocket);
