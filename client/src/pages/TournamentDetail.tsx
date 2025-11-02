@@ -1245,7 +1245,16 @@ const TournamentDetail: React.FC = () => {
     if (!id) return;
     
     try {
-      const response = await tournamentApi.update(id, { [field]: value });
+      // Include required fields (name, format, rounds) along with the field being updated
+      const updateData: any = { [field]: value };
+      if (tournament) {
+        // Only include required fields if not already being updated
+        if (field !== 'name') updateData.name = tournament.name || '';
+        if (field !== 'format') updateData.format = tournament.format || 'swiss';
+        if (field !== 'rounds') updateData.rounds = tournament.rounds || 5;
+      }
+      
+      const response = await tournamentApi.update(id, updateData);
       if (response.data.success) {
         dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
       } else {
