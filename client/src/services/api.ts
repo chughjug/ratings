@@ -603,6 +603,18 @@ export const pairingApi = {
       position1,
       position2
     }),
+
+  // Create custom game for a pairing (online tournaments)
+  createGameForPairing: (pairingId: string) =>
+    api.post<{
+      success: boolean;
+      message?: string;
+      error?: string;
+      gameId?: string;
+      whiteLink?: string;
+      blackLink?: string;
+      pairingId?: string;
+    }>('/games/create-for-pairing', { pairingId }),
 };
 
 // Export API

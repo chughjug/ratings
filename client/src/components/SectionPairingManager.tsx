@@ -38,6 +38,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
   const [newBoardNumber, setNewBoardNumber] = useState('');
   const [availableRounds, setAvailableRounds] = useState<number[]>([1]);
   const selectedPairingRef = useRef<string | null>(null);
+  const [creatingGames, setCreatingGames] = useState<Set<string>>(new Set());
   
   // Email notification state
   const [emailsEnabled, setEmailsEnabled] = useState(false);
