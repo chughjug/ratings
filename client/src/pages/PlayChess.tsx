@@ -1239,7 +1239,8 @@ const PlayChess: React.FC = () => {
                       <Users className="w-3 h-3" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold">
+                      <div className="text-xs font-semibold flex items-center gap-1">
+                        <span className={`w-2 h-2 rounded ${isFlipped ? 'bg-white border border-gray-400' : 'bg-black border border-gray-600'}`}></span>
                         {opponentName || 'Waiting...'}
                       </div>
                       {opponentRating && (
@@ -1272,7 +1273,8 @@ const PlayChess: React.FC = () => {
                       <Users className="w-3 h-3" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold">
+                      <div className="text-xs font-semibold flex items-center gap-1">
+                        <span className={`w-2 h-2 rounded ${isFlipped ? 'bg-black border border-gray-600' : 'bg-white border border-gray-400'}`}></span>
                         {playerName || 'You'}
                       </div>
                       {playerRating && (
@@ -1315,6 +1317,19 @@ const PlayChess: React.FC = () => {
                   )}
                 </div>
               )}
+
+              {/* Organization Logo */}
+              {organizationLogo && (
+                <div className="pt-2 border-t border-gray-700">
+                  <div className="flex justify-center items-center p-4">
+                    <img
+                      src={organizationLogo}
+                      alt="Organization"
+                      className="max-h-20 max-w-full object-contain opacity-80"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Center - Chess Board */}
@@ -1335,7 +1350,6 @@ const PlayChess: React.FC = () => {
                   }
                   averageRating={playerRating && opponentRating ? (playerRating + opponentRating) / 2 : undefined}
                   boxSize={75}
-                  organizationLogo={organizationLogo || undefined}
                 />
               </div>
             </div>

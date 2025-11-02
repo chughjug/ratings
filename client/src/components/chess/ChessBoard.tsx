@@ -15,7 +15,6 @@ interface ChessBoardProps {
   disabled?: boolean;
   averageRating?: number;
   boxSize?: number;
-  organizationLogo?: string;
 }
 
 export const isPromoting = (chess: Chess, from: Square, to: Square): boolean => {
@@ -42,7 +41,6 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   disabled = false,
   averageRating,
   boxSize: providedBoxSize,
-  organizationLogo,
 }) => {
   const [from, setFrom] = useState<Square | null>(null);
   const [legalMoves, setLegalMoves] = useState<string[]>([]);
@@ -291,33 +289,6 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
         }}
         onMouseUp={(e) => e.preventDefault()}
       />
-      {organizationLogo && (
-        <div
-          style={{
-            position: 'absolute',
-            top: boxSize * 4 - 30, // Center vertically
-            left: boxSize * 4 - 30, // Center horizontally
-            width: 60,
-            height: 60,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            zIndex: 10,
-          }}
-        >
-          <img
-            src={organizationLogo}
-            alt="Organization"
-            style={{
-              maxWidth: '100%',
-              maxHeight: '100%',
-              opacity: 0.1,
-              objectFit: 'contain',
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 };
