@@ -263,7 +263,7 @@ const TournamentDetail: React.FC = () => {
       const sectionPlayers = bySection[section];
       
       // Group players in this section by team
-      const byTeam = sectionPlayers.reduce((acc, player) => {
+      const byTeam = sectionPlayers.reduce((acc: Record<string, any[]>, player) => {
         const teamName = player.team_name || player.team || 'Unassigned';
         if (!acc[teamName]) {
           acc[teamName] = [];
