@@ -506,10 +506,12 @@ const TournamentDetail: React.FC = () => {
   }, [id, tournament, currentRound]);
 
   const fetchTeams = useCallback(async () => {
-    if (!id || !tournament) return;
+    if (!id) return;
     
-    // Only fetch teams for team tournaments
-    if (!['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format)) {
+    // Check tournament format - if tournament not loaded yet, try to fetch anyway for team tournaments
+    // We'll refetch once tournament is loaded
+    if (tournament && !['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format)) {
+      setTeams([]); // Clear teams for non-team tournaments
       return;
     }
     
@@ -519,10 +521,16 @@ const TournamentDetail: React.FC = () => {
       const response = await axios.get(`${API_BASE_URL}/teams/team-tournament/${id}`);
       if (response.data.success) {
         // Teams should include members from the API
-        setTeams(response.data.teams || []);
+        const fetchedTeams = response.data.teams || [];
+        console.log('Fetched teams:', fetchedTeams);
+        setTeams(fetchedTeams);
       }
     } catch (error: any) {
-      console.error('Failed to fetch teams:', error);
+      // Only log error if it's not a 404 (tournament might not support teams yet)
+      if (error.response?.status !== 404) {
+        console.error('Failed to fetch teams:', error);
+      }
+      setTeams([]);
     }
   }, [id, tournament]);
 
@@ -2122,6 +2130,15 @@ const TournamentDetail: React.FC = () => {
 
               {activeTab === 'players' && (
               <div>
+                {/* Debug Info for Team Tournaments */}
+                {tournament?.format && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>Team Tournament Mode:</strong> Format: {tournament.format} | Teams loaded: {teams.length} | 
+                      Sections: {groupTeamsBySection(teams).map(s => s.section).join(', ') || 'None'}
+                    </p>
+                  </div>
+                )}
                 {/* Combined Player Management Toolbar */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -2315,49 +2332,64 @@ const TournamentDetail: React.FC = () => {
               </div>
               )}
               
-              {state.players.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">No players added yet</p>
-                  <button
-                    onClick={() => setShowAddPlayer(true)}
-                    className="text-chess-board hover:text-chess-dark font-medium"
-                  >
-                    Add your first player
-                  </button>
-                </div>
-              ) : (
+              {/* For team tournaments, always show teams section first, then players */}
+              {tournament?.format && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) ? (
                 <div className="space-y-4">
                   {/* Sectioned Teams Display for Team Tournaments */}
-                  {tournament?.format && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) ? (
-                    groupTeamsBySection(teams).map((sectionGroup) => (
-                      <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        {/* Section Header */}
-                        <div 
-                          className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-blue-100 hover:to-indigo-100 transition-colors"
-                          onClick={() => toggleSectionCollapse(sectionGroup.section)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                                {collapsedSections.has(sectionGroup.section) ? (
-                                  <ChevronRight className="h-5 w-5" />
-                                ) : (
-                                  <ChevronDown className="h-5 w-5" />
-                                )}
-                              </button>
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                {sectionGroup.section}
-                              </h3>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {sectionGroup.count} team{sectionGroup.count !== 1 ? 's' : ''}
-                              </span>
+                  <>
+                    <>
+                      {teams.length === 0 ? (
+                        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Teams Created Yet</h3>
+                          <p className="text-gray-600 mb-4">
+                            Teams will be displayed here once you create them. Teams can be organized into different sections.
+                          </p>
+                          <button
+                            onClick={() => setShowTeamTournamentManagement(true)}
+                            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Your First Team
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          {groupTeamsBySection(teams).length === 0 ? (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                              <p className="text-yellow-800 text-sm">
+                                <strong>Debug:</strong> Teams exist ({teams.length}) but couldn't be grouped. Team data: {JSON.stringify(teams.slice(0, 2), null, 2)}
+                              </p>
                             </div>
-                            <div className="text-sm text-gray-500">
-                              Click to {collapsedSections.has(sectionGroup.section) ? 'expand' : 'collapse'}
+                          ) : null}
+                          {groupTeamsBySection(teams).map((sectionGroup) => (
+                        <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                          {/* Section Header */}
+                          <div 
+                            className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-blue-100 hover:to-indigo-100 transition-colors"
+                            onClick={() => toggleSectionCollapse(sectionGroup.section)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <button className="text-gray-600 hover:text-gray-800 transition-colors">
+                                  {collapsedSections.has(sectionGroup.section) ? (
+                                    <ChevronRight className="h-5 w-5" />
+                                  ) : (
+                                    <ChevronDown className="h-5 w-5" />
+                                  )}
+                                </button>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  {sectionGroup.section} Section
+                                </h3>
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {sectionGroup.count} team{sectionGroup.count !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                Click to {collapsedSections.has(sectionGroup.section) ? 'expand' : 'collapse'}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
                         {/* Section Content - Teams */}
                         {!collapsedSections.has(sectionGroup.section) && (
@@ -2453,9 +2485,64 @@ const TournamentDetail: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    ))
-                  ) : (
-                    /* Regular Players Display for Non-Team Tournaments */
+                          ))}
+                        </>
+                      )}
+                  </>
+                  
+                  {/* Players List Below Teams (if any) */}
+                  {state.players.length > 0 && (
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">All Players</h3>
+                      {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
+                        <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
+                          {/* Section Header */}
+                          <div 
+                            className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-gray-100 hover:to-gray-200 transition-colors"
+                            onClick={() => toggleSectionCollapse(sectionGroup.section)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <button className="text-gray-600 hover:text-gray-800 transition-colors">
+                                  {collapsedSections.has(sectionGroup.section) ? (
+                                    <ChevronRight className="h-5 w-5" />
+                                  ) : (
+                                    <ChevronDown className="h-5 w-5" />
+                                  )}
+                                </button>
+                                <h4 className="text-md font-semibold text-gray-900">
+                                  {sectionGroup.section}
+                                </h4>
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  {sectionGroup.count} player{sectionGroup.count !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          {!collapsedSections.has(sectionGroup.section) && (
+                            <div className="p-4 text-sm text-gray-600">
+                              {sectionGroup.players.length} players in this section
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : state.players.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">No players added yet</p>
+                  <button
+                    onClick={() => setShowAddPlayer(true)}
+                    className="text-chess-board hover:text-chess-dark font-medium"
+                  >
+                    Add your first player
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Regular Players Display for Non-Team Tournaments */}
                     <>
                     {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
                     <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -4420,18 +4507,18 @@ const TournamentDetail: React.FC = () => {
 
       {/* All modals and dialogs go here, outside the max-w-7xl container */}
       {/* Add Player Modal */}
-      {showTeamTournamentManagement && id && tournament?.format === 'team-tournament' && (
+      {showTeamTournamentManagement && id && tournament && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) && (
         <TeamTournamentManagement
           tournamentId={id}
           isVisible={showTeamTournamentManagement}
           onClose={() => setShowTeamTournamentManagement(false)}
           players={state.players}
           onTeamsUpdated={() => {
+            console.log('Teams updated, refreshing...');
             fetchPlayers();
-            // Refresh standings if team standings are shown
-            if (activeTab === 'team-standings') {
-              fetchTeamStandings();
-            }
+            fetchTeams();
+            fetchTeamStandings();
+            fetchTeamPairings();
           }}
         />
       )}
