@@ -51,7 +51,7 @@ const getTimeControlFromURL = () => {
       }
     }
     
-    // Handle standard format: "45+10" or "3+2"
+    // Handle standard format: "45+10" or "3+2" or "3" (defaults to 3+2)
     // Note: URLSearchParams may decode + as space, so handle both
     const normalized = trimmed.replace(/\s+/g, '+'); // Convert spaces to +
     const parts = normalized.split('+');
@@ -59,7 +59,8 @@ const getTimeControlFromURL = () => {
       // Remove 'G' prefix if present
       const minutesStr = parts[0].replace(/^G/i, '').trim();
       const minutes = parseInt(minutesStr) || 3;
-      const increment = parts[1] ? parseInt(parts[1].trim()) : 0;
+      // Default increment to 2 if not specified (for backwards compatibility)
+      const increment = parts[1] ? parseInt(parts[1].trim()) : 2;
       return { minutes, increment, delay: 0 };
     }
   }
