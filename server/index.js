@@ -483,11 +483,40 @@ setInterval(async () => {
         const elapsedMs = timeSinceLastUpdate;
         room.clock.lastUpdate = now;
         
-        // Decrement the active player's time
-        if (room.clock.activeColor === 'white' && room.clock.whiteTimeMs > 0) {
-          room.clock.whiteTimeMs = Math.max(0, room.clock.whiteTimeMs - elapsedMs);
-        } else if (room.clock.activeColor === 'black' && room.clock.blackTimeMs > 0) {
-          room.clock.blackTimeMs = Math.max(0, room.clock.blackTimeMs - elapsedMs);
+        // Handle Bronstein delay: delay period counts down before main time
+        const hasDelay = room.clock.delayMs && room.clock.delayMs > 0;
+        const isActivePlayer = room.clock.activeColor === 'white' ? room.clock.whiteTimeMs > 0 : room.clock.blackTimeMs > 0;
+        
+        if (hasDelay && isActivePlayer && room.clock.delayStartTime !== null) {
+          // Check if we're still in the delay period
+          const delayElapsed = now - room.clock.delayStartTime;
+          
+          if (delayElapsed < room.clock.delayMs) {
+            // Still in delay period - don't count down main time at all
+            // Delay period is "free time" that doesn't come off the clock
+          } else {
+            // Delay period has expired - count down main time normally
+            // The delay amount will be subtracted when the move is made
+            if (room.clock.activeColor === 'white' && room.clock.whiteTimeMs > 0) {
+              // Only count down the time AFTER the delay period
+              const timeAfterDelay = elapsedMs - (room.clock.delayMs - (delayElapsed - room.clock.delayMs));
+              if (timeAfterDelay > 0) {
+                room.clock.whiteTimeMs = Math.max(0, room.clock.whiteTimeMs - timeAfterDelay);
+              }
+            } else if (room.clock.activeColor === 'black' && room.clock.blackTimeMs > 0) {
+              const timeAfterDelay = elapsedMs - (room.clock.delayMs - (delayElapsed - room.clock.delayMs));
+              if (timeAfterDelay > 0) {
+                room.clock.blackTimeMs = Math.max(0, room.clock.blackTimeMs - timeAfterDelay);
+              }
+            }
+          }
+        } else {
+          // No delay or delay not active - normal countdown (increment mode)
+          if (room.clock.activeColor === 'white' && room.clock.whiteTimeMs > 0) {
+            room.clock.whiteTimeMs = Math.max(0, room.clock.whiteTimeMs - elapsedMs);
+          } else if (room.clock.activeColor === 'black' && room.clock.blackTimeMs > 0) {
+            room.clock.blackTimeMs = Math.max(0, room.clock.blackTimeMs - elapsedMs);
+          }
         }
         
         // Stop clock if time runs out
@@ -701,11 +730,13 @@ io.on('connection', (socket) => {
     if (io.sockets.adapter.rooms.get(gameRoomId) && io.sockets.adapter.rooms.get(gameRoomId).size == 2 && currentRoom) {
       // Initialize clock if not already set, using time control from options or default
       if (!currentRoom.clock && currentRoom.options) {
-        // Parse time control (format: "10+5" or minutes+increment)
+        // Parse time control (supports "10+5", "G45D5", "G45+10", etc.)
         const timeControl = currentRoom.options.timeControls || "3+2";
-        const parts = timeControl.split('+');
-        const minutes = parseInt(parts[0]) || 3;
-        const increment = parseInt(parts[1]) || 2;
+        const OnlineGameService = require('./services/onlineGameService');
+        const parsed = OnlineGameService.parseTimeControl(timeControl);
+        const minutes = parsed.minutes || 3;
+        const increment = parsed.increment || 2;
+        const delay = parsed.delay || 0;
         const initialTimeMs = minutes * 60 * 1000;
         
         currentRoom.clock = {
@@ -714,7 +745,9 @@ io.on('connection', (socket) => {
           activeColor: 'white',
           lastUpdate: Date.now(),
           isRunning: false, // Will start when first move is made
-          incrementMs: increment * 1000
+          incrementMs: increment * 1000,
+          delayMs: delay * 1000,
+          delayStartTime: null // Will be set when turn changes if delay > 0
         };
         await chessRoomsService.setRoom(gameRoomId, currentRoom);
       }
@@ -768,18 +801,66 @@ io.on('connection', (socket) => {
     // Update clock active color on move
     const room = await chessRoomsService.getRoom(gameRoomId);
     if (room && room.clock) {
+      const now = Date.now();
+      
       // Start clock if this is the first move
       if (!room.clock.isRunning && color === 'w') {
         room.clock.isRunning = true;
-        room.clock.lastUpdate = Date.now();
+        room.clock.lastUpdate = now;
+      }
+      
+      // Handle Bronstein delay for the player who just moved
+      const hasDelay = room.clock.delayMs && room.clock.delayMs > 0;
+      const movingPlayerColor = color === 'w' ? 'white' : 'black';
+      
+      if (hasDelay && room.clock.delayStartTime !== null) {
+        // Check how much of the delay period has elapsed when the move was made
+        const delayElapsed = now - room.clock.delayStartTime;
+        const timeSinceLastUpdate = now - room.clock.lastUpdate;
+        
+        if (delayElapsed < room.clock.delayMs) {
+          // Player moved within delay period - subtract NOTHING from main time
+          // The delay period fully protected their time
+        } else {
+          // Player moved after delay expired - subtract the delay amount from main time
+          // The countdown loop has already been counting down after delay expired
+          // We just need to ensure the delay amount was subtracted
+          if (movingPlayerColor === 'white') {
+            // If countdown hasn't subtracted delay yet, subtract it now
+            const timeActuallyElapsed = timeSinceLastUpdate;
+            const timeToSubtract = room.clock.delayMs + Math.max(0, timeActuallyElapsed - room.clock.delayMs);
+            room.clock.whiteTimeMs = Math.max(0, room.clock.whiteTimeMs - timeToSubtract);
+          } else {
+            const timeActuallyElapsed = timeSinceLastUpdate;
+            const timeToSubtract = room.clock.delayMs + Math.max(0, timeActuallyElapsed - room.clock.delayMs);
+            room.clock.blackTimeMs = Math.max(0, room.clock.blackTimeMs - timeToSubtract);
+          }
+        }
+      } else if (!hasDelay) {
+        // No delay - subtract elapsed time since last update
+        const timeSinceLastUpdate = now - room.clock.lastUpdate;
+        if (timeSinceLastUpdate > 0) {
+          if (movingPlayerColor === 'white') {
+            room.clock.whiteTimeMs = Math.max(0, room.clock.whiteTimeMs - timeSinceLastUpdate);
+          } else {
+            room.clock.blackTimeMs = Math.max(0, room.clock.blackTimeMs - timeSinceLastUpdate);
+          }
+        }
       }
       
       // Switch active color: if move was white, now it's black's turn, and vice versa
       room.clock.activeColor = color === 'w' ? 'black' : 'white';
-      room.clock.lastUpdate = Date.now();
+      room.clock.lastUpdate = now;
       
-      // Add increment if configured
-      if (room.clock.incrementMs && room.clock.incrementMs > 0) {
+      // Start delay period for the new active player if delay is configured
+      if (hasDelay) {
+        room.clock.delayStartTime = now;
+        room.clock.lastDelayElapsed = 0;
+      }
+      
+      // Add increment if configured (increment is added after move, delay is different)
+      if (room.clock.incrementMs && room.clock.incrementMs > 0 && !hasDelay) {
+        // Only add increment if we don't have delay (delay and increment are mutually exclusive)
         if (color === 'w') {
           room.clock.whiteTimeMs += room.clock.incrementMs;
         } else {
