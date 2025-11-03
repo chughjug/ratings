@@ -196,8 +196,16 @@ const upload = multer({
 router.get('/tournament/:tournamentId', (req, res) => {
   const { tournamentId } = req.params;
   
+  // Join with team_members and teams to get correct team_name
   db.all(
-    'SELECT * FROM players WHERE tournament_id = ? ORDER BY name',
+    `SELECT 
+      p.*,
+      COALESCE(t.name, p.team_name) as team_name
+     FROM players p
+     LEFT JOIN team_members tm ON p.id = tm.player_id
+     LEFT JOIN teams t ON tm.team_id = t.id
+     WHERE p.tournament_id = ?
+     ORDER BY p.name`,
     [tournamentId],
     (err, rows) => {
       if (err) {

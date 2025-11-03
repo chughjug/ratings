@@ -918,6 +918,18 @@ router.post('/team-tournament/:teamId/add-player', async (req, res) => {
       );
     });
 
+    // Update player's team_name field to match the team name
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE players SET team_name = ? WHERE id = ?',
+        [team.name, player_id],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        }
+      );
+    });
+
     // Get the created team member
     const member = await new Promise((resolve, reject) => {
       db.get(
@@ -951,10 +963,23 @@ router.delete('/team-tournament/:teamId/remove-player/:playerId', async (req, re
   const { teamId, playerId } = req.params;
 
   try {
+    // Remove from team_members table
     await new Promise((resolve, reject) => {
       db.run(
         'DELETE FROM team_members WHERE team_id = ? AND player_id = ?',
         [teamId, playerId],
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Clear player's team_name field
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE players SET team_name = NULL WHERE id = ?',
+        [playerId],
         function(err) {
           if (err) reject(err);
           else resolve();
