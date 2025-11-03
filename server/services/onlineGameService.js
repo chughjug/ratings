@@ -15,7 +15,11 @@ class OnlineGameService {
 
   /**
    * Parse time control string into minutes and increment
-   * Supports formats: "3+2", "10+0", "45+15", etc.
+   * Supports formats:
+   * - "3+2" = 3 minutes with 2 second increment
+   * - "G45D5" = 45 minutes with 5 second delay
+   * - "G45 + 10" = 45 minutes with 10 second increment
+   * - "45+10" = 45 minutes with 10 second increment
    */
   static parseTimeControl(timeControl) {
     const defaultTimeControl = { minutes: 3, increment: 2 }; // Default 3+2
@@ -24,15 +28,48 @@ class OnlineGameService {
       return defaultTimeControl;
     }
 
-    const parts = timeControl.split('+');
-    if (parts.length === 0) {
-      return defaultTimeControl;
+    const trimmed = timeControl.trim();
+    
+    // Handle G prefix format: G45D5 or G45 + 10
+    if (trimmed.startsWith('G')) {
+      // Match G45D5 format (delay)
+      const delayMatch = trimmed.match(/^G(\d+)D(\d+)$/i);
+      if (delayMatch) {
+        const minutes = parseInt(delayMatch[1]) || 3;
+        const delay = parseInt(delayMatch[2]) || 0;
+        // For delay, we treat it as increment since delay isn't fully supported in the current system
+        // In a proper implementation, delay would need separate handling
+        return { minutes, increment: delay, delay: delay };
+      }
+      
+      // Match G45 + 10 format (increment with space)
+      const spaceMatch = trimmed.match(/^G(\d+)\s*\+\s*(\d+)$/i);
+      if (spaceMatch) {
+        const minutes = parseInt(spaceMatch[1]) || 3;
+        const increment = parseInt(spaceMatch[2]) || 0;
+        return { minutes, increment, delay: 0 };
+      }
+      
+      // Match G45+10 format (increment without space)
+      const noSpaceMatch = trimmed.match(/^G(\d+)\+(\d+)$/i);
+      if (noSpaceMatch) {
+        const minutes = parseInt(noSpaceMatch[1]) || 3;
+        const increment = parseInt(noSpaceMatch[2]) || 0;
+        return { minutes, increment, delay: 0 };
+      }
     }
 
-    const minutes = parseInt(parts[0]) || defaultTimeControl.minutes;
-    const increment = parts[1] ? parseInt(parts[1]) : defaultTimeControl.increment;
+    // Handle standard format: "45+10" or "3+2"
+    const parts = trimmed.split('+');
+    if (parts.length >= 1) {
+      // Remove 'G' prefix if present
+      const minutesStr = parts[0].replace(/^G/i, '').trim();
+      const minutes = parseInt(minutesStr) || defaultTimeControl.minutes;
+      const increment = parts[1] ? parseInt(parts[1].trim()) : defaultTimeControl.increment;
+      return { minutes, increment, delay: 0 };
+    }
 
-    return { minutes, increment };
+    return defaultTimeControl;
   }
 
   /**
@@ -55,8 +92,12 @@ class OnlineGameService {
 
   /**
    * Create custom game for a pairing
+   * @param {Object} pairing - The pairing object
+   * @param {Object} tournament - The tournament object
+   * @param {string} baseUrl - Base URL for generating game links (may be organization URL)
+   * @param {string} serverUrl - Server URL for making API calls (defaults to baseUrl if not provided)
    */
-  static async createGameForPairing(pairing, tournament, baseUrl) {
+  static async createGameForPairing(pairing, tournament, baseUrl, serverUrl = null) {
     try {
       // Get player names, contact info, and ratings
       const [whitePlayer, blackPlayer] = await Promise.all([
@@ -86,9 +127,14 @@ class OnlineGameService {
       const { minutes, increment } = this.parseTimeControl(tournament.time_control);
       const timeControlString = `${minutes}+${increment}`;
 
-      // Fetch organization logo if organization_id exists
+      // Fetch logo - prioritize tournament logo, fall back to organization logo
       let organizationLogo = null;
-      if (tournament.organization_id) {
+      
+      // First, check if tournament has its own logo
+      if (tournament.logo_url) {
+        organizationLogo = tournament.logo_url;
+      } else if (tournament.organization_id) {
+        // Fall back to organization logo if tournament logo not available
         try {
           const org = await new Promise((resolve, reject) => {
             db.get('SELECT logo_url, branding_logo FROM organizations WHERE id = ?', [tournament.organization_id], (err, row) => {
@@ -104,7 +150,10 @@ class OnlineGameService {
       }
 
       // Create custom game via API with player IDs for password generation
-      const gameResponse = await axios.post(`${baseUrl}/api/games/create-custom`, {
+      // Use serverUrl for API calls (actual server), baseUrl for link generation (may be organization URL)
+      // If serverUrl not provided, use baseUrl (assumes baseUrl is the server URL)
+      const apiServerUrl = serverUrl || baseUrl || 'http://localhost:5000';
+      const gameResponse = await axios.post(`${apiServerUrl}/api/games/create-custom`, {
         whiteName: whitePlayer.name,
         blackName: blackPlayer.name,
         whitePlayerId: pairing.white_player_id,
@@ -112,7 +161,8 @@ class OnlineGameService {
         whiteRating: whitePlayer.rating,
         blackRating: blackPlayer.rating,
         timeControl: timeControlString,
-        organizationLogo: organizationLogo
+        organizationLogo: organizationLogo,
+        baseUrl: baseUrl // Pass baseUrl so it's used for generating the game links
       });
 
       if (!gameResponse.data.success) {
@@ -157,8 +207,14 @@ class OnlineGameService {
 
   /**
    * Create games for all pairings in a round
+   * @param {string} tournamentId - Tournament ID
+   * @param {number} round - Round number
+   * @param {string} sectionName - Section name
+   * @param {Object} tournament - Tournament object
+   * @param {string} baseUrl - Base URL for generating game links (may be organization URL)
+   * @param {string} serverUrl - Server URL for making API calls (optional, defaults to baseUrl)
    */
-  static async createGamesForRound(tournamentId, round, sectionName, tournament, baseUrl) {
+  static async createGamesForRound(tournamentId, round, sectionName, tournament, baseUrl, serverUrl = null) {
     // Get all pairings for this round and section
     const pairings = await new Promise((resolve, reject) => {
       db.all(
@@ -199,7 +255,7 @@ class OnlineGameService {
     for (let i = 0; i < pairingsNeedingGames.length; i += BATCH_SIZE) {
       const batch = pairingsNeedingGames.slice(i, i + BATCH_SIZE);
       const batchResults = await Promise.all(
-        batch.map(pairing => this.createGameForPairing(pairing, tournament, baseUrl))
+        batch.map(pairing => this.createGameForPairing(pairing, tournament, baseUrl, serverUrl))
       );
       results.push(...batchResults);
       

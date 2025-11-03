@@ -1403,13 +1403,81 @@ router.post('/generate/section', async (req, res) => {
     // For online and online-rated tournaments, create custom games for each pairing
     if (OnlineGameService.isOnlineTournament(tournament.format)) {
       try {
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        // Try to get organization URL from tournament settings or organization record
+        let baseUrl = `${req.protocol}://${req.get('host')}`;
+        
+        // Check tournament settings for organization URL
+        if (tournament.settings) {
+          try {
+            const settings = typeof tournament.settings === 'string' 
+              ? JSON.parse(tournament.settings) 
+              : tournament.settings;
+            
+            // Check for organization URL in settings
+            if (settings.organization_url) {
+              baseUrl = settings.organization_url;
+              // Ensure it doesn't have trailing slash
+              baseUrl = baseUrl.replace(/\/$/, '');
+            }
+          } catch (e) {
+            console.warn('Error parsing tournament settings for organization URL:', e);
+          }
+        }
+        
+        // If not in settings, check organization record
+        if (tournament.organization_id && baseUrl === `${req.protocol}://${req.get('host')}`) {
+          try {
+            const org = await new Promise((resolve, reject) => {
+              db.get(
+                'SELECT website, settings FROM organizations WHERE id = ?',
+                [tournament.organization_id],
+                (err, row) => {
+                  if (err) reject(err);
+                  else resolve(row);
+                }
+              );
+            });
+            
+            if (org) {
+              // Check organization settings for public URL or custom domain
+              if (org.settings) {
+                try {
+                  const orgSettings = typeof org.settings === 'string' 
+                    ? JSON.parse(org.settings) 
+                    : org.settings;
+                  
+                  if (orgSettings?.advanced?.customDomain) {
+                    baseUrl = `https://${orgSettings.advanced.customDomain}`;
+                    baseUrl = baseUrl.replace(/\/$/, '');
+                  } else if (orgSettings?.seo?.canonicalUrl) {
+                    baseUrl = orgSettings.seo.canonicalUrl;
+                    baseUrl = baseUrl.replace(/\/$/, '');
+                  }
+                } catch (e) {
+                  console.warn('Error parsing organization settings:', e);
+                }
+              }
+              
+              // Fall back to organization website if available
+              if (baseUrl === `${req.protocol}://${req.get('host')}` && org.website) {
+                baseUrl = org.website;
+                baseUrl = baseUrl.replace(/\/$/, '');
+              }
+            }
+          } catch (error) {
+            console.warn('Error fetching organization for base URL:', error);
+          }
+        }
+        
+        // Use request host for API calls (actual server), baseUrl for link generation (organization URL if set)
+        const serverUrl = `${req.protocol}://${req.get('host')}`;
         const gameCreationResult = await OnlineGameService.createGamesForRound(
           tournamentId,
           currentRound,
           sectionName,
           tournament,
-          baseUrl
+          baseUrl,
+          serverUrl
         );
 
         if (gameCreationResult.failed > 0) {

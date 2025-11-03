@@ -11,18 +11,59 @@ interface ClockTimes {
 }
 
 // Parse time control from URL or default to 3+2
+// Supports formats:
+// - "3+2" = 3 minutes with 2 second increment
+// - "G45D5" = 45 minutes with 5 second delay
+// - "G45 + 10" = 45 minutes with 10 second increment
+// - "G45+10" = 45 minutes with 10 second increment
+// - "45+10" = 45 minutes with 10 second increment
 const getTimeControlFromURL = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const timeParam = urlParams.get('time');
   if (timeParam) {
-    const parts = timeParam.split('+');
+    const trimmed = timeParam.trim();
+    
+    // Handle G prefix format: G45D5, G45 + 10, or G45+10
+    if (trimmed.toUpperCase().startsWith('G')) {
+      // Match G45D5 format (delay) - no spaces around D
+      const delayMatch = trimmed.match(/^G(\d+)D(\d+)$/i);
+      if (delayMatch) {
+        const minutes = parseInt(delayMatch[1]) || 3;
+        const delay = parseInt(delayMatch[2]) || 0;
+        // For delay (D), we treat it as increment since delay isn't fully supported
+        return { minutes, increment: delay, delay: delay };
+      }
+      
+      // Match G45 + 10 format (increment with spaces) - handle URL decoding where + might be space
+      const spaceMatch = trimmed.match(/^G(\d+)\s*[+\s]+\s*(\d+)$/i);
+      if (spaceMatch) {
+        const minutes = parseInt(spaceMatch[1]) || 3;
+        const increment = parseInt(spaceMatch[2]) || 0;
+        return { minutes, increment, delay: 0 };
+      }
+      
+      // Match G45+10 format (increment without spaces)
+      const noSpaceMatch = trimmed.match(/^G(\d+)\+(\d+)$/i);
+      if (noSpaceMatch) {
+        const minutes = parseInt(noSpaceMatch[1]) || 3;
+        const increment = parseInt(noSpaceMatch[2]) || 0;
+        return { minutes, increment, delay: 0 };
+      }
+    }
+    
+    // Handle standard format: "45+10" or "3+2"
+    // Note: URLSearchParams may decode + as space, so handle both
+    const normalized = trimmed.replace(/\s+/g, '+'); // Convert spaces to +
+    const parts = normalized.split('+');
     if (parts.length >= 1) {
-      const minutes = parseInt(parts[0]) || 3;
-      const increment = parts[1] ? parseInt(parts[1]) : 2;
-      return { minutes, increment };
+      // Remove 'G' prefix if present
+      const minutesStr = parts[0].replace(/^G/i, '').trim();
+      const minutes = parseInt(minutesStr) || 3;
+      const increment = parts[1] ? parseInt(parts[1].trim()) : 0;
+      return { minutes, increment, delay: 0 };
     }
   }
-  return { minutes: 3, increment: 2 };
+  return { minutes: 3, increment: 2, delay: 0 };
 };
 
 const PlayChess: React.FC = () => {
@@ -604,27 +645,14 @@ const PlayChess: React.FC = () => {
     }
   };
 
-  // Clock sync effect - send updates to server every second
-  // Removed clockTimes from dependencies to prevent interval recreation
+  // Clock sync effect - request server time every second
+  // Server handles all countdown logic, client just requests current time
   useEffect(() => {
     if (!socket || !gameRoomId || !opponentName || !isClockRunning) return;
 
     const syncInterval = setInterval(() => {
-      // Only send updates when clock is running
-      // Use a ref to get current clock times without recreating interval
-      setClockTimes((current) => {
-        const minsB = Math.floor(current.black / 60000);
-        const secsB = Math.floor((current.black % 60000) / 1000);
-        const minsW = Math.floor(current.white / 60000);
-        const secsW = Math.floor((current.white % 60000) / 1000);
-        const zeroB = current.black === 0;
-        const zeroW = current.white === 0;
-        
-        // Send update with active color so server knows which player is updating
-        socket.emit('update-clock', minsB, minsW, secsB, secsW, zeroB, zeroW, activeColor);
-        
-        return current; // Return unchanged to avoid triggering state update
-      });
+      // Just request current time from server - server handles countdown
+      socket.emit('update-clock', 0, 0, 0, 0, false, false, activeColor);
     }, 1000);
 
     return () => {
@@ -640,21 +668,17 @@ const PlayChess: React.FC = () => {
       const newBlackTime = minsB * 60000 + secsB * 1000;
       const newWhiteTime = minsW * 60000 + secsW * 1000;
       
-      // Always update from server - trust server as authoritative source of truth
-      setClockTimes((prev) => {
-        // Only update if there's a significant difference to avoid jitter
-        const blackDiff = Math.abs(prev.black - newBlackTime);
-        const whiteDiff = Math.abs(prev.white - newWhiteTime);
-        
-        // Update if difference is more than 100ms (to handle rounding differences)
-        if (blackDiff > 100 || whiteDiff > 100 || prev.black !== newBlackTime || prev.white !== newWhiteTime) {
-          return {
-            black: newBlackTime,
-            white: newWhiteTime,
-          };
-        }
-        return prev;
+      // Always update from server - server is the authoritative source
+      // Update immediately since server handles all countdown logic
+      setClockTimes({
+        black: newBlackTime,
+        white: newWhiteTime,
       });
+      
+      // Update clock running state based on server updates
+      if (isClockRunning !== (newBlackTime > 0 && newWhiteTime > 0 && !gameStatus.isGameOver)) {
+        setIsClockRunning(newBlackTime > 0 && newWhiteTime > 0 && !gameStatus.isGameOver);
+      }
       
       // Handle time running out
       if (zeroB && !gameStatus.isGameOver) {
@@ -689,48 +713,9 @@ const PlayChess: React.FC = () => {
     };
   }, [socket, gameStatus.isGameOver, gameRoomId]);
 
-  // Clock effect
-  useEffect(() => {
-    if (isClockRunning && !gameStatus.isGameOver) {
-      clockIntervalRef.current = setInterval(() => {
-        setClockTimes((prev) => {
-          const newTimes = { ...prev };
-          if (activeColor === 'white') {
-            newTimes.white = Math.max(0, prev.white - 100);
-          } else {
-            newTimes.black = Math.max(0, prev.black - 100);
-          }
-          
-          // Check if time ran out
-          if (newTimes[activeColor] === 0) {
-            setIsClockRunning(false);
-            const timeResult = activeColor === 'white' ? 'Black wins on time!' : 'White wins on time!';
-            setGameStatus({
-              isGameOver: true,
-              result: timeResult,
-              inCheck: false,
-            });
-            // Update pairing result when time runs out
-            if (gameRoomId) {
-              updatePairingResult(gameRoomId, timeResult);
-            }
-          }
-          
-          return newTimes;
-        });
-      }, 100);
-
-      return () => {
-        if (clockIntervalRef.current) {
-          clearInterval(clockIntervalRef.current);
-        }
-      };
-    } else {
-      if (clockIntervalRef.current) {
-        clearInterval(clockIntervalRef.current);
-      }
-    }
-  }, [isClockRunning, gameStatus.isGameOver, activeColor]);
+  // Clock is now controlled entirely by the server
+  // Client no longer counts down locally - only displays server times
+  // This prevents double-counting and ensures accurate timing
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1259,15 +1244,6 @@ const PlayChess: React.FC = () => {
                   {playerName} vs {opponentName}
                 </span>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleFlip}
-                className="px-3 py-1.5 bg-[#3d3935] hover:bg-[#504b47] rounded text-sm transition-colors"
-                title="Flip Board"
-              >
-                <FlipHorizontal className="w-4 h-4" />
-              </button>
             </div>
           </div>
 
