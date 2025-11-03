@@ -150,6 +150,7 @@ const PlayChess: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState(false);
 
   // Helper function to verify password
   const verifyPassword = async (roomCode: string, password: string, playerColor: 'white' | 'black'): Promise<{ verified: boolean; passwordRequired?: boolean } | null> => {
@@ -280,7 +281,15 @@ const PlayChess: React.FC = () => {
     // Set organization logo from URL if provided
     // URLSearchParams.get() already decodes the value, so no need for decodeURIComponent
     if (logoParam) {
-      setOrganizationLogo(logoParam);
+      try {
+        // Validate URL before setting and reset error state
+        setLogoError(false);
+        setOrganizationLogo(logoParam);
+      } catch (error) {
+        console.warn('Invalid logo URL:', error);
+        setLogoError(true);
+        setOrganizationLogo(null);
+      }
     }
     
     const newSocket = io(socketUrl, {
@@ -1364,14 +1373,25 @@ const PlayChess: React.FC = () => {
               {/* Organization Logo */}
               <div className="pt-2 border-t border-gray-700">
                 <div className="flex justify-center items-center p-4">
-                  {organizationLogo ? (
+                  {organizationLogo && !logoError ? (
                     <img
                       src={organizationLogo}
                       alt="Organization"
-                      className="h-12 w-auto"
+                      className="h-12 w-auto max-w-[200px] object-contain"
                       onError={(e) => {
-                        // Fallback to PairCraft logo if image fails to load
-                        (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
+                        // Prevent infinite error loop
+                        const target = e.target as HTMLImageElement;
+                        if (!target.dataset.errorHandled) {
+                          target.dataset.errorHandled = 'true';
+                          setLogoError(true);
+                          // Hide the broken image
+                          target.style.display = 'none';
+                        }
+                      }}
+                      onLoad={(e) => {
+                        // Show image if it loads successfully
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = '';
                       }}
                     />
                   ) : (
@@ -1379,6 +1399,10 @@ const PlayChess: React.FC = () => {
                       src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
                       alt="PairCraft"
                       className="h-12 w-auto"
+                      onError={(e) => {
+                        // Hide completely if even fallback fails
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   )}
                 </div>
