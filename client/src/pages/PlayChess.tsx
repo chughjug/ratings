@@ -1079,7 +1079,12 @@ const PlayChess: React.FC = () => {
                       <span className="text-lg font-bold text-green-400">
                         {formatTimeControl(initialTimeMinutes, incrementSeconds, delaySeconds)}
                       </span>
-                      {incrementSeconds > 0 && (
+                      {delaySeconds > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          (Bronstein delay)
+                        </span>
+                      )}
+                      {delaySeconds === 0 && incrementSeconds > 0 && (
                         <span className="ml-2 text-xs text-gray-500">
                           (Fischer delay)
                         </span>
