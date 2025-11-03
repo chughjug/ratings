@@ -185,6 +185,10 @@ export const tournamentApi = {
     api.put<{success: boolean, message: string, error?: string}>(`/tournaments/${id}/prize-settings`, { prizeSettings }),
   generatePrizeStructure: (id: string, prizeFund?: number) => 
     api.post<{success: boolean, data: any, message?: string, error?: string}>(`/tournaments/${id}/generate-prize-structure`, { prizeFund }),
+  assignPrize: (id: string, prizeData: {playerId: string, prizeName: string, prizeType: string, amount?: number, position?: number, section?: string, ratingCategory?: string}) =>
+    api.post<{success: boolean, message: string, data?: any, error?: string}>(`/tournaments/${id}/prizes/assign`, prizeData),
+  removePrizeAssignment: (id: string, distributionId: string) =>
+    api.delete<{success: boolean, message: string, error?: string}>(`/tournaments/${id}/prizes/assign/${distributionId}`),
   // Section management
   mergeSections: (id: string, sourceSection: string, targetSection: string, removeSourceSection?: boolean) =>
     api.post<{success: boolean, message: string, data: {playersUpdated: number, pairingsUpdated: number, sourceSectionRemoved: boolean}, error?: string}>(
@@ -198,7 +202,7 @@ export const tournamentApi = {
     if (params?.top_n) queryParams.append('top_n', params.top_n.toString());
     queryParams.append('t', Date.now().toString());
     
-    return api.get<{success: boolean, standings: any[], type: string, scoring_method: string, top_n?: number, error?: string}>(`/teams/tournament/${id}/standings?${queryParams.toString()}`);
+    return api.get<{success: boolean, standings: any[], standingsBySection?: {[key: string]: any[]}, type: string, scoring_method: string, top_n?: number, error?: string}>(`/teams/tournament/${id}/standings?${queryParams.toString()}`);
   },
   getTeamPairings: (id: string, round: number) => 
     api.get<{success: boolean, data: any[], error?: string}>(`/teams/tournament/${id}/round/${round}/results?t=${Date.now()}`),
@@ -663,7 +667,7 @@ export const teamApi = {
     const params = new URLSearchParams();
     if (scoringMethod) params.append('scoring_method', scoringMethod);
     if (topN) params.append('top_n', topN.toString());
-    return api.get<{success: boolean, standings: any[], type: string, scoring_method: string, top_n?: number, error?: string}>(`/teams/tournament/${tournamentId}/standings?${params.toString()}`);
+    return api.get<{success: boolean, standings: any[], standingsBySection?: {[key: string]: any[]}, type: string, scoring_method: string, top_n?: number, error?: string}>(`/teams/tournament/${tournamentId}/standings?${params.toString()}`);
   }
 };
 

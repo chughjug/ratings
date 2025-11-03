@@ -229,6 +229,7 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
  */
 function distributePositionPrizes(standings, positionPrizes, sectionName, tournamentId) {
   const distributions = [];
+  const playersWithPrizes = new Set(); // Track players who have received a prize
   
   // Group standings by score to identify ties
   const scoreGroups = groupStandingsByScore(standings);
@@ -240,23 +241,56 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
     const tiedPlayers = scoreGroups.get(score);
     if (tiedPlayers.length === 0) continue;
 
+    // Filter out players who already have a prize (one prize per person)
+    const eligiblePlayers = tiedPlayers.filter(p => !playersWithPrizes.has(p.id));
+    if (eligiblePlayers.length === 0) {
+      currentPosition += tiedPlayers.length;
+      continue;
+    }
+
     // Find applicable prizes for this position range
     const endPosition = currentPosition + tiedPlayers.length - 1;
-    const applicablePrizes = positionPrizes.filter(prize => 
+    let applicablePrizes = positionPrizes.filter(prize => 
       prize.position >= currentPosition && prize.position <= endPosition
     );
 
-    if (applicablePrizes.length > 0) {
-      // Distribute prizes to tied players
+    // For cash prizes: if more players than prizes, they split ALL available prizes in the range
+    // For non-cash: only award to players who don't already have a prize
+    const cashPrizes = applicablePrizes.filter(p => p.type === 'cash');
+    const nonCashPrizes = applicablePrizes.filter(p => p.type !== 'cash');
+
+    // Handle cash prizes - if more players than prizes, they split all available
+    if (cashPrizes.length > 0) {
+      const playersToAward = eligiblePlayers;
       const prizeDistributions = distributePrizesToTiedPlayers(
-        tiedPlayers,
-        applicablePrizes,
+        playersToAward,
+        cashPrizes, // Use all cash prizes in range
         currentPosition,
         sectionName,
         tournamentId
       );
+      
+      prizeDistributions.forEach(dist => {
+        playersWithPrizes.add(dist.player_id);
+        distributions.push(dist);
+      });
+    }
 
-      distributions.push(...prizeDistributions);
+    // Handle non-cash prizes - only award to eligible players (one per person)
+    if (nonCashPrizes.length > 0) {
+      const playersToAward = eligiblePlayers.slice(0, nonCashPrizes.length);
+      const prizeDistributions = distributePrizesToTiedPlayers(
+        playersToAward,
+        nonCashPrizes.slice(0, playersToAward.length),
+        currentPosition,
+        sectionName,
+        tournamentId
+      );
+      
+      prizeDistributions.forEach(dist => {
+        playersWithPrizes.add(dist.player_id);
+        distributions.push(dist);
+      });
     }
 
     currentPosition += tiedPlayers.length;
@@ -270,29 +304,67 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
  */
 function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournamentId) {
   const distributions = [];
+  const playersWithPrizes = new Set(); // Track players who have received a prize (one prize per person)
 
   for (const prize of ratingPrizes) {
-    // Filter players eligible for this rating category
-    const eligiblePlayers = standings.filter(player => isEligibleForRatingPrize(player, prize.ratingCategory));
+    // Filter players eligible for this rating category and who don't already have a prize
+    const eligiblePlayers = standings
+      .filter(player => isEligibleForRatingPrize(player, prize.ratingCategory))
+      .filter(player => !playersWithPrizes.has(player.id));
     
     if (eligiblePlayers.length === 0) continue;
 
     // Sort eligible players by score and tiebreakers
     const sortedEligiblePlayers = sortStandingsByTiebreakers(eligiblePlayers, ['buchholz', 'sonnebornBerger']);
 
-    // Award prize to the top eligible player(s) - support multiple positions for rating prizes
-    const prizeCount = prize.position || 1;
-    const topPlayers = sortedEligiblePlayers.slice(0, prizeCount);
+    // Group by score to handle ties
+    const scoreGroups = groupStandingsByScore(sortedEligiblePlayers);
+    const sortedScores = Array.from(scoreGroups.keys()).sort((a, b) => b - a);
     
-    const prizeDistributions = distributePrizesToTiedPlayers(
-      topPlayers,
-      [prize],
-      topPlayers[0] ? getPlayerPosition(topPlayers[0], standings) : 1,
-      sectionName,
-      tournamentId
-    );
+    let remainingPrizeCount = prize.position || 1;
+    
+    for (const score of sortedScores) {
+      if (remainingPrizeCount <= 0) break;
+      
+      const tiedPlayers = scoreGroups.get(score).filter(p => !playersWithPrizes.has(p.id));
+      if (tiedPlayers.length === 0) continue;
 
-    distributions.push(...prizeDistributions);
+      // For cash prizes: if more players than remaining prizes, they split all remaining prizes
+      // For non-cash: award to as many players as we have prizes (one per person)
+      if (prize.type === 'cash') {
+        // All tied players split all remaining cash prizes
+        const playersToAward = tiedPlayers.slice(0, Math.min(tiedPlayers.length, remainingPrizeCount));
+        const prizeDistributions = distributePrizesToTiedPlayers(
+          playersToAward,
+          [prize],
+          getPlayerPosition(tiedPlayers[0], standings),
+          sectionName,
+          tournamentId
+        );
+        
+        prizeDistributions.forEach(dist => {
+          playersWithPrizes.add(dist.player_id);
+          distributions.push(dist);
+        });
+        remainingPrizeCount -= playersToAward.length;
+      } else {
+        // Non-cash: award to players up to remaining prize count (one per person)
+        const playersToAward = tiedPlayers.slice(0, Math.min(tiedPlayers.length, remainingPrizeCount));
+        const prizeDistributions = distributePrizesToTiedPlayers(
+          playersToAward,
+          [prize],
+          getPlayerPosition(tiedPlayers[0], standings),
+          sectionName,
+          tournamentId
+        );
+        
+        prizeDistributions.forEach(dist => {
+          playersWithPrizes.add(dist.player_id);
+          distributions.push(dist);
+        });
+        remainingPrizeCount -= playersToAward.length;
+      }
+    }
   }
 
   return distributions;
@@ -387,6 +459,8 @@ function getPlayerPosition(player, allStandings) {
 
 /**
  * Distribute prizes to tied players
+ * For cash: splits all available cash prizes among all tied players
+ * For non-cash: awards one prize per player (already filtered upstream)
  */
 function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, sectionName, tournamentId) {
   const distributions = [];
@@ -395,12 +469,14 @@ function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, 
   const cashPrizes = applicablePrizes.filter(p => p.type === 'cash');
   const nonCashPrizes = applicablePrizes.filter(p => p.type !== 'cash');
 
-  // Process cash prizes (combine and split equally)
+  // Process cash prizes (combine ALL cash prizes and split equally among ALL tied players)
+  // This handles the case where there are more tied players than prizes
+  // Example: 4 players tied, only 3 cash prizes -> all 4 players split all 3 prizes
   if (cashPrizes.length > 0) {
     const totalCash = cashPrizes.reduce((sum, prize) => sum + (prize.amount || 0), 0);
     const cashPerPlayer = totalCash / tiedPlayers.length;
 
-    tiedPlayers.forEach((player, index) => {
+    tiedPlayers.forEach((player) => {
       distributions.push({
         player_id: player.id,
         prize_name: cashPrizes.map(p => p.name).join(' + '),
@@ -413,33 +489,21 @@ function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, 
     });
   }
 
-  // Process non-cash prizes (use tiebreakers for distribution)
+  // Process non-cash prizes (one per player, already filtered upstream)
   if (nonCashPrizes.length > 0) {
-    // Group non-cash prizes by type for better distribution
-    const prizesByType = {};
-    nonCashPrizes.forEach(prize => {
-      if (!prizesByType[prize.type]) {
-        prizesByType[prize.type] = [];
+    nonCashPrizes.forEach((prize, prizeIndex) => {
+      if (prizeIndex < tiedPlayers.length) {
+        const player = tiedPlayers[prizeIndex];
+        distributions.push({
+          player_id: player.id,
+          prize_name: prize.name,
+          prize_type: prize.type,
+          amount: prize.amount || undefined,
+          position: position,
+          section: sectionName,
+          tie_group: tiedPlayers.length > 1 ? 1 : undefined
+        });
       }
-      prizesByType[prize.type].push(prize);
-    });
-
-    // Distribute each type of prize
-    Object.entries(prizesByType).forEach(([prizeType, prizes]) => {
-      prizes.forEach((prize, prizeIndex) => {
-        if (prizeIndex < tiedPlayers.length) {
-          const player = tiedPlayers[prizeIndex];
-          distributions.push({
-            player_id: player.id,
-            prize_name: prize.name,
-            prize_type: prize.type,
-            amount: prize.amount || undefined,
-            position: position,
-            section: sectionName,
-            tie_group: tiedPlayers.length > 1 ? 1 : undefined
-          });
-        }
-      });
     });
   }
 

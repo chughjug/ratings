@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, DollarSign, Medal, Award, Users, Star } from 'lucide-react';
+import { Trophy, DollarSign, Medal, Award, Users, Star, Plus, Zap } from 'lucide-react';
 import { tournamentApi } from '../services/api';
+import PrizeAssignmentModal from './PrizeAssignmentModal';
 
 interface PrizeDistribution {
   id: string;
@@ -30,10 +31,48 @@ const PrizeDisplay: React.FC<PrizeDisplayProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<'section' | 'type' | 'position'>('section');
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedSectionForModal, setSelectedSectionForModal] = useState<string | undefined>(undefined);
+  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [availableSections, setAvailableSections] = useState<string[]>([]);
 
   useEffect(() => {
     fetchPrizeDistributions();
+    fetchAvailableSections();
   }, [tournamentId]);
+
+  const fetchAvailableSections = async () => {
+    try {
+      const response = await tournamentApi.getSections(tournamentId);
+      if (response.data.success) {
+        setAvailableSections(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
+  };
+
+  const handleAutoAssign = async () => {
+    if (!confirm('This will automatically calculate and assign prizes based on current standings. Continue?')) {
+      return;
+    }
+
+    try {
+      setAutoAssigning(true);
+      const response = await tournamentApi.calculatePrizes(tournamentId);
+      if (response.data.success) {
+        alert(`Successfully auto-assigned ${response.data.data.length} prizes!`);
+        await fetchPrizeDistributions();
+      } else {
+        alert('Failed to auto-assign prizes: ' + (response.data.error || 'Unknown error'));
+      }
+    } catch (error: any) {
+      console.error('Error auto-assigning prizes:', error);
+      alert('Failed to auto-assign prizes: ' + (error.message || 'Unknown error'));
+    } finally {
+      setAutoAssigning(false);
+    }
+  };
 
   const fetchPrizeDistributions = async () => {
     try {
@@ -51,6 +90,10 @@ const PrizeDisplay: React.FC<PrizeDisplayProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePrizeAssigned = () => {
+    fetchPrizeDistributions();
   };
 
   const getPrizeIcon = (type: string) => {
@@ -186,6 +229,33 @@ const PrizeDisplay: React.FC<PrizeDisplayProps> = ({
             </p>
           </div>
           <div className="flex items-center space-x-4">
+            <button
+              onClick={handleAutoAssign}
+              disabled={autoAssigning}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-2 text-sm font-medium"
+            >
+              {autoAssigning ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  <span>Auto-Assigning...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  <span>Auto-Assign Prizes</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setSelectedSectionForModal(undefined);
+                setShowAssignmentModal(true);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2 text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Manual Assign</span>
+            </button>
             {totalValue > 0 && (
               <div className="text-right">
                 <div className="text-2xl font-bold text-green-600">${totalValue.toFixed(2)}</div>
@@ -275,6 +345,41 @@ const PrizeDisplay: React.FC<PrizeDisplayProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Section-specific Prize Assignment Buttons */}
+      {availableSections.length > 0 && (
+        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">Assign by Section:</span>
+            <div className="flex flex-wrap gap-2">
+              {availableSections.map(sectionName => (
+                <button
+                  key={sectionName}
+                  onClick={() => {
+                    setSelectedSectionForModal(sectionName);
+                    setShowAssignmentModal(true);
+                  }}
+                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 text-sm font-medium border border-blue-200"
+                >
+                  {sectionName}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prize Assignment Modal */}
+      <PrizeAssignmentModal
+        isOpen={showAssignmentModal}
+        onClose={() => {
+          setShowAssignmentModal(false);
+          setSelectedSectionForModal(undefined);
+        }}
+        tournamentId={tournamentId}
+        onAssign={handlePrizeAssigned}
+        section={selectedSectionForModal}
+      />
     </div>
   );
 };

@@ -948,9 +948,11 @@ router.get('/:id/public', async (req, res) => {
       });
     }
 
-    // Get prize information
+    // Get prize information and distributions
     let prizes = [];
+    let prizeDistributions = [];
     try {
+      // Get prize definitions
       prizes = await new Promise((resolve, reject) => {
         db.all(
           'SELECT * FROM prizes WHERE tournament_id = ? ORDER BY position ASC, type ASC',
@@ -962,33 +964,34 @@ router.get('/:id/public', async (req, res) => {
         );
       });
 
-      if (prizes && prizes.length > 0) {
-        const { distributeSectionPrizes } = require('../services/prizeService');
-        const prizeDistributions = distributeSectionPrizes(
-          sortedStandings,
-          {
-            name: 'Open',
-            prizes: prizes.map(prize => ({
-              ...prize,
-              conditions: prize.conditions ? JSON.parse(prize.conditions) : [],
-              amount: prize.amount ? parseFloat(prize.amount) : undefined
-            }))
-          },
-          tournament.id
+      // Get prize distributions (which players got which prizes)
+      prizeDistributions = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT pd.*, p.name as player_name, pr.name as prize_name, pr.type as prize_type
+           FROM prize_distributions pd
+           JOIN players p ON pd.player_id = p.id
+           LEFT JOIN prizes pr ON pd.prize_id = pr.id
+           WHERE pd.tournament_id = ?
+           ORDER BY pd.position ASC, pd.prize_type ASC`,
+          [id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
         );
+      });
 
-        // Add prize information to standings
-        const prizeMap = {};
-        prizeDistributions.forEach(distribution => {
-          prizeMap[distribution.player_id] = distribution.prize_amount ? `$${distribution.prize_amount}` : distribution.prize_name;
-        });
+      // Add prize information to standings for display
+      const prizeMap = {};
+      prizeDistributions.forEach(distribution => {
+        prizeMap[distribution.player_id] = distribution.amount ? `$${distribution.amount}` : distribution.prize_name;
+      });
 
-        sortedStandings.forEach(player => {
-          player.prize = prizeMap[player.id] || '';
-        });
-      }
+      sortedStandings.forEach(player => {
+        player.prize = prizeMap[player.id] || '';
+      });
     } catch (error) {
-      console.warn('Could not calculate prizes:', error);
+      console.warn('Could not fetch prizes:', error);
     }
 
     // Get current round number
@@ -1039,6 +1042,10 @@ router.get('/:id/public', async (req, res) => {
           ...prize,
           amount: prize.amount ? parseFloat(prize.amount) : undefined,
           conditions: prize.conditions ? JSON.parse(prize.conditions) : []
+        })),
+        prizeDistributions: prizeDistributions.map(dist => ({
+          ...dist,
+          amount: dist.amount ? parseFloat(dist.amount) : undefined
         }))
       }
     });
@@ -1347,6 +1354,143 @@ router.post('/:id/generate-prize-structure', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to generate prize structure'
+    });
+  }
+});
+
+// Manually assign a prize to a player
+router.post('/:id/prizes/assign', async (req, res) => {
+  const { id } = req.params;
+  const { playerId, prizeName, prizeType, amount, position, section, ratingCategory } = req.body;
+  
+  try {
+    // Validate required fields
+    if (!playerId || !prizeName || !prizeType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: playerId, prizeName, and prizeType are required'
+      });
+    }
+
+    const { v4: uuidv4 } = require('uuid');
+    
+    // First, find or create the prize definition
+    let prizeId;
+    const existingPrize = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT id FROM prizes 
+         WHERE tournament_id = ? AND name = ? AND type = ? AND COALESCE(section, '') = COALESCE(?, '') 
+         AND COALESCE(position, -1) = COALESCE(?, -1) AND COALESCE(rating_category, '') = COALESCE(?, '')`,
+        [id, prizeName, prizeType, section || null, position || null, ratingCategory || null],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (existingPrize) {
+      prizeId = existingPrize.id;
+    } else {
+      // Create new prize definition
+      prizeId = uuidv4();
+      await new Promise((resolve, reject) => {
+        db.run(
+          `INSERT INTO prizes (id, tournament_id, name, type, position, rating_category, section, amount, description)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [prizeId, id, prizeName, prizeType, position || null, ratingCategory || null, section || null, amount || null, prizeName],
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+    }
+
+    // Check if player already has this prize (to avoid duplicates)
+    const existingDistribution = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT id FROM prize_distributions WHERE tournament_id = ? AND player_id = ? AND prize_id = ?',
+        [id, playerId, prizeId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    let distributionId;
+    if (existingDistribution) {
+      // Update existing distribution
+      distributionId = existingDistribution.id;
+      await new Promise((resolve, reject) => {
+        db.run(
+          `UPDATE prize_distributions 
+           SET prize_name = ?, prize_type = ?, amount = ?, position = ?, rating_category = ?, section = ?
+           WHERE id = ?`,
+          [prizeName, prizeType, amount || null, position || null, ratingCategory || null, section || null, distributionId],
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+    } else {
+      // Create new distribution
+      distributionId = uuidv4();
+      await new Promise((resolve, reject) => {
+        db.run(
+          `INSERT INTO prize_distributions 
+           (id, tournament_id, player_id, prize_id, prize_name, prize_type, amount, position, rating_category, section)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [distributionId, id, playerId, prizeId, prizeName, prizeType, amount || null, position || null, ratingCategory || null, section || null],
+          (err) => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Prize assigned successfully',
+      data: { distributionId, prizeId }
+    });
+  } catch (error) {
+    console.error('Error assigning prize:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to assign prize'
+    });
+  }
+});
+
+// Remove a prize assignment from a player
+router.delete('/:id/prizes/assign/:distributionId', async (req, res) => {
+  const { id, distributionId } = req.params;
+  
+  try {
+    await new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM prize_distributions WHERE tournament_id = ? AND id = ?',
+        [id, distributionId],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      message: 'Prize assignment removed successfully'
+    });
+  } catch (error) {
+    console.error('Error removing prize assignment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove prize assignment'
     });
   }
 });

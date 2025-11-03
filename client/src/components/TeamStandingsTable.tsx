@@ -208,7 +208,8 @@ const TeamStandingsTable: React.FC<TeamStandingsTableProps> = ({
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {sectionTeams.map((team, index) => {
-                  const rank = team.rank || index + 1;
+                  // Use backend-provided rank if available (already ranked within section), otherwise use index + 1
+                  const rank = team.rank !== undefined && team.rank !== null ? team.rank : index + 1;
                   return (
                   <tr key={team.team_id || team.team_name} className="hover:bg-gray-50">
                     <td className="px-2 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">

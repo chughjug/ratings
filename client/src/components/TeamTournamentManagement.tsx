@@ -32,15 +32,36 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamSection, setNewTeamSection] = useState('Open');
+  const [newTeamSectionCustom, setNewTeamSectionCustom] = useState('');
+  const [showCustomSectionInput, setShowCustomSectionInput] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState('');
   const [editingTeamSection, setEditingTeamSection] = useState('Open');
+  const [editingTeamSectionCustom, setEditingTeamSectionCustom] = useState('');
+  const [showCustomSectionEdit, setShowCustomSectionEdit] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [selectedPlayerToAdd, setSelectedPlayerToAdd] = useState<string | null>(null);
   
-  // Get available sections from teams
-  const availableSections = Array.from(new Set(['Open', 'Reserve', 'U1200', 'U1600', ...teams.map(t => t.section || 'Open')].filter(Boolean)));
+  // Get available sections from teams and players
+  const playerSections = Array.from(new Set(players.map(p => p.section).filter(Boolean))) as string[];
+  const teamSections = Array.from(new Set(teams.map(t => t.section).filter(Boolean))) as string[];
+  const allKnownSections = Array.from(new Set([
+    'Open',
+    'Elementary',
+    'Middle',
+    'High',
+    'Primary',
+    'Reserve',
+    'U1200',
+    'U1600',
+    'U2000',
+    'Championship',
+    ...playerSections,
+    ...teamSections
+  ])).filter(Boolean).sort();
+  
+  const availableSections = allKnownSections;
 
   useEffect(() => {
     if (isVisible && tournamentId) {
@@ -72,14 +93,21 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
     setLoading(true);
     setError(null);
     try {
+      // Use custom section if provided, otherwise use selected section
+      const sectionToUse = showCustomSectionInput && newTeamSectionCustom.trim() 
+        ? newTeamSectionCustom.trim() 
+        : (newTeamSection || 'Open');
+      
       const response = await axios.post(`${API_BASE_URL}/teams/team-tournament/${tournamentId}/create`, {
         name: newTeamName.trim(),
-        section: newTeamSection || 'Open'
+        section: sectionToUse
       });
 
       if (response.data.success) {
         setNewTeamName('');
         setNewTeamSection('Open');
+        setNewTeamSectionCustom('');
+        setShowCustomSectionInput(false);
         setShowCreateTeam(false);
         await fetchTeams();
         if (onTeamsUpdated) onTeamsUpdated();
@@ -94,20 +122,28 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
     }
   };
 
-  const updateTeam = async (teamId: string, name: string, section?: string) => {
+  const updateTeam = async (teamId: string, name: string, section?: string, customSection?: string, useCustom?: boolean) => {
     if (!name.trim()) return;
 
     setLoading(true);
     setError(null);
     try {
+      // Use custom section if provided, otherwise use selected section
+      const sectionToUse = useCustom && customSection?.trim()
+        ? customSection.trim()
+        : (section || 'Open');
+      
       const response = await axios.put(`${API_BASE_URL}/teams/team-tournament/${teamId}`, {
         name: name.trim(),
-        section: section || 'Open'
+        section: sectionToUse
       });
 
       if (response.data.success) {
         setEditingTeamId(null);
         setEditingTeamName('');
+        setEditingTeamSection('Open');
+        setEditingTeamSectionCustom('');
+        setShowCustomSectionEdit(false);
         await fetchTeams();
         if (onTeamsUpdated) onTeamsUpdated();
       } else {
@@ -260,42 +296,81 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
             {/* Create Team Form */}
             {showCreateTeam && (
               <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <form onSubmit={createTeam} className="flex items-center space-x-4">
-                  <input
-                    type="text"
-                    value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
-                    placeholder="Team name"
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    autoFocus
-                  />
-                  <select
-                    value={newTeamSection}
-                    onChange={(e) => setNewTeamSection(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {availableSections.map(sec => (
-                      <option key={sec} value={sec}>{sec}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm"
-                  >
-                    {loading ? 'Creating...' : 'Create'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateTeam(false);
-                      setNewTeamName('');
-                    }}
-                    className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm"
-                  >
-                    Cancel
-                  </button>
+                <form onSubmit={createTeam} className="space-y-3">
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="text"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                      placeholder="Team name"
+                      className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                      autoFocus
+                    />
+                    {!showCustomSectionInput ? (
+                      <>
+                        <select
+                          value={newTeamSection}
+                          onChange={(e) => setNewTeamSection(e.target.value)}
+                          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {availableSections.map(sec => (
+                            <option key={sec} value={sec}>{sec}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomSectionInput(true)}
+                          className="px-3 py-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md hover:bg-blue-50"
+                          title="Enter custom section name"
+                        >
+                          Custom
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={newTeamSectionCustom}
+                          onChange={(e) => setNewTeamSectionCustom(e.target.value)}
+                          placeholder="Section name (e.g., Elementary, Middle, High)"
+                          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCustomSectionInput(false);
+                            setNewTeamSectionCustom('');
+                          }}
+                          className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                          title="Select from list"
+                        >
+                          From List
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm"
+                    >
+                      {loading ? 'Creating...' : 'Create'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateTeam(false);
+                        setNewTeamName('');
+                        setNewTeamSection('Open');
+                        setNewTeamSectionCustom('');
+                        setShowCustomSectionInput(false);
+                      }}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </form>
               </div>
             )}
@@ -322,17 +397,53 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                               className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               autoFocus
                             />
-                            <select
-                              value={editingTeamSection}
-                              onChange={(e) => setEditingTeamSection(e.target.value)}
-                              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              {availableSections.map(sec => (
-                                <option key={sec} value={sec}>{sec}</option>
-                              ))}
-                            </select>
+                            {!showCustomSectionEdit ? (
+                              <>
+                                <select
+                                  value={editingTeamSection}
+                                  onChange={(e) => setEditingTeamSection(e.target.value)}
+                                  className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  {availableSections.map(sec => (
+                                    <option key={sec} value={sec}>{sec}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowCustomSectionEdit(true);
+                                    setEditingTeamSectionCustom((team as any).section || '');
+                                  }}
+                                  className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md hover:bg-blue-50"
+                                  title="Enter custom section name"
+                                >
+                                  Custom
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <input
+                                  type="text"
+                                  value={editingTeamSectionCustom}
+                                  onChange={(e) => setEditingTeamSectionCustom(e.target.value)}
+                                  placeholder="Section name"
+                                  className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowCustomSectionEdit(false);
+                                    setEditingTeamSectionCustom('');
+                                  }}
+                                  className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                                  title="Select from list"
+                                >
+                                  List
+                                </button>
+                              </>
+                            )}
                             <button
-                              onClick={() => updateTeam(team.id, editingTeamName, editingTeamSection)}
+                              onClick={() => updateTeam(team.id, editingTeamName, editingTeamSection, editingTeamSectionCustom, showCustomSectionEdit)}
                               className="p-1 text-green-600 hover:text-green-800"
                               title="Save"
                             >
@@ -342,6 +453,9 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                               onClick={() => {
                                 setEditingTeamId(null);
                                 setEditingTeamName('');
+                                setEditingTeamSection('Open');
+                                setEditingTeamSectionCustom('');
+                                setShowCustomSectionEdit(false);
                               }}
                               className="p-1 text-gray-600 hover:text-gray-800"
                               title="Cancel"
@@ -369,7 +483,10 @@ const TeamTournamentManagement: React.FC<TeamTournamentManagementProps> = ({
                             onClick={() => {
                               setEditingTeamId(team.id);
                               setEditingTeamName(team.name);
-                              setEditingTeamSection((team as any).section || 'Open');
+                              const teamSection = (team as any).section || 'Open';
+                              setEditingTeamSection(availableSections.includes(teamSection) ? teamSection : 'Open');
+                              setEditingTeamSectionCustom(availableSections.includes(teamSection) ? '' : teamSection);
+                              setShowCustomSectionEdit(!availableSections.includes(teamSection));
                             }}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded"
                             title="Edit team name and section"

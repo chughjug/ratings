@@ -472,11 +472,21 @@ const TournamentDetail: React.FC = () => {
       });
       console.log('Team standings response:', response.data);
       console.log('Team standings data:', response.data.standings);
-      setTeamStandings(response.data.standings || []);
+      console.log('Team standings by section:', response.data.standingsBySection);
+      
+      // For team tournaments, prefer standingsBySection if available to ensure proper section separation
+      // Otherwise fall back to flattened standings array
+      if (response.data.standingsBySection && tournament?.format === 'team-tournament') {
+        // Flatten the grouped standings but preserve section information
+        const flattened = Object.values(response.data.standingsBySection).flat();
+        setTeamStandings(flattened);
+      } else {
+        setTeamStandings(response.data.standings || []);
+      }
     } catch (error: any) {
       console.error('Failed to fetch team standings:', error);
     }
-  }, [id, teamScoringMethod, teamTopN]);
+  }, [id, teamScoringMethod, teamTopN, tournament?.format]);
 
   const fetchTeamPairings = useCallback(async () => {
     if (!id || !tournament) return;
@@ -3173,7 +3183,7 @@ const TournamentDetail: React.FC = () => {
                         return {
                           team_name: team?.team_name || 'Unnamed Team',
                           team_id: team?.team_id || team?.team_name || 'unnamed',
-                          rank: team?.rank || index + 1,
+                          rank: team?.rank, // Use backend-provided rank which is already ranked within section
                           score: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
                           team_total_points: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
                           match_points: team?.match_points,
@@ -3777,7 +3787,7 @@ const TournamentDetail: React.FC = () => {
                     return {
                       team_name: team?.team_name || 'Unnamed Team',
                       team_id: team?.team_id || team?.team_name || 'unnamed',
-                      rank: team?.rank || index + 1,
+                      rank: team?.rank, // Use backend-provided rank which is already ranked within section
                       score: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
                       team_total_points: isTeamTournament ? (team?.match_points || 0) : (team?.team_total_points || 0),
                       match_points: team?.match_points,

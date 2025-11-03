@@ -149,6 +149,30 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
     }));
   };
 
+  const addBulkPrizes = (sectionName: string, count: number, type: 'cash' | 'trophy' | 'medal' | 'plaque', startPosition: number = 1) => {
+    const newPrizes: PrizeConfiguration[] = [];
+    for (let i = 0; i < count; i++) {
+      const position = startPosition + i;
+      const positionSuffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : 'th';
+      newPrizes.push({
+        name: `${position}${positionSuffix} Place ${type === 'cash' ? 'Prize' : type.charAt(0).toUpperCase() + type.slice(1)}`,
+        type: type,
+        position: position,
+        amount: type === 'cash' ? 0 : undefined,
+        description: ''
+      });
+    }
+
+    setSettings(prev => ({
+      ...prev,
+      sections: prev.sections.map(section => 
+        section.name === sectionName
+          ? { ...section, prizes: [...section.prizes, ...newPrizes] }
+          : section
+      )
+    }));
+  };
+
   const updatePrize = (sectionName: string, prizeIndex: number, updatedPrize: PrizeConfiguration) => {
     setSettings(prev => ({
       ...prev,
@@ -379,12 +403,50 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
                   </div>
                 ))}
 
-                <button
-                  onClick={() => addPrize(section.name)}
-                  className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                >
-                  <Plus className="inline w-4 h-4 mr-1" /> Add Prize
-                </button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => addPrize(section.name)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Prize
+                  </button>
+                  <button
+                    onClick={() => {
+                      const count = parseInt(prompt('How many trophies?', '3') || '3');
+                      if (count > 0) {
+                        const startPos = parseInt(prompt('Starting position?', '1') || '1');
+                        addBulkPrizes(section.name, count, 'trophy', startPos);
+                      }
+                    }}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm flex items-center"
+                  >
+                    <Trophy className="w-4 h-4 mr-1" /> Bulk Add Trophies
+                  </button>
+                  <button
+                    onClick={() => {
+                      const count = parseInt(prompt('How many medals?', '5') || '5');
+                      if (count > 0) {
+                        const startPos = parseInt(prompt('Starting position?', '1') || '1');
+                        addBulkPrizes(section.name, count, 'medal', startPos);
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center"
+                  >
+                    <Medal className="w-4 h-4 mr-1" /> Bulk Add Medals
+                  </button>
+                  <button
+                    onClick={() => {
+                      const count = parseInt(prompt('How many plaques?', '3') || '3');
+                      if (count > 0) {
+                        const startPos = parseInt(prompt('Starting position?', '1') || '1');
+                        addBulkPrizes(section.name, count, 'plaque', startPos);
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm flex items-center"
+                  >
+                    <Award className="w-4 h-4 mr-1" /> Bulk Add Plaques
+                  </button>
+                </div>
               </div>
             ))}
 

@@ -14,6 +14,7 @@ import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
 import { CrosstableService } from '../services/crosstableService';
 import ChessStandingsTable from '../components/ChessStandingsTable';
 import PairCraftLogo from '../components/PairCraftLogo';
+import PrizeDisplay from '../components/PrizeDisplay';
 
 interface PublicDisplayData {
   tournament: any;
@@ -891,24 +892,22 @@ const PublicTournamentDisplay: React.FC = () => {
                 </div>
               </button>
               
-              {data?.prizes && data?.prizes.length > 0 && (
-                <button
-                  onClick={() => setActiveTab('prizes')}
-                  className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    activeTab === 'prizes'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
-                  }`}
-                  role="tab"
-                  aria-selected={activeTab === 'prizes'}
-                  aria-label="View prizes"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Award className="h-4 w-4" />
-                    <span>Prizes</span>
-                  </div>
-                </button>
-              )}
+              <button
+                onClick={() => setActiveTab('prizes')}
+                className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'prizes'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+                }`}
+                role="tab"
+                aria-selected={activeTab === 'prizes'}
+                aria-label="View prizes"
+              >
+                <div className="flex items-center space-x-2">
+                  <Award className="h-4 w-4" />
+                  <span>Prizes</span>
+                </div>
+              </button>
               
               {/* Custom Pages Tabs */}
               {customPages && customPages.length > 0 && customPages.map((page) => (
@@ -1053,18 +1052,16 @@ const PublicTournamentDisplay: React.FC = () => {
                       {activeTab === 'teams' && <span className="ml-auto text-blue-600">✓</span>}
                     </button>
                     
-                    {data?.prizes && data?.prizes.length > 0 && (
-                      <button
-                        onClick={() => { setActiveTab('prizes'); setShowMobileTabs(false); }}
-                        className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
-                          activeTab === 'prizes' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
-                      >
-                        <Award className="h-4 w-4" />
-                        <span className="font-medium">Prizes</span>
-                        {activeTab === 'prizes' && <span className="ml-auto text-blue-600">✓</span>}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => { setActiveTab('prizes'); setShowMobileTabs(false); }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                        activeTab === 'prizes' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <Award className="h-4 w-4" />
+                      <span className="font-medium">Prizes</span>
+                      {activeTab === 'prizes' && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
                     
                     {customPages && customPages.length > 0 && customPages.map((page) => (
                       <button
@@ -2178,78 +2175,11 @@ const PublicTournamentDisplay: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'prizes' && data?.prizes && data?.prizes.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-black">Prize Information</h2>
-                  <div className="text-sm text-gray-500">
-                    {data?.prizes?.length || 0} prizes
-                  </div>
-                </div>
-                
-                {data?.prizes?.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No prizes available</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {data?.prizes?.map((prize) => (
-                      <div key={prize.id} className="p-6 rounded border border-gray-200 bg-white">
-                        <div className="flex items-center mb-4">
-                          <div className="p-3 bg-yellow-100 rounded-lg mr-4">
-                            <Trophy className="h-6 w-6 text-yellow-600" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-black">
-                              {prize.name}
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                              {prize.type === 'cash' ? 'Cash Prize' : 
-                               prize.type === 'trophy' ? 'Trophy' :
-                               prize.type === 'medal' ? 'Medal' : 'Plaque'}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {prize.position && (
-                          <div className="text-sm text-gray-700 mb-2">
-                            <span className="font-medium">Position:</span> {prize.position}
-                            {prize.position === 1 && 'st'}
-                            {prize.position === 2 && 'nd'}
-                            {prize.position === 3 && 'rd'}
-                            {prize.position > 3 && 'th'}
-                          </div>
-                        )}
-                        
-                        {prize.rating_category && (
-                          <div className="text-sm text-gray-700 mb-2">
-                            <span className="font-medium">Category:</span> {prize.rating_category}
-                          </div>
-                        )}
-                        
-                        {prize.section && (
-                          <div className="text-sm text-gray-700 mb-2">
-                            <span className="font-medium">Section:</span> {prize.section}
-                          </div>
-                        )}
-                        
-                        {prize.amount && (
-                          <div className="text-lg font-bold text-green-600 mb-2">
-                            ${prize.amount}
-                          </div>
-                        )}
-                        
-                        {prize.description && (
-                          <p className="text-sm text-gray-600">
-                            {prize.description}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            {activeTab === 'prizes' && id && (
+              <PrizeDisplay
+                tournamentId={id}
+                showPrizeSettings={false}
+              />
             )}
 
             {/* Custom Pages Content */}
