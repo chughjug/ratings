@@ -2336,9 +2336,7 @@ const TournamentDetail: React.FC = () => {
               {tournament?.format && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) ? (
                 <div className="space-y-4">
                   {/* Sectioned Teams Display for Team Tournaments */}
-                  <>
-                    <>
-                      {teams.length === 0 ? (
+                  {teams.length === 0 ? (
                         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
                           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Teams Created Yet</h3>
@@ -2354,7 +2352,7 @@ const TournamentDetail: React.FC = () => {
                           </button>
                         </div>
                       ) : (
-                        <>
+                        <div>
                           {groupTeamsBySection(teams).length === 0 ? (
                             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                               <p className="text-yellow-800 text-sm">
@@ -2486,9 +2484,8 @@ const TournamentDetail: React.FC = () => {
                         )}
                       </div>
                           ))}
-                        </>
+                        </div>
                       )}
-                  </>
                   
                   {/* Players List Below Teams (if any) */}
                   {state.players.length > 0 && (
