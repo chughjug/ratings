@@ -234,10 +234,7 @@ const PlayChess: React.FC = () => {
     // Set organization logo from URL if provided
     // URLSearchParams.get() already decodes the value, so no need for decodeURIComponent
     if (logoParam) {
-      console.log('[PlayChess] Logo from URL:', logoParam);
       setOrganizationLogo(logoParam);
-    } else {
-      console.log('[PlayChess] No logo param found in URL');
     }
     
     const newSocket = io(socketUrl, {
