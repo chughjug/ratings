@@ -2540,8 +2540,7 @@ const TournamentDetail: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {/* Regular Players Display for Non-Team Tournaments */}
-                    <>
-                    {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
+                  {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
                     <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                       {/* Section Header */}
                       <div 
@@ -2970,8 +2969,6 @@ const TournamentDetail: React.FC = () => {
                       )}
                     </div>
                   ))}
-                    </>
-                  )}
                 </div>
               )}
             </div>
