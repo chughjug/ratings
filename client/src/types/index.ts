@@ -143,6 +143,7 @@ export interface Prize {
   amount?: number; // For cash prizes
   description?: string;
   conditions?: string[]; // Special conditions like "biggest upset", "best game"
+  is_special_prize?: boolean; // US Chess Rule 32B1: Special prizes must be designated (e.g., biggest upset, best game)
 }
 
 export interface PrizeDistribution {
@@ -266,6 +267,7 @@ export interface PrizeConfiguration {
   ratingCategory?: string; // For rating-based prizes (e.g., "Under 1600", "Class A", "Unrated")
   amount?: number; // For cash prizes
   description?: string;
+  isSpecialPrize?: boolean; // US Chess Rule 32B1: Special prizes (e.g., biggest upset, best game) must be designated
 }
 
 export interface PrizeStructure {

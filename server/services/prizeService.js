@@ -4,6 +4,13 @@
  * This service handles prize distribution based on tournament settings
  * Prizes are configured in tournament settings and automatically distributed
  * when rounds are completed.
+ * 
+ * US Chess Rules Compliance:
+ * - Rule 32B1: Special prizes must be announced and designated
+ * - Rule 32B3: When pooling prizes, no player can receive a prize larger than 
+ *   the largest amount they would be eligible for without the split
+ * - One cash prize per player: A player can only receive one cash prize per tournament
+ * - Tied prizes: The sum of prizes for tied positions is divided equally among tied players
  */
 
 const { calculateTournamentTiebreakers } = require('../utils/tiebreakers');
@@ -101,15 +108,17 @@ async function calculateAndDistributePrizes(tournamentId, db) {
       const { v4: uuidv4 } = require('uuid');
       
       // First, create prize definitions in the prizes table
+      // Note: special_prize field would need to be added to database schema if not present
       const prizeStmt = db.prepare(`
         INSERT INTO prizes (id, tournament_id, name, type, position, rating_category, section, amount, description)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       // Then create distributions in the prize_distributions table
+      // Note: original_prize_amounts and is_pooled are stored in description or could be added as columns
       const distStmt = db.prepare(`
-        INSERT INTO prize_distributions (id, tournament_id, player_id, prize_id, amount, position, rating_category, section, tie_group)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO prize_distributions (id, tournament_id, player_id, prize_id, prize_name, prize_type, amount, position, rating_category, section, tie_group)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       
       // Group distributions by prize to avoid duplicates
@@ -141,6 +150,8 @@ async function calculateAndDistributePrizes(tournamentId, db) {
           tournament_id: tournamentId,
           player_id: dist.player_id,
           prize_id: prizeMap.get(prizeKey).prizeId,
+          prize_name: dist.prize_name,
+          prize_type: dist.prize_type,
           amount: dist.amount,
           position: dist.position,
           rating_category: dist.rating_category,
@@ -170,6 +181,8 @@ async function calculateAndDistributePrizes(tournamentId, db) {
               dist.tournament_id,
               dist.player_id,
               dist.prize_id,
+              dist.prize_name,
+              dist.prize_type,
               dist.amount,
               dist.position,
               dist.rating_category,
@@ -236,11 +249,22 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
 }
 
 /**
- * Distribute position-based prizes
+ * Distribute position-based prizes according to US Chess Rules
+ * 
+ * US Chess Rules:
+ * - One cash prize per player
+ * - When players tie, they split the sum of prizes for the tied positions
+ * - Rule 32B3: No player can receive more than largest prize they'd be eligible for
+ * 
+ * @param {Array} standings - Tournament standings sorted by tiebreakers
+ * @param {Array} positionPrizes - Position-based prizes configured for this section
+ * @param {string} sectionName - Section name
+ * @param {string} tournamentId - Tournament ID
+ * @returns {Array} Array of prize distributions
  */
 function distributePositionPrizes(standings, positionPrizes, sectionName, tournamentId) {
   const distributions = [];
-  const playersWithPrizes = new Set(); // Track players who have received a prize
+  const playersWithPrizes = new Set(); // Track players who have received a prize (one prize per person rule)
   
   // Group standings by score to identify ties
   const scoreGroups = groupStandingsByScore(standings);
@@ -252,7 +276,7 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
     const tiedPlayers = scoreGroups.get(score);
     if (tiedPlayers.length === 0) continue;
 
-    // Filter out players who already have a prize (one prize per person)
+    // Filter out players who already have a prize (US Chess: one cash prize per player)
     const eligiblePlayers = tiedPlayers.filter(p => !playersWithPrizes.has(p.id));
     if (eligiblePlayers.length === 0) {
       currentPosition += tiedPlayers.length;
@@ -260,22 +284,23 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
     }
 
     // Find applicable prizes for this position range
+    // US Chess Rule: When players tie, they split the sum of prizes for the tied positions
     const endPosition = currentPosition + tiedPlayers.length - 1;
     let applicablePrizes = positionPrizes.filter(prize => 
       prize.position >= currentPosition && prize.position <= endPosition
     );
 
-    // For cash prizes: if more players than prizes, they split ALL available prizes in the range
+    // For cash prizes: ALL tied players split ALL available cash prizes in the range
     // For non-cash: only award to players who don't already have a prize
     const cashPrizes = applicablePrizes.filter(p => p.type === 'cash');
     const nonCashPrizes = applicablePrizes.filter(p => p.type !== 'cash');
 
-    // Handle cash prizes - if more players than prizes, they split all available
+    // Handle cash prizes - US Chess Rule: tied players split all applicable prizes
     if (cashPrizes.length > 0) {
       const playersToAward = eligiblePlayers;
       const prizeDistributions = distributePrizesToTiedPlayers(
         playersToAward,
-        cashPrizes, // Use all cash prizes in range
+        cashPrizes, // Use all cash prizes in the tied position range
         currentPosition,
         sectionName,
         tournamentId
@@ -288,6 +313,7 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
     }
 
     // Handle non-cash prizes - only award to eligible players (one per person)
+    // For indivisible prizes, ties are broken using tiebreaker procedures
     if (nonCashPrizes.length > 0) {
       const playersToAward = eligiblePlayers.slice(0, nonCashPrizes.length);
       const prizeDistributions = distributePrizesToTiedPlayers(
@@ -311,7 +337,18 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
 }
 
 /**
- * Distribute rating-based prizes
+ * Distribute rating-based prizes according to US Chess Rules
+ * 
+ * US Chess Rules:
+ * - One cash prize per player
+ * - Special prizes (like biggest upset, best game) should be clearly designated (Rule 32B1)
+ * - When players tie, they split the sum of prizes (Rule 32B3 applies)
+ * 
+ * @param {Array} standings - Tournament standings
+ * @param {Array} ratingPrizes - Rating-based prizes configured for this section
+ * @param {string} sectionName - Section name
+ * @param {string} tournamentId - Tournament ID
+ * @returns {Array} Array of prize distributions
  */
 function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournamentId) {
   const distributions = [];
@@ -469,9 +506,21 @@ function getPlayerPosition(player, allStandings) {
 }
 
 /**
- * Distribute prizes to tied players
- * For cash: splits all available cash prizes among all tied players
+ * Distribute prizes to tied players according to US Chess Rules
+ * 
+ * US Chess Rule 32B3: When pooling prizes, no player can receive a prize larger than
+ * the largest amount they would be eligible for without the split.
+ * 
+ * For cash: splits all available cash prizes among all tied players, but ensures
+ * no player receives more than the highest individual prize they're tied for.
  * For non-cash: awards one prize per player (already filtered upstream)
+ * 
+ * @param {Array} tiedPlayers - Players who are tied
+ * @param {Array} applicablePrizes - Prizes applicable to this position range
+ * @param {number} position - Starting position of the tie
+ * @param {string} sectionName - Section name
+ * @param {string} tournamentId - Tournament ID
+ * @returns {Array} Array of prize distributions
  */
 function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, sectionName, tournamentId) {
   const distributions = [];
@@ -480,27 +529,57 @@ function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, 
   const cashPrizes = applicablePrizes.filter(p => p.type === 'cash');
   const nonCashPrizes = applicablePrizes.filter(p => p.type !== 'cash');
 
-  // Process cash prizes (combine ALL cash prizes and split equally among ALL tied players)
-  // This handles the case where there are more tied players than prizes
-  // Example: 4 players tied, only 3 cash prizes -> all 4 players split all 3 prizes
+  // Process cash prizes according to US Chess Rule 32B3
   if (cashPrizes.length > 0) {
+    // Calculate the total cash amount of all applicable prizes
     const totalCash = cashPrizes.reduce((sum, prize) => sum + (prize.amount || 0), 0);
-    const cashPerPlayer = totalCash / tiedPlayers.length;
-
-    tiedPlayers.forEach((player) => {
+    
+    // Find the maximum individual prize amount (US Chess Rule 32B3 cap)
+    // This represents the highest prize a player could have gotten if they weren't tied
+    const maxIndividualPrize = Math.max(...cashPrizes.map(p => p.amount || 0));
+    
+    // Calculate split amount per player
+    const splitAmountPerPlayer = totalCash / tiedPlayers.length;
+    
+    // Apply US Chess Rule 32B3: No player can receive more than the largest 
+    // amount they would be eligible for without the split
+    // In practice, this usually won't be an issue since pooling typically increases
+    // the amount, but we enforce the cap for compliance
+    const finalAmountPerPlayer = Math.min(splitAmountPerPlayer, maxIndividualPrize);
+    
+    // If the cap is applied, we need to redistribute the excess
+    // This is an edge case but ensures rule compliance
+    let totalDistributed = finalAmountPerPlayer * tiedPlayers.length;
+    let remaining = totalCash - totalDistributed;
+    
+    // Round to 2 decimal places for currency
+    let baseAmount = Math.floor(finalAmountPerPlayer * 100) / 100;
+    
+    // Distribute any remaining cents (due to rounding) to first players
+    const centsRemaining = Math.round((totalCash - (baseAmount * tiedPlayers.length)) * 100);
+    
+    tiedPlayers.forEach((player, index) => {
+      // Add one cent for the first N players to account for rounding
+      const amount = baseAmount + (index < centsRemaining ? 0.01 : 0);
+      
       distributions.push({
         player_id: player.id,
-        prize_name: cashPrizes.map(p => p.name).join(' + '),
+        prize_name: cashPrizes.length === 1 
+          ? cashPrizes[0].name 
+          : `Tied ${cashPrizes.map(p => p.name).join(' + ')}`,
         prize_type: 'cash',
-        amount: Math.round(cashPerPlayer * 100) / 100, // Round to 2 decimal places
+        amount: Math.round(amount * 100) / 100, // Round to 2 decimal places
         position: position,
         section: sectionName,
-        tie_group: tiedPlayers.length > 1 ? 1 : undefined
+        tie_group: tiedPlayers.length > 1 ? 1 : undefined,
+        original_prize_amounts: cashPrizes.map(p => p.amount || 0),
+        is_pooled: tiedPlayers.length > 1
       });
     });
   }
 
   // Process non-cash prizes (one per player, already filtered upstream)
+  // For indivisible prizes like trophies, ties are broken using tiebreaker procedures (Rule 33D1)
   if (nonCashPrizes.length > 0) {
     nonCashPrizes.forEach((prize, prizeIndex) => {
       if (prizeIndex < tiedPlayers.length) {

@@ -405,6 +405,22 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
                           placeholder="e.g., 1st Place Trophy in Championship section"
                         />
                       </div>
+                      <div className="col-span-2">
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={prize.isSpecialPrize || false}
+                            onChange={(e) => updatePrize(section.name, prizeIndex, { ...prize, isSpecialPrize: e.target.checked })}
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                          />
+                          <span className="ml-2 text-sm text-gray-900">
+                            Special Prize (US Chess Rule 32B1)
+                          </span>
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1 ml-6">
+                          Check this for special prizes like "Biggest Upset", "Best Game", etc. These must be announced in pre-tournament publicity.
+                        </p>
+                      </div>
                     </div>
                     <div className="mt-2 flex justify-end">
                       <button
@@ -483,6 +499,36 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
               <li><strong>Prize Types:</strong> Cash, Trophies, Medals, or Plaques</li>
               <li><strong>Auto-Assignment:</strong> Prizes are automatically calculated and assigned when the tournament completes</li>
             </ul>
+          </div>
+
+          {/* US Chess Rules Compliance */}
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mt-6">
+            <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              US Chess Rules Compliance
+            </h4>
+            <ul className="text-sm text-blue-800 space-y-2">
+              <li>
+                <strong>Rule 32B1:</strong> Special prizes (e.g., biggest upset, best game) must be clearly designated and announced in pre-tournament publicity.
+              </li>
+              <li>
+                <strong>Rule 32B3:</strong> When players tie and prizes are pooled, no player can receive more than the largest amount they would be eligible for without the split. The system automatically enforces this cap.
+              </li>
+              <li>
+                <strong>One Cash Prize Per Player:</strong> A player can only receive one cash prize per tournament. If eligible for multiple prizes, they receive the most valuable one.
+              </li>
+              <li>
+                <strong>Tied Prizes:</strong> When players tie, the sum of prizes for the tied positions is divided equally among all tied players.
+              </li>
+              <li>
+                <strong>Non-Monetary Prizes:</strong> Indivisible prizes (trophies, medals, plaques) are awarded based on tie-breaking procedures when players are tied.
+              </li>
+            </ul>
+            <p className="text-xs text-blue-700 mt-3 italic">
+              Based on US Chess Official Rules of Chess, 7th Edition, Chapter 2, Section 32
+            </p>
           </div>
         </div>
 

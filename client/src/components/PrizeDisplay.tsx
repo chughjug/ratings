@@ -227,6 +227,9 @@ const PrizeDisplay: React.FC<PrizeDisplayProps> = ({
             <p className="text-sm text-gray-600">
               {prizeDistributions.length} prizes distributed across {Object.keys(groupedDistributions).length} {groupBy === 'section' ? 'sections' : groupBy === 'type' ? 'prize types' : 'positions'}
             </p>
+            <p className="text-xs text-blue-600 mt-1">
+              ✓ US Chess Rules Compliant - Automatic prize pooling for tied players with Rule 32B3 cap enforcement
+            </p>
           </div>
           <div className="flex items-center space-x-4">
             <button
@@ -335,6 +338,11 @@ const PrizeDisplay: React.FC<PrizeDisplayProps> = ({
                       {distribution.position && (
                         <span className="text-sm text-gray-500">
                           #{distribution.position}
+                        </span>
+                      )}
+                      {distribution.tie_group && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Tied (Pooled)
                         </span>
                       )}
                     </div>

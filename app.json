@@ -31,7 +31,9 @@
   },
   "addons": [
     {
-      "plan": "heroku-postgresql:mini"
+      "plan": "heroku-postgresql:mini",
+      "as": "DATABASE"
     }
-  ]
+  ],
+  "notes": "Note: This app currently uses SQLite by default. For production use, consider migrating to PostgreSQL. The database file will be lost on dyno restart with SQLite."
 }

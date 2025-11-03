@@ -2087,6 +2087,18 @@ const TournamentDetail: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('prizes')}
+              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
+                activeTab === 'prizes'
+                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <DollarSign className="h-4 w-4" />
+              <span>Prizes</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('print')}
               className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
                 activeTab === 'print'
@@ -2096,18 +2108,6 @@ const TournamentDetail: React.FC = () => {
             >
               <Printer className="h-4 w-4" />
               <span>Print</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('prizes')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'prizes'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Trophy className="h-4 w-4" />
-              <span>Prizes</span>
             </button>
 
             {/* Club Ratings - Only show if tournament has organization */}
