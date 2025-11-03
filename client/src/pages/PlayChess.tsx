@@ -30,8 +30,10 @@ const getTimeControlFromURL = () => {
       if (delayMatch) {
         const minutes = parseInt(delayMatch[1]) || 3;
         const delay = parseInt(delayMatch[2]) || 0;
-        // For delay (D), we treat it as increment since delay isn't fully supported
-        return { minutes, increment: delay, delay: delay };
+        // Delay (Bronstein) is different from increment - keep them separate
+        // Delay is not currently fully implemented in the clock, so we'll treat it as increment for now
+        // but store it separately so it can be displayed correctly
+        return { minutes, increment: 0, delay: delay };
       }
       
       // Match G45 + 10 format (increment with spaces) - handle URL decoding where + might be space
@@ -123,6 +125,7 @@ const PlayChess: React.FC = () => {
   const timeControl = useMemo(() => getTimeControlFromURL(), []);
   const initialTimeMinutes = timeControl.minutes;
   const initialIncrementSeconds = timeControl.increment;
+  const initialDelaySeconds = timeControl.delay || 0;
   const initialTime = initialTimeMinutes * 60 * 1000; // minutes in milliseconds
   const [clockTimes, setClockTimes] = useState<ClockTimes>({
     white: initialTime,
@@ -132,6 +135,7 @@ const PlayChess: React.FC = () => {
   const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
   const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [incrementSeconds, setIncrementSeconds] = useState(initialIncrementSeconds);
+  const [delaySeconds, setDelaySeconds] = useState(initialDelaySeconds);
   const [drawOffered, setDrawOffered] = useState(false);
   const [opponentDrawOffer, setOpponentDrawOffer] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -896,7 +900,10 @@ const PlayChess: React.FC = () => {
     return isWhite ? `${moveNumber}. ${move.san}` : move.san;
   };
 
-  const formatTimeControl = (minutes: number, increment: number) => {
+  const formatTimeControl = (minutes: number, increment: number, delay: number = 0) => {
+    if (delay > 0) {
+      return `${minutes} D${delay}`;
+    }
     if (increment > 0) {
       return `${minutes}+${increment}`;
     }
@@ -1070,7 +1077,7 @@ const PlayChess: React.FC = () => {
                     <p className="text-sm text-gray-300">
                       <span className="font-semibold">Selected:</span>{' '}
                       <span className="text-lg font-bold text-green-400">
-                        {formatTimeControl(initialTimeMinutes, incrementSeconds)}
+                        {formatTimeControl(initialTimeMinutes, incrementSeconds, delaySeconds)}
                       </span>
                       {incrementSeconds > 0 && (
                         <span className="ml-2 text-xs text-gray-500">
@@ -1238,7 +1245,11 @@ const PlayChess: React.FC = () => {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-300">
-                {initialTimeMinutes}+{incrementSeconds} • Unrated
+                {delaySeconds > 0 
+                  ? `${initialTimeMinutes} D${delaySeconds}` 
+                  : incrementSeconds > 0 
+                    ? `${initialTimeMinutes}+${incrementSeconds}` 
+                    : `${initialTimeMinutes}`} • Unrated
               </span>
               {opponentName && (
                 <span className="text-sm text-gray-400">
@@ -1279,7 +1290,10 @@ const PlayChess: React.FC = () => {
                     }`}>
                       {formatTime(isFlipped ? clockTimes.white : clockTimes.black)}
                     </div>
-                    {incrementSeconds > 0 && (
+                    {delaySeconds > 0 && (
+                      <div className="text-xs text-gray-400">D{delaySeconds}s</div>
+                    )}
+                    {delaySeconds === 0 && incrementSeconds > 0 && (
                       <div className="text-xs text-gray-400">+{incrementSeconds}s</div>
                     )}
                   </div>
@@ -1313,7 +1327,10 @@ const PlayChess: React.FC = () => {
                     }`}>
                       {formatTime(isFlipped ? clockTimes.black : clockTimes.white)}
                     </div>
-                    {incrementSeconds > 0 && (
+                    {delaySeconds > 0 && (
+                      <div className="text-xs text-gray-400">D{delaySeconds}s</div>
+                    )}
+                    {delaySeconds === 0 && incrementSeconds > 0 && (
                       <div className="text-xs text-gray-400">+{incrementSeconds}s</div>
                     )}
                   </div>

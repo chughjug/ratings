@@ -37,8 +37,9 @@ class OnlineGameService {
       if (delayMatch) {
         const minutes = parseInt(delayMatch[1]) || 3;
         const delay = parseInt(delayMatch[2]) || 0;
-        // For delay, we treat it as increment since delay isn't fully supported in the current system
-        // In a proper implementation, delay would need separate handling
+        // Delay (Bronstein) is different from increment - keep them separate
+        // For now, we'll pass delay as increment in the time control string for backwards compatibility
+        // but the client will parse it correctly as delay
         return { minutes, increment: delay, delay: delay };
       }
       

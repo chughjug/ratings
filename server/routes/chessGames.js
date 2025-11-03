@@ -52,6 +52,7 @@ router.post('/create-custom', async (req, res) => {
   // Parse time control (default to 3+2)
   let initialTimeMinutes = 3;
   let incrementSeconds = 2;
+  let delaySeconds = 0;
   
   if (timeControl) {
     if (typeof timeControl === 'string') {
@@ -60,9 +61,11 @@ router.post('/create-custom', async (req, res) => {
       const parsed = OnlineGameService.parseTimeControl(timeControl);
       initialTimeMinutes = parsed.minutes || 3;
       incrementSeconds = parsed.increment || 2;
+      delaySeconds = parsed.delay || 0;
     } else if (typeof timeControl === 'object') {
       initialTimeMinutes = timeControl.minutes || 3;
       incrementSeconds = timeControl.increment || 2;
+      delaySeconds = timeControl.delay || 0;
     }
   }
 
@@ -122,9 +125,12 @@ router.post('/create-custom', async (req, res) => {
       black: blackPass
     },
     options: {
-      timeControls: `${initialTimeMinutes}+${incrementSeconds}`,
+      timeControls: delaySeconds > 0 
+        ? `G${initialTimeMinutes}D${delaySeconds}` 
+        : `${initialTimeMinutes}+${incrementSeconds}`,
       initialTimeMinutes,
-      incrementSeconds
+      incrementSeconds,
+      delaySeconds: delaySeconds || 0
     }
   };
 
@@ -134,9 +140,19 @@ router.post('/create-custom', async (req, res) => {
     const linkBaseUrl = baseUrl || `${req.protocol}://${req.get('host')}`;
     
     // Generate links with room code and player info (passwords handled by PlayChess component)
+    // Format time control: G45D5 for delay, or G45+10 for increment, or 45+10 standard
+    let timeControlParam = '';
+    if (delaySeconds > 0) {
+      timeControlParam = `G${initialTimeMinutes}D${delaySeconds}`;
+    } else if (incrementSeconds > 0) {
+      timeControlParam = `${initialTimeMinutes}+${incrementSeconds}`;
+    } else {
+      timeControlParam = `${initialTimeMinutes}`;
+    }
+    
     // White link includes name, room code, color, ratings, time control, and logo
     let whiteLink = `${linkBaseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(whiteName)}&color=white`;
-    whiteLink += `&time=${initialTimeMinutes}+${incrementSeconds}`;
+    whiteLink += `&time=${encodeURIComponent(timeControlParam)}`;
     if (whiteRating) {
       whiteLink += `&whiteRating=${whiteRating}`;
     }
@@ -149,7 +165,7 @@ router.post('/create-custom', async (req, res) => {
     
     // Black link includes name, room code, color, ratings, time control, and logo
     let blackLink = `${linkBaseUrl}/play-chess?room=${roomCode}&name=${encodeURIComponent(blackName)}&color=black`;
-    blackLink += `&time=${initialTimeMinutes}+${incrementSeconds}`;
+    blackLink += `&time=${encodeURIComponent(timeControlParam)}`;
     if (whiteRating) {
       blackLink += `&whiteRating=${whiteRating}`;
     }
