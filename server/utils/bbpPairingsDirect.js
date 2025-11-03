@@ -335,6 +335,16 @@ class BBPPairingsDirect {
     // This would be implemented to handle multiple sections
     return [];
   }
+
+  /**
+   * Generate tournament pairings with database support
+   */
+  async generateTournamentPairings(tournamentId, round, db, options = {}) {
+    // Use the bbpPairings implementation which has the full implementation
+    const { BBPPairings } = require('./bbpPairings');
+    const bbpPairings = new BBPPairings();
+    return await bbpPairings.generateTournamentPairings(tournamentId, round, db, options);
+  }
 }
 
 module.exports = { BBPPairingsDirect };

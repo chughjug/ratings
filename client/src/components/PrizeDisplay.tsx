@@ -53,7 +53,7 @@ const PrizeDisplay: React.FC<PrizeDisplayProps> = ({
   };
 
   const handleAutoAssign = async () => {
-    if (!confirm('This will automatically calculate and assign prizes based on current standings. Continue?')) {
+    if (!window.confirm('This will automatically calculate and assign prizes based on current standings. Continue?')) {
       return;
     }
 

@@ -148,7 +148,7 @@ const PrizeAssignmentModal: React.FC<PrizeAssignmentModalProps> = ({
   };
 
   const handleRemovePrize = async (distributionId: string) => {
-    if (!confirm('Are you sure you want to remove this prize assignment?')) {
+    if (!window.confirm('Are you sure you want to remove this prize assignment?')) {
       return;
     }
 
