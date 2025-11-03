@@ -242,6 +242,31 @@ const TournamentDetail: React.FC = () => {
     }));
   };
 
+  // Group players by team for team tournaments
+  const groupPlayersByTeam = (players: any[]) => {
+    const grouped = players.reduce((acc, player) => {
+      const teamName = player.team_name || player.team || 'Unassigned';
+      if (!acc[teamName]) {
+        acc[teamName] = [];
+      }
+      acc[teamName].push(player);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Sort teams alphabetically, but put "Unassigned" last
+    const sortedTeams = Object.keys(grouped).sort((a, b) => {
+      if (a === 'Unassigned') return 1;
+      if (b === 'Unassigned') return -1;
+      return a.localeCompare(b);
+    });
+    
+    return sortedTeams.map(teamName => ({
+      teamName,
+      players: grouped[teamName],
+      count: grouped[teamName].length
+    }));
+  };
+
   // Group players by section - include ALL sections from tournament settings AND all sections with players
   const groupPlayersBySection = (players: any[]) => {
     // Get all sections from tournament settings
@@ -2487,38 +2512,59 @@ const TournamentDetail: React.FC = () => {
                         </div>
                       )}
                   
-                  {/* Players List Below Teams (if any) */}
+                  {/* Players List Below Teams (if any) - Grouped by Team */}
                   {state.players.length > 0 && (
                     <div className="mt-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">All Players</h3>
-                      {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
-                        <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
-                          {/* Section Header */}
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">All Players by Team</h3>
+                      {groupPlayersByTeam(sortPlayers(state.players)).map((teamGroup) => (
+                        <div key={teamGroup.teamName} className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
+                          {/* Team Header */}
                           <div 
                             className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-gray-100 hover:to-gray-200 transition-colors"
-                            onClick={() => toggleSectionCollapse(sectionGroup.section)}
+                            onClick={() => toggleSectionCollapse(teamGroup.teamName)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
                                 <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                                  {collapsedSections.has(sectionGroup.section) ? (
+                                  {collapsedSections.has(teamGroup.teamName) ? (
                                     <ChevronRight className="h-5 w-5" />
                                   ) : (
                                     <ChevronDown className="h-5 w-5" />
                                   )}
                                 </button>
                                 <h4 className="text-md font-semibold text-gray-900">
-                                  {sectionGroup.section}
+                                  {teamGroup.teamName}
                                 </h4>
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {sectionGroup.count} player{sectionGroup.count !== 1 ? 's' : ''}
+                                  {teamGroup.count} player{teamGroup.count !== 1 ? 's' : ''}
                                 </span>
                               </div>
                             </div>
                           </div>
-                          {!collapsedSections.has(sectionGroup.section) && (
-                            <div className="p-4 text-sm text-gray-600">
-                              {sectionGroup.players.length} players in this section
+                          {!collapsedSections.has(teamGroup.teamName) && (
+                            <div className="p-4">
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                  <thead className="bg-gray-50">
+                                    <tr>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">USCF ID</th>
+                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white divide-y divide-gray-200">
+                                    {teamGroup.players.map((player: any, idx: number) => (
+                                      <tr key={player.id || idx} className="hover:bg-gray-50">
+                                        <td className="px-4 py-2 text-sm text-gray-900">{player.name}</td>
+                                        <td className="px-4 py-2 text-sm text-gray-500">{player.rating || 'Unrated'}</td>
+                                        <td className="px-4 py-2 text-sm text-gray-500">{player.uscf_id || '-'}</td>
+                                        <td className="px-4 py-2 text-sm text-gray-500">{player.section || 'Open'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           )}
                         </div>
