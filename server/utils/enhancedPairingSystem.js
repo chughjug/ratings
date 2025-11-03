@@ -151,10 +151,10 @@ class EnhancedPairingSystem {
         throw new Error(result.error);
       }
 
-      // Get section information for proper grouping
+      // Get section information for proper grouping (including inactive players)
       const playersBySection = await new Promise((resolve, reject) => {
         db.all(
-          'SELECT section FROM players WHERE tournament_id = ? AND status = "active" GROUP BY section',
+          'SELECT section FROM players WHERE tournament_id = ? AND (status = "active" OR status = "inactive") GROUP BY section',
           [tournamentId],
           (err, rows) => {
             if (err) {

@@ -1131,10 +1131,10 @@ router.post('/:id/complete', async (req, res) => {
 
 // Helper function to get tournament standings
 async function getTournamentStandings(tournamentId, tournament) {
-  // Get players
+  // Get players (including inactive players so they get 0.5 points for half point byes)
   const players = await new Promise((resolve, reject) => {
     db.all(
-      'SELECT * FROM players WHERE tournament_id = ? AND status = "active" ORDER BY name',
+      'SELECT * FROM players WHERE tournament_id = ? AND (status = "active" OR status = "inactive") ORDER BY name',
       [tournamentId],
       (err, rows) => {
         if (err) reject(err);
@@ -1166,6 +1166,7 @@ async function getTournamentStandings(tournamentId, tournament) {
       name: player.name,
       rating: player.rating,
       section: player.section,
+      status: player.status,
       total_points: totalPoints,
       games_played: results.length,
       wins,

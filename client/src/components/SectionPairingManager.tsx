@@ -9,6 +9,22 @@ const isOnlineTournament = (format: string | undefined): boolean => {
   return format === 'online' || format === 'online-rated';
 };
 
+// Helper function to format bye status based on bye type
+const formatByeStatus = (bye_type?: string): string => {
+  // Full point byes (unpaired)
+  if (bye_type === 'unpaired') {
+    return 'Full Point BYE 1.0';
+  }
+  
+  // Half-point byes (intentional, inactive, or default)
+  if (bye_type === 'bye' || bye_type === 'half_point_bye' || bye_type === 'inactive') {
+    return 'Half Point BYE 0.5';
+  }
+  
+  // Default to full point bye if type is unknown
+  return 'Full Point BYE 1.0';
+};
+
 interface SectionPairingManagerProps {
   tournamentId: string;
   sectionName: string;
@@ -763,7 +779,7 @@ const SectionPairingManager: React.FC<SectionPairingManagerProps> = ({
                     {pairing.is_bye ? (
                       <span className="inline-flex items-center space-x-1 text-blue-600">
                         <Clock className="h-4 w-4" />
-                        <span>Full Point BYE 1.0</span>
+                        <span>{formatByeStatus(pairing.bye_type)}</span>
                       </span>
                     ) : pairing.result ? (
                       <span className="inline-flex items-center space-x-1 text-green-600">

@@ -205,9 +205,13 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
 
   if (prizes.length === 0) return distributions;
 
-  // Separate position-based and rating-based prizes
-  const positionPrizes = prizes.filter(prize => prize.position && !prize.ratingCategory);
+  // Separate prizes by type:
+  // - Position-based: cash prizes with position numbers
+  // - Rating-based: prizes with rating categories
+  // - General: trophies/medals/plaques without position (awarded to top performers)
+  const positionPrizes = prizes.filter(prize => prize.position && !prize.ratingCategory && prize.type === 'cash');
   const ratingPrizes = prizes.filter(prize => prize.ratingCategory && !prize.position);
+  const generalPrizes = prizes.filter(prize => !prize.position && !prize.ratingCategory && prize.type !== 'cash');
 
   // Process position-based prizes
   if (positionPrizes.length > 0) {
@@ -219,6 +223,13 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
   if (ratingPrizes.length > 0) {
     const ratingDistributions = distributeRatingPrizes(standings, ratingPrizes, sectionConfig.name, tournamentId);
     distributions.push(...ratingDistributions);
+  }
+
+  // Process general prizes (trophies, medals, plaques without positions)
+  // These are awarded to top performers based on standings
+  if (generalPrizes.length > 0) {
+    const generalDistributions = distributeGeneralPrizes(standings, generalPrizes, sectionConfig.name, tournamentId);
+    distributions.push(...generalDistributions);
   }
 
   return distributions;

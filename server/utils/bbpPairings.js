@@ -1346,10 +1346,10 @@ class BbpPairings {
     console.log(`[BBPPairings] Generating pairings for tournament ${tournamentId}, round ${round}`);
     
     try {
-      // Get all players by section
+      // Get all players by section (including inactive players)
       const playersBySection = await new Promise((resolve, reject) => {
         db.all(
-          'SELECT section FROM players WHERE tournament_id = ? AND status = "active" GROUP BY section',
+          'SELECT section FROM players WHERE tournament_id = ? AND (status = "active" OR status = "inactive") GROUP BY section',
           [tournamentId],
           (err, rows) => {
             if (err) {
@@ -1367,14 +1367,14 @@ class BbpPairings {
       for (const section of playersBySection) {
         console.log(`[BBPPairings] Processing section: ${section}`);
         
-        // Get players for this section
-        const players = await new Promise((resolve, reject) => {
+        // Get all players for this section (including inactive)
+        const allPlayers = await new Promise((resolve, reject) => {
           db.all(
             `SELECT p.*, 
                     COALESCE(SUM(CASE WHEN pr.result = 'win' THEN 1 WHEN pr.result = 'draw' THEN 0.5 ELSE 0 END), 0) as points
              FROM players p
              LEFT JOIN pairings pr ON p.id = pr.white_player_id OR p.id = pr.black_player_id
-             WHERE p.tournament_id = ? AND p.section = ? AND p.status = 'active'
+             WHERE p.tournament_id = ? AND p.section = ? AND (p.status = 'active' OR p.status = 'inactive')
              GROUP BY p.id
              ORDER BY points DESC, p.rating DESC`,
             [tournamentId, section],
@@ -1388,52 +1388,95 @@ class BbpPairings {
           );
         });
 
-        if (players.length < 2) {
-          console.log(`[BBPPairings] Not enough players in section ${section} (${players.length})`);
-          sectionResults[section] = {
-            success: true,
-            pairingsCount: 0,
-            playersCount: players.length,
-            registeredByeCount: 0
-          };
-          continue;
+        // Separate active and inactive players
+        const activePlayers = [];
+        const inactivePlayers = [];
+        
+        for (const player of allPlayers) {
+          // Check if player has intentional bye for this round
+          let hasIntentionalBye = false;
+          if (player.intentional_bye_rounds) {
+            try {
+              let byeRounds = [];
+              if (typeof player.intentional_bye_rounds === 'string') {
+                try {
+                  byeRounds = JSON.parse(player.intentional_bye_rounds);
+                } catch {
+                  byeRounds = player.intentional_bye_rounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+                }
+              } else if (Array.isArray(player.intentional_bye_rounds)) {
+                byeRounds = player.intentional_bye_rounds;
+              }
+              hasIntentionalBye = byeRounds.includes(round);
+            } catch (error) {
+              console.warn(`[BBPPairings] Error parsing intentional_bye_rounds for player ${player.name}: ${error.message}`);
+            }
+          }
+          
+          // Inactive players or players with intentional byes should not be paired
+          if (player.status === 'inactive' || hasIntentionalBye) {
+            inactivePlayers.push(player);
+          } else {
+            activePlayers.push(player);
+          }
         }
 
-        // Get color history for this section
-        const colorHistory = await this.getColorHistory(tournamentId, section, db);
+        // Create bye pairings for inactive players
+        const byePairings = inactivePlayers.map(player => {
+          return {
+            white_player_id: player.id,
+            black_player_id: null,
+            is_bye: true,
+            bye_type: 'inactive',
+            section: section,
+            round: round,
+            tournament_id: tournamentId
+          };
+        });
 
-        // Create tournament object
-        const tournament = {
-          round: round,
-          section: section,
-          tournamentId: tournamentId,
-          colorHistory: colorHistory,
-          pointsForWin: options.pointsForWin || 1,
-          pointsForDraw: options.pointsForDraw || 0.5,
-          pointsForLoss: options.pointsForLoss || 0
-        };
+        // Generate pairings only for active players
+        let sectionPairings = [];
+        if (activePlayers.length >= 2) {
+          // Get color history for this section
+          const colorHistory = await this.getColorHistory(tournamentId, section, db);
 
-        // Generate pairings for this section
-        const sectionPairings = this.generateDutchPairings(players, tournament);
+          // Create tournament object
+          const tournament = {
+            round: round,
+            section: section,
+            tournamentId: tournamentId,
+            colorHistory: colorHistory,
+            pointsForWin: options.pointsForWin || 1,
+            pointsForDraw: options.pointsForDraw || 0.5,
+            pointsForLoss: options.pointsForLoss || 0
+          };
+
+          // Generate pairings for this section
+          sectionPairings = this.generateDutchPairings(activePlayers, tournament);
+        }
+
+        // Combine regular pairings and bye pairings
+        const allSectionPairings = [...sectionPairings, ...byePairings];
         
-        // Add section and board numbers
-        sectionPairings.forEach((pairing, index) => {
+        // Assign section, board numbers, tournament_id, and round to all pairings
+        allSectionPairings.forEach((pairing, index) => {
           pairing.section = section;
           pairing.board = index + 1;
           pairing.tournament_id = tournamentId;
           pairing.round = round;
         });
 
-        allPairings.push(...sectionPairings);
+        // Add all section pairings to the main list
+        allPairings.push(...allSectionPairings);
         
         sectionResults[section] = {
           success: true,
-          pairingsCount: sectionPairings.length,
-          playersCount: players.length,
-          registeredByeCount: sectionPairings.filter(p => p.is_bye).length
+          pairingsCount: allSectionPairings.length,
+          playersCount: activePlayers.length + inactivePlayers.length,
+          registeredByeCount: byePairings.length
         };
 
-        console.log(`[BBPPairings] Generated ${sectionPairings.length} pairings for section ${section}`);
+        console.log(`[BBPPairings] Generated ${allSectionPairings.length} pairings for section ${section} (${activePlayers.length} active, ${inactivePlayers.length} inactive)`);
       }
 
       return {

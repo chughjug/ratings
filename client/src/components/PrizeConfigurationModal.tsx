@@ -152,12 +152,19 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
   const addBulkPrizes = (sectionName: string, count: number, type: 'cash' | 'trophy' | 'medal' | 'plaque', startPosition: number = 1) => {
     const newPrizes: PrizeConfiguration[] = [];
     for (let i = 0; i < count; i++) {
-      const position = startPosition + i;
-      const positionSuffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : 'th';
+      // Only associate positions with cash prizes
+      // Trophies, medals, and plaques are not position-based (they're class prizes or participation awards)
+      const isCash = type === 'cash';
+      const position = isCash ? startPosition + i : undefined;
+      const positionSuffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : position ? 'th' : '';
+      const name = isCash 
+        ? `${position}${positionSuffix} Place Prize`
+        : `${type.charAt(0).toUpperCase() + type.slice(1)} ${i + 1}`;
+      
       newPrizes.push({
-        name: `${position}${positionSuffix} Place ${type === 'cash' ? 'Prize' : type.charAt(0).toUpperCase() + type.slice(1)}`,
+        name: name,
         type: type,
-        position: position,
+        position: position, // undefined for non-cash prizes
         amount: type === 'cash' ? 0 : undefined,
         description: ''
       });
@@ -369,6 +376,13 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
                           </div>
                         </>
                       )}
+                      {prize.type !== 'cash' && (
+                        <div>
+                          <p className="text-xs text-gray-500 italic">
+                            {prize.type === 'trophy' ? 'Trophies' : prize.type === 'medal' ? 'Medals' : 'Plaques'} are awarded to top performers and are not tied to specific positions.
+                          </p>
+                        </div>
+                      )}
                       {prize.type !== 'cash' && prize.ratingCategory && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Rating Category</label>
@@ -414,8 +428,7 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
                     onClick={() => {
                       const count = parseInt(prompt('How many trophies?', '3') || '3');
                       if (count > 0) {
-                        const startPos = parseInt(prompt('Starting position?', '1') || '1');
-                        addBulkPrizes(section.name, count, 'trophy', startPos);
+                        addBulkPrizes(section.name, count, 'trophy');
                       }
                     }}
                     className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm flex items-center"
@@ -426,8 +439,7 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
                     onClick={() => {
                       const count = parseInt(prompt('How many medals?', '5') || '5');
                       if (count > 0) {
-                        const startPos = parseInt(prompt('Starting position?', '1') || '1');
-                        addBulkPrizes(section.name, count, 'medal', startPos);
+                        addBulkPrizes(section.name, count, 'medal');
                       }
                     }}
                     className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center"
@@ -438,8 +450,7 @@ const PrizeConfigurationModal: React.FC<PrizeConfigurationModalProps> = ({
                     onClick={() => {
                       const count = parseInt(prompt('How many plaques?', '3') || '3');
                       if (count > 0) {
-                        const startPos = parseInt(prompt('Starting position?', '1') || '1');
-                        addBulkPrizes(section.name, count, 'plaque', startPos);
+                        addBulkPrizes(section.name, count, 'plaque');
                       }
                     }}
                     className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm flex items-center"

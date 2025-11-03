@@ -222,10 +222,10 @@ async function calculateAllTiebreakers(playerId, tournamentId, db) {
  */
 async function calculateTournamentTiebreakers(tournamentId, db) {
   return new Promise((resolve, reject) => {
-    // Get all active players
+    // Get all active and inactive players (inactive players get 0.5 points for half point byes)
     const query = `
       SELECT id FROM players 
-      WHERE tournament_id = ? AND status = 'active'
+      WHERE tournament_id = ? AND (status = 'active' OR status = 'inactive')
     `;
     
     db.all(query, [tournamentId], async (err, players) => {
