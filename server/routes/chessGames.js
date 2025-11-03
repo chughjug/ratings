@@ -877,11 +877,11 @@ router.post('/start-all-clocks', async (req, res) => {
     });
 
     // Combine and deduplicate room codes
-    const allRoomCodes = new Set<string>();
-    gamesFromTable.forEach((g: any) => {
+    const allRoomCodes = new Set();
+    gamesFromTable.forEach((g) => {
       if (g.room_code) allRoomCodes.add(g.room_code);
     });
-    gamesFromPairings.forEach((g: any) => {
+    gamesFromPairings.forEach((g) => {
       if (g.room_code) allRoomCodes.add(g.room_code);
     });
 
