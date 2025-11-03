@@ -851,8 +851,8 @@ router.post('/start-all-clocks', async (req, res) => {
   try {
     const chessRoomsService = require('../services/chessRooms');
     
-    // Get all games for this round
-    const games = await new Promise((resolve, reject) => {
+    // Get all games for this round from online_games table
+    const gamesFromTable = await new Promise((resolve, reject) => {
       db.all(
         `SELECT room_code FROM online_games WHERE tournament_id = ? AND round = ?`,
         [tournamentId, round],
@@ -862,6 +862,30 @@ router.post('/start-all-clocks', async (req, res) => {
         }
       );
     });
+
+    // Also get games from pairings table (game_id stored there)
+    const gamesFromPairings = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT DISTINCT game_id as room_code FROM pairings 
+         WHERE tournament_id = ? AND round = ? AND game_id IS NOT NULL AND game_id != ''`,
+        [tournamentId, round],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Combine and deduplicate room codes
+    const allRoomCodes = new Set<string>();
+    gamesFromTable.forEach((g: any) => {
+      if (g.room_code) allRoomCodes.add(g.room_code);
+    });
+    gamesFromPairings.forEach((g: any) => {
+      if (g.room_code) allRoomCodes.add(g.room_code);
+    });
+
+    const games = Array.from(allRoomCodes).map(roomCode => ({ room_code: roomCode }));
 
     if (games.length === 0) {
       return res.json({
