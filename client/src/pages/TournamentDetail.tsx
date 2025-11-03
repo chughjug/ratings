@@ -242,7 +242,57 @@ const TournamentDetail: React.FC = () => {
     }));
   };
 
-  // Group players by team for team tournaments
+  // Group players by section first, then by team within each section
+  const groupPlayersBySectionAndTeam = (players: any[]) => {
+    // First group by section
+    const bySection = players.reduce((acc, player) => {
+      const section = player.section || 'Open';
+      if (!acc[section]) {
+        acc[section] = [];
+      }
+      acc[section].push(player);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // For each section, group by team
+    const result = Object.keys(bySection).sort((a, b) => {
+      if (a === 'Open') return 1;
+      if (b === 'Open') return -1;
+      return a.localeCompare(b);
+    }).map(section => {
+      const sectionPlayers = bySection[section];
+      
+      // Group players in this section by team
+      const byTeam = sectionPlayers.reduce((acc, player) => {
+        const teamName = player.team_name || player.team || 'Unassigned';
+        if (!acc[teamName]) {
+          acc[teamName] = [];
+        }
+        acc[teamName].push(player);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      // Sort teams alphabetically, but put "Unassigned" last
+      const sortedTeams = Object.keys(byTeam).sort((a, b) => {
+        if (a === 'Unassigned') return 1;
+        if (b === 'Unassigned') return -1;
+        return a.localeCompare(b);
+      });
+
+      return {
+        section,
+        teams: sortedTeams.map(teamName => ({
+          teamName,
+          players: byTeam[teamName],
+          count: byTeam[teamName].length
+        }))
+      };
+    });
+
+    return result;
+  };
+
+  // Group players by team for team tournaments (legacy, kept for backwards compatibility)
   const groupPlayersByTeam = (players: any[]) => {
     const grouped = players.reduce((acc, player) => {
       const teamName = player.team_name || player.team || 'Unassigned';
@@ -2512,59 +2562,88 @@ const TournamentDetail: React.FC = () => {
                         </div>
                       )}
                   
-                  {/* Players List Below Teams (if any) - Grouped by Team */}
+                  {/* Players List Below Teams (if any) - Grouped by Section then Team */}
                   {state.players.length > 0 && (
                     <div className="mt-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">All Players by Team</h3>
-                      {groupPlayersByTeam(sortPlayers(state.players)).map((teamGroup) => (
-                        <div key={teamGroup.teamName} className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
-                          {/* Team Header */}
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">All Players by Section and Team</h3>
+                      {groupPlayersBySectionAndTeam(sortPlayers(state.players)).map((sectionGroup) => (
+                        <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
+                          {/* Section Header */}
                           <div 
-                            className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-gray-100 hover:to-gray-200 transition-colors"
-                            onClick={() => toggleSectionCollapse(teamGroup.teamName)}
+                            className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-purple-100 hover:to-indigo-100 transition-colors"
+                            onClick={() => toggleSectionCollapse(`players-${sectionGroup.section}`)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
                                 <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                                  {collapsedSections.has(teamGroup.teamName) ? (
+                                  {collapsedSections.has(`players-${sectionGroup.section}`) ? (
                                     <ChevronRight className="h-5 w-5" />
                                   ) : (
                                     <ChevronDown className="h-5 w-5" />
                                   )}
                                 </button>
                                 <h4 className="text-md font-semibold text-gray-900">
-                                  {teamGroup.teamName}
+                                  {sectionGroup.section} Section
                                 </h4>
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  {teamGroup.count} player{teamGroup.count !== 1 ? 's' : ''}
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  {sectionGroup.teams.reduce((sum, t) => sum + t.count, 0)} player{sectionGroup.teams.reduce((sum, t) => sum + t.count, 0) !== 1 ? 's' : ''} in {sectionGroup.teams.length} team{sectionGroup.teams.length !== 1 ? 's' : ''}
                                 </span>
                               </div>
                             </div>
                           </div>
-                          {!collapsedSections.has(teamGroup.teamName) && (
-                            <div className="p-4">
-                              <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                  <thead className="bg-gray-50">
-                                    <tr>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">USCF ID</th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="bg-white divide-y divide-gray-200">
-                                    {teamGroup.players.map((player: any, idx: number) => (
-                                      <tr key={player.id || idx} className="hover:bg-gray-50">
-                                        <td className="px-4 py-2 text-sm text-gray-900">{player.name}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-500">{player.rating || 'Unrated'}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-500">{player.uscf_id || '-'}</td>
-                                        <td className="px-4 py-2 text-sm text-gray-500">{player.section || 'Open'}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
+                          {!collapsedSections.has(`players-${sectionGroup.section}`) && (
+                            <div className="p-4 space-y-4">
+                              {sectionGroup.teams.map((teamGroup) => (
+                                <div key={teamGroup.teamName} className="border border-gray-200 rounded-lg overflow-hidden">
+                                  {/* Team Header */}
+                                  <div 
+                                    className="bg-gray-50 border-b border-gray-200 px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                                    onClick={() => toggleSectionCollapse(`team-${teamGroup.teamName}`)}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-2">
+                                        <button className="text-gray-600 hover:text-gray-800 transition-colors">
+                                          {collapsedSections.has(`team-${teamGroup.teamName}`) ? (
+                                            <ChevronRight className="h-4 w-4" />
+                                          ) : (
+                                            <ChevronDown className="h-4 w-4" />
+                                          )}
+                                        </button>
+                                        <h5 className="text-sm font-semibold text-gray-900">
+                                          {teamGroup.teamName}
+                                        </h5>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
+                                          {teamGroup.count} player{teamGroup.count !== 1 ? 's' : ''}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {!collapsedSections.has(`team-${teamGroup.teamName}`) && (
+                                    <div className="p-4 bg-white">
+                                      <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                          <thead className="bg-gray-50">
+                                            <tr>
+                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">USCF ID</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="bg-white divide-y divide-gray-200">
+                                            {teamGroup.players.map((player: any, idx: number) => (
+                                              <tr key={player.id || idx} className="hover:bg-gray-50">
+                                                <td className="px-4 py-2 text-sm text-gray-900">{player.name}</td>
+                                                <td className="px-4 py-2 text-sm text-gray-500">{player.rating || 'Unrated'}</td>
+                                                <td className="px-4 py-2 text-sm text-gray-500">{player.uscf_id || '-'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
