@@ -837,5 +837,112 @@ router.delete('/:id', (req, res) => {
   );
 });
 
+// Start all clocks for games in a tournament round
+router.post('/start-all-clocks', async (req, res) => {
+  const { tournamentId, round } = req.body;
+
+  if (!tournamentId || round === undefined) {
+    return res.status(400).json({
+      success: false,
+      error: 'tournamentId and round are required'
+    });
+  }
+
+  try {
+    const chessRoomsService = require('../services/chessRooms');
+    
+    // Get all games for this round
+    const games = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT room_code FROM online_games WHERE tournament_id = ? AND round = ?`,
+        [tournamentId, round],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    if (games.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No games found for this round',
+        started: 0,
+        total: 0
+      });
+    }
+
+    let startedCount = 0;
+    const errors = [];
+
+    // Start clock for each game
+    for (const game of games) {
+      if (!game.room_code) continue;
+
+      try {
+        const room = await chessRoomsService.getRoom(game.room_code);
+        if (room && room.clock) {
+          // Initialize clock if not already running
+          if (!room.clock.isRunning) {
+            room.clock.isRunning = true;
+            room.clock.lastUpdate = Date.now();
+            
+            // If delay is configured, start delay period for white
+            if (room.clock.delayMs && room.clock.delayMs > 0) {
+              room.clock.delayStartTime = Date.now();
+            }
+            
+            await chessRoomsService.setRoom(game.room_code, room);
+            startedCount++;
+          }
+        } else if (room && !room.clock) {
+          // Room exists but clock not initialized - initialize it
+          if (room.options && room.options.timeControls) {
+            const OnlineGameService = require('../services/onlineGameService');
+            const parsed = OnlineGameService.parseTimeControl(room.options.timeControls);
+            const minutes = parsed.minutes || 3;
+            const increment = parsed.increment || 2;
+            const delay = parsed.delay || 0;
+            const initialTimeMs = minutes * 60 * 1000;
+
+            room.clock = {
+              blackTimeMs: initialTimeMs,
+              whiteTimeMs: initialTimeMs,
+              activeColor: 'white',
+              lastUpdate: Date.now(),
+              isRunning: true,
+              incrementMs: increment * 1000,
+              delayMs: delay * 1000,
+              delayStartTime: delay > 0 ? Date.now() : null
+            };
+            
+            await chessRoomsService.setRoom(game.room_code, room);
+            startedCount++;
+          }
+        }
+      } catch (error) {
+        console.error(`Error starting clock for room ${game.room_code}:`, error);
+        errors.push(game.room_code);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Started clocks for ${startedCount} of ${games.length} games`,
+      started: startedCount,
+      total: games.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error) {
+    console.error('Error starting all clocks:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start clocks',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;
 

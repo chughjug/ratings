@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ExternalLink, Users, Gamepad2, Clock, Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { ExternalLink, Users, Gamepad2, Clock, Copy, CheckCircle, AlertCircle, Play } from 'lucide-react';
+import axios from 'axios';
 
 interface OnlineGameIntegrationProps {
   tournamentId: string;
@@ -31,6 +32,8 @@ const OnlineGameIntegration: React.FC<OnlineGameIntegrationProps> = ({
   const [copiedColor, setCopiedColor] = useState<'white' | 'black' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isStartingClocks, setIsStartingClocks] = useState(false);
+  const [clocksStarted, setClocksStarted] = useState(false);
 
   // Parse time control (e.g., "G/45+15", "60+5", "5")
   const parseTimeControl = (timeControl: string) => {
@@ -289,28 +292,81 @@ const OnlineGameIntegration: React.FC<OnlineGameIntegrationProps> = ({
         </div>
       )}
 
-      <button
-        onClick={handleGenerateGames}
-        disabled={isLoading || Object.keys(generatedGames).length === pairings.length}
-        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-      >
-        {isLoading ? (
-          <>
-            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-            <span>Generating...</span>
-          </>
-        ) : Object.keys(generatedGames).length === pairings.length ? (
-          <>
-            <CheckCircle className="h-4 w-4" />
-            <span>All Games Generated</span>
-          </>
-        ) : (
-          <>
-            <Users className="h-4 w-4" />
-            <span>Generate {pairings.length} Game{pairings.length !== 1 ? 's' : ''}</span>
-          </>
+      <div className="space-y-3">
+        <button
+          onClick={handleGenerateGames}
+          disabled={isLoading || Object.keys(generatedGames).length === pairings.length}
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+        >
+          {isLoading ? (
+            <>
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span>Generating...</span>
+            </>
+          ) : Object.keys(generatedGames).length === pairings.length ? (
+            <>
+              <CheckCircle className="h-4 w-4" />
+              <span>All Games Generated</span>
+            </>
+          ) : (
+            <>
+              <Users className="h-4 w-4" />
+              <span>Generate {pairings.length} Game{pairings.length !== 1 ? 's' : ''}</span>
+            </>
+          )}
+        </button>
+
+        {/* Start All Clocks Button - Only show if games have been generated */}
+        {Object.keys(generatedGames).length > 0 && (
+          <button
+            onClick={async () => {
+              try {
+                setIsStartingClocks(true);
+                setError(null);
+                
+                const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                  ? 'http://localhost:5000/api/games/start-all-clocks'
+                  : '/api/games/start-all-clocks';
+                
+                const response = await axios.post(apiUrl, {
+                  tournamentId,
+                  round
+                });
+
+                if (response.data.success) {
+                  setClocksStarted(true);
+                  setTimeout(() => setClocksStarted(false), 5000);
+                } else {
+                  throw new Error(response.data.error || 'Failed to start clocks');
+                }
+              } catch (err: any) {
+                setError(err.response?.data?.error || err.message || 'Failed to start clocks');
+              } finally {
+                setIsStartingClocks(false);
+              }
+            }}
+            disabled={isStartingClocks || clocksStarted}
+            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          >
+            {isStartingClocks ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                <span>Starting Clocks...</span>
+              </>
+            ) : clocksStarted ? (
+              <>
+                <CheckCircle className="h-4 w-4" />
+                <span>Clocks Started!</span>
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                <span>Start All Clocks</span>
+              </>
+            )}
+          </button>
         )}
-      </button>
+      </div>
 
       <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
         <p className="text-xs text-gray-600">
