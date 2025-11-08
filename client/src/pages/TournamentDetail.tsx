@@ -4965,6 +4965,8 @@ const TournamentDetail: React.FC = () => {
         }}
       />
 
+      </div>
+
       {/* New Feature Modals */}
       <SMSManager
         isOpen={showSMSManager}

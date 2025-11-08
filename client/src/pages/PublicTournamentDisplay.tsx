@@ -3,11 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { 
   Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
-  Crown, Award, BarChart3, TrendingUp, Activity, Star, MapPin, 
+  Crown, Award, BarChart3, TrendingUp, Activity,
   UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield,
   Settings, Filter, ChevronDown, ChevronUp, Maximize2, 
   Minimize2, Smartphone, Monitor, Tablet, Wifi, WifiOff, X,
-  FileText, ExternalLink, Play, CheckCircle
+  FileText, ExternalLink, Play, CheckCircle, DollarSign, Mail, Phone
 } from 'lucide-react';
 import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
@@ -480,6 +480,175 @@ const PublicTournamentDisplay: React.FC = () => {
   }
 
   const { tournament, pairings, standings, currentRound } = data;
+
+  const tournamentStats = getTournamentStats();
+
+  const formatDateLong = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const startDateDisplay = formatDateLong(tournament.start_date);
+  const endDateDisplay = formatDateLong(tournament.end_date);
+  const locationSummary = [tournament.city, tournament.state].filter(Boolean).join(', ');
+  const entryFeeRaw = tournament.entry_fee;
+  const parsedEntryFee = entryFeeRaw !== undefined && entryFeeRaw !== null ? Number(entryFeeRaw) : null;
+  const entryFee = parsedEntryFee !== null && !Number.isNaN(parsedEntryFee) ? parsedEntryFee : null;
+  const websiteDisplay = typeof tournament.website === 'string'
+    ? tournament.website.replace(/^https?:\/\//i, '').replace(/\/$/, '')
+    : '';
+
+  const ratingBadges = (typeof tournament.uscf_rated === 'boolean' || typeof tournament.fide_rated === 'boolean')
+    ? (
+      <div className="flex flex-wrap gap-2">
+        {typeof tournament.uscf_rated === 'boolean' && (
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              tournament.uscf_rated ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            USCF {tournament.uscf_rated ? 'Rated' : 'Unrated'}
+          </span>
+        )}
+        {typeof tournament.fide_rated === 'boolean' && (
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              tournament.fide_rated ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            FIDE {tournament.fide_rated ? 'Rated' : 'Unrated'}
+          </span>
+        )}
+      </div>
+    )
+    : null;
+
+  const keyFacts = [
+    startDateDisplay && { key: 'start-date', label: 'Start Date', value: startDateDisplay },
+    endDateDisplay && { key: 'end-date', label: 'End Date', value: endDateDisplay },
+    tournament.time_control && { key: 'time-control', label: 'Time Control', value: tournament.time_control },
+    tournament.rounds && { key: 'rounds', label: 'Rounds', value: `${tournament.rounds} rounds` },
+    tournament.format && { key: 'format', label: 'Format', value: tournament.format.replace(/-/g, ' ') },
+    locationSummary && { key: 'location', label: 'Location', value: locationSummary },
+    tournament.location && { key: 'venue', label: 'Venue', value: tournament.location },
+    entryFee !== null && entryFee > 0 && {
+      key: 'entry-fee',
+      label: 'Entry Fee',
+      value: (
+        <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-sm font-semibold text-green-700">
+          <DollarSign className="mr-1 h-4 w-4" />
+          {`$${entryFee.toFixed(2)}`}
+        </span>
+      )
+    },
+    ratingBadges && { key: 'ratings', label: 'Ratings', value: ratingBadges }
+  ].filter(Boolean) as {
+    key: string;
+    label: string;
+    value: React.ReactNode;
+  }[];
+
+  const officials = [
+    tournament.chief_td_name && {
+      key: 'chief-td',
+      title: 'Chief Tournament Director',
+      name: tournament.chief_td_name,
+      meta: tournament.chief_td_uscf_id ? `USCF ID: ${tournament.chief_td_uscf_id}` : undefined
+    },
+    tournament.chief_arbiter_name && {
+      key: 'chief-arbiter',
+      title: 'Chief Arbiter',
+      name: tournament.chief_arbiter_name,
+      meta: tournament.chief_arbiter_fide_id ? `FIDE ID: ${tournament.chief_arbiter_fide_id}` : undefined
+    },
+    tournament.chief_organizer_name && {
+      key: 'chief-organizer',
+      title: 'Organizer',
+      name: tournament.chief_organizer_name,
+      meta: tournament.chief_organizer_fide_id ? `FIDE ID: ${tournament.chief_organizer_fide_id}` : undefined
+    }
+  ].filter(Boolean) as {
+    key: string;
+    title: string;
+    name: string;
+    meta?: string;
+  }[];
+
+  const contactDetails = [
+    tournament.allow_registration && {
+      key: 'registration',
+      label: 'Registration',
+      icon: <Users className="h-4 w-4 text-blue-600" />,
+      value: (
+        <a
+          href={`/register/${tournament.id}`}
+          className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+        >
+          Register Online
+        </a>
+      )
+    },
+    tournament.website && {
+      key: 'website',
+      label: 'Website',
+      icon: <ExternalLink className="h-4 w-4 text-blue-600" />,
+      value: (
+        <a
+          href={tournament.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+        >
+          {websiteDisplay || tournament.website}
+        </a>
+      )
+    },
+    tournament.contact_email && {
+      key: 'email',
+      label: 'Email',
+      icon: <Mail className="h-4 w-4 text-blue-600" />,
+      value: (
+        <a
+          href={`mailto:${tournament.contact_email}`}
+          className="text-sm font-medium text-gray-900 hover:text-blue-600"
+        >
+          {tournament.contact_email}
+        </a>
+      )
+    },
+    tournament.contact_phone && {
+      key: 'phone',
+      label: 'Phone',
+      icon: <Phone className="h-4 w-4 text-blue-600" />,
+      value: (
+        <a
+          href={`tel:${tournament.contact_phone}`}
+          className="text-sm font-medium text-gray-900 hover:text-blue-600"
+        >
+          {tournament.contact_phone}
+        </a>
+      )
+    }
+  ].filter(Boolean) as {
+    key: string;
+    label: string;
+    value: React.ReactNode;
+    icon?: React.ReactNode;
+  }[];
+
+  const statHighlights: { key: string; label: string; value: React.ReactNode; }[] = tournamentStats
+    ? [
+        { key: 'players', label: 'Players', value: tournamentStats.totalPlayers },
+        { key: 'games', label: 'Games', value: tournamentStats.totalGames },
+        { key: 'completion', label: 'Complete', value: `${tournamentStats.completionRate}%` },
+        { key: 'average-rating', label: 'Avg Rating', value: tournamentStats.averageRating || 0 },
+        ...(tournamentStats.totalTeams && tournamentStats.totalTeams > 0
+          ? [{ key: 'teams', label: 'Teams', value: tournamentStats.totalTeams }]
+          : [])
+      ]
+    : [];
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-gray-50 to-white text-gray-900'}`}>
@@ -1278,231 +1447,114 @@ const PublicTournamentDisplay: React.FC = () => {
             )}
 
             {activeTab === 'info' && (
-              <div className="space-y-6">
-                {/* Enhanced Tournament Information Display */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-200 mb-6">
-                  <div className="flex items-center mb-4">
-                    <FileText className="h-6 w-6 mr-3 text-blue-600" />
-                    <h2 className="text-2xl font-bold text-gray-900">Tournament Information</h2>
-                  </div>
-                  
-                  {tournament.tournament_information ? (
-                    <div className="prose max-w-none">
-                      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 whitespace-pre-wrap text-gray-700">
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                  <section className="col-span-1 rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2 lg:p-8">
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="h-6 w-6 text-blue-600" />
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-900">Tournament Overview</h2>
+                          <p className="text-sm text-gray-500">Key details shared by the organizer.</p>
+                        </div>
+                      </div>
+                    </div>
+                    {tournament.tournament_information ? (
+                      <div className="rounded-lg border border-gray-100 bg-gray-50/70 p-6 text-gray-700 whitespace-pre-wrap leading-relaxed">
                         {tournament.tournament_information}
                       </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+                        <FileText className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                        <p className="font-medium text-gray-600">No additional information provided yet.</p>
+                        <p className="mt-2 text-sm text-gray-500">Tournament organizers can add notes or instructions for players here.</p>
+                      </div>
+                    )}
+                  </section>
+
+                  <aside className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-4 flex items-center space-x-3">
+                      <Calendar className="h-5 w-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">At a Glance</h3>
                     </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <FileText className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                      <p className="text-gray-500 text-lg">No additional information provided.</p>
-                      <p className="text-gray-400 text-sm mt-2">Tournament organizers can add detailed information here.</p>
-                    </div>
-                  )}
+                    {keyFacts.length > 0 ? (
+                      <dl className="divide-y divide-gray-100">
+                        {keyFacts.map((fact, index) => (
+                          <div
+                            key={fact.key}
+                            className={`py-3 ${index === 0 ? 'pt-0' : ''} ${index === keyFacts.length - 1 ? 'pb-0' : ''}`}
+                          >
+                            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{fact.label}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-gray-900">{fact.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      <p className="text-sm text-gray-500">Tournament organizer has not published key details yet.</p>
+                    )}
+                  </aside>
                 </div>
 
-                {/* Detailed Tournament Information Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Schedule Information */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                    <div className="flex items-center mb-4">
-                      <Calendar className="h-5 w-5 mr-2 text-blue-600" />
-                      <h3 className="text-lg font-semibold text-gray-900">Schedule</h3>
+                {officials.length > 0 && (
+                  <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-4 flex items-center space-x-3">
+                      <Shield className="h-5 w-5 text-purple-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Tournament Officials</h3>
                     </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Start Date:</span>
-                        <span className="text-black font-medium">
-                          {tournament.start_date 
-                            ? new Date(tournament.start_date).toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric' 
-                              })
-                            : 'To be determined'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600">End Date:</span>
-                        <span className="text-black font-medium">
-                          {tournament.end_date 
-                            ? new Date(tournament.end_date).toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric' 
-                              })
-                            : 'To be determined'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Rounds:</span>
-                        <span className="text-black font-medium">{tournament.rounds} rounds</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-gray-600">Time Control:</span>
-                        <span className="text-black font-medium">{tournament.time_control || 'TBD'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Location Information */}
-                  {(tournament.city || tournament.state || tournament.location) && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                      <div className="flex items-center mb-4">
-                        <MapPin className="h-5 w-5 mr-2 text-green-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">Location</h3>
-                      </div>
-                      <div className="space-y-3">
-                        {tournament.city && tournament.state && (
-                          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                            <span className="text-gray-600">Location:</span>
-                            <span className="text-black font-medium">{tournament.city}, {tournament.state}</span>
-                          </div>
-                        )}
-                        {tournament.location && (
-                          <div className="py-2">
-                            <span className="text-gray-600 block mb-1">Venue:</span>
-                            <span className="text-black font-medium">{tournament.location}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Officials */}
-                  {(tournament.chief_td_name || tournament.chief_arbiter_name || tournament.chief_organizer_name) && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                      <div className="flex items-center mb-4">
-                        <Shield className="h-5 w-5 mr-2 text-purple-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">Officials</h3>
-                      </div>
-                      <div className="space-y-3">
-                        {tournament.chief_td_name && (
-                          <div className="py-2 border-b border-gray-100">
-                            <span className="text-gray-600 text-sm">Chief Tournament Director:</span>
-                            <p className="text-black font-medium">{tournament.chief_td_name}</p>
-                            {tournament.chief_td_uscf_id && (
-                              <p className="text-gray-500 text-xs mt-1">USCF ID: {tournament.chief_td_uscf_id}</p>
-                            )}
-                          </div>
-                        )}
-                        {tournament.chief_arbiter_name && (
-                          <div className="py-2 border-b border-gray-100">
-                            <span className="text-gray-600 text-sm">Chief Arbiter:</span>
-                            <p className="text-black font-medium">{tournament.chief_arbiter_name}</p>
-                            {tournament.chief_arbiter_fide_id && (
-                              <p className="text-gray-500 text-xs mt-1">FIDE ID: {tournament.chief_arbiter_fide_id}</p>
-                            )}
-                          </div>
-                        )}
-                        {tournament.chief_organizer_name && (
-                          <div className="py-2">
-                            <span className="text-gray-600 text-sm">Organizer:</span>
-                            <p className="text-black font-medium">{tournament.chief_organizer_name}</p>
-                            {tournament.chief_organizer_fide_id && (
-                              <p className="text-gray-500 text-xs mt-1">FIDE ID: {tournament.chief_organizer_fide_id}</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Rating Information */}
-                  {(tournament.uscf_rated || tournament.fide_rated) && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                      <div className="flex items-center mb-4">
-                        <Star className="h-5 w-5 mr-2 text-yellow-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">Rating</h3>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-gray-600">USCF Rated:</span>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            tournament.uscf_rated ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {tournament.uscf_rated ? 'Yes' : 'No'}
-                          </span>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {officials.map((official) => (
+                        <div key={official.key} className="rounded-lg border border-gray-200 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{official.title}</p>
+                          <p className="mt-2 text-sm font-semibold text-gray-900">{official.name}</p>
+                          {official.meta && <p className="mt-1 text-xs text-gray-500">{official.meta}</p>}
                         </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-gray-600">FIDE Rated:</span>
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            tournament.fide_rated ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {tournament.fide_rated ? 'Yes' : 'No'}
-                          </span>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {contactDetails.length > 0 && (
+                  <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-4 flex items-center space-x-3">
+                      <Globe className="h-5 w-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Registration & Contact</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {contactDetails.map((detail, index) => (
+                        <div
+                          key={detail.key}
+                          className={`flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between ${
+                            index === 0 ? 'border-t-0 pt-0' : ''
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            {detail.icon}
+                            <span>{detail.label}</span>
+                          </div>
+                          <div className="break-words text-sm font-medium text-gray-900 sm:max-w-xs sm:text-right">
+                            {detail.value}
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  )}
+                  </section>
+                )}
 
-                  {/* Registration & Contact */}
-                  {tournament.website && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                      <div className="flex items-center mb-4">
-                        <Globe className="h-5 w-5 mr-2 text-blue-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">Registration & Contact</h3>
-                      </div>
-                      <div className="space-y-3">
-                        {tournament.allow_registration && (
-                          <div className="py-2 border-b border-gray-100">
-                            <span className="text-gray-600 text-sm block mb-2">Registration:</span>
-                            <a 
-                              href={`/register/${tournament.id}`}
-                              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                            >
-                              <Users className="h-4 w-4 mr-2" />
-                              Register Now
-                            </a>
-                          </div>
-                        )}
-                        {tournament.website && (
-                          <div className="py-2">
-                            <span className="text-gray-600 text-sm block mb-2">Website:</span>
-                            <a 
-                              href={tournament.website} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-                            >
-                              <Globe className="h-4 w-4 mr-2" />
-                              <span>{tournament.website}</span>
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Stats Section */}
-                {getTournamentStats() && (
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-                    <div className="flex items-center mb-4">
-                      <Activity className="h-5 w-5 mr-2 text-purple-600" />
+                {tournamentStats && statHighlights.length > 0 && (
+                  <section className="rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 p-6 shadow-sm">
+                    <div className="mb-4 flex items-center space-x-3">
+                      <Activity className="h-5 w-5 text-purple-600" />
                       <h3 className="text-lg font-semibold text-gray-900">Tournament Statistics</h3>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.totalPlayers || 0}</div>
-                        <div className="text-sm text-gray-600 mt-1">Players</div>
-                      </div>
-                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.totalGames || 0}</div>
-                        <div className="text-sm text-gray-600 mt-1">Games</div>
-                      </div>
-                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.completionRate || 0}%</div>
-                        <div className="text-sm text-gray-600 mt-1">Complete</div>
-                      </div>
-                      <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-                        <div className="text-2xl font-bold text-gray-900">{getTournamentStats()?.averageRating || 0}</div>
-                        <div className="text-sm text-gray-600 mt-1">Avg Rating</div>
-                      </div>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                      {statHighlights.map((stat) => (
+                        <div key={stat.key} className="rounded-lg bg-white p-4 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                          <div className="mt-1 text-sm text-gray-600">{stat.label}</div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  </section>
                 )}
               </div>
             )}

@@ -1,5 +1,5 @@
 {
-  "short_name": "Chess Tour-1762104236",
+  "short_name": "Chess Tour-1762640035",
   "name": "Chess Tournament Management System",
   "description": "Professional chess tournament management with live standings, pairings, and player profiles",
   "icons": [
@@ -145,5 +145,5 @@
     "simple"
   ],
   "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
-  "version": "1762104236"
+  "version": "1762640035"
 }
