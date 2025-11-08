@@ -1492,6 +1492,14 @@ const TournamentDetail: React.FC = () => {
     );
   }
 
+  const expirationWarnings = getExpirationWarnings();
+  const tournamentNotifications = getAllTournamentNotifications(
+    tournament,
+    state.players,
+    expirationWarnings
+  );
+  const hasNotifications = tournamentNotifications.length > 0;
+
   const getStatusColor = (status: string | null) => {
     if (!status) return 'bg-gray-100 text-gray-800';
     
@@ -1910,113 +1918,278 @@ const TournamentDetail: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Redesigned Tournament Overview */}
-        <div className="mb-8 overflow-hidden rounded-3xl border border-chess-light/40 bg-white shadow-lg">
-          <div className="bg-gradient-to-r from-chess-light/40 via-white to-white">
-            <div className="px-6 py-6 text-gray-900 sm:px-8 lg:px-10">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-chess-board/70">
-                    Tournament Overview
-                  </p>
-                  <h2 className="text-2xl font-semibold text-chess-board sm:text-3xl">
-                    {tournament.name || 'Untitled Tournament'}
-                  </h2>
-                  <div className="flex flex-wrap gap-2 text-sm text-gray-600">
-                    {tournament.format && (
-                      <span className="inline-flex items-center rounded-full border border-chess-board/20 bg-white px-3 py-1">
-                        {tournament.format.replace('-', ' ')} Format
+        {/* Combined Overview Card */}
+        <div className="mb-8 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-lg">
+          <div className="space-y-8 px-6 py-6 sm:px-8 lg:px-10">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Back</span>
+                  </button>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+                        {tournament.name || 'Untitled Tournament'}
+                      </h1>
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusColor(tournament.status)}`}
+                      >
+                        {tournament.status
+                          ? tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)
+                          : 'Unknown'}
                       </span>
-                    )}
-                    {tournament.rounds && (
-                      <span className="inline-flex items-center rounded-full border border-chess-board/20 bg-white px-3 py-1">
-                        {tournament.rounds} Rounds
-                      </span>
-                    )}
-                    {sectionCount > 0 && (
-                      <span className="inline-flex items-center rounded-full border border-chess-board/20 bg-white px-3 py-1">
-                        {sectionCount} {sectionCount === 1 ? 'Section' : 'Sections'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-4 rounded-2xl border border-chess-light/40 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`h-3 w-3 rounded-full ${
-                        tournament.allow_registration
-                          ? 'bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.25)]'
-                          : 'bg-red-400 shadow-[0_0_0_4px_rgba(248,113,113,0.2)]'
-                      }`}
-                    />
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-chess-board/70">
-                        Registration
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {tournament.allow_registration ? 'Open for new players' : 'Currently closed'}
-                      </p>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2 text-sm text-gray-600">
+                      {tournament.format && (
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+                          {tournament.format.replace('-', ' ')} Format
+                        </span>
+                      )}
+                      {tournament.rounds && (
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+                          {tournament.rounds} {tournament.rounds === 1 ? 'Round' : 'Rounds'}
+                        </span>
+                      )}
+                      {sectionCount > 0 && (
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
+                          {sectionCount} {sectionCount === 1 ? 'Section' : 'Sections'}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const updatedTournament = {
-                          ...tournament,
-                          allow_registration: !tournament.allow_registration
-                        };
-                        await tournamentApi.update(id!, updatedTournament);
-                        await fetchTournament();
-                      } catch (error) {
-                        console.error('Failed to update registration setting:', error);
-                        alert('Failed to update registration setting. Please try again.');
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4">
+                <APIStatusIndicator
+                  tournamentId={id || ''}
+                  apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94"
+                />
+                {hasNotifications && (
+                  <NotificationButton
+                    notifications={tournamentNotifications}
+                    webhookEnabled={emailsEnabled}
+                    onWebhookToggle={(enabled) => {
+                      setEmailsEnabled(enabled);
+                    }}
+                    webhookUrl={tournament.webhook_url || process.env.REACT_APP_PAIRING_NOTIFICATION_WEBHOOK}
+                    onDismiss={(notificationId) => {
+                      console.log('Dismissed notification:', notificationId);
+                    }}
+                    onMarkAsRead={(notificationId) => {
+                      console.log('Marked as read:', notificationId);
+                    }}
+                    onViewPlayer={(playerName) => {
+                      const player = state.players.find(p => p.name === playerName);
+                      if (player) {
+                        setActiveTab('players');
+                        console.log('Viewing player:', playerName);
                       }
                     }}
-                    className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-chess-board/30 focus:ring-offset-2 ${
-                      tournament.allow_registration ? 'bg-chess-board' : 'bg-gray-200'
+                  />
+                )}
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <span
+                    className={`relative flex h-2.5 w-2.5 items-center justify-center rounded-full ${
+                      tournament.allow_registration ? 'bg-emerald-500' : 'bg-red-500'
                     }`}
                   >
-                    <span
-                      className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
-                        tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
+                    <span className="absolute inline-flex h-5 w-5 animate-ping rounded-full bg-current opacity-25"></span>
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Registration
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {tournament.allow_registration ? 'Open for new players' : 'Currently closed'}
+                    </p>
+                  </div>
                 </div>
-              </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const updatedTournament = {
+                        ...tournament,
+                        allow_registration: !tournament.allow_registration
+                      };
+                      await tournamentApi.update(id!, updatedTournament);
+                      await fetchTournament();
+                    } catch (error) {
+                      console.error('Failed to update registration setting:', error);
+                      alert('Failed to update registration setting. Please try again.');
+                    }
+                  }}
+                  className={`relative inline-flex h-8 w-16 items-center rounded-full border border-gray-200 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
+                    tournament.allow_registration ? 'bg-chess-board text-white' : 'bg-gray-100'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                      tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDisplaySettings(!showDisplaySettings)}
+                    className="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Actions</span>
+                  </button>
+                  {showDisplaySettings && (
+                    <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-gray-200 bg-white shadow-xl z-50">
+                      <div className="py-2">
+                        <button
+                          onClick={() => {
+                            dispatch({ type: 'SET_ERROR', payload: null });
+                            fetchTournament();
+                            fetchPlayers();
+                            fetchStandings();
+                          }}
+                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-3" />
+                          Refresh Data
+                        </button>
+                        <button
+                          onClick={() => setShowSectionManager(true)}
+                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Settings className="h-4 w-4 mr-3" />
+                          Manage Sections
+                        </button>
+                        <button
+                          onClick={clearStandings}
+                          className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4 mr-3" />
+                          Clear Standings
+                        </button>
+                        <button
+                          onClick={() => {
+                            const apiUrl = `${window.location.origin}/api/players/api-import/${id}`;
+                            const registerUrl = `${window.location.origin}/api/players/register/${id}`;
+                            const registrationFormUrl = `${window.location.origin}/register/${id}`;
+                            const apiKey = 'demo-key-123';
 
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {overviewStats.map((stat) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div
-                      key={stat.key}
-                      className="flex items-center gap-4 rounded-2xl border border-chess-light/40 bg-white p-4 shadow-sm"
-                    >
-                      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-chess-light/40 text-chess-board">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-chess-board/70">
-                          {stat.label}
-                        </p>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{stat.value}</p>
+                            const modal = document.createElement('div');
+                            modal.className =
+                              'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                            modal.innerHTML = `
+                            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                              <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">API Integration & Registration</h3>
+                                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                  </svg>
+                                </button>
+                              </div>
+                              <div class="space-y-6">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                  <h4 class="font-semibold text-gray-900 mb-2">Tournament Information</h4>
+                                  <p class="text-sm text-gray-600">Tournament ID: <code class="bg-gray-200 px-2 py-1 rounded">${id}</code></p>
+                                  <p class="text-sm text-gray-600">Tournament Name: ${tournament?.name || 'Loading...'}</p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Bulk Import API:</label>
+                                    <div class="flex">
+                                      <input type="text" value="${apiUrl}" readonly 
+                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                      <button onclick="navigator.clipboard.writeText('${apiUrl}')" 
+                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
+                                        Copy
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Single Registration API:</label>
+                                    <div class="flex">
+                                      <input type="text" value="${registerUrl}" readonly 
+                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                      <button onclick="navigator.clipboard.writeText('${registerUrl}')" 
+                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
+                                        Copy
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-2">Registration Form URL:</label>
+                                  <div class="flex">
+                                    <input type="text" value="${registrationFormUrl}" readonly 
+                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                    <button onclick="navigator.clipboard.writeText('${registrationFormUrl}')" 
+                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm">
+                                      Copy
+                                    </button>
+                                    <button onclick="window.open('${registrationFormUrl}', '_blank')" 
+                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm ml-1">
+                                      Open
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          `;
+                            document.body.appendChild(modal);
+                          }}
+                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <FileText className="h-4 w-4 mr-3" />
+                          API & Registration
+                        </button>
+                        <a
+                          href={`/public/tournaments/${id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-3" />
+                          Public View
+                        </a>
                       </div>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white px-6 py-6 sm:px-8 lg:px-10">
-            <div className="rounded-2xl border border-chess-light/40 bg-chess-light/20 p-5">
-              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {overviewStats.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div
+                    key={stat.key}
+                    className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-4"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-chess-board shadow-sm">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {stat.label}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">{stat.value}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 sm:p-8">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-chess-board">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
                     Key Details
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-500">
                     Share these essentials with your players and staff.
                   </p>
                 </div>
@@ -2029,20 +2202,20 @@ const TournamentDetail: React.FC = () => {
                     return (
                       <div
                         key={detail.key}
-                        className="flex items-start gap-3 rounded-xl border border-chess-light/40 bg-white p-4 shadow-sm"
+                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4"
                       >
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-chess-light/40 text-chess-board">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-chess-board">
                           <Icon className="h-5 w-5" />
                         </span>
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-chess-board/70">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                             {detail.label}
                           </p>
                           <div className="mt-1 text-sm font-semibold text-gray-900">
                             {detail.primary}
                           </div>
                           {detail.secondary && (
-                            <p className="mt-0.5 text-sm text-gray-600">{detail.secondary}</p>
+                            <p className="mt-0.5 text-sm text-gray-500">{detail.secondary}</p>
                           )}
                         </div>
                       </div>
@@ -2050,13 +2223,132 @@ const TournamentDetail: React.FC = () => {
                   })}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-chess-light/50 bg-white p-6 text-center">
-                  <p className="text-sm text-gray-600">
+                <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center">
+                  <p className="text-sm text-gray-500">
                     Add more tournament information in the info tab to see it highlighted here.
                   </p>
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="border-t border-gray-200 bg-gray-50 px-3 py-3 sm:px-6">
+            <nav className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide sm:gap-3">
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'settings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Settings className="h-4 w-4" />
+                <span>INFO</span>
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('players')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'players'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Players</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  activeTab === 'players'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {state.players.length}
+                </span>
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('pairings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'pairings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>Pairings</span>
+              </button>
+                
+              <button
+                onClick={() => setActiveTab('standings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'standings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>Standings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('prizes')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'prizes'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <DollarSign className="h-4 w-4" />
+                <span>Prizes</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('print')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'print'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Printer className="h-4 w-4" />
+                <span>Print</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('club-ratings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'club-ratings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>Club Ratings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('team-standings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'team-standings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Team Standings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('registrations')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'registrations'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Registrations</span>
+              </button>
+            </nav>
           </div>
         </div>
 
@@ -3626,248 +3918,283 @@ const TournamentDetail: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'settings' && (
-            <div className="space-y-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Tournament Settings</h3>
-                
-                {/* Logo Upload Section */}
-                <div className="mb-8">
-                  <h4 className="text-md font-medium text-gray-900 mb-4">Tournament Logo</h4>
-                  <div className="flex items-start space-x-6">
-                    {/* Current Logo Display */}
-                    <div className="flex-shrink-0">
-                      <div className="w-32 h-20 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative">
-                        {tournament?.logo_url ? (
-                          <img 
-                            src={tournament.logo_url} 
-                            alt="Tournament Logo"
-                            className="absolute inset-0 w-full h-full object-contain p-2"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        ) : null}
-                        {!tournament?.logo_url && (
-                          <div className="flex flex-col items-center justify-center text-gray-400 text-xs">
-                            <Upload className="h-6 w-6 mb-1" />
-                            <span>No Logo</span>
-                          </div>
+          {activeTab === 'settings' && (() => {
+            const sections = getAvailableSections();
+            const totalPlayers = state.players?.length || 0;
+            const startDateDisplay = tournament?.start_date
+              ? new Date(tournament.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+              : 'Not set';
+            const quickStats = [
+              { key: 'players', label: 'Players', value: totalPlayers },
+              { key: 'sections', label: 'Sections', value: sections.length || 0 },
+              { key: 'rounds', label: 'Rounds', value: tournament?.rounds ?? '—' },
+              { key: 'start', label: 'Start Date', value: startDateDisplay }
+            ];
+
+            return (
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {quickStats.map(stat => (
+                    <div key={stat.key} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{stat.label}</p>
+                      <p className="mt-2 text-2xl font-semibold text-gray-900">{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">Tournament Details</h3>
+                      <p className="text-sm text-gray-500">Core setup for tournament staff and public viewers.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                    <div className="space-y-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="text-base font-semibold text-gray-900">Tournament Logo</h4>
+                          <p className="mt-1 text-xs text-gray-500">Upload or link a logo to brand the TD and public pages.</p>
+                        </div>
+                        {tournament?.logo_url && (
+                          <button
+                            onClick={handleLogoRemove}
+                            className="text-sm font-medium text-red-600 transition-colors hover:text-red-800"
+                          >
+                            Remove
+                          </button>
                         )}
                       </div>
-                    </div>
-                    
-                    {/* Upload Controls */}
-                    <div className="flex-1">
+
+                      <div className="flex items-center justify-center">
+                        <div className="flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white">
+                          {tournament?.logo_url ? (
+                            <img
+                              src={tournament.logo_url}
+                              alt="Tournament Logo"
+                              className="h-full w-full object-contain p-2"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center text-xs text-gray-400">
+                              <Upload className="mb-1 h-6 w-6" />
+                              <span>No Logo</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Upload Logo
-                          </label>
+                          <label className="mb-2 block text-sm font-medium text-gray-700">Upload Logo</label>
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handleLogoUpload}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
                           />
-                          <p className="mt-1 text-xs text-gray-500">
-                            PNG, JPG, or SVG. Recommended size: 200x60px or similar aspect ratio.
-                          </p>
+                          <p className="mt-1 text-xs text-gray-500">PNG, JPG, or SVG. Recommended size: 200×60 or similar.</p>
                         </div>
-                        
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Or enter logo URL
-                          </label>
+                          <label className="mb-2 block text-sm font-medium text-gray-700">Or enter logo URL</label>
                           <div className="flex space-x-2">
                             <input
                               type="url"
                               value={logoUrl}
                               onChange={(e) => setLogoUrl(e.target.value)}
                               placeholder="https://example.com/logo.png"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                             <button
                               onClick={handleLogoUrlSave}
                               disabled={!logoUrl.trim()}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
                             >
-                              Save URL
+                              Save
                             </button>
                           </div>
                         </div>
-                        
-                        {tournament?.logo_url && (
-                          <button
-                            onClick={handleLogoRemove}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Remove Logo
-                          </button>
-                        )}
+                      </div>
+                    </div>
+
+                    <div className="xl:col-span-2 space-y-6">
+                      <div className="rounded-xl border border-gray-200 p-6 shadow-sm">
+                        <h4 className="text-base font-semibold text-gray-900">Basic Information</h4>
+                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700">Tournament Name</label>
+                            <input
+                              type="text"
+                              value={tournament?.name || ''}
+                              onChange={(e) => handleTournamentUpdate('name', e.target.value)}
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700">Time Control</label>
+                            <input
+                              type="text"
+                              value={tournament?.time_control || ''}
+                              onChange={(e) => handleTournamentUpdate('time_control', e.target.value)}
+                              placeholder="G/45+15"
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 p-6 shadow-sm">
+                        <h4 className="text-base font-semibold text-gray-900">Location & Links</h4>
+                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700">Location</label>
+                            <input
+                              type="text"
+                              value={tournament?.location || ''}
+                              onChange={(e) => handleTournamentUpdate('location', e.target.value)}
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700">Website</label>
+                            <input
+                              type="url"
+                              value={tournament?.website || ''}
+                              onChange={(e) => handleTournamentUpdate('website', e.target.value)}
+                              placeholder="https://example.com"
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 p-6 shadow-sm">
+                        <h4 className="text-base font-semibold text-gray-900">Visibility & Registration</h4>
+                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="flex items-start justify-between rounded-lg border border-gray-200 p-4">
+                            <div className="pr-4">
+                              <p className="text-sm font-semibold text-gray-900">Public page</p>
+                              <p className="mt-1 text-xs text-gray-500">Allow players to view this tournament on the public site.</p>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <input
+                                type="checkbox"
+                                id="is_public"
+                                checked={tournament?.is_public || false}
+                                onChange={(e) => handleTournamentUpdate('is_public', e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <label htmlFor="is_public" className="text-sm font-medium text-gray-600">
+                                {tournament?.is_public ? 'Enabled' : 'Disabled'}
+                              </label>
+                            </div>
+                          </div>
+                          <div className="flex items-start justify-between rounded-lg border border-gray-200 p-4">
+                            <div className="pr-4">
+                              <p className="text-sm font-semibold text-gray-900">Online registration</p>
+                              <p className="mt-1 text-xs text-gray-500">Accept player registrations directly from the public page.</p>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <input
+                                type="checkbox"
+                                id="allow_registration"
+                                checked={tournament?.allow_registration || false}
+                                onChange={(e) => handleTournamentUpdate('allow_registration', e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <label htmlFor="allow_registration" className="text-sm font-medium text-gray-600">
+                                {tournament?.allow_registration ? 'Enabled' : 'Disabled'}
+                              </label>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </section>
 
-                {/* Tournament Information */}
-                <div className="mb-8">
-                  <h4 className="text-md font-medium text-gray-900 mb-4">Tournament Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tournament Name
-                      </label>
-                      <input
-                        type="text"
-                        value={tournament?.name || ''}
-                        onChange={(e) => handleTournamentUpdate('name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Time Control
-                      </label>
-                      <input
-                        type="text"
-                        value={tournament?.time_control || ''}
-                        onChange={(e) => handleTournamentUpdate('time_control', e.target.value)}
-                        placeholder="G/45+15"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Location
-                      </label>
-                      <input
-                        type="text"
-                        value={tournament?.location || ''}
-                        onChange={(e) => handleTournamentUpdate('location', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Website
-                      </label>
-                      <input
-                        type="url"
-                        value={tournament?.website || ''}
-                        onChange={(e) => handleTournamentUpdate('website', e.target.value)}
-                        placeholder="https://example.com"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center space-x-3">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900">Public Tournament Description</h4>
+                        <p className="text-sm text-gray-500">Displayed on the public tournament page.</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                  <textarea
+                    value={tournamentInfo}
+                    onChange={(e) => handleTournamentInfoChange(e.target.value)}
+                    rows={6}
+                    placeholder="Enter tournament information that will be displayed on the public view..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-2 text-xs text-gray-500">Changes save automatically and update the public site immediately.</p>
+                </section>
 
-                {/* Tournament Information for Public View */}
-                <div className="mb-8">
-                  <h4 className="text-md font-medium text-gray-900 mb-4">Tournament Information (Public View)</h4>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tournament Information (displayed on public view)
-                    </label>
-                    <textarea
-                      value={tournamentInfo}
-                      onChange={(e) => handleTournamentInfoChange(e.target.value)}
-                      rows={6}
-                      placeholder="Enter tournament information that will be displayed on the public view..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      This information will be displayed on the public tournament view page. Changes are saved automatically.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Public Settings */}
-                <div className="mb-8">
-                  <h4 className="text-md font-medium text-gray-900 mb-4">Public Settings</h4>
-                  <div className="space-y-4">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="is_public"
-                        checked={tournament?.is_public || false}
-                        onChange={(e) => handleTournamentUpdate('is_public', e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="is_public" className="ml-2 block text-sm text-gray-900">
-                        Make tournament publicly viewable
-                      </label>
+                <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900">Public View Customization</h4>
+                      <p className="text-sm text-gray-500">Personalize overlays, branding, and embedded pages for spectators.</p>
                     </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="allow_registration"
-                        checked={tournament?.allow_registration || false}
-                        onChange={(e) => handleTournamentUpdate('allow_registration', e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="allow_registration" className="ml-2 block text-sm text-gray-900">
-                        Allow online registration
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Public View Customization */}
-                <div className="mb-8">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-md font-medium text-gray-900">Public View Customization</h4>
                     <button
                       onClick={() => setShowPublicViewCustomization(true)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                      className="inline-flex items-center space-x-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
                     >
                       <Eye className="h-4 w-4" />
                       <span>Customize Public View</span>
                     </button>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <p className="text-sm text-purple-800">
-                      Customize the overlay, branding, and create embeddable custom pages for your tournament's public view.
-                    </p>
+                  <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
+                    Configure how players and spectators experience the public tournament page.
                   </div>
-                </div>
+                </section>
 
-                {/* Custom Pages Management */}
                 {id && (
-                  <div className="mb-8">
+                  <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="mb-4">
+                      <h4 className="text-base font-semibold text-gray-900">Custom Pages</h4>
+                      <p className="text-sm text-gray-500">Add extra content such as parking info, policies, or event FAQs.</p>
+                    </div>
                     <CustomPagesManager tournamentId={id} />
-                  </div>
+                  </section>
                 )}
 
-                {/* Prizes Section */}
-                <div className="mb-8">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-md font-medium text-gray-900">Prize Management</h4>
+                <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900">Prize Management</h4>
+                      <p className="text-sm text-gray-500">Define prize structures and keep them aligned with standings.</p>
+                    </div>
                     <button
                       onClick={() => setShowPrizeConfiguration(true)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
                     >
                       <Settings className="h-4 w-4" />
                       <span>Configure Prizes</span>
                     </button>
                   </div>
-                  
-                  <PrizeDisplay
-                    tournamentId={id || ''}
-                    showPrizeSettings={true}
-                    onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
-                  />
-                </div>
+                  <div className="mt-4">
+                    <PrizeDisplay
+                      tournamentId={id || ''}
+                      showPrizeSettings={true}
+                      onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
+                    />
+                  </div>
+                </section>
 
-                {/* Payment Settings - Separate from Registration Settings */}
                 {id && tournament && (
-                  <div className="mb-8">
-                    <PaymentSettings 
+                  <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900">Payment Settings</h4>
+                      <p className="text-sm text-gray-500">Connect payment providers and manage entry fee requirements.</p>
+                    </div>
+                    <PaymentSettings
                       tournamentId={id}
                       tournament={tournament}
                       onSave={async (credentials: any) => {
@@ -3885,62 +4212,33 @@ const TournamentDetail: React.FC = () => {
                         }
                       }}
                     />
-                  </div>
+                  </section>
                 )}
 
-                {/* Registration Settings */}
                 {id && tournament && (
-                  <div className="mb-8">
-                    <RegistrationSettings 
+                  <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900">Registration Settings</h4>
+                      <p className="text-sm text-gray-500">Customize required fields, payments, and workflows for sign-ups.</p>
+                    </div>
+                    <RegistrationSettings
                       tournamentId={id}
                       tournament={tournament}
                       onSave={async (settingsData: any) => {
                         console.log('💾 Saving registration form settings data:', settingsData);
                         console.log('💾 Registration settings (stringified):', JSON.stringify(settingsData.registration_settings));
-                        console.log('💾 Custom fields in settings:', settingsData.registration_settings?.customFields);
-                        
-                        // Save ONLY registration form settings (no payment credentials)
-                        // Payment credentials are handled by PaymentSettings component
-                        const { registration_settings, ...rest } = settingsData;
-                        const registrationFormData = {
-                          allow_registration: registration_settings?.allow_registration,
-                          require_name: registration_settings?.require_name,
-                          require_email: registration_settings?.require_email,
-                          require_uscf_id: registration_settings?.require_uscf_id,
-                          require_rating: registration_settings?.require_rating,
-                          require_phone: registration_settings?.require_phone,
-                          require_section: registration_settings?.require_section,
-                          allow_bye_requests: registration_settings?.allow_bye_requests,
-                          allow_notes: registration_settings?.allow_notes,
-                          auto_approve: registration_settings?.auto_approve,
-                          send_confirmation_email: registration_settings?.send_confirmation_email,
-                          custom_registration_message: registration_settings?.custom_registration_message,
-                          custom_success_message: registration_settings?.custom_success_message,
-                          customFields: registration_settings?.customFields || []
-                        };
-                        
-                        const allFields = {
-                          registration_settings: JSON.stringify(registrationFormData)
-                        };
-                        
-                        // Log what we're sending
-                        console.log('Saving registration form settings:', {
-                          registration_settings_length: allFields.registration_settings.length,
-                          customFields_count: registrationFormData.customFields.length
-                        });
-                        
-                        // Save registration settings only (include required fields)
+
                         try {
                           const response = await tournamentApi.update(id, {
-                            ...allFields,
-                            name: tournament.name || '',
-                            format: tournament.format || 'swiss',
-                            rounds: tournament.rounds || 5
+                            registration_settings: settingsData.registration_settings,
+                            require_payment: settingsData.require_payment,
+                            payment_method: settingsData.payment_method,
+                            entry_fee: settingsData.entry_fee
                           } as any);
-                          console.log('Update response:', response.data);
+                          console.log('✅ Registration settings saved successfully:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
-                            console.log('✅ Registration form settings saved successfully');
+                            console.log('✅ Registration settings saved and state updated');
                           }
                         } catch (error: any) {
                           console.error('Failed to save registration settings:', error);
@@ -3948,26 +4246,28 @@ const TournamentDetail: React.FC = () => {
                         }
                       }}
                     />
-                  </div>
+                  </section>
                 )}
 
-                {/* SMS Settings */}
                 {id && tournament && (
-                  <div className="mb-8">
-                    <SMSSettings 
+                  <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+                    <div>
+                      <h4 className="text-base font-semibold text-gray-900">SMS Settings</h4>
+                      <p className="text-sm text-gray-500">Configure SMS notifications so players get timely updates.</p>
+                    </div>
+                    <SMSSettings
                       tournamentId={id}
                       tournament={tournament}
                       onSave={async (settingsData: any) => {
                         console.log('💾 Saving SMS settings:', settingsData);
-                        
+
                         try {
-                          // Include required fields (name, format, rounds) along with SMS settings
                           const response = await tournamentApi.update(id, {
                             ...settingsData,
                             name: tournament.name || '',
                             format: tournament.format || 'swiss',
                             rounds: tournament.rounds || 5
-                          });
+                          } as any);
                           console.log('Update response:', response.data);
                           if (response.data.success) {
                             dispatch({ type: 'SET_CURRENT_TOURNAMENT', payload: response.data.data });
@@ -3979,19 +4279,18 @@ const TournamentDetail: React.FC = () => {
                         }
                       }}
                     />
-                  </div>
+                  </section>
                 )}
 
-                {/* Save Button */}
                 <div className="flex justify-end">
                   <button
                     onClick={handleSettingsSave}
                     disabled={saving}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center space-x-2"
+                    className="flex items-center space-x-2 rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
                   >
                     {saving ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
                         <span>Saving...</span>
                       </>
                     ) : (
@@ -4003,8 +4302,8 @@ const TournamentDetail: React.FC = () => {
                   </button>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {activeTab === 'club-ratings' && tournament?.organization_id && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
