@@ -237,29 +237,48 @@ class EnhancedPairingSystem {
       
       // Create bye pairings for players with intentional byes
       const byePairings = Array.from(playersWithByes).map((playerId, index) => {
-        const player = this.players.find(p => p.id === playerId);
-        let byeType = 'bye'; // Default to intentional bye (0.5 points)
-        
-        // Determine bye type based on player status
-        if (player.status === 'inactive') {
-          byeType = 'inactive'; // Inactive players get 0.5 points
-        }
-        
+      const player = this.players.find(p => p.id === playerId);
+      if (!player) {
+        console.warn(`[EnhancedPairingSystem] Could not find player ${playerId} when creating bye pairing`);
         return {
-          white_player_id: player.id,
+          white_player_id: playerId,
           black_player_id: null,
-          white_name: player.name,
+          white_name: null,
           black_name: null,
-          white_rating: player.rating,
+          white_rating: null,
           black_rating: null,
           round: this.round,
-          board: 0, // Will be assigned later
+          board: 0,
           section: this.section,
           tournament_id: this.tournamentId,
-          result: `bye_${byeType}`,
+          result: 'bye_unpaired',
           is_bye: true,
-          bye_type: 'bye' // Intentional byes are always 'bye' for 0.5 points
+          bye_type: 'unpaired'
         };
+      }
+
+      let byeType = 'unpaired'; // Registered byes receive a full point by default
+
+      // Determine bye type based on player status
+      if (player.status === 'inactive') {
+        byeType = 'inactive'; // Inactive players continue to receive half-point byes
+      }
+
+      return {
+        white_player_id: player.id,
+        black_player_id: null,
+        white_name: player.name,
+        black_name: null,
+        white_rating: player.rating,
+        black_rating: null,
+        round: this.round,
+        board: 0, // Will be assigned later
+        section: this.section,
+        tournament_id: this.tournamentId,
+        result: `bye_${byeType}`,
+        is_bye: true,
+        bye_type: byeType
+      };
       });
       
       // Generate pairings for remaining players
@@ -494,28 +513,47 @@ class EnhancedPairingSystem {
     // Create bye pairings for players with intentional byes
     const byePairings = Array.from(playersWithByes).map((playerId, index) => {
       const player = this.players.find(p => p.id === playerId);
-        let byeType = 'bye'; // Default to intentional bye (0.5 points)
-        
-        // Determine bye type based on player status
-        if (player.status === 'inactive') {
-          byeType = 'inactive'; // Inactive players get 0.5 points
-        }
-        
+      if (!player) {
+        console.warn(`[EnhancedPairingSystem] Could not find player ${playerId} when creating bye pairing`);
         return {
-          white_player_id: player.id,
+          white_player_id: playerId,
           black_player_id: null,
-          white_name: player.name,
+          white_name: null,
           black_name: null,
-          white_rating: player.rating,
+          white_rating: null,
           black_rating: null,
           round: this.round,
-          board: 0, // Will be assigned later
+          board: 0,
           section: this.section,
           tournament_id: this.tournamentId,
-          result: `bye_${byeType}`,
+          result: 'bye_unpaired',
           is_bye: true,
-          bye_type: byeType
+          bye_type: 'unpaired'
         };
+      }
+
+      let byeType = 'unpaired'; // Registered byes receive a full point by default
+
+      // Determine bye type based on player status
+      if (player.status === 'inactive') {
+        byeType = 'inactive'; // Inactive players continue to receive half-point byes
+      }
+
+      return {
+        white_player_id: player.id,
+        black_player_id: null,
+        white_name: player.name,
+        black_name: null,
+        white_rating: player.rating,
+        black_rating: null,
+        round: this.round,
+        board: 0, // Will be assigned later
+        section: this.section,
+        tournament_id: this.tournamentId,
+        result: `bye_${byeType}`,
+        is_bye: true,
+        bye_type: byeType
+      };
     });
     
     // Generate pairings for remaining players
@@ -559,28 +597,47 @@ class EnhancedPairingSystem {
     // Create bye pairings for players with intentional byes
     const byePairings = Array.from(playersWithByes).map((playerId, index) => {
       const player = this.players.find(p => p.id === playerId);
-        let byeType = 'bye'; // Default to intentional bye (0.5 points)
-        
-        // Determine bye type based on player status
-        if (player.status === 'inactive') {
-          byeType = 'inactive'; // Inactive players get 0.5 points
-        }
-        
+      if (!player) {
+        console.warn(`[EnhancedPairingSystem] Could not find player ${playerId} when creating bye pairing`);
         return {
-          white_player_id: player.id,
+          white_player_id: playerId,
           black_player_id: null,
-          white_name: player.name,
+          white_name: null,
           black_name: null,
-          white_rating: player.rating,
+          white_rating: null,
           black_rating: null,
           round: this.round,
-          board: 0, // Will be assigned later
+          board: 0,
           section: this.section,
           tournament_id: this.tournamentId,
-          result: `bye_${byeType}`,
+          result: 'bye_unpaired',
           is_bye: true,
-          bye_type: byeType
+          bye_type: 'unpaired'
         };
+      }
+
+      let byeType = 'unpaired'; // Registered byes receive a full point by default
+
+      // Determine bye type based on player status
+      if (player.status === 'inactive') {
+        byeType = 'inactive'; // Inactive players continue to receive half-point byes
+      }
+
+      return {
+        white_player_id: player.id,
+        black_player_id: null,
+        white_name: player.name,
+        black_name: null,
+        white_rating: player.rating,
+        black_rating: null,
+        round: this.round,
+        board: 0, // Will be assigned later
+        section: this.section,
+        tournament_id: this.tournamentId,
+        result: `bye_${byeType}`,
+        is_bye: true,
+        bye_type: byeType
+      };
     });
     
     // Generate pairings for remaining players

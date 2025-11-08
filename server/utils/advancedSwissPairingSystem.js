@@ -182,7 +182,7 @@ class AdvancedSwissPairingSystem {
     // Create bye pairings for players with intentional byes
     const byePairings = Array.from(playersWithByes).map((playerId, index) => {
       const player = this.players.find(p => p.id === playerId);
-      let byeType = 'bye'; // Default to intentional bye (0.5 points)
+      let byeType = 'unpaired'; // Registered byes default to full-point awards
       
       // Determine bye type based on player status
       if (player.status === 'inactive') {

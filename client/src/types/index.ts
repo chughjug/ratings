@@ -32,6 +32,7 @@ export interface Tournament {
   assistant_td_uscf_id?: string;
   
   // USCF Administrative Fields
+  uscf_id?: string;
   affiliate_id?: string;
   uscf_tournament_id?: string;
   uscf_section_ids?: string;

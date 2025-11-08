@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Users, Trophy, Play, RefreshCw, Layers, Clock, Search as SearchIcon } from 'lucide-react';
+import { Settings, Users, Trophy, Play, RefreshCw, Layers, Clock, Search as SearchIcon } from 'lucide-react';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { Player } from '../types';
 import PairingSystem from './PairingSystem';
@@ -201,7 +201,7 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
 
   if (loading) {
     return (
-      <div className="tournament-manager td-director">
+      <div className="tournament-manager">
         <div className="loading-container">
           <div className="loading-spinner"></div>
           <span>Loading tournament data...</span>
@@ -212,7 +212,7 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
 
   if (error) {
     return (
-      <div className="tournament-manager td-director">
+      <div className="tournament-manager">
         <div className="error-container">
           <span>{error}</span>
           <button onClick={loadTournamentData}>Retry</button>
@@ -222,75 +222,89 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
   }
 
   return (
-    <div className="tournament-manager td-director">
-      <header className="td-hero">
-        <div className="td-hero__heading">
-          <span className="td-hero__icon">
-            <Trophy className="h-8 w-8" />
-          </span>
+    <div className="tournament-manager">
+      <div className="tm-page-header">
+        <div className="tm-title">
+          <Trophy className="h-10 w-10 tm-title-icon" />
           <div>
-            <h1>Director Control Center</h1>
-            <p>All of your tournament sections, pairings, and player counts in one focused view.</p>
+            <h1>Tournament Director</h1>
+            <p>Stay on top of every section, player, and round at a glance.</p>
           </div>
         </div>
-        <button
-          type="button"
-          className="td-hero__refresh"
-          onClick={handleRefreshAll}
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh data
-        </button>
-      </header>
+        <div className="tm-header-actions">
+          <button
+            className="tm-icon-button"
+            onClick={handleRefreshAll}
+            aria-label="Reload tournament data"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+          <button className="btn-secondary tm-settings-button">
+            <Settings className="h-4 w-4" />
+            Settings
+          </button>
+        </div>
+      </div>
 
-      <section className="td-stats">
-        <div className="td-stat-card">
-          <Users className="h-5 w-5" />
+      <div className="tm-summary-grid">
+        <div className="tm-summary-card">
+          <Users className="h-6 w-6" />
           <div>
-            <span className="td-stat-card__label">Total players</span>
-            <span className="td-stat-card__value">{totalPlayers}</span>
+            <span className="tm-summary-label">Total Players</span>
+            <span className="tm-summary-value">{totalPlayers}</span>
           </div>
         </div>
-        <div className="td-stat-card">
-          <Layers className="h-5 w-5" />
+        <div className="tm-summary-card">
+          <Layers className="h-6 w-6" />
           <div>
-            <span className="td-stat-card__label">Sections</span>
-            <span className="td-stat-card__value">{sections.length}</span>
+            <span className="tm-summary-label">Sections</span>
+            <span className="tm-summary-value">{sections.length}</span>
           </div>
         </div>
-        <div className="td-stat-card">
-          <Clock className="h-5 w-5" />
+        <div className="tm-summary-card">
+          <Clock className="h-6 w-6" />
           <div>
-            <span className="td-stat-card__label">Highest round</span>
-            <span className="td-stat-card__value">{highestRound || '—'}</span>
+            <span className="tm-summary-label">Highest Round</span>
+            <span className="tm-summary-value">{highestRound || '—'}</span>
           </div>
         </div>
-        <div className="td-stat-card">
-          <Play className="h-5 w-5" />
+        <div className="tm-summary-card">
+          <Trophy className="h-6 w-6" />
           <div>
-            <span className="td-stat-card__label">Pairings loaded</span>
-            <span className="td-stat-card__value">{totalPairings}</span>
+            <span className="tm-summary-label">Pairings Loaded</span>
+            <span className="tm-summary-value">{totalPairings}</span>
           </div>
         </div>
-      </section>
+      </div>
 
-      <div className="td-toolbar">
-        <div className="td-toolbar__group td-toolbar__group--search">
-          <label htmlFor="td-director-search">Search sections</label>
-          <div className="td-search">
-            <SearchIcon className="td-search__icon" />
+      <div className="tm-layout">
+        <aside className="tm-sidebar">
+          <div className="tm-sidebar-header">
+            <div>
+              <h3>Sections</h3>
+              <span>{filteredSections.length} of {sections.length} shown</span>
+            </div>
+            <button
+              className="tm-icon-button"
+              onClick={handleRefreshAll}
+              aria-label="Reload all sections"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="tm-search-field">
+            <SearchIcon className="h-4 w-4" />
             <input
-              id="td-director-search"
               type="search"
-              placeholder="Search by section name"
+              placeholder="Search sections"
               value={sectionSearchTerm}
               onChange={(event) => setSectionSearchTerm(event.target.value)}
               aria-label="Search sections"
             />
             {sectionSearchTerm && (
               <button
-                type="button"
-                className="td-search__clear"
+                className="tm-clear-button"
                 onClick={() => setSectionSearchTerm('')}
                 aria-label="Clear section search"
               >
@@ -298,133 +312,98 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
               </button>
             )}
           </div>
-        </div>
-        <div className="td-toolbar__group">
-          <label htmlFor="td-director-sort">Sort sections</label>
-          <div className="td-select">
-            <select
-              id="td-director-sort"
-              value={sectionSort}
-              onChange={(event) => setSectionSort(event.target.value as 'name' | 'players')}
-            >
-              <option value="name">Alphabetical</option>
-              <option value="players">Player count</option>
-            </select>
-          </div>
-        </div>
-        <div className="td-toolbar__group td-toolbar__group--selection">
-          <label htmlFor="td-director-section">Jump to section</label>
-          <div className="td-select">
-            <select
-              id="td-director-section"
-              value={selectedSection || ''}
-              onChange={(event) => setSelectedSection(event.target.value)}
-              disabled={!sections.length}
-            >
-              <option value="" disabled>
-                {sections.length ? 'Select a section' : 'No sections available'}
-              </option>
-              {sections.map(section => (
-                <option key={section.name} value={section.name}>
-                  {section.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
 
-      <div className="td-layout">
-        <aside className="td-section-panel">
-          <div className="td-section-panel__header">
-            <div>
-              <h2>Sections</h2>
-              <span>{filteredSections.length} of {sections.length} shown</span>
-            </div>
-            <button
-              type="button"
-              className="td-icon-button"
-              onClick={handleRefreshAll}
-              aria-label="Reload section list"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          </div>
-          {filteredSections.length > 0 ? (
-            <ul className="td-section-list">
-              {filteredSections.map(section => (
-                <li key={section.name}>
-                  <button
-                    type="button"
-                    className={`td-section-item ${selectedSection === section.name ? 'is-active' : ''}`}
-                    onClick={() => setSelectedSection(section.name)}
-                  >
-                    <div className="td-section-item__header">
-                      <span className="td-section-item__name">{section.name}</span>
-                      <span className="td-section-item__round">
-                        Round {section.currentRound || '—'}
-                      </span>
-                    </div>
-                    <div className="td-section-item__meta">
-                      <span>
-                        <Users className="h-4 w-4" />
-                        {section.players.length} players
-                      </span>
-                      <span>
-                        <Play className="h-4 w-4" />
-                        {section.pairings.length} pairings
-                      </span>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="td-empty">
-              <p>No sections match “{sectionSearchTerm}”.</p>
+          <div className="tm-sidebar-actions">
+            <span className="tm-sidebar-label">Sort by</span>
+            <div className="tm-sort-group">
               <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setSectionSearchTerm('')}
+                className={`tm-sort-button ${sectionSort === 'name' ? 'active' : ''}`}
+                onClick={() => setSectionSort('name')}
               >
-                Clear search
+                A → Z
+              </button>
+              <button
+                className={`tm-sort-button ${sectionSort === 'players' ? 'active' : ''}`}
+                onClick={() => setSectionSort('players')}
+              >
+                Players
               </button>
             </div>
-          )}
+          </div>
+
+          <div className="tm-section-list">
+            {filteredSections.map(section => (
+              <button
+                key={section.name}
+                className={`tm-section-item ${selectedSection === section.name ? 'active' : ''}`}
+                onClick={() => setSelectedSection(section.name)}
+              >
+                <div className="tm-section-item-header">
+                  <span className="tm-section-name">{section.name}</span>
+                  <span className="tm-section-round">Round {section.currentRound}</span>
+                </div>
+                <div className="tm-section-meta">
+                  <span>
+                    <Users className="h-4 w-4" />
+                    {section.players.length} players
+                  </span>
+                  <span>
+                    <Trophy className="h-4 w-4" />
+                    {section.pairings.length} pairings
+                  </span>
+                </div>
+              </button>
+            ))}
+
+            {filteredSections.length === 0 && (
+              <div className="tm-empty-state">
+                <p>No sections match “{sectionSearchTerm}”.</p>
+                <button
+                  className="btn-secondary"
+                  onClick={() => setSectionSearchTerm('')}
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+          </div>
         </aside>
 
-        <section className="td-section-content">
+        <section className="tm-main">
           {selectedSectionData ? (
-            <div className="td-card td-card--primary">
-              <div className="td-card__header">
+            <div className="tm-card">
+              <div className="tm-card-header">
                 <div>
                   <h2>{selectedSectionData.name}</h2>
                   <p>Manage players, standings, and pairings for this section.</p>
                 </div>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => refreshSectionData(selectedSectionData.name)}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh section
-                </button>
-              </div>
-              <div className="td-metrics">
-                <div className="td-metric">
-                  <Users className="h-4 w-4" />
-                  <span>{selectedSectionData.players.length} players</span>
+                <div className="tm-card-actions">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => refreshSectionData(selectedSectionData.name)}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh section
+                  </button>
                 </div>
-                <div className="td-metric">
+              </div>
+
+              <div className="tm-card-metrics">
+                <div className="tm-metric">
+                  <Users className="h-4 w-4" />
+                  <span>{selectedSectionData.players.length} Players</span>
+                </div>
+                <div className="tm-metric">
                   <Clock className="h-4 w-4" />
                   <span>Round {selectedSectionData.currentRound}</span>
                 </div>
-                <div className="td-metric">
+                <div className="tm-metric">
                   <Play className="h-4 w-4" />
-                  <span>{selectedSectionData.pairings.length} pairings</span>
+                  <span>{selectedSectionData.pairings.length} Pairings</span>
                 </div>
               </div>
-              <div className="td-card__body">
+
+              <div className="tm-card-body">
                 <PairingSystem
                   tournamentId={tournamentId}
                   section={selectedSectionData.name}
@@ -438,65 +417,66 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
               </div>
             </div>
           ) : (
-            <div className="td-empty td-empty--card">
+            <div className="tm-empty-state">
               <p>Select a section to begin managing pairings.</p>
             </div>
           )}
 
-          <div className="td-card td-card--table">
-            <div className="td-card__header">
+          <div className="tm-card tm-overview-card">
+            <div className="tm-card-header">
               <div>
-                <h3>Section snapshot</h3>
-                <p>Compare participation and progress across every section.</p>
+                <h3>Section Snapshot</h3>
+                <p>Quickly compare player counts, rounds, and status across sections.</p>
               </div>
               <button
-                type="button"
-                className="td-icon-button"
+                className="tm-icon-button"
                 onClick={handleRefreshAll}
                 aria-label="Reload section snapshot"
               >
                 <RefreshCw className="h-4 w-4" />
               </button>
             </div>
-            <div className="td-snapshot">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Section</th>
-                    <th>Players</th>
-                    <th>Round</th>
-                    <th>Pairings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sections.length > 0 ? (
-                    sections.map(section => (
-                      <tr
-                        key={section.name}
-                        className={selectedSection === section.name ? 'is-active' : ''}
-                        tabIndex={0}
-                        role="button"
-                        onClick={() => setSelectedSection(section.name)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            setSelectedSection(section.name);
-                          }
-                        }}
-                      >
-                        <td>{section.name}</td>
-                        <td>{section.players.length}</td>
-                        <td>{section.currentRound || '—'}</td>
-                        <td>{section.pairings.length}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr className="td-snapshot__empty">
-                      <td colSpan={4}>Sections will appear here as soon as they are set up for this tournament.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+
+            <div className="tm-overview-grid">
+              {sections.map(section => (
+                <div key={section.name} className="tm-overview-item">
+                  <div className="tm-overview-title">
+                    <span>{section.name}</span>
+                    <span className={`tm-status ${section.isComplete ? 'complete' : 'active'}`}>
+                      {section.isComplete ? 'Complete' : 'In Progress'}
+                    </span>
+                  </div>
+                  <div className="tm-overview-meta">
+                    <span>
+                      <Users className="h-4 w-4" />
+                      {section.players.length} players
+                    </span>
+                    <span>
+                      <Clock className="h-4 w-4" />
+                      Round {section.currentRound}
+                    </span>
+                    <span>
+                      <Trophy className="h-4 w-4" />
+                      {section.pairings.length} pairings
+                    </span>
+                  </div>
+                  <div className="tm-overview-actions">
+                    <button
+                      className="btn-primary"
+                      onClick={() => setSelectedSection(section.name)}
+                    >
+                      Manage
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => refreshSectionData(section.name)}
+                      title={`Refresh ${section.name}`}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

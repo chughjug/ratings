@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, MapPin, ShieldCheck, Globe, Scale } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -1507,6 +1507,137 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const overviewStats: Array<{
+    key: string;
+    label: string;
+    value: string;
+    icon: React.ElementType;
+  }> = [
+    {
+      key: 'start',
+      label: 'Start Date',
+      value: tournament.start_date
+        ? new Date(tournament.start_date).toLocaleDateString()
+        : 'TBD',
+      icon: Calendar
+    },
+    {
+      key: 'end',
+      label: 'End Date',
+      value: tournament.end_date
+        ? new Date(tournament.end_date).toLocaleDateString()
+        : 'TBD',
+      icon: Calendar
+    },
+    {
+      key: 'time-control',
+      label: 'Time Control',
+      value: tournament.time_control || 'TBD',
+      icon: Clock
+    },
+    {
+      key: 'players',
+      label: 'Registered Players',
+      value: `${state.players.length}`,
+      icon: Users
+    }
+  ];
+
+  const additionalDetails = ([
+    tournament.city && tournament.state
+      ? {
+          key: 'location',
+          label: 'Location',
+          icon: MapPin,
+          primary: `${tournament.city}, ${tournament.state}`,
+          secondary: tournament.location || undefined
+        }
+      : null,
+    tournament.uscf_id
+      ? {
+          key: 'uscf-id',
+          label: 'USCF ID',
+          icon: ShieldCheck,
+          primary: tournament.uscf_id
+        }
+      : null,
+    tournament.chief_td_name
+      ? {
+          key: 'chief-td',
+          label: 'Chief TD',
+          icon: User,
+          primary: tournament.chief_td_name,
+          secondary: tournament.chief_td_uscf_id
+            ? `USCF ID: ${tournament.chief_td_uscf_id}`
+            : undefined
+        }
+      : null,
+    tournament.chief_arbiter_name
+      ? {
+          key: 'chief-arbiter',
+          label: 'Chief Arbiter',
+          icon: Scale,
+          primary: tournament.chief_arbiter_name,
+          secondary: tournament.chief_arbiter_fide_id
+            ? `FIDE ID: ${tournament.chief_arbiter_fide_id}`
+            : undefined
+        }
+      : null,
+    tournament.website
+      ? {
+          key: 'website',
+          label: 'Website',
+          icon: Globe,
+          primary: (
+            <a
+              href={tournament.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800"
+            >
+              {tournament.website.replace(/^https?:\/\//, '')}
+            </a>
+          )
+        }
+      : null,
+    tournament.uscf_rated || tournament.fide_rated
+      ? {
+          key: 'rating-systems',
+          label: 'Rating Systems',
+          icon: Trophy,
+          primary: (
+            <div className="flex flex-wrap gap-2">
+              {tournament.uscf_rated && (
+                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                  USCF Rated
+                </span>
+              )}
+              {tournament.fide_rated && (
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  FIDE Rated
+                </span>
+              )}
+            </div>
+          )
+        }
+      : null
+  ] as Array<{
+    key: string;
+    label: string;
+    icon: React.ElementType;
+    primary: React.ReactNode;
+    secondary?: React.ReactNode;
+  } | null>).filter((detail): detail is {
+    key: string;
+    label: string;
+    icon: React.ElementType;
+    primary: React.ReactNode;
+    secondary?: React.ReactNode;
+  } => Boolean(detail));
+
+  const hasAdditionalDetails = additionalDetails.length > 0;
+  const sectionCount = tournament.settings?.sections?.length ?? 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Modern Enhanced Header */}
@@ -1779,193 +1910,153 @@ const TournamentDetail: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Consolidated Tournament Overview */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Tournament Overview</h2>
-          </div>
-          <div className="p-6">
-            {/* Primary Information Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <Calendar className="h-5 w-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Start Date</p>
-                  <p className="text-sm text-gray-900">
-                    {tournament.start_date 
-                      ? new Date(tournament.start_date).toLocaleDateString()
-                      : 'TBD'
-                    }
+        {/* Redesigned Tournament Overview */}
+        <div className="mb-8 overflow-hidden rounded-3xl border border-chess-light/40 bg-white shadow-lg">
+          <div className="bg-gradient-to-r from-chess-light/40 via-white to-white">
+            <div className="px-6 py-6 text-gray-900 sm:px-8 lg:px-10">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-chess-board/70">
+                    Tournament Overview
                   </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <Calendar className="h-5 w-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">End Date</p>
-                  <p className="text-sm text-gray-900">
-                    {tournament.end_date 
-                      ? new Date(tournament.end_date).toLocaleDateString()
-                      : 'TBD'
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <Clock className="h-5 w-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Time Control</p>
-                  <p className="text-sm text-gray-900">{tournament.time_control || 'TBD'}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <Users className="h-5 w-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Players</p>
-                  <p className="text-sm text-gray-900">{state.players.length}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Registration Status - Prominent */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className={`h-3 w-3 rounded-full ${tournament.allow_registration ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Registration</h3>
-                    <p className="text-sm text-gray-600">
-                      {tournament.allow_registration ? 'Open for new players' : 'Currently closed'}
-                    </p>
+                  <h2 className="text-2xl font-semibold text-chess-board sm:text-3xl">
+                    {tournament.name || 'Untitled Tournament'}
+                  </h2>
+                  <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                    {tournament.format && (
+                      <span className="inline-flex items-center rounded-full border border-chess-board/20 bg-white px-3 py-1">
+                        {tournament.format.replace('-', ' ')} Format
+                      </span>
+                    )}
+                    {tournament.rounds && (
+                      <span className="inline-flex items-center rounded-full border border-chess-board/20 bg-white px-3 py-1">
+                        {tournament.rounds} Rounds
+                      </span>
+                    )}
+                    {sectionCount > 0 && (
+                      <span className="inline-flex items-center rounded-full border border-chess-board/20 bg-white px-3 py-1">
+                        {sectionCount} {sectionCount === 1 ? 'Section' : 'Sections'}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      const updatedTournament = {
-                        ...tournament,
-                        allow_registration: !tournament.allow_registration
-                      };
-                      await tournamentApi.update(id!, updatedTournament);
-                      await fetchTournament();
-                    } catch (error) {
-                      console.error('Failed to update registration setting:', error);
-                      alert('Failed to update registration setting. Please try again.');
-                    }
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-chess-board focus:ring-offset-2 ${
-                    tournament.allow_registration ? 'bg-chess-board' : 'bg-gray-200'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      tournament.allow_registration ? 'translate-x-6' : 'translate-x-1'
+                <div className="flex flex-col gap-4 rounded-2xl border border-chess-light/40 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`h-3 w-3 rounded-full ${
+                        tournament.allow_registration
+                          ? 'bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.25)]'
+                          : 'bg-red-400 shadow-[0_0_0_4px_rgba(248,113,113,0.2)]'
+                      }`}
+                    />
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-chess-board/70">
+                        Registration
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {tournament.allow_registration ? 'Open for new players' : 'Currently closed'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const updatedTournament = {
+                          ...tournament,
+                          allow_registration: !tournament.allow_registration
+                        };
+                        await tournamentApi.update(id!, updatedTournament);
+                        await fetchTournament();
+                      } catch (error) {
+                        console.error('Failed to update registration setting:', error);
+                        alert('Failed to update registration setting. Please try again.');
+                      }
+                    }}
+                    className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-chess-board/30 focus:ring-offset-2 ${
+                      tournament.allow_registration ? 'bg-chess-board' : 'bg-gray-200'
                     }`}
-                  />
-                </button>
+                  >
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                        tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {overviewStats.map((stat) => {
+                  const Icon = stat.icon;
+                  return (
+                    <div
+                      key={stat.key}
+                      className="flex items-center gap-4 rounded-2xl border border-chess-light/40 bg-white p-4 shadow-sm"
+                    >
+                      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-chess-light/40 text-chess-board">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-chess-board/70">
+                          {stat.label}
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">{stat.value}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+          </div>
 
-            {/* Additional Details - Only show if there's meaningful data */}
-            {(tournament.city || tournament.state || tournament.location || tournament.chief_td_name || tournament.website || tournament.uscf_rated || tournament.fide_rated) && (
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Additional Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {tournament.city && tournament.state && (
-                    <div className="flex items-start space-x-3">
-                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
-                        📍
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{tournament.city}, {tournament.state}</p>
-                        {tournament.location && (
-                          <p className="text-sm text-gray-500">{tournament.location}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+          <div className="bg-white px-6 py-6 sm:px-8 lg:px-10">
+            <div className="rounded-2xl border border-chess-light/40 bg-chess-light/20 p-5">
+              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-chess-board">
+                    Key Details
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Share these essentials with your players and staff.
+                  </p>
+                </div>
+              </div>
 
-                  {tournament.chief_td_name && (
-                    <div className="flex items-start space-x-3">
-                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
-                        👨‍💼
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{tournament.chief_td_name}</p>
-                        {tournament.chief_td_uscf_id && (
-                          <p className="text-sm text-gray-500">USCF ID: {tournament.chief_td_uscf_id}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {tournament.chief_arbiter_name && (
-                    <div className="flex items-start space-x-3">
-                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
-                        ⚖️
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{tournament.chief_arbiter_name}</p>
-                        {tournament.chief_arbiter_fide_id && (
-                          <p className="text-sm text-gray-500">FIDE ID: {tournament.chief_arbiter_fide_id}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {tournament.website && (
-                    <div className="flex items-start space-x-3">
-                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
-                        🌐
-                      </div>
-                      <div>
-                        <a 
-                          href={tournament.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
-                        >
-                          Visit Website
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {(tournament.uscf_rated || tournament.fide_rated) && (
-                    <div className="flex items-start space-x-3">
-                      <div className="h-5 w-5 text-gray-400 mt-0.5 flex items-center justify-center">
-                        🏆
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Rating System</p>
-                        <div className="flex space-x-2 mt-1">
-                          {tournament.uscf_rated && (
-                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                              USCF
-                            </span>
-                          )}
-                          {tournament.fide_rated && (
-                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                              FIDE
-                            </span>
+              {hasAdditionalDetails ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {additionalDetails.map((detail) => {
+                    const Icon = detail.icon;
+                    return (
+                      <div
+                        key={detail.key}
+                        className="flex items-start gap-3 rounded-xl border border-chess-light/40 bg-white p-4 shadow-sm"
+                      >
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-chess-light/40 text-chess-board">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-chess-board/70">
+                            {detail.label}
+                          </p>
+                          <div className="mt-1 text-sm font-semibold text-gray-900">
+                            {detail.primary}
+                          </div>
+                          {detail.secondary && (
+                            <p className="mt-0.5 text-sm text-gray-600">{detail.secondary}</p>
                           )}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="rounded-xl border border-dashed border-chess-light/50 bg-white p-6 text-center">
+                  <p className="text-sm text-gray-600">
+                    Add more tournament information in the info tab to see it highlighted here.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

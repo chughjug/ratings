@@ -1390,7 +1390,7 @@ class BbpPairings {
 
         // Separate active and inactive players
         const activePlayers = [];
-        const inactivePlayers = [];
+        const byePlayers = [];
         
         for (const player of allPlayers) {
           // Check if player has intentional bye for this round
@@ -1414,25 +1414,26 @@ class BbpPairings {
           }
           
           // Inactive players or players with intentional byes should not be paired
-          if (player.status === 'inactive' || hasIntentionalBye) {
-            inactivePlayers.push(player);
+          if (player.status === 'inactive') {
+            byePlayers.push({ player, byeType: 'inactive' });
+          } else if (hasIntentionalBye) {
+            byePlayers.push({ player, byeType: 'unpaired' });
           } else {
             activePlayers.push(player);
           }
         }
 
-        // Create bye pairings for inactive players
-        const byePairings = inactivePlayers.map(player => {
-          return {
-            white_player_id: player.id,
-            black_player_id: null,
-            is_bye: true,
-            bye_type: 'inactive',
-            section: section,
-            round: round,
-            tournament_id: tournamentId
-          };
-        });
+        // Create bye pairings for non-playing players
+        const byePairings = byePlayers.map(({ player, byeType }) => ({
+          white_player_id: player.id,
+          black_player_id: null,
+          is_bye: true,
+          bye_type: byeType,
+          section: section,
+          round: round,
+          tournament_id: tournamentId,
+          result: `bye_${byeType}`
+        }));
 
         // Generate pairings only for active players
         let sectionPairings = [];
@@ -1469,14 +1470,20 @@ class BbpPairings {
         // Add all section pairings to the main list
         allPairings.push(...allSectionPairings);
         
+        const registeredByeCount = byePlayers.filter(entry => entry.byeType === 'unpaired').length;
+        const inactiveByeCount = byePlayers.filter(entry => entry.byeType === 'inactive').length;
+
         sectionResults[section] = {
           success: true,
           pairingsCount: allSectionPairings.length,
-          playersCount: activePlayers.length + inactivePlayers.length,
-          registeredByeCount: byePairings.length
+          playersCount: activePlayers.length + byePlayers.length,
+          registeredByeCount
         };
 
-        console.log(`[BBPPairings] Generated ${allSectionPairings.length} pairings for section ${section} (${activePlayers.length} active, ${inactivePlayers.length} inactive)`);
+        console.log(
+          `[BBPPairings] Generated ${allSectionPairings.length} pairings for section ${section} ` +
+          `(${activePlayers.length} active, ${registeredByeCount} registered byes, ${inactiveByeCount} inactive)`
+        );
       }
 
       return {
