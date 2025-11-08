@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Users, Trophy, Play } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Settings, Users, Trophy, Play, RefreshCw, Layers, Clock, Search as SearchIcon } from 'lucide-react';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { Player } from '../types';
 import PairingSystem from './PairingSystem';
@@ -21,6 +21,8 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sectionSearchTerm, setSectionSearchTerm] = useState('');
+  const [sectionSort, setSectionSort] = useState<'name' | 'players'>('name');
 
   useEffect(() => {
     loadTournamentData();
@@ -160,6 +162,41 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
     }
   };
 
+  const handleRefreshAll = () => {
+    loadTournamentData();
+  };
+
+  const filteredSections = useMemo(() => {
+    const query = sectionSearchTerm.trim().toLowerCase();
+    const filtered = sections.filter(section =>
+      section.name.toLowerCase().includes(query)
+    );
+
+    return filtered.sort((a, b) => {
+      if (sectionSort === 'players') {
+        return b.players.length - a.players.length || a.name.localeCompare(b.name);
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [sections, sectionSearchTerm, sectionSort]);
+
+  useEffect(() => {
+    if (!filteredSections.length) {
+      return;
+    }
+
+    const isSelectedVisible = filteredSections.some(section => section.name === selectedSection);
+    if (!isSelectedVisible) {
+      setSelectedSection(filteredSections[0].name);
+    }
+  }, [filteredSections, selectedSection]);
+
+  const totalPlayers = sections.reduce((sum, section) => sum + section.players.length, 0);
+  const totalPairings = sections.reduce((sum, section) => sum + section.pairings.length, 0);
+  const highestRound = sections.length
+    ? Math.max(...sections.map(section => section.currentRound || 0))
+    : 0;
+
   const selectedSectionData = sections.find(s => s.name === selectedSection);
 
   if (loading) {
@@ -184,120 +221,265 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournamentId }) =
     );
   }
 
-  console.log('TournamentManager rendering with tournamentId:', tournamentId);
-  console.log('Sections:', sections);
-  console.log('Selected section:', selectedSection);
-
   return (
     <div className="tournament-manager">
-      {/* Header */}
-      <div className="tournament-header">
-        <div className="tournament-title">
-          <Trophy className="h-8 w-8" />
-          <h1>Tournament Director</h1>
+      <div className="tm-page-header">
+        <div className="tm-title">
+          <Trophy className="h-10 w-10 tm-title-icon" />
+          <div>
+            <h1>Tournament Director</h1>
+            <p>Stay on top of every section, player, and round at a glance.</p>
+          </div>
         </div>
-        <div className="tournament-actions">
-          <button className="btn-secondary">
+        <div className="tm-header-actions">
+          <button
+            className="tm-icon-button"
+            onClick={handleRefreshAll}
+            aria-label="Reload tournament data"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+          <button className="btn-secondary tm-settings-button">
             <Settings className="h-4 w-4" />
             Settings
           </button>
         </div>
       </div>
 
-      {/* Section Selector */}
-      <div className="section-selector">
-        <h3>Select Section</h3>
-        <div className="section-tabs">
-          {sections.map(section => (
-            <button
-              key={section.name}
-              className={`section-tab ${selectedSection === section.name ? 'active' : ''}`}
-              onClick={() => setSelectedSection(section.name)}
-            >
-              <div className="section-name">{section.name}</div>
-              <div className="section-stats">
-                <span>{section.players.length} players</span>
-                <span>Round {section.currentRound}</span>
-              </div>
-            </button>
-          ))}
+      <div className="tm-summary-grid">
+        <div className="tm-summary-card">
+          <Users className="h-6 w-6" />
+          <div>
+            <span className="tm-summary-label">Total Players</span>
+            <span className="tm-summary-value">{totalPlayers}</span>
+          </div>
+        </div>
+        <div className="tm-summary-card">
+          <Layers className="h-6 w-6" />
+          <div>
+            <span className="tm-summary-label">Sections</span>
+            <span className="tm-summary-value">{sections.length}</span>
+          </div>
+        </div>
+        <div className="tm-summary-card">
+          <Clock className="h-6 w-6" />
+          <div>
+            <span className="tm-summary-label">Highest Round</span>
+            <span className="tm-summary-value">{highestRound || '—'}</span>
+          </div>
+        </div>
+        <div className="tm-summary-card">
+          <Trophy className="h-6 w-6" />
+          <div>
+            <span className="tm-summary-label">Pairings Loaded</span>
+            <span className="tm-summary-value">{totalPairings}</span>
+          </div>
         </div>
       </div>
 
-      {/* Selected Section */}
-      {selectedSectionData && (
-        <div className="selected-section">
-          <div className="section-header">
-            <h2>{selectedSectionData.name}</h2>
-            <div className="section-info">
-              <div className="info-item">
-                <Users className="h-4 w-4" />
-                <span>{selectedSectionData.players.length} Players</span>
-              </div>
-              <div className="info-item">
-                <Play className="h-4 w-4" />
-                <span>Round {selectedSectionData.currentRound}</span>
-              </div>
+      <div className="tm-layout">
+        <aside className="tm-sidebar">
+          <div className="tm-sidebar-header">
+            <div>
+              <h3>Sections</h3>
+              <span>{filteredSections.length} of {sections.length} shown</span>
+            </div>
+            <button
+              className="tm-icon-button"
+              onClick={handleRefreshAll}
+              aria-label="Reload all sections"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="tm-search-field">
+            <SearchIcon className="h-4 w-4" />
+            <input
+              type="search"
+              placeholder="Search sections"
+              value={sectionSearchTerm}
+              onChange={(event) => setSectionSearchTerm(event.target.value)}
+              aria-label="Search sections"
+            />
+            {sectionSearchTerm && (
+              <button
+                className="tm-clear-button"
+                onClick={() => setSectionSearchTerm('')}
+                aria-label="Clear section search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <div className="tm-sidebar-actions">
+            <span className="tm-sidebar-label">Sort by</span>
+            <div className="tm-sort-group">
+              <button
+                className={`tm-sort-button ${sectionSort === 'name' ? 'active' : ''}`}
+                onClick={() => setSectionSort('name')}
+              >
+                A → Z
+              </button>
+              <button
+                className={`tm-sort-button ${sectionSort === 'players' ? 'active' : ''}`}
+                onClick={() => setSectionSort('players')}
+              >
+                Players
+              </button>
             </div>
           </div>
 
-          <PairingSystem
-            tournamentId={tournamentId}
-            section={selectedSectionData.name}
-            round={selectedSectionData.currentRound}
-            players={selectedSectionData.players}
-            onPairingsGenerated={(pairings) => {
-              handlePairingsGenerated(selectedSectionData.name, pairings);
-              refreshSectionData(selectedSectionData.name);
-            }}
-          />
-        </div>
-      )}
+          <div className="tm-section-list">
+            {filteredSections.map(section => (
+              <button
+                key={section.name}
+                className={`tm-section-item ${selectedSection === section.name ? 'active' : ''}`}
+                onClick={() => setSelectedSection(section.name)}
+              >
+                <div className="tm-section-item-header">
+                  <span className="tm-section-name">{section.name}</span>
+                  <span className="tm-section-round">Round {section.currentRound}</span>
+                </div>
+                <div className="tm-section-meta">
+                  <span>
+                    <Users className="h-4 w-4" />
+                    {section.players.length} players
+                  </span>
+                  <span>
+                    <Trophy className="h-4 w-4" />
+                    {section.pairings.length} pairings
+                  </span>
+                </div>
+              </button>
+            ))}
 
-      {/* Sections Overview */}
-      <div className="sections-overview">
-        <h3>All Sections</h3>
-        <div className="sections-grid">
-          {sections.map(section => (
-            <div key={section.name} className="section-card">
-              <div className="section-card-header">
-                <h4>{section.name}</h4>
-                <div className={`section-status ${section.isComplete ? 'complete' : 'active'}`}>
-                  {section.isComplete ? 'Complete' : 'Active'}
-                </div>
-              </div>
-              <div className="section-card-stats">
-                <div className="stat">
-                  <Users className="h-4 w-4" />
-                  <span>{section.players.length} players</span>
-                </div>
-                <div className="stat">
-                  <Play className="h-4 w-4" />
-                  <span>Round {section.currentRound}</span>
-                </div>
-                <div className="stat">
-                  <Trophy className="h-4 w-4" />
-                  <span>{section.pairings.length} pairings</span>
-                </div>
-              </div>
-              <div className="section-card-actions">
+            {filteredSections.length === 0 && (
+              <div className="tm-empty-state">
+                <p>No sections match “{sectionSearchTerm}”.</p>
                 <button
-                  onClick={() => setSelectedSection(section.name)}
-                  className="btn-primary"
-                >
-                  Manage
-                </button>
-                <button
-                  onClick={() => refreshSectionData(section.name)}
                   className="btn-secondary"
-                  title="Refresh section data"
+                  onClick={() => setSectionSearchTerm('')}
                 >
-                  ↻
+                  Clear search
                 </button>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <section className="tm-main">
+          {selectedSectionData ? (
+            <div className="tm-card">
+              <div className="tm-card-header">
+                <div>
+                  <h2>{selectedSectionData.name}</h2>
+                  <p>Manage players, standings, and pairings for this section.</p>
+                </div>
+                <div className="tm-card-actions">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => refreshSectionData(selectedSectionData.name)}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh section
+                  </button>
+                </div>
+              </div>
+
+              <div className="tm-card-metrics">
+                <div className="tm-metric">
+                  <Users className="h-4 w-4" />
+                  <span>{selectedSectionData.players.length} Players</span>
+                </div>
+                <div className="tm-metric">
+                  <Clock className="h-4 w-4" />
+                  <span>Round {selectedSectionData.currentRound}</span>
+                </div>
+                <div className="tm-metric">
+                  <Play className="h-4 w-4" />
+                  <span>{selectedSectionData.pairings.length} Pairings</span>
+                </div>
+              </div>
+
+              <div className="tm-card-body">
+                <PairingSystem
+                  tournamentId={tournamentId}
+                  section={selectedSectionData.name}
+                  round={selectedSectionData.currentRound}
+                  players={selectedSectionData.players}
+                  onPairingsGenerated={(pairings) => {
+                    handlePairingsGenerated(selectedSectionData.name, pairings);
+                    refreshSectionData(selectedSectionData.name);
+                  }}
+                />
               </div>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="tm-empty-state">
+              <p>Select a section to begin managing pairings.</p>
+            </div>
+          )}
+
+          <div className="tm-card tm-overview-card">
+            <div className="tm-card-header">
+              <div>
+                <h3>Section Snapshot</h3>
+                <p>Quickly compare player counts, rounds, and status across sections.</p>
+              </div>
+              <button
+                className="tm-icon-button"
+                onClick={handleRefreshAll}
+                aria-label="Reload section snapshot"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="tm-overview-grid">
+              {sections.map(section => (
+                <div key={section.name} className="tm-overview-item">
+                  <div className="tm-overview-title">
+                    <span>{section.name}</span>
+                    <span className={`tm-status ${section.isComplete ? 'complete' : 'active'}`}>
+                      {section.isComplete ? 'Complete' : 'In Progress'}
+                    </span>
+                  </div>
+                  <div className="tm-overview-meta">
+                    <span>
+                      <Users className="h-4 w-4" />
+                      {section.players.length} players
+                    </span>
+                    <span>
+                      <Clock className="h-4 w-4" />
+                      Round {section.currentRound}
+                    </span>
+                    <span>
+                      <Trophy className="h-4 w-4" />
+                      {section.pairings.length} pairings
+                    </span>
+                  </div>
+                  <div className="tm-overview-actions">
+                    <button
+                      className="btn-primary"
+                      onClick={() => setSelectedSection(section.name)}
+                    >
+                      Manage
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => refreshSectionData(section.name)}
+                      title={`Refresh ${section.name}`}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
