@@ -398,6 +398,11 @@ function onFormSubmit(e) {
  */
 function processFormResponse(itemResponses) {
   try {
+    if (!itemResponses || typeof itemResponses.forEach !== 'function') {
+      console.log('No item responses found to process.');
+      return;
+    }
+
     // Convert form response to player object
     const player = convertFormResponseToPlayer(itemResponses);
     
@@ -743,16 +748,23 @@ function testSetup() {
   console.log('API Base URL:', CONFIG.API_BASE_URL);
   console.log('Tournament ID:', CONFIG.TOURNAMENT_ID);
   
-  // Test API connection
+  // Build endpoint safely
+  const baseUrl = CONFIG.API_BASE_URL.replace(/\/$/, '');
+  const endpoint = \`\${baseUrl}/api/players/api-import/\${CONFIG.TOURNAMENT_ID}\`;
   const testPayload = {
     api_key: CONFIG.API_KEY,
-    players: [],
-    source: 'test',
-    lookup_ratings: false
+    players: [{
+      name: 'API Connectivity Test Player',
+      email: 'test-connection@example.com',
+      source: 'connectivity_check'
+    }],
+    source: 'form_api_test',
+    lookup_ratings: false,
+    auto_assign_sections: false
   };
   
   try {
-    const response = UrlFetchApp.fetch(\`\${CONFIG.API_BASE_URL}/api/players/api-import/\${CONFIG.TOURNAMENT_ID}\`, {
+    const response = UrlFetchApp.fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       payload: JSON.stringify(testPayload),
@@ -760,15 +772,20 @@ function testSetup() {
     });
     
     const status = response.getResponseCode();
+    const content = response.getContentText();
     console.log(\`API Test Status: \${status}\`);
+    console.log(\`API Test Response: \${content.substring(0, 300)}\`);
     
     if (status === 200 || status === 201) {
       console.log('✅ API connection successful!');
+      safeAlert('✅ API connection successful!\\n\\nA test player named \"API Connectivity Test Player\" may have been added. You can safely remove this placeholder record.');
     } else {
       console.log('❌ API connection failed');
+      safeAlert(\`❌ API connection failed.\\nStatus: \${status}\\nResponse: \${content.substring(0, 300)}\`);
     }
   } catch (error) {
     console.log('❌ API test error:', error.toString());
+    safeAlert('❌ API test error: ' + error.toString());
   }
 }
 

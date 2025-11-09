@@ -362,7 +362,12 @@ const TournamentDetail: React.FC = () => {
         alert(`No prizes were assigned for ${selectedSection}.`);
       } else {
         const summary = prizes
-          .map((prize: any) => `${prize.prizeName} (${prize.prizeType || prize.metadata?.awardType || 'award'}) → ${prize.playerName || 'Unassigned'}`)
+          .map((prize: any) => {
+            const amountLabel = prize.prizeAmount
+              ? ` - ${typeof prize.prizeAmount === 'number' ? `$${prize.prizeAmount.toFixed(2)}` : prize.prizeAmount}`
+              : '';
+            return `${prize.prizeName} (${prize.prizeType || prize.metadata?.awardType || 'award'}) → ${prize.playerName || 'Unassigned'}${amountLabel}`;
+          })
           .join('\n');
         alert(`Prizes assigned for ${selectedSection}:\n\n${summary}`);
       }

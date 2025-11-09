@@ -123,3 +123,4 @@ Use a **Compose** action to build the JSON payload the API expects.
 - **Wufoo**: Enable Webhooks from Form Manager → Notifications, sending JSON payloads to the `/submit` endpoint; ensure HTTPS if you expose the server publicly.
 - **Formstack**: Create a REST hook (Settings → Integrations → Webhooks) pointing to your processor; use the field mapping table to align label names with expected player attributes.
 - **Cognito Forms**: Under Form Settings → Submissions, add a webhook and specify JSON format; include name and rating fields so the processor can map them correctly.
+

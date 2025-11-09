@@ -400,6 +400,10 @@ class PairingStorageService {
         if (errorOccurred) return;
 
         const id = pairing.id || uuidv4();
+        const isBye = pairing.is_bye || (!pairing.black_player_id && pairing.black_player_id !== 0);
+        const byeType = pairing.bye_type || null;
+        const normalizedResult = pairing.result || (isBye ? `bye_${byeType || 'bye'}` : null);
+
         const pairingData = [
           id,
           tournamentId,
@@ -408,9 +412,9 @@ class PairingStorageService {
           pairing.white_player_id,
           pairing.black_player_id,
           pairing.section || 'Open',
-          pairing.is_bye || false,
-          pairing.bye_type || null,
-          pairing.result || null,
+          isBye,
+          byeType,
+          normalizedResult,
           pairing.game_id || null,
           pairing.white_link || null,
           pairing.black_link || null
@@ -432,9 +436,9 @@ class PairingStorageService {
               white_player_id: pairing.white_player_id,
               black_player_id: pairing.black_player_id,
               section: pairing.section || 'Open',
-              is_bye: pairing.is_bye || false,
-              bye_type: pairing.bye_type || null,
-              result: pairing.result || null,
+              is_bye: isBye,
+              bye_type: byeType,
+              result: normalizedResult,
               game_id: pairing.game_id || null,
               white_link: pairing.white_link || null,
               black_link: pairing.black_link || null
@@ -2791,6 +2795,110 @@ router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', as
     const prizeResult = await generateSectionPrizeDistribution(tournamentId, sectionName, db, {
       prizes: Array.isArray(prizes) ? prizes : undefined
     });
+
+    if (prizeResult.prizesAwarded?.length) {
+      const awarded = prizeResult.prizesAwarded;
+      const seenPrizeNames = new Set(awarded.map(award => award.prizeName));
+
+      await new Promise((resolve, reject) => {
+        db.serialize(() => {
+          db.run('BEGIN TRANSACTION');
+
+          db.run(
+            'DELETE FROM prize_distributions WHERE tournament_id = ? AND section = ?',
+            [tournamentId, sectionName],
+            (deleteErr) => {
+              if (deleteErr) {
+                db.run('ROLLBACK');
+                reject(deleteErr);
+                return;
+              }
+
+              const stmt = db.prepare(
+                `INSERT INTO prize_distributions 
+                 (id, tournament_id, player_id, prize_id, prize_name, prize_type, amount, position, rating_category, section, tie_group, metadata) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+              );
+
+              const prizeStmt = db.prepare(
+                `INSERT INTO prizes 
+                 (id, tournament_id, name, type, position, rating_category, section, amount, description) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+              );
+
+              try {
+                awarded.forEach(award => {
+                  const prizeId = uuidv4();
+                  const distributionId = uuidv4();
+
+                  prizeStmt.run(
+                    prizeId,
+                    tournamentId,
+                    award.prizeName,
+                    award.prizeType,
+                    award.position || null,
+                    null,
+                    sectionName,
+                    award.prizeAmount ?? null,
+                    award.prizeName
+                  );
+
+                  stmt.run(
+                    distributionId,
+                    tournamentId,
+                    award.playerId,
+                    prizeId,
+                    award.prizeName,
+                    award.prizeType,
+                    award.prizeAmount ?? null,
+                    award.position || null,
+                    null,
+                    sectionName,
+                    null,
+                    JSON.stringify({
+                      awardType: award.metadata?.awardType || award.prizeType,
+                      player: award.player || null,
+                      history: award.history || []
+                    })
+                  );
+                });
+
+                stmt.finalize((stmtErr) => {
+                  if (stmtErr) {
+                    db.run('ROLLBACK');
+                    reject(stmtErr);
+                    return;
+                  }
+
+                  prizeStmt.finalize((prizeStmtErr) => {
+                    if (prizeStmtErr) {
+                      db.run('ROLLBACK');
+                      reject(prizeStmtErr);
+                      return;
+                    }
+
+                    db.run('COMMIT', (commitErr) => {
+                      if (commitErr) {
+                        db.run('ROLLBACK');
+                        reject(commitErr);
+                      } else {
+                        resolve();
+                      }
+                    });
+                  });
+                });
+              } catch (stmtError) {
+                stmt.finalize();
+                prizeStmt.finalize();
+                db.run('ROLLBACK');
+                reject(stmtError);
+              }
+            }
+          );
+        });
+      });
+    }
+
     res.json({
       success: true,
       ...prizeResult,

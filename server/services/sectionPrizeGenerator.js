@@ -108,6 +108,7 @@ const fetchSectionStandings = (db, tournamentId, normalizedSection) =>
           p.id AS player_id,
           p.name AS player_name,
           p.rating AS player_rating,
+          p.section AS player_section,
           COALESCE(SUM(r.points), 0) AS total_points,
           COUNT(CASE WHEN r.points IS NOT NULL THEN 1 END) AS games_played
         FROM players p
@@ -204,6 +205,22 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
       playerRating: finalist.player_rating,
       totalPoints: finalist.total_points,
       gamesPlayed: finalist.games_played,
+      section: finalist.player_section || targetSection,
+      player: {
+        id: finalist.player_id,
+        name: finalist.player_name,
+        rating: finalist.player_rating,
+        section: finalist.player_section || targetSection,
+        totalPoints: finalist.total_points,
+        gamesPlayed: finalist.games_played
+      },
+      history: standings.map(player => ({
+        playerId: player.player_id,
+        name: player.player_name,
+        rating: player.player_rating,
+        totalPoints: player.total_points,
+        gamesPlayed: player.games_played
+      })),
       metadata: {
         awardType: prize.type,
         ...(prize.metadata || {})
