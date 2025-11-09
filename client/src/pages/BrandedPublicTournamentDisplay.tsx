@@ -16,6 +16,18 @@ import BrandedFooter from '../components/BrandedFooter';
 import { BrandingProvider, useBranding } from '../contexts/BrandingContext';
 import '../styles/branding.css';
 
+const STATIC_TAB_LABELS: Record<string, string> = {
+  preregistered: 'Entries',
+  pairings: 'Pairings',
+  standings: 'Standings',
+  register: 'Register',
+  contact: 'Contact',
+  print: 'Print View',
+  teams: 'Teams',
+  prizes: 'Prizes',
+  analytics: 'Analytics'
+};
+
 interface PublicDisplayData {
   tournament: any;
   pairings: any[];
@@ -402,6 +414,31 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
 
   const { tournament, pairings, standings, currentRound, organization } = data;
   const stats = getTournamentStats();
+
+  const baseTabs = [
+    { key: 'preregistered', label: STATIC_TAB_LABELS.preregistered },
+    { key: 'pairings', label: STATIC_TAB_LABELS.pairings },
+    { key: 'standings', label: STATIC_TAB_LABELS.standings }
+  ];
+
+  if (tournament?.allow_registration) {
+    baseTabs.push({ key: 'register', label: STATIC_TAB_LABELS.register });
+  }
+
+  baseTabs.push({ key: 'contact', label: STATIC_TAB_LABELS.contact });
+
+  const customPageTabs = (customPages || []).map((page: any) => ({
+    key: page.slug || String(page.id),
+    label: page.name || page.title || 'Custom Page'
+  }));
+
+  const tabLabelMap = customPageTabs.reduce<Record<string, string>>((acc, tab) => {
+    acc[tab.key] = tab.label;
+    return acc;
+  }, { ...STATIC_TAB_LABELS });
+
+  const navigationTabs = [...baseTabs, ...customPageTabs];
+  const activeTabLabel = tabLabelMap[activeTab] || STATIC_TAB_LABELS.preregistered;
   
   // Helper function to get player points from standings
   const getPlayerPoints = (playerId: string) => {
@@ -452,130 +489,128 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
          } : {}}>
       {/* Simple Header with Logo Space */}
       {!isEmbedded && (
-        <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
-              {/* Company Logo Space */}
-              <div className="flex items-center space-x-4">
+        <div className="bg-white/70 backdrop-blur-md border-b border-neutral-200">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
                 {organization?.logoUrl || tournament?.logo_url ? (
-                  <img 
-                    src={organization?.logoUrl || tournament?.logo_url} 
+                  <img
+                    src={organization?.logoUrl || tournament?.logo_url}
                     alt={organization?.name || tournament?.name}
-                    className="h-12 w-auto"
+                    className="h-12 w-auto rounded-lg border border-neutral-200/70 bg-white/80 p-2"
                     onError={(e) => {
-                      // Fallback to PairCraft logo if image fails to load
                       (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
                     }}
                   />
                 ) : (
-                  <img 
+                  <img
                     src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
                     alt="PairCraft"
-                    className="h-12 w-auto"
+                    className="h-12 w-auto rounded-lg border border-neutral-200/70 bg-white/80 p-2"
                   />
                 )}
-                <div className="text-lg font-semibold text-gray-900">
-                  {organization?.name || tournament?.name || 'Chess Tournament'}
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                    {organization?.name || 'PairCraft'}
+                  </div>
+                  <div className="text-lg font-semibold text-neutral-900">
+                    {tournament?.name || 'Chess Tournament'}
+                  </div>
                 </div>
               </div>
-
-              {/* Navigation */}
-              <nav className="flex space-x-1">
+              <div className="hidden md:flex items-center gap-3">
                 <button
-                  onClick={() => setActiveTab('preregistered')}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                    activeTab === 'preregistered' 
-                      ? 'bg-gray-900 text-white shadow-sm' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  onClick={() => setShowSettings((prev) => !prev)}
+                  className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-4 py-2 text-sm font-medium text-neutral-600 transition-all hover:border-neutral-300 hover:text-neutral-900 hover:shadow-sm"
                 >
-                  Entries
+                  <Settings className="h-4 w-4" />
+                  {showSettings ? 'Hide display options' : 'Show display options'}
                 </button>
                 <button
-                  onClick={() => setActiveTab('pairings')}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                    activeTab === 'pairings' 
-                      ? 'bg-gray-900 text-white shadow-sm' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  onClick={handleShare}
+                  className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-4 py-2 text-sm font-medium text-neutral-600 transition-all hover:border-neutral-300 hover:text-neutral-900 hover:shadow-sm"
                 >
-                  Pairings
+                  <Share2 className="h-4 w-4" />
+                  Share
                 </button>
-                <button
-                  onClick={() => setActiveTab('standings')}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                    activeTab === 'standings' 
-                      ? 'bg-gray-900 text-white shadow-sm' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Standings
-                </button>
-                {tournament.allow_registration && (
-                  <button
-                    onClick={() => setActiveTab('register')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                      activeTab === 'register' 
-                        ? 'bg-gray-900 text-white shadow-sm' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    Register
-                  </button>
-                )}
-                <button
-                  onClick={() => setActiveTab('contact')}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                    activeTab === 'contact' 
-                      ? 'bg-gray-900 text-white shadow-sm' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Contact
-                </button>
-                {/* Custom Pages */}
-                {customPages && customPages.length > 0 && customPages.map((page) => (
-                  <button
-                    key={page.id}
-                    onClick={() => setActiveTab(page.slug)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                      activeTab === page.slug 
-                        ? 'bg-gray-900 text-white shadow-sm' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {page.name || page.title}
-                  </button>
-                ))}
-              </nav>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* Tournament Header */}
-      <div className="bg-white/60 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{tournament.name}</h1>
-                <div className="flex items-center space-x-6 text-sm text-gray-600 mt-2">
-                  <span><strong>Date:</strong> {tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : 'TBD'}</span>
-                  {tournament.location && <span><strong>Location:</strong> {tournament.location}</span>}
+      <div className="relative overflow-hidden border-b border-neutral-200 bg-gradient-to-br from-neutral-950 via-neutral-900 to-orange-800 text-white">
+        <div className="absolute inset-y-0 right-0 w-1/2 pointer-events-none">
+          <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.14),transparent_65%)]" />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
+          <div className="grid gap-10 md:grid-cols-[1.4fr_minmax(0,1fr)] items-center">
+            <div className="space-y-6">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                {organization?.name || 'Public Tournament'}
+              </span>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                {tournament.name}
+              </h1>
+              <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/80">
+                <div className="inline-flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-white/60" />
+                  <span>{tournament.start_date ? new Date(tournament.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date TBD'}</span>
+                </div>
+                {tournament.location && (
+                  <div className="inline-flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-white/60" />
+                    <span>{tournament.location}</span>
+                  </div>
+                )}
+                <div className="inline-flex items-center gap-2">
+                  <Users className="h-4 w-4 text-white/60" />
+                  <span>{stats?.totalPlayers || 0} players</span>
                 </div>
               </div>
-              
-              <div className="text-right">
-                <div className="text-sm text-gray-600">
-                  <strong>Total players:</strong> {stats?.totalPlayers || 0}
+            </div>
+            <div className="bg-white/10 border border-white/10 rounded-2xl p-8 shadow-xl backdrop-blur">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
+                Currently viewing
+              </div>
+              <div className="mt-3 text-3xl font-semibold text-white">
+                {activeTabLabel}
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-white/70">
+                <div>
+                  <div className="uppercase tracking-[0.2em] text-xs text-white/50">Players</div>
+                  <div className="mt-1 text-2xl font-bold text-white">{stats?.totalPlayers || 0}</div>
                 </div>
-                <div className="text-sm text-gray-600">
-                  <strong>Round:</strong> {currentRound} of {tournament.rounds}
+                <div>
+                  <div className="uppercase tracking-[0.2em] text-xs text-white/50">Round</div>
+                  <div className="mt-1 text-2xl font-bold text-white">
+                    {tournament?.rounds
+                      ? `${Math.max(currentRound || 0, 1)} / ${tournament.rounds}`
+                      : Math.max(currentRound || 0, 1)}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+          {navigationTabs.length > 0 && (
+            <nav className="mt-10 flex flex-wrap gap-2">
+              {navigationTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2 text-sm font-medium rounded-full border transition-all ${
+                    activeTab === tab.key
+                      ? 'border-white bg-white text-neutral-900 shadow-lg'
+                      : 'border-white/20 bg-white/5 text-white/80 hover:border-white/40 hover:bg-white/20 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </div>
 
