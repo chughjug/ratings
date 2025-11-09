@@ -98,23 +98,6 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
     return sections[0];
   }, [selectedSection]);
 
-  // Load data if in standalone mode
-  useEffect(() => {
-    if (tournamentId && !propTournament) {
-      loadTournamentData();
-    }
-  }, [tournamentId, propTournament, loadTournamentData]);
-
-  // Update selected section when URL changes
-  useEffect(() => {
-    if (sectionName) {
-      setSelectedSection(sectionName);
-      if (tournamentId) {
-        loadPairingsForRound(currentRound, sectionName);
-      }
-    }
-  }, [sectionName, tournamentId, currentRound, loadPairingsForRound]);
-
   useEffect(() => {
     if (propTournament) {
       setTournament(propTournament);
@@ -143,6 +126,23 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
       setSelectedSection(next);
     }
   }, [propAvailableSections, resolveSectionSelection, sectionName]);
+
+  const loadPairingsForRound = useCallback(async (round: number, sectionOverride?: string) => {
+    if (!tournamentId) return;
+
+    const activeSection = sectionOverride ?? selectedSection;
+    if (!activeSection) return;
+
+    try {
+      const sectionParam = activeSection === 'all' ? undefined : activeSection;
+      const response = await pairingApi.getByRound(tournamentId, round, sectionParam);
+      if (response.data) {
+        setPairings(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load pairings:', error);
+    }
+  }, [tournamentId, selectedSection]);
 
   const loadTournamentData = useCallback(async () => {
     if (!tournamentId) return;
@@ -203,22 +203,22 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
     sectionName
   ]);
 
-  const loadPairingsForRound = useCallback(async (round: number, sectionOverride?: string) => {
-    if (!tournamentId) return;
-
-    const activeSection = sectionOverride ?? selectedSection;
-    if (!activeSection) return;
-
-    try {
-      const sectionParam = activeSection === 'all' ? undefined : activeSection;
-      const response = await pairingApi.getByRound(tournamentId, round, sectionParam);
-      if (response.data) {
-        setPairings(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to load pairings:', error);
+  // Load data if in standalone mode
+  useEffect(() => {
+    if (tournamentId && !propTournament) {
+      loadTournamentData();
     }
-  }, [tournamentId, selectedSection]);
+  }, [tournamentId, propTournament, loadTournamentData]);
+
+  // Update selected section when URL changes
+  useEffect(() => {
+    if (sectionName) {
+      setSelectedSection(sectionName);
+      if (tournamentId) {
+        loadPairingsForRound(currentRound, sectionName);
+      }
+    }
+  }, [sectionName, tournamentId, currentRound, loadPairingsForRound]);
 
   const handleSectionChange = async (newSection: string) => {
     setSelectedSection(newSection);

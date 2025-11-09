@@ -155,8 +155,10 @@ class EnhancedPairingSystem {
   /**
    * Build bye pairings for players with intentional byes while enforcing full-point limits
    */
-  createIntentionalByePairings(playersWithByes) {
-    const playersWithoutByes = this.players.filter(player => !playersWithByes.has(player.id));
+  createIntentionalByePairings(playersWithByes, options = {}) {
+    const { ensureEven = false } = options;
+
+    let playersWithoutByes = this.players.filter(player => !playersWithByes.has(player.id));
     const playerMap = new Map(this.players.map(player => [player.id, player]));
 
     const orderedPlayerIds = this.players
@@ -198,24 +200,173 @@ class EnhancedPairingSystem {
         fullPointByeAwarded = true;
       }
 
-      byePairings.push({
-        white_player_id: player ? player.id : playerId,
-        black_player_id: null,
-        white_name: player ? player.name : null,
-        black_name: null,
-        white_rating: player ? player.rating : null,
-        black_rating: null,
-        round: this.round,
-        board: 0,
-        section: this.section,
-        tournament_id: this.tournamentId,
-        result: `bye_${byeType}`,
-        is_bye: true,
-        bye_type: byeType
+      const pairing = this.buildByePairing(player || { id: playerId }, byeType, {
+        isIntentional: !!(player && player.status !== 'inactive'),
+        autoAssigned: false
       });
+
+      byePairings.push(pairing);
     });
 
-    return { byePairings, playersWithoutByes };
+    if (ensureEven && playersWithoutByes.length % 2 !== 0) {
+      const {
+        byePairing: automaticBye,
+        playersWithoutByes: adjustedPlayers,
+        fullPointByeAwarded: updatedFullPointFlag
+      } = this.assignAutomaticBye(playersWithoutByes, allowFullPointByes, fullPointByeAwarded);
+
+      if (automaticBye) {
+        byePairings.push(automaticBye);
+        playersWithoutByes = adjustedPlayers;
+        fullPointByeAwarded = updatedFullPointFlag;
+      }
+    }
+
+    return { 
+      byePairings, 
+      playersWithoutByes,
+      fullPointByeAwarded,
+      allowFullPointByes
+    };
+  }
+
+  /**
+   * Build a standardized bye pairing record
+   */
+  buildByePairing(player, byeType, options = {}) {
+    const { isIntentional = false, autoAssigned = false } = options;
+    const safePlayer = player && typeof player === 'object' ? player : {};
+
+    return {
+      white_player_id: safePlayer.id || null,
+      black_player_id: null,
+      white_name: safePlayer.name || null,
+      black_name: null,
+      white_rating: typeof safePlayer.rating === 'number' ? safePlayer.rating : null,
+      black_rating: null,
+      white_uscf_id: safePlayer.uscf_id || null,
+      black_uscf_id: null,
+      round: this.round,
+      board: 0,
+      section: this.section,
+      tournament_id: this.tournamentId,
+      result: `bye_${byeType}`,
+      is_bye: true,
+      bye_type: byeType,
+      is_intentional_bye: isIntentional,
+      auto_assigned_bye: autoAssigned
+    };
+  }
+
+  /**
+   * Get a player's current score using available fields
+   */
+  getPlayerScore(player) {
+    if (!player || typeof player !== 'object') {
+      return 0;
+    }
+
+    const candidates = [
+      player.points,
+      player.total_points,
+      player.score,
+      player.totalPoints,
+      player.cumulative_score,
+      player.tournament_points
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+    }
+
+    return 0;
+  }
+
+  /**
+   * Select the most appropriate player to receive an automatic bye
+   */
+  selectAutomaticByeCandidate(players) {
+    if (!Array.isArray(players) || players.length === 0) {
+      return null;
+    }
+
+    const sorted = [...players].sort((a, b) => {
+      const scoreDiff = this.getPlayerScore(a) - this.getPlayerScore(b);
+      if (scoreDiff !== 0) {
+        return scoreDiff;
+      }
+
+      const ratingA = typeof a?.rating === 'number' ? a.rating : 0;
+      const ratingB = typeof b?.rating === 'number' ? b.rating : 0;
+      if (ratingA !== ratingB) {
+        return ratingA - ratingB;
+      }
+
+      const nameA = a?.name || '';
+      const nameB = b?.name || '';
+      return nameA.localeCompare(nameB);
+    });
+
+    const eligible = sorted.find(player =>
+      player &&
+      player.status !== 'inactive' &&
+      !this.hasPlayerReceivedFullPointBye(player.id)
+    );
+
+    return eligible || sorted[0];
+  }
+
+  /**
+   * Automatically assign a bye when the remaining player pool is odd
+   */
+  assignAutomaticBye(playersWithoutByes, allowFullPointByes, fullPointByeAwarded) {
+    if (!Array.isArray(playersWithoutByes) || playersWithoutByes.length % 2 === 0) {
+      return {
+        byePairing: null,
+        playersWithoutByes,
+        fullPointByeAwarded
+      };
+    }
+
+    const candidate = this.selectAutomaticByeCandidate(playersWithoutByes);
+
+    if (!candidate) {
+      return {
+        byePairing: null,
+        playersWithoutByes,
+        fullPointByeAwarded
+      };
+    }
+
+    let byeType = 'half_point_bye';
+
+    if (candidate.status === 'inactive') {
+      byeType = 'inactive';
+    } else if (
+      allowFullPointByes &&
+      !fullPointByeAwarded &&
+      !this.hasPlayerReceivedFullPointBye(candidate.id)
+    ) {
+      byeType = 'unpaired';
+      fullPointByeAwarded = true;
+    }
+
+    console.log(`[EnhancedPairingSystem] Automatically assigning ${byeType === 'unpaired' ? 'full-point' : 'half-point'} bye to ${candidate.name} to balance pairings`);
+
+    const byePairing = this.buildByePairing(candidate, byeType, {
+      isIntentional: false,
+      autoAssigned: true
+    });
+
+    const remainingPlayers = playersWithoutByes.filter(player => player.id !== candidate.id);
+
+    return {
+      byePairing,
+      playersWithoutByes: remainingPlayers,
+      fullPointByeAwarded
+    };
   }
 
   /**
@@ -333,7 +484,9 @@ class EnhancedPairingSystem {
     try {
       // Filter out players with intentional byes for this round
       const playersWithByes = this.getPlayersWithIntentionalByes();
-      const { byePairings, playersWithoutByes } = this.createIntentionalByePairings(playersWithByes);
+      const { byePairings, playersWithoutByes } = this.createIntentionalByePairings(playersWithByes, {
+        ensureEven: true
+      });
       
       console.log(`[EnhancedPairingSystem] ${playersWithByes.size} players have intentional byes, ${playersWithoutByes.length} players available for pairing`);
       
@@ -562,7 +715,9 @@ class EnhancedPairingSystem {
     
     // Filter out players with intentional byes for this round
     const playersWithByes = this.getPlayersWithIntentionalByes();
-    const { byePairings, playersWithoutByes } = this.createIntentionalByePairings(playersWithByes);
+    const { byePairings, playersWithoutByes } = this.createIntentionalByePairings(playersWithByes, {
+      ensureEven: true
+    });
     
     console.log(`[EnhancedPairingSystem] ${playersWithByes.size} players have intentional byes, ${playersWithoutByes.length} players available for pairing`);
     
@@ -600,7 +755,9 @@ class EnhancedPairingSystem {
   async generatePairings() {
     // Filter out players with intentional byes for this round
     const playersWithByes = this.getPlayersWithIntentionalByes();
-    const { byePairings, playersWithoutByes } = this.createIntentionalByePairings(playersWithByes);
+    const { byePairings, playersWithoutByes } = this.createIntentionalByePairings(playersWithByes, {
+      ensureEven: true
+    });
     
     console.log(`[EnhancedPairingSystem] ${playersWithByes.size} players have intentional byes, ${playersWithoutByes.length} players available for pairing`);
     
