@@ -8,6 +8,7 @@ const TeamSwissPairingSystem = require('../utils/teamSwissPairingSystem');
 const LichessSwissIntegration = require('../utils/lichessSwissIntegration');
 const smsService = require('../services/smsService');
 const axios = require('axios');
+const { generateSectionPrizeDistribution } = require('../services/sectionPrizeGenerator');
 const { cleanupTournamentData } = require('../services/dataCleanupService');
 const OnlineGameService = require('../services/onlineGameService');
 const router = express.Router();
@@ -2742,10 +2743,29 @@ router.post('/tournament/:tournamentId/round/:round/complete', async (req, res) 
 
     // Check if this was the last round for this section
     if (roundNum >= tournament.rounds) {
+      const targetSectionName = sectionName || 'Open';
+      let prizeDistribution = [];
+      let prizeGenerationError = null;
+      let prizeMetadata = null;
+
+      try {
+        const prizeResult = await generateSectionPrizeDistribution(tournamentId, targetSectionName, db);
+        prizeDistribution = prizeResult.prizesAwarded || [];
+        prizeMetadata = prizeResult.metadata || null;
+        console.log(`[PrizeDistribution] Generated ${prizeDistribution.length} prize records for section "${targetSectionName}" (tournament ${tournamentId}).`);
+      } catch (prizeError) {
+        prizeGenerationError = prizeError?.message || String(prizeError);
+        console.warn(`[PrizeDistribution] Failed to generate prizes for section "${targetSectionName}" (tournament ${tournamentId}):`, prizeGenerationError);
+      }
+
       res.json({ 
-        message: `Round ${roundNum} completed for ${sectionName || 'Open'} section! Section finished.`,
+        message: `Round ${roundNum} completed for ${targetSectionName} section! Section finished.`,
         sectionCompleted: true,
-        nextRound: null
+        nextRound: null,
+        prizeDistribution,
+        prizeDistributionGenerated: prizeDistribution.length > 0,
+        prizeGenerationError,
+        prizeMetadata
       });
     } else {
       res.json({ 

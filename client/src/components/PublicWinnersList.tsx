@@ -179,3 +179,4 @@ const PublicWinnersList: React.FC<PublicWinnersListProps> = ({ tournamentId }) =
 
 export default PublicWinnersList;
 
+
