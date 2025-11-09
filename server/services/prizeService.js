@@ -15,6 +15,73 @@
 
 const { calculateTournamentTiebreakers } = require('../utils/tiebreakers');
 
+const DEFAULT_POSITION_PAYOUTS = [
+  { position: 1, percentage: 0.4, name: '1st Place' },
+  { position: 2, percentage: 0.25, name: '2nd Place' },
+  { position: 3, percentage: 0.15, name: '3rd Place' },
+  { position: 4, percentage: 0.1, name: '4th Place' },
+  { position: 5, percentage: 0.1, name: '5th Place' }
+];
+
+const runAsync = (db, sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(this);
+      }
+    });
+  });
+
+function normalizePrizeSettings(tournament, standings, rawSettings) {
+  const baseSettings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
+  const normalized = {
+    enabled: Boolean(baseSettings.enabled),
+    autoAssign: Boolean(baseSettings.autoAssign),
+    sections: Array.isArray(baseSettings.sections) ? [...baseSettings.sections] : []
+  };
+
+  if (normalized.sections.length === 0) {
+    const defaultStructure = generateStandardPrizeStructure(
+      tournament,
+      standings.length || 0,
+      tournament?.prize_fund || 0
+    );
+    normalized.sections = Array.isArray(defaultStructure.sections) ? defaultStructure.sections : [];
+  }
+
+  normalized.sections = normalized.sections.map(section => {
+    const sectionCopy = {
+      name: section?.name || 'Open',
+      prizes: Array.isArray(section?.prizes) ? [...section.prizes] : [],
+      prizeFund:
+        section?.prizeFund ??
+        section?.cashFund ??
+        baseSettings.prizeFund ??
+        tournament?.prize_fund ??
+        0
+    };
+
+    const hasCashPrizes = sectionCopy.prizes.some(prize => prize.type === 'cash');
+    if (!hasCashPrizes && sectionCopy.prizeFund > 0) {
+      DEFAULT_POSITION_PAYOUTS.forEach(payout => {
+        sectionCopy.prizes.push({
+          name: payout.name,
+          type: 'cash',
+          position: payout.position,
+          amount: Math.round(sectionCopy.prizeFund * payout.percentage * 100) / 100,
+          description: `${payout.name} (${Math.round(payout.percentage * 100)}% of fund)`
+        });
+      });
+    }
+
+    return sectionCopy;
+  });
+
+  return normalized;
+}
+
 /**
  * Calculate and distribute prizes based on tournament settings
  * @param {string} tournamentId - Tournament ID
@@ -39,15 +106,17 @@ async function calculateAndDistributePrizes(tournamentId, db) {
     }
 
     const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
-    const prizeSettings = settings.prizes || {};
+    let prizeSettings = settings.prizes || {};
+
+    // Get standings using the same logic as the standings endpoint
+    const standings = await getStandingsForPrizes(tournamentId, db);
+
+    prizeSettings = normalizePrizeSettings(tournament, standings, prizeSettings);
 
     if (!prizeSettings.enabled || !prizeSettings.sections || prizeSettings.sections.length === 0) {
       console.log(`No prize configuration found for tournament ${tournamentId}`);
       return [];
     }
-
-    // Get standings using the same logic as the standings endpoint
-    const standings = await getStandingsForPrizes(tournamentId, db);
 
     // Get unique sections from standings (this is the actual source of truth)
     const actualSections = new Set();
@@ -60,19 +129,8 @@ async function calculateAndDistributePrizes(tournamentId, db) {
     console.log(`Sections found in standings: ${Array.from(actualSections).join(', ')}`);
 
     // Clear existing distributions
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM prize_distributions WHERE tournament_id = ?', [tournamentId], (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-    
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM prizes WHERE tournament_id = ?', [tournamentId], (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    await runAsync(db, 'DELETE FROM prize_distributions WHERE tournament_id = ?', [tournamentId]);
+    await runAsync(db, 'DELETE FROM prizes WHERE tournament_id = ?', [tournamentId]);
 
     const distributions = [];
     
@@ -106,112 +164,71 @@ async function calculateAndDistributePrizes(tournamentId, db) {
     // Save distributions to database
     if (distributions.length > 0) {
       const { v4: uuidv4 } = require('uuid');
-      
-      // First, create prize definitions in the prizes table
-      // Note: special_prize field would need to be added to database schema if not present
-      const prizeStmt = db.prepare(`
-        INSERT INTO prizes (id, tournament_id, name, type, position, rating_category, section, amount, description)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
-      // Then create distributions in the prize_distributions table
-      // Note: original_prize_amounts and is_pooled are stored in description or could be added as columns
-      const distStmt = db.prepare(`
-        INSERT INTO prize_distributions (id, tournament_id, player_id, prize_id, prize_name, prize_type, amount, position, rating_category, section, tie_group)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      
-      // Group distributions by prize to avoid duplicates
-      const prizeMap = new Map();
-      
+
+      const prizeEntries = [];
+      const distributionEntries = [];
+      const prizeKeyMap = new Map();
+
       distributions.forEach(dist => {
-        // Ensure required fields are set
-        if (!dist.prize_name || !dist.prize_type) {
-          console.error('Invalid distribution object missing required fields:', dist);
-          return; // Skip invalid distributions
+        if (!dist || !dist.prize_name || !dist.prize_type || !dist.player_id) {
+          console.error('Skipping invalid distribution record', dist);
+          return;
         }
-        
-        const prizeKey = `${dist.prize_name}-${dist.prize_type}-${dist.section || ''}-${dist.position || ''}-${dist.rating_category || ''}`;
-        if (!prizeMap.has(prizeKey)) {
+
+        const prizeKey = [
+          dist.prize_name,
+          dist.prize_type,
+          dist.section || '',
+          dist.position || '',
+          dist.rating_category || ''
+        ].join('::');
+
+        if (!prizeKeyMap.has(prizeKey)) {
           const prizeId = uuidv4();
-          prizeMap.set(prizeKey, {
-            prizeId,
-            prize: {
-              id: prizeId,
-              tournament_id: tournamentId,
-              name: dist.prize_name,
-              type: dist.prize_type,
-              position: dist.position || null,
-              rating_category: dist.rating_category || null,
-              section: dist.section || null,
-              amount: dist.amount || null,
-              description: dist.prize_name
-            },
-            distributions: []
+          prizeKeyMap.set(prizeKey, prizeId);
+          prizeEntries.push({
+            id: prizeId,
+            tournament_id: tournamentId,
+            name: dist.prize_name,
+            type: dist.prize_type,
+            position: dist.position || null,
+            rating_category: dist.rating_category || null,
+            section: dist.section || null,
+            amount: typeof dist.amount === 'number' ? dist.amount : null,
+            description: dist.description || dist.prize_name
           });
         }
-        
-        prizeMap.get(prizeKey).distributions.push({
+
+        distributionEntries.push({
           id: uuidv4(),
           tournament_id: tournamentId,
           player_id: dist.player_id,
-          prize_id: prizeMap.get(prizeKey).prizeId,
+          prize_id: prizeKeyMap.get(prizeKey),
           prize_name: dist.prize_name,
           prize_type: dist.prize_type,
-          amount: dist.amount || null,
+          amount: typeof dist.amount === 'number' ? dist.amount : null,
           position: dist.position || null,
           rating_category: dist.rating_category || null,
           section: dist.section || null,
           tie_group: dist.tie_group || null
         });
       });
-      
-      // Insert prizes and distributions with proper promise handling
-      return new Promise((resolve, reject) => {
-        let completed = 0;
-        let total = 0;
-        let hasError = false;
-        
-        const checkComplete = () => {
-          completed++;
-          if (completed === total && !hasError) {
-            prizeStmt.finalize();
-            distStmt.finalize();
-            console.log(`Successfully distributed ${distributions.length} prizes for tournament ${tournamentId}`);
-            resolve(distributions);
-          } else if (completed === total && hasError) {
-            prizeStmt.finalize();
-            distStmt.finalize();
-            reject(new Error('Some prize distributions failed to save'));
-          }
-        };
-        
-        // Count total operations
-        prizeMap.forEach(({ prize, distributions: dists }) => {
-          if (prize.name && prize.type) {
-            total++; // Prize insert
-            total += dists.length; // Distribution inserts
-          }
-        });
-        
-        if (total === 0) {
-          prizeStmt.finalize();
-          distStmt.finalize();
-          console.log('No valid prizes to save');
-          resolve(distributions);
-          return;
-        }
-        
-        // Insert prizes and distributions
-        prizeMap.forEach(({ prize, distributions: dists }) => {
-          try {
-            // Validate prize before inserting
-            if (!prize.name || !prize.type) {
-              console.error('Invalid prize object missing required fields:', prize);
-              return;
-            }
-            
-            prizeStmt.run([
+
+      if (prizeEntries.length === 0 || distributionEntries.length === 0) {
+        console.log('No valid prize entries to persist.');
+        return distributions;
+      }
+
+      await runAsync(db, 'BEGIN TRANSACTION');
+      try {
+        for (const prize of prizeEntries) {
+          await runAsync(
+            db,
+            `
+              INSERT INTO prizes (id, tournament_id, name, type, position, rating_category, section, amount, description)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            [
               prize.id,
               prize.tournament_id,
               prize.name,
@@ -221,58 +238,46 @@ async function calculateAndDistributePrizes(tournamentId, db) {
               prize.section,
               prize.amount,
               prize.description
-            ], (err) => {
-              if (err) {
-                console.error('Error inserting prize:', err);
-                console.error('Prize data:', prize);
-                hasError = true;
-                checkComplete();
-              } else {
-                checkComplete();
-              }
-            });
-            
-            dists.forEach(dist => {
-              // Validate distribution before inserting
-              if (!dist.prize_name || !dist.prize_type || !dist.player_id) {
-                console.error('Invalid distribution object missing required fields:', dist);
-                checkComplete(); // Count as completed even if skipped
-                return;
-              }
-              
-              distStmt.run([
-                dist.id,
-                dist.tournament_id,
-                dist.player_id,
-                dist.prize_id,
-                dist.prize_name,
-                dist.prize_type,
-                dist.amount,
-                dist.position,
-                dist.rating_category,
-                dist.section,
-                dist.tie_group
-              ], (err) => {
-                if (err) {
-                  console.error('Error inserting prize distribution:', err);
-                  console.error('Distribution data:', dist);
-                  hasError = true;
-                }
-                checkComplete();
-              });
-            });
-          } catch (err) {
-            console.error('Error saving prize:', err);
-            console.error('Prize object:', prize);
-            hasError = true;
-            checkComplete();
-          }
-        });
-      });
-    } else {
-      // Return empty array wrapped in resolved promise for consistency
-      return Promise.resolve([]);
+            ]
+          );
+        }
+
+        for (const dist of distributionEntries) {
+          await runAsync(
+            db,
+            `
+              INSERT INTO prize_distributions (id, tournament_id, player_id, prize_id, prize_name, prize_type, amount, position, rating_category, section, tie_group)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            [
+              dist.id,
+              dist.tournament_id,
+              dist.player_id,
+              dist.prize_id,
+              dist.prize_name,
+              dist.prize_type,
+              dist.amount,
+              dist.position,
+              dist.rating_category,
+              dist.section,
+              dist.tie_group
+            ]
+          );
+        }
+
+        await runAsync(db, 'COMMIT');
+        console.log(`Successfully distributed ${distributionEntries.length} prizes for tournament ${tournamentId}`);
+      } catch (persistError) {
+        await runAsync(db, 'ROLLBACK');
+        console.error('Error saving prize distributions:', persistError);
+        throw persistError;
+      }
+
+      return distributions;
     }
+
+    console.log(`No prize distributions generated for tournament ${tournamentId}`);
+    return [];
 
   } catch (error) {
     console.error('Error calculating and distributing prizes:', error);
