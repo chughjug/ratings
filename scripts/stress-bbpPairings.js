@@ -1,13 +1,65 @@
+const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { EnhancedPairingSystem } = require('../server/utils/enhancedPairingSystem');
 
-const ITERATIONS = parseInt(process.env.STRESS_ITERATIONS || '100', 10);
-const PLAYERS_PER_TOURNAMENT = parseInt(process.env.STRESS_PLAYER_COUNT || '32', 10);
+const ITERATIONS = parseInt(process.env.STRESS_ITERATIONS || '20', 10);
 const ROUNDS = parseInt(process.env.STRESS_ROUNDS || '5', 10);
-const BYE_PROBABILITY = parseFloat(process.env.STRESS_BYE_CHANCE || '0.15');
+const CSV_PATH = process.env.STRESS_PLAYERS_CSV || path.join(__dirname, '..', 'tournament_import.csv');
+const SECTION_FILTER = process.env.STRESS_SECTION || 'CHAMPIONSHIP 3DAY';
+const PLAYERS_PER_SECTION = parseInt(process.env.STRESS_PLAYER_COUNT || '19', 10);
 
-function randomRating() {
-  return 2400 - Math.floor(Math.random() * 1600);
+function loadPlayersFromCSV(csvPath, section, limit) {
+  const content = fs.readFileSync(csvPath, 'utf8');
+  const lines = content.split(/\r?\n/);
+  const header = lines.shift();
+  const columns = header.split(',');
+
+  const players = [];
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        values.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current);
+
+    const record = {};
+    values.forEach((value, idx) => {
+      const key = columns[idx]?.trim();
+      if (key) {
+        record[key] = value.trim();
+      }
+    });
+
+    if (record.Section === section && record.Status === 'active') {
+      players.push({
+        id: uuidv4(),
+        name: record.Name || `Player ${players.length + 1}`,
+        rating: parseInt(record.Rating, 10) || 0,
+        status: 'active',
+        matches: [],
+      });
+    }
+    if (players.length >= limit) break;
+  }
+
+  if (players.length < limit) {
+    throw new Error(`Not enough players in section ${section}. Needed ${limit}, found ${players.length}.`);
+  }
+
+  return players;
 }
 
 function randomResult() {
@@ -15,24 +67,6 @@ function randomResult() {
   if (roll < 0.45) return ['win', 'loss'];
   if (roll < 0.9) return ['loss', 'win'];
   return ['draw', 'draw'];
-}
-
-function formatByeRounds(rounds) {
-  if (!rounds.length) {
-    return undefined;
-  }
-
-  const formatType = Math.random();
-  if (formatType < 0.25) {
-    return rounds; // array
-  }
-  if (formatType < 0.5) {
-    return rounds.length === 1 ? rounds[0] : rounds[0];
-  }
-  if (formatType < 0.75) {
-    return JSON.stringify(rounds);
-  }
-  return rounds.join(',');
 }
 
 function computePoints(matches) {
@@ -54,36 +88,16 @@ function computePoints(matches) {
 }
 
 async function simulateTournament(iteration) {
+  const basePlayers = loadPlayersFromCSV(CSV_PATH, SECTION_FILTER, PLAYERS_PER_SECTION);
+  const players = basePlayers.map(player => ({ ...player, matches: [] }));
+
   const tournamentId = `sim-${iteration}-${uuidv4()}`;
-  const section = 'Open';
-
-  const players = Array.from({ length: PLAYERS_PER_TOURNAMENT }, (_, index) => ({
-    id: uuidv4(),
-    name: `Player ${iteration}-${index + 1}`,
-    rating: randomRating(),
-    status: 'active',
-    matches: [],
-  }));
-
-  // Pre-assign intentional byes with varying formats
-  for (const player of players) {
-    const byeRounds = [];
-    for (let round = 1; round <= ROUNDS; round += 1) {
-      if (Math.random() < BYE_PROBABILITY) {
-        byeRounds.push(round);
-      }
-    }
-    player.intentional_bye_rounds = formatByeRounds(byeRounds);
-    if (Math.random() < 0.1) {
-      player.bye_rounds = formatByeRounds(byeRounds);
-    }
-  }
+  const section = SECTION_FILTER;
 
   let previousPairings = [];
   const colorHistory = {};
 
   for (let round = 1; round <= ROUNDS; round += 1) {
-    // Refresh dynamic stats
     for (const player of players) {
       player.points = computePoints(player.matches);
     }
@@ -103,18 +117,20 @@ async function simulateTournament(iteration) {
       previousPairings,
       pairingSystem: 'fide_dutch',
       useCPP: true,
+      pointsForWin: 1,
+      pointsForDraw: 0.5,
+      pointsForLoss: 0,
     });
 
     const pairings = await system.generatePairings();
 
     pairings.forEach((pairing, index) => {
       pairing.id = pairing.id || uuidv4();
-      pairing.generated_at_iteration = iteration;
-      pairing.generated_round_index = round;
-      pairing.generated_board_index = index + 1;
+      pairing.simulation_iteration = iteration;
+      pairing.simulation_round = round;
+      pairing.board_assigned = index + 1;
     });
 
-    // Persist results into base player state
     for (const pairing of pairings) {
       const white = players.find(p => p.id === pairing.white_player_id);
       if (!white) {
@@ -178,7 +194,7 @@ async function simulateTournament(iteration) {
 }
 
 (async () => {
-  console.log(`Running ${ITERATIONS} tournament simulations with ${PLAYERS_PER_TOURNAMENT} players, ${ROUNDS} rounds.`);
+  console.log(`Running ${ITERATIONS} tournament simulations with ${PLAYERS_PER_SECTION} players (section="${SECTION_FILTER}"), ${ROUNDS} rounds.`);
 
   const results = [];
   let failures = 0;

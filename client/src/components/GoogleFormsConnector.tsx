@@ -231,7 +231,7 @@ const FORMS_CONFIG = {
  * 1. Open your Google Form
  * 2. Go to the three dots (⋮) → Script editor
  * 3. Replace the default code with this script
- * 4. Save and set up the trigger
+ * 4. Save and set up the trigger (onFormSubmit)
  */
 
 // ============================================================================
@@ -255,15 +255,26 @@ const CONFIG = {
 };
 
 // ============================================================================
-// FIELD MAPPING CONFIGURATION
+// FIELD MAPPING CONFIGURATION (Enhanced for First/Last Name)
 // ============================================================================
 
 const FIELD_MAPPING = {
+  // --- Enhanced Name Fields for Splitting ---
   name: {
     keywords: ['name', 'player', 'full name', 'player name', 'first name and last name', 'full player name'],
-    excludeKeywords: ['parent', 'guardian', 'emergency'],
+    // Exclude if specific name parts are asked, so first_name/last_name get matched instead
+    excludeKeywords: ['parent', 'guardian', 'emergency', 'first', 'last'], 
     required: true
   },
+  first_name: { // New field for matching
+    keywords: ['first name', 'given name', 'player first name'],
+    excludeKeywords: ['parent', 'guardian', 'emergency'],
+  },
+  last_name: { // New field for matching
+    keywords: ['last name', 'surname', 'family name', 'player last name'],
+    excludeKeywords: ['parent', 'guardian', 'emergency'],
+  },
+  // ------------------------------------------
   uscf_id: {
     keywords: ['uscf', 'uscf id', 'uscf number', 'member id', 'membership id', 'chess id', 'player id'],
     excludeKeywords: []
@@ -286,7 +297,8 @@ const FIELD_MAPPING = {
   },
   phone: {
     keywords: ['phone', 'telephone', 'phone number', 'mobile', 'contact number'],
-    excludeKeywords: ['parent', 'guardian', 'emergency']
+    excludeKeywords: ['parent', 'guardian', 'emergency'],
+    strict: true // Requires higher match score
   },
   school: {
     keywords: ['school', 'institution', 'college', 'university', 'organization'],
@@ -318,7 +330,8 @@ const FIELD_MAPPING = {
   },
   parent_phone: {
     keywords: ['parent phone', 'parent number', 'guardian phone', 'parents phone'],
-    excludeKeywords: []
+    excludeKeywords: [],
+    strict: true // Requires higher match score
   },
   emergency_contact: {
     keywords: ['emergency', 'emergency contact', 'emergency name'],
@@ -326,7 +339,8 @@ const FIELD_MAPPING = {
   },
   emergency_phone: {
     keywords: ['emergency phone', 'emergency number', 'emergency contact number'],
-    excludeKeywords: []
+    excludeKeywords: [],
+    strict: true // Requires higher match score
   },
   notes: {
     keywords: ['notes', 'comments', 'additional', 'special needs', 'dietary', 'restrictions'],
@@ -387,8 +401,9 @@ function processFormResponse(itemResponses) {
     // Convert form response to player object
     const player = convertFormResponseToPlayer(itemResponses);
     
+    // Check for required field: name (either full name or first+last name combined)
     if (!player || !player.name) {
-      console.log('Invalid form response: missing name');
+      console.log('Invalid form response: missing combined player name');
       return;
     }
     
@@ -419,14 +434,24 @@ function processFormResponse(itemResponses) {
  */
 function convertFormResponseToPlayer(itemResponses) {
   const player = {};
+  const tempNameParts = {}; // Temporarily store first_name and last_name
   const fieldMatches = []; // For debugging
+  
+  // Helper to Title Case a string
+  const toTitleCase = (str) => {
+      if (!str) return '';
+      return str
+        .toLowerCase()
+        .replace(/\\b\\w/g, l => l.toUpperCase())
+        .trim();
+  };
   
   // Map form questions to player fields
   itemResponses.forEach((itemResponse, index) => {
     const question = itemResponse.getItem().getTitle();
     const answer = itemResponse.getResponse();
     
-    if (!answer || !answer.trim()) return;
+    if (!answer || !answer.toString().trim()) return;
     
     // Find best field match
     const match = findBestFieldMatch(question);
@@ -446,6 +471,12 @@ function convertFormResponseToPlayer(itemResponses) {
       
       // Type-specific processing
       switch (field) {
+        case 'first_name':
+        case 'last_name':
+          // Store name parts temporarily for later combination
+          tempNameParts[field] = toTitleCase(answerValue);
+          break;
+          
         case 'rating':
           const rating = parseFloat(answerValue);
           if (!isNaN(rating) && rating > 0) {
@@ -457,10 +488,7 @@ function convertFormResponseToPlayer(itemResponses) {
         case 'parent_name':
         case 'emergency_contact':
           // Clean up name: title case
-          player[field] = answerValue
-            .toLowerCase()
-            .replace(/\\b\\w/g, l => l.toUpperCase())
-            .trim();
+          player[field] = toTitleCase(answerValue);
           break;
           
         case 'email':
@@ -475,7 +503,10 @@ function convertFormResponseToPlayer(itemResponses) {
         case 'parent_phone':
         case 'emergency_phone':
           // Clean up phone number
-          player[field] = answerValue.replace(/\\D/g, ''); // Keep only digits
+          const cleanedPhone = answerValue.replace(/\\D/g, '');
+          if (cleanedPhone.length >= 7) {
+              player[field] = cleanedPhone;
+          }
           break;
           
         default:
@@ -492,6 +523,15 @@ function convertFormResponseToPlayer(itemResponses) {
       });
     }
   });
+  
+  // --- LOGIC TO COMBINE FIRST NAME + LAST NAME ---
+  if (!player.name && (tempNameParts.first_name || tempNameParts.last_name)) {
+      player.name = \`\${tempNameParts.first_name || ''} \${tempNameParts.last_name || ''}\`.trim();
+      if (player.name) {
+          console.log(\`✅ Combined name from parts: \${player.name}\`);
+      }
+  }
+  // --- END NAME COMBINATION LOGIC ---
   
   // Log field extraction for debugging
   if (fieldMatches.length > 0) {
@@ -518,7 +558,7 @@ function findBestFieldMatch(question) {
   let bestField = null;
   let bestScore = 0;
   const scores = {};
-  
+
   for (const field in FIELD_MAPPING) {
     const score = calculateFieldScore(question, field);
     scores[field] = score;
@@ -529,8 +569,14 @@ function findBestFieldMatch(question) {
     }
   }
   
-  // Only return match if score is above threshold (20 points minimum)
-  if (bestScore >= 20) {
+  // Only return match if score is above threshold
+  let requiredThreshold = 20; // Default threshold
+  
+  if (bestField && FIELD_MAPPING[bestField].strict) {
+      requiredThreshold = 60;
+  }
+  
+  if (bestScore >= requiredThreshold) {
     return { field: bestField, score: bestScore };
   }
   
@@ -538,7 +584,7 @@ function findBestFieldMatch(question) {
 }
 
 /**
- * Calculate match score for a question to a field
+ * Calculate match score for a question to a field (Enhanced Word Overlap)
  * Higher score = better match
  */
 function calculateFieldScore(question, field) {
@@ -548,30 +594,40 @@ function calculateFieldScore(question, field) {
   const questionLower = question.toLowerCase().trim();
   let score = 0;
   
-  // Check if exclude keywords are present
+  // 1. Check for Exclude Keywords 
   for (const exclude of config.excludeKeywords) {
     if (questionLower.includes(exclude.toLowerCase())) {
       return 0; // Exclude this match entirely
     }
   }
   
-  // Check keywords with scoring
+  // 2. Tokenize the question into words (ignore short words like 'is', 'a', 'the')
+  const questionWords = questionLower.replace(/[^a-z0-9\\s]/g, ' ').split(/\\s+/).filter(w => w.length > 2);
+  // 3. Check for Keyword Matches 
   for (const keyword of config.keywords) {
     const keywordLower = keyword.toLowerCase();
     
-    // Exact match = highest score
+    // Tokenize keyword
+    const keywordWords = keywordLower.replace(/[^a-z0-9\\s]/g, ' ').split(/\\s+/).filter(w => w.length > 2);
+    let overlapCount = 0;
+    
+    keywordWords.forEach(kw => {
+      if (questionWords.includes(kw)) {
+        overlapCount += 1;
+      }
+    });
+    // Score based on overlap
+    if (overlapCount > 0) {
+      score += overlapCount * 25; 
+      if (overlapCount === keywordWords.length && keywordWords.length > 0) {
+          score += 20;
+      }
+    }
+    
+    // Existing high-value matches for certainty
     if (questionLower === keywordLower) {
       score += 100;
     }
-    // Starts with keyword = high score
-    else if (questionLower.startsWith(keywordLower)) {
-      score += 50;
-    }
-    // Ends with keyword = high score
-    else if (questionLower.endsWith(keywordLower)) {
-      score += 50;
-    }
-    // Contains keyword = medium score
     else if (questionLower.includes(keywordLower)) {
       score += 30;
     }

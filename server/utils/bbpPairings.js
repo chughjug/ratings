@@ -214,7 +214,7 @@ class BbpPairings {
           if (player.status === 'inactive') {
             byePlayers.push({ player, byeType: 'inactive' });
           } else if (hasIntentionalBye) {
-            byePlayers.push({ player, byeType: 'unpaired' });
+            byePlayers.push({ player, byeType: 'half_point_bye' });
           } else {
             activePlayers.push(player);
           }
