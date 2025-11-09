@@ -25,30 +25,6 @@ class PairingStorageService {
     this.db = database;
   }
 
-  normalizePairingRow(row) {
-    if (!row || typeof row !== 'object') {
-      return row;
-    }
-
-    const isBye =
-      row.is_bye === 1 ||
-      row.is_bye === true ||
-      row.is_bye === '1' ||
-      (!row.black_player_id && row.black_player_id !== 0);
-
-    const numericBoard =
-      row.board === null || row.board === undefined
-        ? null
-        : Number.isNaN(Number(row.board))
-          ? row.board
-          : Number(row.board);
-
-    return {
-      ...row,
-      board: isBye || numericBoard === 0 ? null : numericBoard
-    };
-  }
-
   /**
    * Store pairings for a specific round with full validation and transaction support
    */
@@ -428,18 +404,11 @@ class PairingStorageService {
         const byeType = pairing.bye_type || null;
         const normalizedResult = pairing.result || (isBye ? `bye_${byeType || 'bye'}` : null);
 
-        const boardValue =
-          typeof pairing.board === 'number'
-            ? pairing.board
-            : isBye
-              ? 0
-              : index + 1;
-
         const pairingData = [
           id,
           tournamentId,
           round, // Ensure correct round number
-          boardValue,
+          pairing.board || (index + 1),
           pairing.white_player_id,
           pairing.black_player_id,
           pairing.section || 'Open',
@@ -463,7 +432,7 @@ class PairingStorageService {
               id: id,
               tournament_id: tournamentId,
               round: round,
-              board: isBye ? null : boardValue,
+              board: pairing.board || (index + 1),
               white_player_id: pairing.white_player_id,
               black_player_id: pairing.black_player_id,
               section: pairing.section || 'Open',
@@ -482,7 +451,7 @@ class PairingStorageService {
         if (err && !errorOccurred) {
           reject(err);
         } else if (!errorOccurred) {
-          resolve(storedPairings.map(row => this.normalizePairingRow(row)));
+          resolve(storedPairings);
         }
       });
     });
@@ -503,11 +472,11 @@ class PairingStorageService {
          WHERE p.tournament_id = ? AND p.round = ?
          ORDER BY p.section, p.board`,
         [tournamentId, round],
-          (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows.map(row => this.normalizePairingRow(row)));
-          }
-        );
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
       });
   }
 
@@ -528,7 +497,7 @@ class PairingStorageService {
         [tournamentId, round, sectionName],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows.map(row => this.normalizePairingRow(row)));
+          else resolve(rows);
         }
       );
     });
@@ -549,11 +518,11 @@ class PairingStorageService {
          WHERE p.tournament_id = ?
          ORDER BY p.round, p.section, p.board`,
         [tournamentId],
-          (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows.map(row => this.normalizePairingRow(row)));
-          }
-        );
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
       });
   }
 
@@ -838,8 +807,8 @@ class PairingStorageService {
          HAVING COUNT(*) > 1`,
         [tournamentId],
         (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows.map(row => this.normalizePairingRow(row)));
+          if (err) reject(err);
+          else resolve(rows);
         }
       );
     });
@@ -865,7 +834,7 @@ class PairingStorageService {
         [tournamentId, tournamentId],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows.map(row => this.normalizePairingRow(row)));
+          else resolve(rows);
         }
       );
     });

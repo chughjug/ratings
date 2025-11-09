@@ -205,6 +205,7 @@ function convertFormResponseToPlayer(itemResponses) {
   const player = {};
   const fieldMatches = [];
   const tempNameParts = {};
+  let nameDerivedFromParts = false;
 
   const toTitleCase = (str) => {
     if (!str) return '';
@@ -212,6 +213,18 @@ function convertFormResponseToPlayer(itemResponses) {
       .toLowerCase()
       .replace(/\b\w/g, (l) => l.toUpperCase())
       .trim();
+  };
+
+  const isLikelyName = (str) => {
+    if (!str) return false;
+    const trimmed = str.trim();
+    if (!trimmed) return false;
+    const lower = trimmed.toLowerCase();
+    const disallowed = ['yes', 'no', 'y', 'n', 'true', 'false', 'n/a', 'na'];
+    if (disallowed.includes(lower)) return false;
+    if (trimmed.length < 2) return false;
+    const alphaChars = trimmed.replace(/[^a-zA-Z]/g, '');
+    return alphaChars.length >= 2;
   };
 
   itemResponses.forEach((itemResponse, index) => {
@@ -234,6 +247,7 @@ function convertFormResponseToPlayer(itemResponses) {
       case 'first_name':
       case 'last_name':
         tempNameParts[field] = toTitleCase(answerValue);
+        player[field] = tempNameParts[field];
         break;
 
       case 'rating': {
@@ -244,7 +258,27 @@ function convertFormResponseToPlayer(itemResponses) {
         break;
       }
 
-      case 'name':
+      case 'name': {
+        if (nameDerivedFromParts && player.name && isLikelyName(player.name)) {
+          console.log(`Skipping direct name override (already combined): "${answerValue}"`);
+          break;
+        }
+
+        if (!isLikelyName(answerValue)) {
+          console.log(`Ignoring unlikely name value: "${answerValue}"`);
+          break;
+        }
+
+        const candidateName = toTitleCase(answerValue);
+        if (player.name && isLikelyName(player.name) && player.name !== candidateName) {
+          console.log(`Name already set to "${player.name}"; ignoring alternate value "${candidateName}"`);
+          break;
+        }
+
+        player[field] = candidateName;
+        break;
+      }
+
       case 'parent_name':
       case 'emergency_contact':
         player[field] = toTitleCase(answerValue);
@@ -276,7 +310,16 @@ function convertFormResponseToPlayer(itemResponses) {
     player.name = `${tempNameParts.first_name || ''} ${tempNameParts.last_name || ''}`.trim();
     if (player.name) {
       console.log(`✅ Combined name from parts: ${player.name}`);
+      nameDerivedFromParts = true;
     }
+  }
+
+  // Ensure first/last name fields are preserved even if a combined name was provided later.
+  if (tempNameParts.first_name && !player.first_name) {
+    player.first_name = tempNameParts.first_name;
+  }
+  if (tempNameParts.last_name && !player.last_name) {
+    player.last_name = tempNameParts.last_name;
   }
 
   if (fieldMatches.length) {
