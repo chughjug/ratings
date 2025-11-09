@@ -117,8 +117,8 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-14 w-14 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-900"></div>
       </div>
     );
   }
@@ -149,33 +149,36 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+      <div className="border-b border-neutral-200 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:text-neutral-900"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4" />
+                Back
               </button>
-              <div className="flex items-center space-x-3">
-                <Building2 className="h-6 w-6 text-blue-600" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-900">
+                  <Building2 className="h-5 w-5" />
+                </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Organization Settings</h1>
-                  <p className="text-sm text-gray-600">{organization.name}</p>
+                  <h1 className="text-2xl font-semibold text-neutral-900">Organization Settings</h1>
+                  <p className="text-sm text-neutral-500">{organization.name}</p>
                 </div>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-3">
+
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => window.open(`/public/organizations/${organization.slug}`, '_blank')}
-                className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-neutral-700 hover:bg-neutral-700"
               >
-                <Eye className="h-4 w-4 mr-2" />
+                <Eye className="h-4 w-4" />
                 View Public Page
               </button>
             </div>
@@ -186,12 +189,16 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
       {/* Success/Error Messages */}
       {success && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-            <div className="flex items-center">
-              <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
               </svg>
-              {success}
+              <span>{success}</span>
             </div>
           </div>
         </div>
@@ -199,11 +206,10 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
 
       {error && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <strong className="font-bold">Error: </strong>
-              <span className="block sm:inline">{error}</span>
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              <span>{error}</span>
             </div>
           </div>
         </div>
@@ -211,44 +217,44 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
 
       {/* Organization Info Card */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Organization Information</h2>
-            <p className="text-sm text-gray-600 mt-1">Basic information about your organization</p>
+        <div className="rounded-2xl border border-neutral-200 bg-white mb-6">
+          <div className="px-6 py-5 border-b border-neutral-200">
+            <h2 className="text-lg font-semibold text-neutral-900">Organization Information</h2>
+            <p className="mt-1 text-sm text-neutral-500">Basic details about your organization</p>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-neutral-600">
                   Organization Name
                 </label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-neutral-900">
                   {organization.name}
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-neutral-600">
                   Organization Slug
                 </label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-neutral-900">
                   {organization.slug}
                 </div>
               </div>
               
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-neutral-600">
                   Public URL
                 </label>
-                <div className="flex items-center space-x-2">
-                  <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900">
                     {window.location.origin}/public/organizations/{organization.slug}
                   </div>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(`${window.location.origin}/public/organizations/${organization.slug}`);
                     }}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-900 bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-neutral-700 hover:bg-neutral-700"
                   >
                     Copy URL
                   </button>
@@ -286,21 +292,21 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
         />
 
         {/* Club Features Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-            <h2 className="text-xl font-bold text-gray-900">Club Management</h2>
-            <p className="text-sm text-gray-600 mt-1">Manage members, announcements, email campaigns, and ratings</p>
+        <div className="mt-6 rounded-2xl border border-neutral-200 bg-white">
+          <div className="px-6 py-5 border-b border-neutral-200">
+            <h2 className="text-lg font-semibold text-neutral-900">Club Management</h2>
+            <p className="mt-1 text-sm text-neutral-500">Manage members, announcements, email campaigns, and ratings</p>
           </div>
           
           {/* Tabs */}
-          <div className="border-b border-gray-200 bg-gray-50">
-            <nav className="flex space-x-1 px-6 overflow-x-auto" aria-label="Club Features">
+          <div className="border-b border-neutral-200 bg-white">
+            <nav className="flex flex-wrap gap-2 px-6 py-4" aria-label="Club Features">
               <button
                 onClick={() => setActiveClubTab('members')}
-                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   activeClubTab === 'members'
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    ? 'border-neutral-900 bg-neutral-900 text-white'
+                    : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
                 }`}
               >
                 <Users className="h-4 w-4" />
@@ -308,10 +314,10 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
               </button>
               <button
                 onClick={() => setActiveClubTab('announcements')}
-                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   activeClubTab === 'announcements'
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    ? 'border-neutral-900 bg-neutral-900 text-white'
+                    : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
                 }`}
               >
                 <Bell className="h-4 w-4" />
@@ -319,10 +325,10 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
               </button>
               <button
                 onClick={() => setActiveClubTab('emails')}
-                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   activeClubTab === 'emails'
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    ? 'border-neutral-900 bg-neutral-900 text-white'
+                    : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
                 }`}
               >
                 <Mail className="h-4 w-4" />
@@ -330,10 +336,10 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
               </button>
               <button
                 onClick={() => setActiveClubTab('ratings')}
-                className={`flex items-center space-x-2 py-4 px-4 font-medium text-sm whitespace-nowrap transition-all ${
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   activeClubTab === 'ratings'
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    ? 'border-neutral-900 bg-neutral-900 text-white'
+                    : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 hover:text-neutral-900'
                 }`}
               >
                 <Trophy className="h-4 w-4" />
@@ -343,7 +349,8 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6 bg-gray-50 min-h-[500px]">
+          <div className="px-6 pb-6">
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-6 min-h-[480px]">
             {activeClubTab === 'members' && (
               <ClubMembersManager organizationId={id!} />
             )}
@@ -356,47 +363,54 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = () => {
             {activeClubTab === 'ratings' && (
               <ClubRatingsManager organizationId={id!} />
             )}
+            </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
-            <p className="text-sm text-gray-600 mt-1">Common tasks for managing your organization</p>
+        <div className="mt-6 rounded-2xl border border-neutral-200 bg-white">
+          <div className="px-6 py-5 border-b border-neutral-200">
+            <h2 className="text-lg font-semibold text-neutral-900">Quick Actions</h2>
+            <p className="mt-1 text-sm text-neutral-500">Common tasks for managing your organization</p>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <button
                 onClick={() => navigate(`/organizations/${id}/tournaments`)}
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-neutral-300 hover:text-neutral-900"
               >
-                <Trophy className="h-6 w-6 text-blue-600 mr-3" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50">
+                  <Trophy className="h-5 w-5 text-neutral-900" />
+                </div>
                 <div className="text-left">
-                  <div className="font-medium text-gray-900">Manage Tournaments</div>
-                  <div className="text-sm text-gray-600">Create and manage tournaments</div>
+                  <div className="font-medium text-neutral-900">Manage Tournaments</div>
+                  <div className="text-sm text-neutral-500">Create and manage tournaments</div>
                 </div>
               </button>
               
               <button
                 onClick={() => navigate(`/organizations/${id}/members`)}
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-neutral-300 hover:text-neutral-900"
               >
-                <Users className="h-6 w-6 text-green-600 mr-3" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50">
+                  <Users className="h-5 w-5 text-neutral-900" />
+                </div>
                 <div className="text-left">
-                  <div className="font-medium text-gray-900">Manage Members</div>
-                  <div className="text-sm text-gray-600">Invite and manage team members</div>
+                  <div className="font-medium text-neutral-900">Manage Members</div>
+                  <div className="text-sm text-neutral-500">Invite and manage team members</div>
                 </div>
               </button>
               
               <button
                 onClick={() => window.open(`/public/organizations/${organization.slug}`, '_blank')}
-                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-neutral-300 hover:text-neutral-900"
               >
-                <Globe className="h-6 w-6 text-purple-600 mr-3" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50">
+                  <Globe className="h-5 w-5 text-neutral-900" />
+                </div>
                 <div className="text-left">
-                  <div className="font-medium text-gray-900">View Public Page</div>
-                  <div className="text-sm text-gray-600">See how your organization appears publicly</div>
+                  <div className="font-medium text-neutral-900">View Public Page</div>
+                  <div className="text-sm text-neutral-500">See how your organization appears publicly</div>
                 </div>
               </button>
             </div>

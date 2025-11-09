@@ -109,6 +109,7 @@ const TournamentDetail: React.FC = () => {
   const [showInactiveRounds, setShowInactiveRounds] = useState(false);
   const [showEditPlayer, setShowEditPlayer] = useState(false);
   const [showAPIDocs, setShowAPIDocs] = useState(false);
+  const [showAPIRegistrationModal, setShowAPIRegistrationModal] = useState(false);
   const [showDeleteDuplicates, setShowDeleteDuplicates] = useState(false);
   const [showByeManagement, setShowByeManagement] = useState(false);
   const [deleteDuplicatesCriteria, setDeleteDuplicatesCriteria] = useState<'name' | 'uscf_id' | 'both'>('name');
@@ -151,6 +152,35 @@ const TournamentDetail: React.FC = () => {
   const [newSectionName, setNewSectionName] = useState('');
   const [showTeamTournamentManagement, setShowTeamTournamentManagement] = useState(false);
   
+  const handleCopyToClipboard = useCallback((value: string) => {
+    if (!value) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(value).catch((error) => {
+        console.error('Failed to copy to clipboard:', error);
+      });
+    }
+  }, []);
+
+  const handleOpenInNewTab = useCallback((url: string) => {
+    if (!url) return;
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }, []);
+
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const apiIntegrationUrls = id
+    ? {
+        apiUrl: `${appOrigin}/api/players/api-import/${id}`,
+        registerUrl: `${appOrigin}/api/players/register/${id}`,
+        registrationFormUrl: `${appOrigin}/register/${id}`
+      }
+    : {
+        apiUrl: '',
+        registerUrl: '',
+        registrationFormUrl: ''
+      };
+
   // Settings tab state
   const [logoUrl, setLogoUrl] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1751,83 +1781,17 @@ const TournamentDetail: React.FC = () => {
                             Clear Standings
                           </button>
                           <button
-                            onClick={() => {
-                              const apiUrl = `${window.location.origin}/api/players/api-import/${id}`;
-                              const registerUrl = `${window.location.origin}/api/players/register/${id}`;
-                              const registrationFormUrl = `${window.location.origin}/register/${id}`;
-                              const apiKey = 'demo-key-123';
-
-                              const modal = document.createElement('div');
-                              modal.className =
-                                'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-                              modal.innerHTML = `
-                            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                              <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-semibold">API Integration & Registration</h3>
-                                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
-                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                  </svg>
-                                </button>
-                              </div>
-                              <div class="space-y-6">
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                  <h4 class="font-semibold text-gray-900 mb-2">Tournament Information</h4>
-                                  <p class="text-sm text-gray-600">Tournament ID: <code class="bg-gray-200 px-2 py-1 rounded">${id}</code></p>
-                                  <p class="text-sm text-gray-600">Tournament Name: ${tournament?.name || 'Loading...'}</p>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Bulk Import API:</label>
-                                    <div class="flex">
-                                      <input type="text" value="${apiUrl}" readonly 
-                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
-                                      <button onclick="navigator.clipboard.writeText('${apiUrl}')" 
-                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
-                                        Copy
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Single Registration API:</label>
-                                    <div class="flex">
-                                      <input type="text" value="${registerUrl}" readonly 
-                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
-                                      <button onclick="navigator.clipboard.writeText('${registerUrl}')" 
-                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
-                                        Copy
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div>
-                                  <label class="block text-sm font-medium text-gray-700 mb-2">Registration Form URL:</label>
-                                  <div class="flex">
-                                    <input type="text" value="${registrationFormUrl}" readonly 
-                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
-                                    <button onclick="navigator.clipboard.writeText('${registrationFormUrl}')" 
-                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm">
-                                      Copy
-                                    </button>
-                                    <button onclick="window.open('${registrationFormUrl}', '_blank')" 
-                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm ml-1">
-                                      Open
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          `;
-                          document.body.appendChild(modal);
-                        }}
-                        className="flex w-full items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-                      >
-                        <FileText className="h-4 w-4 mr-3" />
-                        API & Registration
-                      </button>
-                    </div>
+                            onClick={() => setShowAPIRegistrationModal(true)}
+                            className="flex w-full items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                          >
+                            <FileText className="h-4 w-4 mr-3" />
+                            API & Registration
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -4774,6 +4738,109 @@ const TournamentDetail: React.FC = () => {
         onClose={() => setShowPaymentManager(false)}
         tournamentId={id || ''}
       />
+
+      {showAPIRegistrationModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowAPIRegistrationModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">API Integration & Registration</h3>
+              <button
+                onClick={() => setShowAPIRegistrationModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-6">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Tournament Information</h4>
+                <p className="text-sm text-gray-600">
+                  Tournament ID:{' '}
+                  <code className="bg-gray-200 px-2 py-1 rounded">{id ?? 'Unknown'}</code>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Tournament Name: {tournament?.name || 'Loading...'}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bulk Import API:
+                  </label>
+                  <div className="flex">
+                    <input
+                      type="text"
+                      value={apiIntegrationUrls.apiUrl}
+                      readOnly
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono"
+                    />
+                    <button
+                      onClick={() => handleCopyToClipboard(apiIntegrationUrls.apiUrl)}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm transition"
+                      type="button"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Single Registration API:
+                  </label>
+                  <div className="flex">
+                    <input
+                      type="text"
+                      value={apiIntegrationUrls.registerUrl}
+                      readOnly
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono"
+                    />
+                    <button
+                      onClick={() => handleCopyToClipboard(apiIntegrationUrls.registerUrl)}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm transition"
+                      type="button"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Registration Form URL:
+                </label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={apiIntegrationUrls.registrationFormUrl}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono"
+                  />
+                  <button
+                    onClick={() => handleCopyToClipboard(apiIntegrationUrls.registrationFormUrl)}
+                    className="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm transition"
+                    type="button"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    onClick={() => handleOpenInNewTab(apiIntegrationUrls.registrationFormUrl)}
+                    className="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm transition ml-1"
+                    type="button"
+                  >
+                    Open
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showPWAStatus && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
