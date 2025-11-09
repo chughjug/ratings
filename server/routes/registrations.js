@@ -4,6 +4,7 @@ const path = require('path');
 const db = require('../database');
 const { searchUSChessPlayers } = require('../services/playerSearch');
 const { lookupAndUpdatePlayer } = require('../services/ratingLookup');
+const { normalizeByeRounds, byeRoundsToStorage } = require('../utils/byeUtils');
 const router = express.Router();
 
 // Helper function to assign section based on tournament settings and player rating
@@ -216,7 +217,7 @@ router.post('/submit', async (req, res) => {
       section,
       team_name, // Add team_name support
       fide_id, // Add fide_id support
-      bye_requests = [],
+      bye_requests: byeRequestsInput = [],
       notes,
       custom_fields, // Add custom fields support
       payment_amount, // Payment amount
@@ -224,6 +225,8 @@ router.post('/submit', async (req, res) => {
       payment_intent_id, // Payment intent/transaction ID
       payment_status = 'pending' // Payment status
     } = req.body;
+
+    const byeRequests = normalizeByeRounds(byeRequestsInput);
 
     // Validate required fields
     if (!tournament_id || !player_name || !email) {
@@ -326,7 +329,7 @@ router.post('/submit', async (req, res) => {
         `INSERT INTO registrations (id, tournament_id, player_name, uscf_id, email, phone, section, bye_requests, notes, status, created_at, payment_amount, payment_method, payment_id, payment_status)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?)`,
         [registrationId, tournament_id, player_name, uscf_id, email, phone, finalSection, 
-         JSON.stringify(bye_requests), finalNotes, 'pending',
+         JSON.stringify(byeRequests), finalNotes, 'pending',
          payment_amount || null, payment_method || null, payment_intent_id || null, payment_status],
         function(err) {
           if (err) reject(err);
@@ -355,18 +358,15 @@ router.post('/submit', async (req, res) => {
     
     // Insert player record with pending status
     await new Promise((resolve, reject) => {
-      // Convert bye_requests array to intentional_bye_rounds string format (comma-separated)
-      const intentionalByeRounds = bye_requests.length > 0 
-        ? bye_requests.join(',') 
-        : null;
-      
+      const intentionalByeRounds = byeRoundsToStorage(byeRequests);
+      console.log('Inserting player with bye requests:', byeRequests, '→ intentional_bye_rounds:', intentionalByeRounds);
+
       const playerValues = [playerId, tournament_id, player_name, uscf_id, fide_id, finalRating, mappedSection, mappedTeamName, 'pending',
          ratingLookupResult?.expirationDate || null,
          intentionalByeRounds, 
          notes ? `Registration: ${notes}` : 'Public Registration',
          email, phone];
-      
-      console.log('Inserting player with bye requests:', bye_requests, '→ intentional_bye_rounds:', intentionalByeRounds);
+
       console.log('Inserting player with values:', playerValues);
       
       db.run(

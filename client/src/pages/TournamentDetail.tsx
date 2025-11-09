@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, S
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
+import { calculateDaysUntil, formatDateSafe, parseDateSafe } from '../utils/dateUtils';
 import AddPlayerModal from '../components/AddPlayerModal';
 import BulkPlayerAddModal from '../components/BulkPlayerAddModal';
 import BatchOperationsModal from '../components/BatchOperationsModal';
@@ -215,9 +216,12 @@ const TournamentDetail: React.FC = () => {
       
       // Handle date fields
       if (sortField === 'expiration_date') {
-        const aDate = aValue ? new Date(aValue).getTime() : 0;
-        const bDate = bValue ? new Date(bValue).getTime() : 0;
-        return sortDirection === 'asc' ? aDate - bDate : bDate - aDate;
+        const aDate = parseDateSafe(aValue);
+        const bDate = parseDateSafe(bValue);
+        const aTime = aDate ? aDate.getTime() : 0;
+        const bTime = bDate ? bDate.getTime() : 0;
+        if (aTime === bTime) return 0;
+        return sortDirection === 'asc' ? aTime - bTime : bTime - aTime;
       }
       
       // Handle boolean fields (status)
@@ -420,6 +424,15 @@ const TournamentDetail: React.FC = () => {
     };
   }, [showDisplaySettings]);
 
+  const getExpirationDetails = (expiration?: string | null, reference?: Date) => {
+    if (!expiration) return null;
+    const parsed = parseDateSafe(expiration);
+    if (!parsed) return null;
+    const days = calculateDaysUntil(parsed, reference ?? new Date());
+    if (days === null) return null;
+    return { date: parsed, days };
+  };
+
   // Check for expired or expiring IDs
   const getExpirationWarnings = () => {
     if (!state.players || state.players.length === 0) return [];
@@ -428,23 +441,21 @@ const TournamentDetail: React.FC = () => {
     const now = new Date();
     
     state.players.forEach(player => {
-      if (player.expiration_date) {
-        const expirationDate = new Date(player.expiration_date);
-        const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (daysUntilExpiration < 0) {
-          warnings.push({
-            type: 'expired',
-            player: player.name,
-            message: `${player.name}'s USCF ID has expired`
-          });
-        } else if (daysUntilExpiration <= 30) {
-          warnings.push({
-            type: 'expiring',
-            player: player.name,
-            message: `${player.name}'s USCF ID expires in ${daysUntilExpiration} days`
-          });
-        }
+      const details = getExpirationDetails(player.expiration_date, now);
+      if (!details) return;
+
+      if (details.days < 0) {
+        warnings.push({
+          type: 'expired',
+          player: player.name,
+          message: `${player.name}'s USCF ID has expired`
+        });
+      } else if (details.days <= 30) {
+        warnings.push({
+          type: 'expiring',
+          player: player.name,
+          message: `${player.name}'s USCF ID expires in ${details.days} days`
+        });
       }
     });
     
@@ -1979,7 +1990,7 @@ const TournamentDetail: React.FC = () => {
             </nav>
           </div>
         </div>
-
+      </div>
 
       {/* Display Settings Panel */}
       {showDisplaySettings && activeTab === 'pairings' && (

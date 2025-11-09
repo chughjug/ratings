@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import '../styles/pairing-system.css';
 
 interface RoundResult {
@@ -7,6 +7,7 @@ interface RoundResult {
   opponent_name: string;
   opponent_rating?: number;
   opponent_rank?: number;
+  opponent_id?: string;
   points: number;
   color: string;
   board: number;
@@ -59,7 +60,6 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   showSectionHeader = true,
   className
 }) => {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   
   // Use tournamentId from props, fallback to URL params
@@ -172,6 +172,16 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
       {sectionOrder.map(sectionName => {
         const sectionStandings = groupedStandings[sectionName] || [];
 
+        const playersByRank = new Map<number, PlayerStanding>();
+        sectionStandings.forEach(sectionPlayer => {
+          if ((sectionPlayer as PlayerStanding).rank != null) {
+            playersByRank.set(
+              Number((sectionPlayer as PlayerStanding).rank),
+              sectionPlayer as PlayerStanding
+            );
+          }
+        });
+
         return (
           <div
             key={sectionName}
@@ -225,13 +235,18 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                           {player.rank}.
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-left">
-                          <button
-                            onClick={() => navigate(`/tournaments/${actualTournamentId}/player/${player.id}`)}
-                            className="text-left text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-                            type="button"
-                          >
-                            {formatPlayerName(player)}
-                          </button>
+                          {actualTournamentId ? (
+                            <Link
+                              to={`/tournaments/${actualTournamentId}/player/${player.id}`}
+                              className="text-left text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                            >
+                              {formatPlayerName(player)}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-semibold text-gray-900">
+                              {formatPlayerName(player)}
+                            </span>
+                          )}
                           {player.games_played !== undefined && (
                             <span className="block text-xs text-gray-500">
                               {player.games_played} games • {player.wins || 0}W {player.draws || 0}D {player.losses || 0}L
@@ -247,14 +262,38 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                         <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-semibold text-blue-600">
                           {formatPoints(player.total_points)}
                         </td>
-                        {roundColumns.map(round => (
-                          <td
-                            key={round}
-                            className="whitespace-nowrap px-3 py-3 text-center text-xs font-medium text-gray-700"
-                          >
-                            {formatRoundResult(player.roundResults?.[round], round)}
-                          </td>
-                        ))}
+                        {roundColumns.map(round => {
+                          const roundResult = player.roundResults?.[round];
+                          const opponent =
+                            roundResult?.opponent_id
+                              ? sectionStandings.find(sectionPlayer => sectionPlayer.id === roundResult.opponent_id)
+                              : roundResult?.opponent_rank
+                                ? playersByRank.get(roundResult.opponent_rank)
+                                : undefined;
+                          const roundLabel = formatRoundResult(roundResult, round);
+                          const opponentLink =
+                            actualTournamentId && opponent
+                              ? `/tournaments/${actualTournamentId}/player/${opponent.id}`
+                              : undefined;
+
+                          return (
+                            <td
+                              key={round}
+                              className="whitespace-nowrap px-3 py-3 text-center text-xs font-medium text-gray-700"
+                            >
+                              {opponentLink ? (
+                                <Link
+                                  to={opponentLink}
+                                  className="rounded-full bg-blue-50 px-2 py-1 text-blue-700 transition hover:bg-blue-100"
+                                >
+                                  {roundLabel}
+                                </Link>
+                              ) : (
+                                roundLabel
+                              )}
+                            </td>
+                          );
+                        })}
                         {showTiebreakers && (
                           <>
                             <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600">

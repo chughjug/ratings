@@ -154,39 +154,6 @@ const PublicOrganizationPage: React.FC = () => {
     }
   };
 
-  const highlightFeatures = [
-    {
-      icon: Trophy,
-      title: 'Automated Swiss Pairings',
-      description: 'Advanced pairing algorithms ensure fair and competitive matches every round.'
-    },
-    {
-      icon: Users,
-      title: 'Player Management',
-      description: 'Comprehensive player registration, rating tracking, and tournament history.'
-    },
-    {
-      icon: BarChart3,
-      title: 'Live Analytics',
-      description: 'Real-time standings, statistics, and tournament progress tracking.'
-    },
-    {
-      icon: Calendar,
-      title: 'Flexible Scheduling',
-      description: 'Support for multiple tournament formats and customizable time controls.'
-    },
-    {
-      icon: Shield,
-      title: 'Secure & Reliable',
-      description: 'Enterprise-grade security with 99.9% uptime guarantee.'
-    },
-    {
-      icon: Globe,
-      title: 'Public Access',
-      description: 'Public tournament pages for spectators and easy player registration.'
-    }
-  ];
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -697,81 +664,8 @@ const PublicOrganizationPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Highlights */}
-      <div className="border-t border-neutral-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="max-w-2xl">
-            <h2 className="text-2xl md:text-3xl font-semibold text-neutral-900">
-              Professional tournament management with cutting-edge features
-            </h2>
-          </div>
-
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {highlightFeatures.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <div
-                  key={feature.title}
-                  className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-colors hover:border-neutral-300"
-                >
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-neutral-900 text-white mb-4">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-neutral-900">{feature.title}</h3>
-                  <p className="mt-2 text-sm text-neutral-600 leading-relaxed">{feature.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div>
-              <h3 className="text-xl font-bold mb-4">About {organization?.name}</h3>
-              <p className="text-gray-400 leading-relaxed">
-                {organization?.description || 'Professional chess tournament organization committed to excellence.'}
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold mb-4">Quick Links</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/public/tournaments" className="hover:text-orange-400 transition-colors">Browse Tournaments</Link></li>
-                <li><Link to="/public/organizations" className="hover:text-orange-400 transition-colors">Find Organizations</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold mb-4">Contact</h3>
-              <div className="space-y-3 text-gray-400">
-                {organization?.contactEmail && (
-                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 mr-2" />
-                    {organization.contactEmail}
-                  </div>
-                )}
-                {organization?.contactPhone && (
-                  <div className="flex items-center">
-                    <Phone className="h-4 w-4 mr-2" />
-                    {organization.contactPhone}
-                  </div>
-                )}
-                {organization?.website && (
-                  <a href={organization.website} target="_blank" rel="noopener noreferrer" className="flex items-center hover:text-orange-400 transition-colors">
-                    <Globe className="h-4 w-4 mr-2" />
-                    Visit Website
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 {organization?.name}. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      {/* Footer Spacer */}
+      <div className="py-10" />
     </div>
   );
 };

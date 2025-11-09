@@ -9,6 +9,7 @@ const { searchUSChessPlayersHerokuAPI } = require('../services/playerSearch');
 const { getUSCFInfo } = require('../services/ratingLookup');
 const { parseCSVFile, validateCSVData, importPlayersFromCSV, generateCSVTemplate } = require('../services/csvImport');
 const { parseExcelFile, validateExcelData, importPlayersFromExcel, generateExcelTemplate } = require('../services/excelImport');
+const { normalizeByeRounds, byeRoundsToStorage } = require('../utils/byeUtils');
 const router = express.Router();
 
 // Helper function to attempt USCF lookup by name
@@ -215,23 +216,11 @@ router.get('/tournament/:tournamentId', (req, res) => {
           error: 'Failed to fetch players' 
         });
       }
-      // Parse intentional_bye_rounds from JSON string to array for all players
-      const processedRows = rows.map(player => {
-        if (player.intentional_bye_rounds) {
-          try {
-            player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
-          } catch (e) {
-            // If parsing fails, try comma-separated string or leave as empty array
-            if (typeof player.intentional_bye_rounds === 'string') {
-              const parsed = player.intentional_bye_rounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
-              player.intentional_bye_rounds = parsed;
-            } else {
-              player.intentional_bye_rounds = [];
-            }
-          }
-        }
-        return player;
-      });
+      // Normalize bye rounds for all players
+      const processedRows = rows.map(player => ({
+        ...player,
+        intentional_bye_rounds: normalizeByeRounds(player.intentional_bye_rounds),
+      }));
       res.json({ 
         success: true,
         data: processedRows 
@@ -404,9 +393,13 @@ router.get('/:id', (req, res) => {
         error: 'Player not found' 
       });
     }
-    res.json({ 
+    const processedPlayer = {
+      ...player,
+      intentional_bye_rounds: normalizeByeRounds(player.intentional_bye_rounds),
+    };
+    res.json({
       success: true,
-      data: player 
+      data: processedPlayer,
     });
   });
 });
@@ -469,6 +462,9 @@ router.post('/', async (req, res) => {
       }
     }
 
+    const normalizedByeRounds = normalizeByeRounds(intentional_bye_rounds);
+    const storedByeRounds = byeRoundsToStorage(normalizedByeRounds);
+
     // Insert player using Promise wrapper - always default to 'active' status
     await new Promise((resolve, reject) => {
       db.run(
@@ -476,7 +472,7 @@ router.post('/', async (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [id, tournament_id, name, uscf_id, fide_id, finalRating, finalSection, 'active',
          ratingLookupResult?.expirationDate || null,
-         intentional_bye_rounds ? JSON.stringify(intentional_bye_rounds) : null, notes],
+         storedByeRounds, notes],
         function(err) {
           if (err) reject(err);
           else resolve();
@@ -486,7 +482,7 @@ router.post('/', async (req, res) => {
 
     res.json({ 
       success: true,
-      data: { id },
+      data: { id, intentional_bye_rounds: normalizedByeRounds },
       message: 'Player added successfully',
       ratingLookup: ratingLookupResult,
       autoAssignedSection: finalSection
@@ -548,7 +544,7 @@ router.put('/:id', (req, res) => {
   }
   if (intentional_bye_rounds !== undefined) {
     updateFields.push('intentional_bye_rounds = ?');
-    updateValues.push(intentional_bye_rounds ? JSON.stringify(intentional_bye_rounds) : null);
+    updateValues.push(byeRoundsToStorage(intentional_bye_rounds));
   }
   if (notes !== undefined) {
     updateFields.push('notes = ?');
@@ -603,13 +599,8 @@ router.put('/:id', (req, res) => {
           error: 'Failed to fetch updated player' 
         });
       }
-      if (player && player.intentional_bye_rounds) {
-        try {
-          player.intentional_bye_rounds = JSON.parse(player.intentional_bye_rounds);
-        } catch (e) {
-          // If parsing fails, leave it as string or empty array
-          player.intentional_bye_rounds = [];
-        }
+      if (player) {
+        player.intentional_bye_rounds = normalizeByeRounds(player.intentional_bye_rounds);
       }
       res.json({ 
         success: true,

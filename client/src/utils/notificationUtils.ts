@@ -1,4 +1,5 @@
 import { NotificationItem } from '../components/NotificationDashboard';
+import { calculateDaysUntil, parseDateSafe } from './dateUtils';
 
 interface ContactMessage {
   id?: string;
@@ -42,8 +43,13 @@ export const convertExpirationWarningsToNotifications = (
     // Calculate days until expiration
     let daysUntilExpiration: number | undefined;
     if (player?.expiration_date) {
-      const expirationDate = new Date(player.expiration_date);
-      daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const expirationDate = parseDateSafe(player.expiration_date);
+      if (expirationDate) {
+        const calculated = calculateDaysUntil(expirationDate, now);
+        if (calculated !== null) {
+          daysUntilExpiration = calculated;
+        }
+      }
     }
 
     // Determine priority based on urgency
@@ -273,7 +279,8 @@ const convertContactMessagesToNotifications = (contactMessages: ContactMessage[]
   return contactMessages.map((message, index) => {
     const timestampString =
       message.created_at || message.createdAt || message.timestamp || message.submittedAt;
-    const timestamp = timestampString ? new Date(timestampString) : new Date();
+      const timestampCandidate = timestampString ? parseDateSafe(timestampString) : null;
+      const timestamp = timestampCandidate ?? new Date();
 
     const senderName = message.name || message.email || 'Contact Form Submission';
     const emailText = message.email ? ` (Email: ${message.email})` : '';

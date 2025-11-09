@@ -2001,37 +2001,57 @@ const PublicTournamentDisplay: React.FC = () => {
 
             {activeTab === 'standings' && (
               <div>
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 space-y-4 lg:space-y-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                    <h2 className="text-xl font-semibold text-black">Current Standings</h2>
-                    
-                    {/* Player Search */}
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search players..."
-                      value={playerSearch}
-                      onChange={(e) => setPlayerSearch(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
-                    />
+                <div className="mb-6 space-y-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                        Tournament Standings
+                      </p>
+                      <h2 className="mt-1 text-2xl font-semibold text-gray-900">
+                        Current Standings
+                      </h2>
                     </div>
-                    
-                    <select
-                      value={selectedSection}
-                      onChange={(e) => setSelectedSection(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-black focus:border-black"
-                    >
-                      {getAvailableSections().map(section => (
-                        <option key={section} value={section}>
-                          {section === 'all' ? 'All Sections' : `${section} Section`}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative w-full max-w-xs">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search players..."
+                        value={playerSearch}
+                        onChange={(e) => setPlayerSearch(e.target.value)}
+                        className="w-full rounded-full border border-gray-200 py-2 pl-10 pr-4 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
                   </div>
-                  
-                  <div className="text-sm text-gray-500">
-                    {getFilteredStandings(standings).length} players
+
+                  <div className="flex w-full flex-wrap gap-2">
+                    {getAvailableSections().map(option => {
+                      const isActive = option === selectedSection;
+                      const label = option === 'all' ? 'All Sections' : option;
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => setSelectedSection(option)}
+                          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                            isActive
+                              ? 'bg-blue-600 text-white shadow'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          type="button"
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="text-sm font-medium text-gray-500">
+                    {(() => {
+                      let filtered = getFilteredStandings(standings);
+                      if (selectedSection && selectedSection !== '' && selectedSection !== 'all') {
+                        filtered = filtered.filter(standing => standing.section === selectedSection);
+                      }
+                      return filtered.length;
+                    })()} players showing
                   </div>
                 </div>
                 
@@ -2110,7 +2130,16 @@ const PublicTournamentDisplay: React.FC = () => {
                                           {index + 1}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                          <div className="font-bold text-sm text-gray-900 truncate">{player.name}</div>
+                                          {id ? (
+                                            <Link
+                                              to={`/tournaments/${id}/player/${player.id}`}
+                                              className="font-bold text-sm text-blue-600 hover:text-blue-700 hover:underline truncate"
+                                            >
+                                              {player.name}
+                                            </Link>
+                                          ) : (
+                                            <div className="font-bold text-sm text-gray-900 truncate">{player.name}</div>
+                                          )}
                                           {player.uscf_id && (
                                             <div className="text-xs text-gray-500">USCF: {player.uscf_id}</div>
                                           )}
