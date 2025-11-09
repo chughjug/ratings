@@ -172,10 +172,13 @@ const buildInitialResponse = (distributions?: any[] | null): WinnersResponse | n
     uniqueWinners: uniquePlayers.size
   };
 
+  const lastUpdated =
+    latestTimestamp !== null ? (latestTimestamp as Date).toISOString() : undefined;
+
   return {
     sections,
     totals,
-    lastUpdated: latestTimestamp ? latestTimestamp.toISOString() : undefined
+    ...(lastUpdated ? { lastUpdated } : {})
   };
 };
 
