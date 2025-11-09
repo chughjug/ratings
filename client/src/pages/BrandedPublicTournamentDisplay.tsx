@@ -70,7 +70,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('preregistered');
   const [customPages, setCustomPages] = useState<any[]>([]);
-  const [selectedSection, setSelectedSection] = useState<string>('');
+  const [selectedSection, setSelectedSection] = useState<string>('all');
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [allRoundsData, setAllRoundsData] = useState<{ [round: number]: any[] }>({});
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>({
@@ -966,128 +966,127 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
 
           {activeTab === 'standings' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-slate-600">
-                  <h3 className="text-lg font-semibold text-white">Tournament Standings</h3>
+              <div className="rounded-3xl border border-gray-200 bg-white shadow-lg">
+                <div className="rounded-t-3xl bg-gradient-to-r from-brand-primary to-brand-secondary px-6 py-4 text-white">
+                  <h3 className="text-lg font-semibold">Tournament Standings</h3>
                 </div>
-                <div className="p-6">
-                  {(() => {
-                    // Simple, safe standings rendering
-                    if (!standings || !Array.isArray(standings) || standings.length === 0) {
-                      return (
-                        <div className="text-center py-12">
-                          <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No Standings Available</h3>
-                          <p className="text-gray-600">Standings will appear once games are played.</p>
+                <div className="space-y-6 px-6 py-6">
+                  {(!standings || standings.length === 0) ? (
+                    <div className="text-center py-12">
+                      <Trophy className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Standings Available</h3>
+                      <p className="text-gray-600">Standings will appear once games are played.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">
+                            Championship Overview
+                          </p>
+                          <h4 className="mt-1 text-2xl font-semibold text-gray-900">Current Standings</h4>
                         </div>
-                      );
-                    }
+                        <div className="relative w-full max-w-xs">
+                          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Search players..."
+                            value={playerSearch}
+                            onChange={(e) => setPlayerSearch(e.target.value)}
+                            className="w-full rounded-full border border-gray-200 py-2 pl-10 pr-4 text-sm shadow-sm focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/30"
+                          />
+                        </div>
+                      </div>
 
-                    // Group players by section safely
-                    const sections: { [key: string]: any[] } = {};
-                    standings.forEach((player, index) => {
-                      if (player && typeof player === 'object') {
-                        const section = player.section || 'Open';
-                        if (!sections[section]) {
-                          sections[section] = [];
-                        }
-                        sections[section].push({ ...player, index });
-                      }
-                    });
+                      <div className="flex w-full flex-wrap gap-2">
+                        {(() => {
+                          const availableSections = Array.from(
+                            new Set(
+                              standings
+                                .map((player: any) => player?.section || 'Open')
+                                .filter(Boolean)
+                            )
+                          ).sort();
 
-                    const sectionNames = Object.keys(sections).sort();
+                          const options = ['all', ...availableSections];
 
-                    return (
-                      <div className="space-y-8">
-                        {/* Section Filter Buttons */}
-                        {sectionNames.length > 1 && (
-                          <div className="flex flex-wrap gap-2 pb-4 border-b border-gray-200">
-                            <button
-                              onClick={() => setSelectedSection('')}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                selectedSection === '' 
-                                  ? 'bg-gray-900 text-white shadow-sm' 
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              All Sections
-                            </button>
-                            {sectionNames.map((sectionName) => (
+                          return options.map(option => {
+                            const isActive = option === selectedSection;
+                            const label = option === 'all' ? 'All Sections' : option;
+                            return (
                               <button
-                                key={sectionName}
-                                onClick={() => setSelectedSection(sectionName)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                  selectedSection === sectionName 
-                                    ? 'bg-gray-900 text-white shadow-sm' 
+                                key={option}
+                                onClick={() => setSelectedSection(option)}
+                                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                                  isActive
+                                    ? 'bg-brand-primary text-white shadow'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
+                                type="button"
                               >
-                                {sectionName}
+                                {label}
                               </button>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {sectionNames.map((sectionName) => {
-                          // Filter by selected section
-                          if (selectedSection && selectedSection !== sectionName) return null;
-                          const sectionPlayers = sections[sectionName];
-                          if (!sectionPlayers || sectionPlayers.length === 0) return null;
-
-                          return (
-                            <div key={sectionName} className="space-y-4">
-                              <h4 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
-                                {sectionName} Section ({sectionPlayers.length} players)
-                              </h4>
-                              
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-xs border border-gray-300">
-                                  <thead>
-                                    <tr className="bg-gray-100 border-b-2 border-gray-500">
-                                      <th className="px-2 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">No.</th>
-                                      <th className="px-3 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">Player's Name</th>
-                                      <th className="px-2 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">USCF</th>
-                                      <th className="px-2 py-2 text-left text-xs font-bold text-gray-900 border-r border-gray-300">Rating</th>
-                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">Pts</th>
-                                      {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
-                                        <th key={round} className="px-1 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">Rnd{round}</th>
-                                      ))}
-                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">BH</th>
-                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">SB</th>
-                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900 border-r border-gray-300">Perf</th>
-                                      <th className="px-2 py-2 text-center text-xs font-bold text-gray-900">Prize</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-gray-300">
-                                    {sectionPlayers.map((player, index) => (
-                                      <tr key={player.id || index} className="hover:bg-gray-50 border-b border-gray-300">
-                                        <td className="px-2 py-2 text-left text-xs text-gray-900 font-medium border-r border-gray-300">{index + 1}.</td>
-                                        <td className="px-3 py-2 text-left text-xs text-gray-900 font-bold border-r border-gray-300">
-                                          <a href="#player" className="hover:text-blue-600 hover:underline">{player.name || 'Unknown Player'}</a>
-                                        </td>
-                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">{player.uscf_id || '-'}</td>
-                                        <td className="px-2 py-2 text-left text-xs text-gray-700 border-r border-gray-300">{player.rating || '-'}</td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-900 font-bold border-r border-gray-300">{player.total_points || 0}</td>
-                                        {Array.from({ length: tournament.rounds }, (_, i) => i + 1).map(round => (
-                                          <td key={round} className="px-1 py-2 text-center text-xs text-gray-700 border-r border-gray-300 font-mono">
-                                            {getRoundResult(player, round, sectionPlayers)}
-                                          </td>
-                                        ))}
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">{player.tiebreakers?.buchholz?.toFixed(1) || '0.0'}</td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">{player.tiebreakers?.sonneborn_berger?.toFixed(1) || '0.0'}</td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700 border-r border-gray-300">{player.performance_rating?.toFixed(1) || '0.0'}</td>
-                                        <td className="px-2 py-2 text-center text-xs text-gray-700">{player.prize || ''}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          });
+                        })()}
                       </div>
-                    );
-                  })()}
+
+                      <div className="text-sm font-medium text-gray-500">
+                        {(() => {
+                          let filtered = getFilteredStandings(standings);
+                          if (selectedSection && selectedSection !== '' && selectedSection !== 'all') {
+                            filtered = filtered.filter((player: any) => (player.section || 'Open') === selectedSection);
+                          }
+                          return filtered.length;
+                        })()} players showing
+                      </div>
+
+                      {(() => {
+                        let filteredStandings = getFilteredStandings(standings);
+                        if (selectedSection && selectedSection !== '' && selectedSection !== 'all') {
+                          filteredStandings = filteredStandings.filter((player: any) => (player.section || 'Open') === selectedSection);
+                        }
+
+                        // Ensure round results carry through with opponent IDs when available
+                        const normalizedStandings = filteredStandings.map((player: any, index: number) => ({
+                          id: player.id,
+                          rank: player.rank || index + 1,
+                          name: player.name,
+                          rating: player.rating,
+                          uscf_id: player.uscf_id,
+                          section: player.section || 'Open',
+                          total_points: player.total_points || 0,
+                          games_played: player.games_played || 0,
+                          wins: player.wins || 0,
+                          losses: player.losses || 0,
+                          draws: player.draws || 0,
+                          prize: player.prize,
+                          tiebreakers: {
+                            buchholz: player.tiebreakers?.buchholz ?? player.buchholz ?? 0,
+                            sonnebornBerger: player.tiebreakers?.sonnebornBerger ?? player.sonneborn_berger ?? 0,
+                            performanceRating: player.tiebreakers?.performanceRating ?? player.performance_rating ?? 0,
+                            modifiedBuchholz: player.tiebreakers?.modifiedBuchholz ?? player.modified_buchholz ?? 0,
+                            cumulative: player.tiebreakers?.cumulative ?? player.cumulative ?? 0
+                          },
+                          roundResults: player.roundResults || {}
+                        }));
+
+                        return (
+                          <ChessStandingsTable
+                            standings={normalizedStandings}
+                            tournament={{
+                              rounds: tournament?.rounds || 0,
+                              name: tournament?.name || ''
+                            }}
+                            selectedSection={selectedSection}
+                            showTiebreakers={true}
+                            showPrizes={true}
+                            tournamentId={id}
+                          />
+                        );
+                      })()}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

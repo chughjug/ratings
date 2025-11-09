@@ -1602,27 +1602,27 @@ const TournamentDetail: React.FC = () => {
           <div className="relative overflow-hidden rounded-3xl">
             <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900" />
             <div className="relative px-6 py-8 text-white sm:px-8 lg:px-10">
-              <div className="flex flex-col gap-10">
+              <div className="flex flex-col gap-10 text-neutral-900">
                 <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex flex-col gap-5 min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
                       <button
                         onClick={() => navigate(-1)}
-                        className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/20"
+                        className="inline-flex items-center gap-2 rounded-full bg-orange-500/10 px-3 py-1.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-500/20"
                       >
                         <ArrowLeft className="h-4 w-4" />
                         <span>Back</span>
                       </button>
-                      <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/70 ring-1 ring-inset ring-white/20">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-700 ring-1 ring-inset ring-orange-200">
                         <span
                           className={`h-2 w-2 rounded-full ${
                             tournament.status === 'active'
-                              ? 'bg-emerald-400'
-                              : tournament.status === 'completed'
-                                ? 'bg-blue-400'
-                                : tournament.status === 'cancelled'
-                                  ? 'bg-rose-400'
-                                  : 'bg-white/40'
+                          ? 'bg-emerald-500'
+                          : tournament.status === 'completed'
+                            ? 'bg-blue-500'
+                            : tournament.status === 'cancelled'
+                              ? 'bg-rose-500'
+                              : 'bg-orange-400'
                           }`}
                         />
                         <span>
@@ -1634,34 +1634,34 @@ const TournamentDetail: React.FC = () => {
                     </div>
 
                     <div className="min-w-0 space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+                      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-orange-500">
                         Snapshot
                       </p>
-                      <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">
+                      <h2 className="text-3xl font-semibold leading-tight sm:text-4xl text-neutral-900">
                         {tournament.name || 'Tournament overview'}
                       </h2>
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-white/80">
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-700">
                         {tournament.format && (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 ring-1 ring-inset ring-white/15">
-                            <Trophy className="h-4 w-4 text-white/70" />
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                            <Trophy className="h-4 w-4 text-orange-500" />
                             <span className="capitalize">{tournament.format.replace('-', ' ')} format</span>
                           </span>
                         )}
                         {tournament.rounds && (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 ring-1 ring-inset ring-white/15">
-                            <Calendar className="h-4 w-4 text-white/70" />
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                            <Calendar className="h-4 w-4 text-orange-500" />
                             <span>
                               {tournament.rounds} {tournament.rounds === 1 ? 'round' : 'rounds'}
                             </span>
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 ring-1 ring-inset ring-white/15">
-                          <Users className="h-4 w-4 text-white/70" />
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                          <Users className="h-4 w-4 text-orange-500" />
                           <span>{state.players.length} registered</span>
                         </span>
                         {sectionCount > 0 && (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 ring-1 ring-inset ring-white/15">
-                            <Layers className="h-4 w-4 text-white/70" />
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                            <Layers className="h-4 w-4 text-orange-500" />
                             <span>
                               {sectionCount} {sectionCount === 1 ? 'section' : 'sections'}
                             </span>
@@ -1681,8 +1681,10 @@ const TournamentDetail: React.FC = () => {
                       </div>
                       <NotificationButton
                         notifications={tournamentNotifications}
-                        className={`rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur ${
-                          hasNotifications ? 'ring-2 ring-amber-400/60' : 'opacity-90'
+                        className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm backdrop-blur ${
+                          hasNotifications
+                            ? 'bg-amber-500/15 text-amber-800 ring-2 ring-amber-300'
+                            : 'bg-white/70 text-neutral-800'
                         }`}
                         webhookEnabled={emailsEnabled}
                         onWebhookToggle={(enabled) => {
@@ -1706,8 +1708,8 @@ const TournamentDetail: React.FC = () => {
                       <div
                         className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset ${
                           tournament.allow_registration
-                            ? 'bg-emerald-500/15 text-emerald-100 ring-emerald-400/40'
-                            : 'bg-rose-500/15 text-rose-100 ring-rose-400/40'
+                            ? 'bg-emerald-100 text-emerald-700 ring-emerald-200'
+                            : 'bg-rose-100 text-rose-700 ring-rose-200'
                         }`}
                       >
                         <span
@@ -1731,12 +1733,12 @@ const TournamentDetail: React.FC = () => {
                             alert('Failed to update registration setting. Please try again.');
                           }
                         }}
-                        className={`relative inline-flex h-9 w-16 items-center rounded-full border border-white/30 bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/60 focus:ring-offset-2 focus:ring-offset-neutral-900 ${
-                          tournament.allow_registration ? 'bg-emerald-500/30' : ''
+                        className={`relative inline-flex h-9 w-16 items-center rounded-full border border-orange-200 bg-white/80 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-offset-2 focus:ring-offset-white ${
+                          tournament.allow_registration ? 'bg-emerald-200/80' : ''
                         }`}
                       >
                         <span
-                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
                             tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
                           }`}
                         />
@@ -1747,28 +1749,28 @@ const TournamentDetail: React.FC = () => {
                         href={`/public/tournaments/${id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/20"
+                        className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm transition hover:bg-white"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <ExternalLink className="h-4 w-4 text-orange-500" />
                         <span>Public View</span>
                       </a>
                       <button
                         onClick={() => setShowDBFExport(true)}
-                        className="inline-flex items-center gap-2 rounded-full border border-blue-200/30 bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                        className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-600"
                       >
                         <Download className="h-4 w-4" />
                         <span>Export USCF</span>
                       </button>
                       <button
                         onClick={() => setShowGoogleFormsConnector(true)}
-                        className="inline-flex items-center gap-2 rounded-full border border-green-200/30 bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+                        className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-600"
                       >
                         <LinkIcon className="h-4 w-4" />
                         <span>Connect Google Form</span>
                       </button>
                       <button
                         onClick={() => setShowAPIDocs(true)}
-                        className="inline-flex items-center gap-2 rounded-full border border-purple-200/30 bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                        className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-600"
                       >
                         <Code className="h-4 w-4" />
                         <span>API Docs</span>
@@ -1776,7 +1778,7 @@ const TournamentDetail: React.FC = () => {
                       <div className="relative">
                         <button
                           onClick={() => setShowDisplaySettings(!showDisplaySettings)}
-                          className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/20"
+                          className="flex items-center gap-2 rounded-full bg-neutral-900/80 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-900"
                         >
                           <Settings className="h-4 w-4" />
                           <span>Actions</span>
@@ -1831,16 +1833,16 @@ const TournamentDetail: React.FC = () => {
                     return (
                       <div
                         key={stat.key}
-                        className={`flex items-start gap-4 ${index > 0 ? 'sm:border-l sm:border-white/15 sm:pl-6' : ''}`}
+                        className={`flex items-start gap-4 ${index > 0 ? 'sm:border-l sm:border-orange-200 sm:pl-6' : ''}`}
                       >
-                        <span className="mt-1 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
-                          <Icon className="h-5 w-5 text-white" />
+                        <span className="mt-1 flex h-12 w-12 items-center justify-center rounded-full bg-orange-500/10 ring-1 ring-orange-200">
+                          <Icon className="h-5 w-5 text-orange-500" />
                         </span>
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-orange-500">
                             {stat.label}
                           </p>
-                          <p className="mt-1 text-2xl font-semibold">{stat.value}</p>
+                          <p className="mt-1 text-2xl font-semibold text-neutral-900">{stat.value}</p>
                         </div>
                       </div>
                     );
@@ -1848,7 +1850,7 @@ const TournamentDetail: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="relative border-t border-white/10 bg-white px-3 py-3 text-neutral-700 sm:px-6">
+            <div className="relative border-t border-orange-200 bg-white px-3 py-3 text-neutral-700 sm:px-6">
               <nav className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide sm:gap-3">
               <button
                 onClick={() => setActiveTab('settings')}
