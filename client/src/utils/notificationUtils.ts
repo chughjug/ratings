@@ -1,5 +1,18 @@
 import { NotificationItem } from '../components/NotificationDashboard';
 
+interface ContactMessage {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  message?: string;
+  created_at?: string;
+  createdAt?: string;
+  timestamp?: string;
+  submittedAt?: string;
+  [key: string]: any;
+}
+
 interface Player {
   id: string;
   name: string;
@@ -133,6 +146,159 @@ export const generateTournamentNotifications = (
 /**
  * Get all notifications for a tournament
  */
+const normalizeContactMessages = (raw: any): ContactMessage[] => {
+  if (!raw) return [];
+
+  const parsed: ContactMessage[] = [];
+
+  const processValue = (value: any) => {
+    if (!value) return;
+
+    if (typeof value === 'string') {
+      try {
+        const parsedJson = JSON.parse(value);
+        parsed.push(...normalizeContactMessages(parsedJson));
+      } catch {
+        // Treat raw string as message content
+        parsed.push({
+          message: value
+        });
+      }
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item && typeof item === 'object') {
+          parsed.push(...normalizeContactMessages(item));
+        } else if (typeof item === 'string') {
+          parsed.push({ message: item });
+        }
+      });
+      return;
+    }
+
+    if (typeof value === 'object') {
+      // If object looks like a message, push directly
+      if (
+        'message' in value ||
+        'email' in value ||
+        'name' in value ||
+        'created_at' in value ||
+        'createdAt' in value ||
+        'timestamp' in value
+      ) {
+        parsed.push(value as ContactMessage);
+        return;
+      }
+
+      Object.values(value).forEach((nested) => processValue(nested));
+    }
+  };
+
+  processValue(raw);
+  return parsed;
+};
+
+const extractContactMessagesFromTournament = (tournament: any): ContactMessage[] => {
+  if (!tournament) return [];
+
+  const potentialSources = [
+    tournament.contact_messages,
+    tournament.contactMessages,
+    tournament.contact_inquiries,
+    tournament.contactInquiries,
+    tournament.contact_requests,
+    tournament.contactRequests
+  ];
+
+  const messages: ContactMessage[] = [];
+
+  const addMessages = (source: any) => {
+    const normalized = normalizeContactMessages(source);
+    if (normalized.length > 0) {
+      messages.push(
+        ...normalized.map((msg) => ({
+          ...msg,
+          // Ensure we keep track of original source for dedupe
+          __source: source
+        }))
+      );
+    }
+  };
+
+  potentialSources.forEach(addMessages);
+
+  const tryParseJsonField = (field: any) => {
+    if (!field) return;
+    let value = field;
+    if (typeof field === 'string') {
+      try {
+        value = JSON.parse(field);
+      } catch {
+        return;
+      }
+    }
+    addMessages(value?.contactMessages || value?.contact_messages);
+    addMessages(value?.contactFormMessages || value?.contact_form_messages);
+    addMessages(value?.contact || value?.contactForm);
+  };
+
+  tryParseJsonField(tournament.settings);
+  tryParseJsonField(tournament.registration_settings);
+  tryParseJsonField(tournament.custom_settings);
+
+  // Deduplicate by combining message+timestamp+email
+  const seen = new Set<string>();
+  const uniqueMessages: ContactMessage[] = [];
+
+  messages.forEach((msg) => {
+    const key = [
+      msg.id || '',
+      msg.message || '',
+      msg.email || '',
+      msg.created_at || msg.createdAt || msg.timestamp || msg.submittedAt || ''
+    ].join('|');
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueMessages.push(msg);
+    }
+  });
+
+  return uniqueMessages;
+};
+
+const convertContactMessagesToNotifications = (contactMessages: ContactMessage[]): NotificationItem[] => {
+  return contactMessages.map((message, index) => {
+    const timestampString =
+      message.created_at || message.createdAt || message.timestamp || message.submittedAt;
+    const timestamp = timestampString ? new Date(timestampString) : new Date();
+
+    const senderName = message.name || message.email || 'Contact Form Submission';
+    const emailText = message.email ? ` (Email: ${message.email})` : '';
+    const phoneText = message.phone ? ` • Phone: ${message.phone}` : '';
+
+    const body =
+      message.message ||
+      message.content ||
+      message.body ||
+      'Contact form submission received. Please check the contact inbox for details.';
+
+    return {
+      id: `contact-${message.id || timestamp.getTime() || index}`,
+      type: 'info',
+      title: 'Contact Form Message',
+      message: `${body}${emailText}${phoneText}`,
+      playerName: senderName,
+      priority: 'medium',
+      timestamp,
+      section: undefined,
+      uscfId: undefined
+    };
+  });
+};
+
 export const getAllTournamentNotifications = (
   tournament: any,
   players: Player[],
@@ -140,6 +306,9 @@ export const getAllTournamentNotifications = (
 ): NotificationItem[] => {
   const expirationNotifications = convertExpirationWarningsToNotifications(expirationWarnings, players);
   const tournamentNotifications = generateTournamentNotifications(tournament, players);
+  const contactNotifications = convertContactMessagesToNotifications(
+    extractContactMessagesFromTournament(tournament)
+  );
   
-  return [...expirationNotifications, ...tournamentNotifications];
+  return [...expirationNotifications, ...tournamentNotifications, ...contactNotifications];
 };

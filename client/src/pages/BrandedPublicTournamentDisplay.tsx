@@ -494,13 +494,13 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                     className="h-12 w-auto rounded-lg border border-neutral-200 bg-white p-2"
                   />
                 )}
-                <div>
+                {organization?.name && (
                   <div className="text-sm font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                    {organization?.name || 'Tournament'}
+                    {organization.name}
                   </div>
-                  <div className="text-lg font-semibold text-neutral-900">
-                    {tournament?.name || 'Chess Tournament'}
-                  </div>
+                )}
+                <div className="text-lg font-semibold text-neutral-900">
+                  {tournament?.name || 'Chess Tournament'}
                 </div>
               </div>
               <div className="hidden md:flex items-center gap-3">
@@ -522,9 +522,11 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid gap-10 md:grid-cols-[1.4fr_minmax(0,1fr)] items-center">
             <div className="space-y-6">
-              <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-600">
-                {organization?.name || 'Public Tournament'}
-              </span>
+              {organization?.name && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-600">
+                  {organization.name}
+                </span>
+              )}
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900">
                 {tournament.name}
               </h1>
