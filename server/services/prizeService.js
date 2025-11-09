@@ -689,61 +689,64 @@ function getPlayerPosition(player, allStandings) {
 function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, sectionName, tournamentId) {
   const distributions = [];
 
-  // Separate cash and non-cash prizes
   const cashPrizes = applicablePrizes.filter(p => p.type === 'cash');
   const nonCashPrizes = applicablePrizes.filter(p => p.type !== 'cash');
 
-  // Process cash prizes according to US Chess Rule 32B3
   if (cashPrizes.length > 0) {
-    // Calculate the total cash amount of all applicable prizes
     const totalCash = cashPrizes.reduce((sum, prize) => sum + (prize.amount || 0), 0);
-    
-    // Find the maximum individual prize amount (US Chess Rule 32B3 cap)
-    // This represents the highest prize a player could have gotten if they weren't tied
-    const maxIndividualPrize = Math.max(...cashPrizes.map(p => p.amount || 0));
-    
-    // Calculate split amount per player
-    const splitAmountPerPlayer = totalCash / tiedPlayers.length;
-    
-    // Apply US Chess Rule 32B3: No player can receive more than the largest 
-    // amount they would be eligible for without the split
-    // In practice, this usually won't be an issue since pooling typically increases
-    // the amount, but we enforce the cap for compliance
-    const finalAmountPerPlayer = Math.min(splitAmountPerPlayer, maxIndividualPrize);
-    
-    // If the cap is applied, we need to redistribute the excess
-    // This is an edge case but ensures rule compliance
-    let totalDistributed = finalAmountPerPlayer * tiedPlayers.length;
-    let remaining = totalCash - totalDistributed;
-    
-    // Round to 2 decimal places for currency
-    let baseAmount = Math.floor(finalAmountPerPlayer * 100) / 100;
-    
-    // Distribute any remaining cents (due to rounding) to first players
-    const centsRemaining = Math.round((totalCash - (baseAmount * tiedPlayers.length)) * 100);
-    
+
+    let cashSplitResult = null;
+
+    if (position === 2) {
+      cashSplitResult = calculateSecondPrizePayouts(tiedPlayers.length, cashPrizes);
+    }
+
+    if (!cashSplitResult) {
+      cashSplitResult = splitCashPrizesEvenly(cashPrizes, tiedPlayers.length);
+    }
+
+    const {
+      payouts,
+      distributableTotal,
+      pooledPrizeNames,
+      pooledPrizePositions,
+      rawShare,
+      capped
+    } = cashSplitResult;
+
+    const unusedCash = Math.round((totalCash - distributableTotal) * 100) / 100;
+    const prizeLabelParts = pooledPrizeNames && pooledPrizeNames.length > 0
+      ? pooledPrizeNames
+      : cashPrizes.map(p => p.name);
+
     tiedPlayers.forEach((player, index) => {
-      // Add one cent for the first N players to account for rounding
-      const amount = baseAmount + (index < centsRemaining ? 0.01 : 0);
-      
+      if (!player) return;
+
+      const amount = payouts[index] || 0;
+
       distributions.push({
         player_id: player.id,
-        prize_name: cashPrizes.length === 1 
-          ? cashPrizes[0].name 
-          : `Tied ${cashPrizes.map(p => p.name).join(' + ')}`,
+        prize_name: cashPrizes.length === 1
+          ? cashPrizes[0].name
+          : `Tied ${prizeLabelParts.join(' + ')}`,
         prize_type: 'cash',
-        amount: Math.round(amount * 100) / 100, // Round to 2 decimal places
+        amount: Math.round(amount * 100) / 100,
         position: position,
         section: sectionName,
         tie_group: tiedPlayers.length > 1 ? 1 : undefined,
         original_prize_amounts: cashPrizes.map(p => p.amount || 0),
+        pooled_positions: pooledPrizePositions && pooledPrizePositions.length > 0
+          ? pooledPrizePositions
+          : cashPrizes.map(p => p.position).filter(pos => typeof pos === 'number'),
+        pooled_total: distributableTotal,
+        raw_split_amount: rawShare,
+        payout_cap_applied: capped || undefined,
+        unused_cash: unusedCash > 0 ? unusedCash : undefined,
         is_pooled: tiedPlayers.length > 1
       });
     });
   }
 
-  // Process non-cash prizes (one per player, already filtered upstream)
-  // For indivisible prizes like trophies, ties are broken using tiebreaker procedures (Rule 33D1)
   if (nonCashPrizes.length > 0) {
     nonCashPrizes.forEach((prize, prizeIndex) => {
       if (prizeIndex < tiedPlayers.length) {
@@ -762,6 +765,134 @@ function distributePrizesToTiedPlayers(tiedPlayers, applicablePrizes, position, 
   }
 
   return distributions;
+}
+
+/**
+ * Calculate a compliant split for pooled cash prizes
+ * ensuring no player exceeds the maximum allowable individual prize.
+ */
+function splitCashPoolEvenly(totalCash, playerCount, maxIndividualPrize) {
+  if (!playerCount || playerCount <= 0) {
+    return {
+      payouts: [],
+      distributableTotal: 0,
+      rawShare: 0,
+      capped: false
+    };
+  }
+
+  const effectiveMax = typeof maxIndividualPrize === 'number' && !isNaN(maxIndividualPrize) && maxIndividualPrize > 0
+    ? maxIndividualPrize
+    : Number.POSITIVE_INFINITY;
+
+  const distributableTotal = Math.min(totalCash, effectiveMax * playerCount);
+
+  if (distributableTotal <= 0) {
+    return {
+      payouts: new Array(playerCount).fill(0),
+      distributableTotal: 0,
+      rawShare: 0,
+      capped: totalCash > 0
+    };
+  }
+
+  const rawShare = distributableTotal / playerCount;
+  const floorShare = Math.floor(rawShare * 100) / 100;
+  const payouts = new Array(playerCount).fill(floorShare);
+  let distributedTotal = floorShare * playerCount;
+  let centsRemaining = Math.round((distributableTotal - distributedTotal) * 100);
+
+  for (let i = 0; i < payouts.length && centsRemaining > 0; i++) {
+    payouts[i] = Math.round((payouts[i] + 0.01) * 100) / 100;
+    distributedTotal = Math.round((distributedTotal + 0.01) * 100) / 100;
+    centsRemaining--;
+  }
+
+  return {
+    payouts,
+    distributableTotal: Math.round(distributableTotal * 100) / 100,
+    rawShare: Math.round(rawShare * 100) / 100,
+    capped: distributableTotal < totalCash
+  };
+}
+
+/**
+ * Dedicated helper for second-place prize distribution (Rule 32B3).
+ * Pools the 2nd-place prize and any subsequent prizes required for the tie,
+ * then applies cash caps and rounding.
+ */
+function calculateSecondPrizePayouts(tiedPlayerCount, cashPrizes) {
+  if (!Array.isArray(cashPrizes) || cashPrizes.length === 0 || tiedPlayerCount <= 0) {
+    return null;
+  }
+
+  const orderedCashPrizes = cashPrizes
+    .filter(prize => typeof prize.position === 'number')
+    .sort((a, b) => a.position - b.position);
+
+  const secondIndex = orderedCashPrizes.findIndex(prize => prize.position === 2);
+  if (secondIndex === -1) {
+    return null;
+  }
+
+  const relevantPrizes = orderedCashPrizes.slice(secondIndex, secondIndex + tiedPlayerCount);
+  if (relevantPrizes.length === 0) {
+    return null;
+  }
+
+  const totalCash = relevantPrizes.reduce((sum, prize) => sum + (prize.amount || 0), 0);
+  const maxIndividualPrize = relevantPrizes[0] && typeof relevantPrizes[0].amount === 'number'
+    ? relevantPrizes[0].amount
+    : 0;
+
+  const splitResult = splitCashPoolEvenly(totalCash, tiedPlayerCount, maxIndividualPrize);
+
+  return {
+    ...splitResult,
+    pooledPrizeNames: relevantPrizes.map(prize => prize.name),
+    pooledPrizePositions: relevantPrizes.map(prize => prize.position),
+    maxIndividualPrize
+  };
+}
+
+/**
+ * General helper for pooling cash prizes across ties for any finishing position.
+ */
+function splitCashPrizesEvenly(cashPrizes, tiedPlayerCount) {
+  if (!Array.isArray(cashPrizes) || cashPrizes.length === 0 || tiedPlayerCount <= 0) {
+    return {
+      payouts: [],
+      distributableTotal: 0,
+      rawShare: 0,
+      capped: false,
+      pooledPrizeNames: [],
+      pooledPrizePositions: []
+    };
+  }
+
+  const totalCash = cashPrizes.reduce((sum, prize) => sum + (prize.amount || 0), 0);
+
+  const orderedByPosition = cashPrizes
+    .filter(prize => typeof prize.position === 'number')
+    .sort((a, b) => a.position - b.position);
+
+  const maxIndividualPrize = orderedByPosition.length > 0
+    ? orderedByPosition[0].amount || 0
+    : cashPrizes.reduce((max, prize) => {
+        const amount = prize.amount || 0;
+        return amount > max ? amount : max;
+      }, 0);
+
+  const splitResult = splitCashPoolEvenly(totalCash, tiedPlayerCount, maxIndividualPrize);
+
+  return {
+    ...splitResult,
+    pooledPrizeNames: orderedByPosition.length > 0
+      ? orderedByPosition.map(prize => prize.name)
+      : cashPrizes.map(prize => prize.name),
+    pooledPrizePositions: orderedByPosition.map(prize => prize.position),
+    maxIndividualPrize
+  };
 }
 
 /**
@@ -1217,7 +1348,10 @@ module.exports = {
   getSectionsFromPlayers,
   isEligibleForRatingPrize,
   getPlayerPosition,
-  generateStandardPrizeStructure
+  generateStandardPrizeStructure,
+  splitCashPoolEvenly,
+  calculateSecondPrizePayouts,
+  splitCashPrizesEvenly
 };
 
 

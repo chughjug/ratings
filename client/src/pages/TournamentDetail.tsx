@@ -30,7 +30,7 @@ import APIStatusIndicator from '../components/APIStatusIndicator';
 import NotificationButton from '../components/NotificationButton';
 import SendPairingEmailsButton from '../components/SendPairingEmailsButton';
 import PrizeDisplay from '../components/PrizeDisplay';
-import PrizeConfigurationModal from '../components/PrizeConfigurationModal';
+import PrizeManagerDrawer from '../components/PrizeManagerDrawer';
 import ClubRatingsManager from '../components/ClubRatingsManager';
 import SMSManager from '../components/SMSManager';
 import QRCodeGenerator from '../components/QRCodeGenerator';
@@ -136,7 +136,7 @@ const TournamentDetail: React.FC = () => {
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [teamScoringMethod, setTeamScoringMethod] = useState<'all_players' | 'top_players'>('all_players');
   const [teamTopN, setTeamTopN] = useState<number>(4);
-  const [showPrizeConfiguration, setShowPrizeConfiguration] = useState(false);
+  const [showPrizeManager, setShowPrizeManager] = useState(false);
   const [prizeSettings, setPrizeSettings] = useState<any>(null);
   const [showPublicViewCustomization, setShowPublicViewCustomization] = useState(false);
   
@@ -3302,6 +3302,13 @@ const TournamentDetail: React.FC = () => {
                         <span>Print</span>
                       </button>
                       <button
+                        onClick={() => setShowPrizeManager(true)}
+                        className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        <Trophy className="h-4 w-4" />
+                        <span>Manage Prizes</span>
+                      </button>
+                      <button
                         onClick={() => setShowLiveStandings(true)}
                         className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                       >
@@ -3624,7 +3631,7 @@ const TournamentDetail: React.FC = () => {
                       <p className="text-sm text-gray-500">Define prize structures and keep them aligned with standings.</p>
                     </div>
                     <button
-                      onClick={() => setShowPrizeConfiguration(true)}
+                      onClick={() => setShowPrizeManager(true)}
                       className="inline-flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
                     >
                       <Settings className="h-4 w-4" />
@@ -3635,7 +3642,7 @@ const TournamentDetail: React.FC = () => {
                     <PrizeDisplay
                       tournamentId={id || ''}
                       showPrizeSettings={true}
-                      onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
+                      onPrizeSettingsClick={() => setShowPrizeManager(true)}
                     />
                   </div>
                 </section>
@@ -3779,7 +3786,7 @@ const TournamentDetail: React.FC = () => {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => setShowPrizeConfiguration(true)}
+                      onClick={() => setShowPrizeManager(true)}
                       className="inline-flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
                     >
                       <Settings className="h-4 w-4" />
@@ -3793,7 +3800,7 @@ const TournamentDetail: React.FC = () => {
                 <PrizeDisplay
                   tournamentId={id!}
                   showPrizeSettings={true}
-                  onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
+                  onPrizeSettingsClick={() => setShowPrizeManager(true)}
                 />
               </div>
             </div>
@@ -4703,18 +4710,14 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Prize Configuration Modal */}
-      <PrizeConfigurationModal
-        isOpen={showPrizeConfiguration}
-        onClose={() => setShowPrizeConfiguration(false)}
-        tournamentId={id!}
+      {/* Prize Manager Drawer */}
+      <PrizeManagerDrawer
+        open={showPrizeManager}
+        onClose={() => setShowPrizeManager(false)}
+        tournamentId={id || ''}
         currentSettings={prizeSettings}
         onUpdate={(settings) => {
           setPrizeSettings(settings);
-          // Refresh prize display if on prizes tab
-          if (activeTab === 'prizes') {
-            // The PrizeDisplay component will automatically refresh
-          }
         }}
       />
 
