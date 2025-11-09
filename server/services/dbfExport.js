@@ -2,6 +2,71 @@ const { DBFFile } = require('dbffile');
 const path = require('path');
 const fs = require('fs').promises;
 
+const toBooleanFlag = (value) => {
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === '') return false;
+    return ['1', 'true', 'yes', 'y', 't'].includes(normalized);
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  return Boolean(value);
+};
+
+const mapKFactorCode = (value, fallback = 'F') => {
+  if (!value) return fallback;
+  const normalized = value.toString().trim().toLowerCase();
+  switch (normalized) {
+    case 'scholastic':
+    case 's':
+      return 'S';
+    case 'provisional':
+    case 'p':
+      return 'P';
+    case 'regular':
+    case 'r':
+    case 'full':
+    case 'f':
+      return 'F';
+    default:
+      return fallback;
+  }
+};
+
+const mapRatingSystemCode = (value, fallback = 'R') => {
+  if (!value) return fallback;
+  const normalized = value.toString().trim().toLowerCase();
+  switch (normalized) {
+    case 'quick':
+    case 'q':
+      return 'Q';
+    case 'blitz':
+    case 'b':
+      return 'B';
+    case 'regular':
+    case 'r':
+      return 'R';
+    default:
+      return fallback;
+  }
+};
+
+const mapTournamentTypeCode = (value, fallback = 'S') => {
+  if (!value) return fallback;
+  const normalized = value.toString().trim().toLowerCase();
+  switch (normalized) {
+    case 'round_robin':
+    case 'r':
+      return 'R';
+    case 'swiss':
+    case 's':
+      return 'S';
+    default:
+      return fallback;
+  }
+};
 
 /**
  * USCF DBF Export Service
@@ -92,7 +157,11 @@ async function createTournamentHeaderFile(db, tournamentId, exportPath) {
 
       // Generate event ID (format: YYMMDD + sequence number)
       const generateEventId = (tournament) => {
-        const startDate = new Date(tournament.start_date);
+        const baseDateValue = tournament.start_date || tournament.end_date || new Date().toISOString();
+        let startDate = new Date(baseDateValue);
+        if (Number.isNaN(startDate.getTime())) {
+          startDate = new Date();
+        }
         const year = startDate.getFullYear().toString().slice(-2);
         const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
         const day = startDate.getDate().toString().padStart(2, '0');
@@ -104,18 +173,18 @@ async function createTournamentHeaderFile(db, tournamentId, exportPath) {
       const record = {
         H_EVENT_ID: generateEventId(tournament),
         H_NAME: (tournament.name || '').substring(0, 35),
-        H_TOT_SECT: sectionCount,
+        H_TOT_SECT: sectionCount || 1,
         H_BEG_DATE: formatDate(tournament.start_date),
         H_END_DATE: formatDate(tournament.end_date),
         H_RCV_DATE: null, // Blank - filled by USCF
         H_ENT_DATE: null, // Blank - filled by USCF
-        H_AFF_ID: (tournament.affiliate_id || 'A6000220').substring(0, 8),
-        H_CITY: (tournament.city || '').substring(0, 21),
-        H_STATE: (tournament.state || '').substring(0, 2),
-        H_ZIPCODE: (tournament.zipcode || '').substring(0, 10),
+        H_AFF_ID: (tournament.affiliate_id || 'A6000220').toString().trim().substring(0, 8),
+        H_CITY: (tournament.city || tournament.venue_city || '').toString().trim().substring(0, 21),
+        H_STATE: (tournament.state || tournament.venue_state || '').toString().trim().toUpperCase().substring(0, 2),
+        H_ZIPCODE: (tournament.zipcode || tournament.venue_zipcode || '').toString().trim().substring(0, 10),
         H_COUNTRY: 'USA',
-        H_SENDCROS: tournament.send_crosstable ? 'Y' : 'N',
-        H_SCHOLAST: tournament.scholastic ? 'Y' : 'N',
+        H_SENDCROS: toBooleanFlag(tournament.send_crosstable) ? 'Y' : 'N',
+        H_SCHOLAST: toBooleanFlag(tournament.scholastic_tournament ?? tournament.scholastic) ? 'Y' : 'N',
         H_SECREC01: 1
       };
 
@@ -268,7 +337,11 @@ async function createSectionHeaderFile(db, tournamentId, exportPath) {
 
       // Generate event ID (same as tournament header)
       const generateEventId = (tournament) => {
-        const startDate = new Date(tournament.start_date);
+        const baseDateValue = tournament.start_date || tournament.end_date || new Date().toISOString();
+        let startDate = new Date(baseDateValue);
+        if (Number.isNaN(startDate.getTime())) {
+          startDate = new Date();
+        }
         const year = startDate.getFullYear().toString().slice(-2);
         const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
         const day = startDate.getDate().toString().padStart(2, '0');
@@ -279,20 +352,32 @@ async function createSectionHeaderFile(db, tournamentId, exportPath) {
       // Add section records
       for (let index = 0; index < finalSections.length; index++) {
         const section = finalSections[index];
+        const sectionKFactor = mapKFactorCode(tournament.k_factor, 'F');
+        let ratingSystem = mapRatingSystemCode(tournament.rating_system, 'R');
+
+        if (!tournament.rating_system && section.section_name) {
+          const nameLower = section.section_name.toLowerCase();
+          if (nameLower.includes('quick')) {
+            ratingSystem = 'Q';
+          } else if (nameLower.includes('blitz')) {
+            ratingSystem = 'B';
+          }
+        }
+
         const record = {
           S_EVENT_ID: generateEventId(tournament),
           S_SEC_NUM: ` ${index + 1}`.slice(-2), // Space-padded section number
           S_SEC_NAME: section.section_name.substring(0, 10),
-          S_K_FACTOR: 'F', // Full K-factor
-          S_R_SYSTEM: 'R', // Regular rating system
-          S_CTD_ID: (tournament.chief_td_uscf_id || '12484800').substring(0, 8),
-          S_ATD_ID: (tournament.assistant_td_uscf_id || '').substring(0, 8),
-          S_TRN_TYPE: 'S', // Swiss system
+          S_K_FACTOR: sectionKFactor,
+          S_R_SYSTEM: ratingSystem,
+          S_CTD_ID: (tournament.chief_td_uscf_id || '12484800').toString().trim().substring(0, 8),
+          S_ATD_ID: (tournament.assistant_td_uscf_id || '').toString().trim().substring(0, 8),
+          S_TRN_TYPE: mapTournamentTypeCode(tournament.tournament_type, 'S'),
           S_TOT_RNDS: tournamentRounds ? tournamentRounds.rounds : 0,
           S_LST_PAIR: section.player_count,
           S_DTLREC01: section.player_count,
-          S_OPERATOR: 'XX', // Software-specific operator code
-          S_STATUS: '#' // Section status
+          S_OPERATOR: 'PC', // PairCraft operator code
+          S_STATUS: 'A' // Active section
         };
         await dbfFile.appendRecords([record]);
       }
@@ -358,7 +443,7 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
 
       // Get tournament rounds to determine max rounds
       const tournament = await new Promise((resolve, reject) => {
-        db.get('SELECT rounds FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        db.get('SELECT rounds, start_date, end_date FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
@@ -368,7 +453,11 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
 
       // Generate event ID (same as tournament header)
       const generateEventId = (tournament) => {
-        const startDate = new Date(tournament.start_date);
+        const baseDateValue = tournament.start_date || tournament.end_date || new Date().toISOString();
+        let startDate = new Date(baseDateValue);
+        if (Number.isNaN(startDate.getTime())) {
+          startDate = new Date();
+        }
         const year = startDate.getFullYear().toString().slice(-2);
         const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
         const day = startDate.getDate().toString().padStart(2, '0');

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash, Crown } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -31,6 +31,7 @@ import NotificationButton from '../components/NotificationButton';
 import SendPairingEmailsButton from '../components/SendPairingEmailsButton';
 import PrizeDisplay from '../components/PrizeDisplay';
 import PrizeManagerDrawer from '../components/PrizeManagerDrawer';
+import TournamentWinnersPanel from '../components/TournamentWinnersPanel';
 import ClubRatingsManager from '../components/ClubRatingsManager';
 import SMSManager from '../components/SMSManager';
 import QRCodeGenerator from '../components/QRCodeGenerator';
@@ -603,11 +604,19 @@ const TournamentDetail: React.FC = () => {
   // Helper function to get round result for print display
   const getRoundResultForPrint = (player: any, round: number, sectionPlayers: any[]) => {
     if (!state.pairings || state.pairings.length === 0) return '-';
-    
-    // Filter pairings for the selected section and round
-    const filteredPairings = state.pairings.filter((p: any) => 
-      p.section === selectedSection && p.round === round
-    );
+
+    // Determine which section this lookup should use.
+    const sectionHint =
+      player?.section ||
+      sectionPlayers?.[0]?.section ||
+      (selectedSection ? selectedSection : null);
+
+    // Filter pairings for the derived section (if available) and round
+    const filteredPairings = state.pairings.filter((p: any) => {
+      if (p.round !== round) return false;
+      if (!sectionHint) return true;
+      return p.section === sectionHint;
+    });
     
     const pairing = filteredPairings.find((p: any) => 
       (p.white_player_id === player.id || p.black_player_id === player.id)
@@ -2040,6 +2049,18 @@ const TournamentDetail: React.FC = () => {
               >
                 <Trophy className="h-4 w-4" />
                 <span>Standings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('winners')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'winners'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
+                }`}
+              >
+                <Crown className="h-4 w-4" />
+                <span>Winners</span>
               </button>
 
               <button
@@ -3927,6 +3948,10 @@ const TournamentDetail: React.FC = () => {
               </p>
               <ClubRatingsManager organizationId={tournament.organization_id} />
             </div>
+          )}
+
+          {activeTab === 'winners' && id && (
+            <TournamentWinnersPanel tournamentId={id} />
           )}
 
           {activeTab === 'prizes' && (

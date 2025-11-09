@@ -9,6 +9,132 @@ const { calculateAndDistributePrizes, getPrizeDistributions, autoAssignPrizesOnR
 const { authenticate, verifyToken } = require('../middleware/auth');
 const { cleanupTournamentData, cleanupAllCompletedTournaments } = require('../services/dataCleanupService');
 
+// Map of request payload fields to database column names for USCF compliance data
+const USCF_COMPLIANCE_FIELD_MAP = {
+  zipcode: 'zipcode',
+  affiliate_id: 'affiliate_id',
+  assistant_td_name: 'assistant_td_name',
+  assistant_td_uscf_id: 'assistant_td_uscf_id',
+  send_crosstable: 'send_crosstable',
+  scholastic_tournament: 'scholastic_tournament',
+  chief_td_email: 'tournament_director_email',
+  chief_td_phone: 'tournament_director_phone',
+  tournament_director_email: 'tournament_director_email',
+  tournament_director_phone: 'tournament_director_phone',
+  venue_name: 'venue_name',
+  venue_address: 'venue_address',
+  venue_city: 'venue_city',
+  venue_state: 'venue_state',
+  venue_zipcode: 'venue_zipcode',
+  entry_fee_amount: 'entry_fee_amount',
+  prize_fund_amount: 'prize_fund_amount',
+  time_control_description: 'time_control_description',
+  rating_system: 'rating_system',
+  k_factor: 'k_factor',
+  pairing_system: 'pairing_system',
+  tournament_type: 'tournament_type',
+  bye_points: 'bye_points',
+  forfeit_points: 'forfeit_points',
+  half_point_bye_points: 'half_point_bye_points',
+  full_point_bye_points: 'full_point_bye_points',
+  pairing_allocated_bye_points: 'pairing_allocated_bye_points',
+  provisional_rating_threshold: 'provisional_rating_threshold',
+  minimum_games_for_rating: 'minimum_games_for_rating',
+  rating_submission_status: 'rating_submission_status',
+  rating_submission_date: 'rating_submission_date',
+  rating_submission_notes: 'rating_submission_notes',
+  uscf_tournament_id: 'uscf_tournament_id',
+  uscf_section_ids: 'uscf_section_ids',
+  uscf_rating_report_generated: 'uscf_rating_report_generated',
+  uscf_rating_report_date: 'uscf_rating_report_date',
+  uscf_rating_report_notes: 'uscf_rating_report_notes',
+  compliance_notes: 'compliance_notes',
+  regulatory_notes: 'regulatory_notes',
+  audit_trail: 'audit_trail',
+  validation_status: 'validation_status',
+  validation_notes: 'validation_notes',
+  validation_date: 'validation_date',
+  validation_by: 'validation_by',
+  created_by: 'created_by',
+  last_modified_by: 'last_modified_by',
+  last_modified_date: 'last_modified_date',
+  version: 'version',
+  compliance_version: 'compliance_version',
+  export_format_version: 'export_format_version',
+  data_integrity_hash: 'data_integrity_hash'
+};
+
+const USCF_BOOLEAN_FIELDS = new Set([
+  'send_crosstable',
+  'scholastic_tournament',
+  'uscf_rating_report_generated'
+]);
+
+/**
+ * Normalize USCF compliance field values before persisting
+ */
+const normalizeUSCFComplianceValue = (column, value) => {
+  if (value === undefined) return { skip: true };
+
+  // Convert empty strings to null for cleaner storage
+  if (typeof value === 'string' && value.trim() === '') {
+    return { skip: false, value: null };
+  }
+
+  if (USCF_BOOLEAN_FIELDS.has(column)) {
+    return { skip: false, value: value ? 1 : 0 };
+  }
+
+  return { skip: false, value };
+};
+
+/**
+ * Persist USCF compliance fields to the tournaments table
+ * Only updates columns that are present in the payload
+ */
+const updateUSCFComplianceFields = (tournamentId, data = {}) => {
+  if (!tournamentId || !data || typeof data !== 'object') {
+    return Promise.resolve(false);
+  }
+
+  const setClauses = [];
+  const params = [];
+
+  Object.entries(USCF_COMPLIANCE_FIELD_MAP).forEach(([payloadKey, columnName]) => {
+    if (Object.prototype.hasOwnProperty.call(data, payloadKey)) {
+      const { skip, value } = normalizeUSCFComplianceValue(columnName, data[payloadKey]);
+      if (!skip) {
+        setClauses.push(`${columnName} = ?`);
+        params.push(value);
+      }
+    }
+  });
+
+  if (setClauses.length === 0) {
+    return Promise.resolve(false);
+  }
+
+  // Always update last_modified_date if not explicitly provided
+  if (!Object.prototype.hasOwnProperty.call(data, 'last_modified_date')) {
+    setClauses.push('last_modified_date = ?');
+    params.push(new Date().toISOString());
+  }
+
+  params.push(tournamentId);
+
+  const sql = `UPDATE tournaments SET ${setClauses.join(', ')} WHERE id = ?`;
+
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Error updating USCF compliance fields:', err);
+        return reject(err);
+      }
+      resolve(this.changes > 0);
+    });
+  });
+};
+
 const fetchContactMessages = (tournamentId, limit = 100) => {
   if (!tournamentId) {
     return Promise.resolve([]);
@@ -435,7 +561,7 @@ router.post('/', (req, res) => {
                                expected_players, website, fide_rated, uscf_rated, allow_registration, is_public, public_url, logo_url, tournament_information)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       params,
-      function(err) {
+      async function(err) {
         if (err) {
           console.error('Error creating tournament:', err);
           console.error('SQL Error details:', err.message);
@@ -449,6 +575,13 @@ router.post('/', (req, res) => {
             code: err.code
           });
         }
+
+        try {
+          await updateUSCFComplianceFields(id, req.body);
+        } catch (complianceError) {
+          console.error('Failed to persist USCF compliance fields during tournament creation:', complianceError);
+        }
+
         console.log('Tournament created successfully with ID:', id);
         res.json({ 
           success: true,
@@ -690,7 +823,7 @@ router.put('/:id', (req, res) => {
            twilio_account_sid = ?, twilio_auth_token = ?, twilio_phone_number = ?, sms_notifications_enabled = ?
        WHERE id = ?`,
       params,
-    function(err) {
+    async function(err) {
       if (err) {
         console.error('Error updating tournament:', err);
         console.error('SQL Error details:', err.message);
@@ -707,6 +840,11 @@ router.put('/:id', (req, res) => {
           success: false,
           error: 'Tournament not found' 
         });
+      }
+      try {
+        await updateUSCFComplianceFields(id, updateFields);
+      } catch (complianceError) {
+        console.error('Failed to persist USCF compliance fields during tournament update:', complianceError);
       }
       // Return the updated tournament data
       db.get('SELECT * FROM tournaments WHERE id = ?', [id], async (err, tournament) => {
@@ -1469,6 +1607,140 @@ router.get('/:id/prizes', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch prize distributions'
+    });
+  }
+});
+
+// Get structured winners data for public/TD views
+router.get('/:id/winners', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const rows = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT
+           pd.*,
+           pr.name AS defined_prize_name,
+           pr.type AS defined_prize_type,
+           pr.description AS prize_description,
+           pl.name AS player_name,
+           pl.rating AS player_rating,
+           pl.section AS player_section,
+           pl.uscf_id AS player_uscf_id
+         FROM prize_distributions pd
+         LEFT JOIN prizes pr ON pd.prize_id = pr.id
+         LEFT JOIN players pl ON pd.player_id = pl.id
+         WHERE pd.tournament_id = ?
+         ORDER BY
+           COALESCE(pd.section, 'Open'),
+           CASE WHEN COALESCE(pr.type, '') = 'cash' THEN 0 ELSE 1 END,
+           COALESCE(pd.position, 9999),
+           COALESCE(pl.rating, 0) DESC,
+           COALESCE(pl.name, '')
+        `,
+        [id],
+        (err, winners) => {
+          if (err) reject(err);
+          else resolve(winners || []);
+        }
+      );
+    });
+
+    const sectionsMap = new Map();
+    const uniquePlayers = new Set();
+    let totalCash = 0;
+    let cashAwards = 0;
+    let nonCashAwards = 0;
+
+    rows.forEach(row => {
+      const sectionKey = row.section || row.player_section || 'Open';
+      if (!sectionsMap.has(sectionKey)) {
+        sectionsMap.set(sectionKey, {
+          section: sectionKey,
+          winners: [],
+          stats: {
+            cashTotal: 0,
+            cashCount: 0,
+            nonCashCount: 0,
+            uniquePlayers: new Set()
+          }
+        });
+      }
+
+      const entry = sectionsMap.get(sectionKey);
+      const amount = typeof row.amount === 'number' ? row.amount : row.amount ? Number(row.amount) : 0;
+      const prizeType =
+        row.defined_prize_type ||
+        (amount > 0 ? 'cash' : null) ||
+        'recognition';
+      const prizeName = row.prize_name || row.defined_prize_name || 'Prize';
+
+      const winner = {
+        id: row.id,
+        prizeDistributionId: row.id,
+        prizeId: row.prize_id,
+        playerId: row.player_id,
+        playerName: row.player_name || 'Unknown Player',
+        playerRating: row.player_rating || null,
+        playerSection: row.player_section || sectionKey,
+        playerUscfId: row.player_uscf_id || null,
+        prizeName,
+        prizeType,
+        amount: amount || 0,
+        position: row.position || null,
+        ratingCategory: row.rating_category || null,
+        tieGroup: row.tie_group || null,
+        description: row.prize_description || null
+      };
+
+      entry.winners.push(winner);
+      entry.stats.uniquePlayers.add(row.player_id);
+
+      if (prizeType === 'cash' && amount > 0) {
+        entry.stats.cashTotal += amount;
+        entry.stats.cashCount += 1;
+        totalCash += amount;
+        cashAwards += 1;
+      } else {
+        entry.stats.nonCashCount += 1;
+        nonCashAwards += 1;
+      }
+
+      if (row.player_id) {
+        uniquePlayers.add(row.player_id);
+      }
+    });
+
+    const sections = Array.from(sectionsMap.values()).map(section => ({
+      section: section.section,
+      winners: section.winners,
+      stats: {
+        cashTotal: Number(section.stats.cashTotal.toFixed(2)),
+        cashCount: section.stats.cashCount,
+        nonCashCount: section.stats.nonCashCount,
+        uniquePlayers: section.stats.uniquePlayers.size
+      }
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        sections,
+        totals: {
+          sections: sections.length,
+          totalCash: Number(totalCash.toFixed(2)),
+          cashAwards,
+          nonCashAwards,
+          uniqueWinners: uniquePlayers.size
+        },
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching winners:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch winners'
     });
   }
 });

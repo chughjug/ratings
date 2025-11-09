@@ -193,6 +193,16 @@ export const tournamentApi = {
   // Prize management
   getSections: (id: string) => api.get<{success: boolean, data: string[], error?: string}>(`/tournaments/${id}/sections`),
   getPrizes: (id: string) => api.get<{success: boolean, data: any[], error?: string}>(`/tournaments/${id}/prizes`),
+  getWinners: (id: string) =>
+    api.get<{
+      success: boolean;
+      data: {
+        sections: any[];
+        totals: any;
+        lastUpdated?: string;
+      };
+      error?: string;
+    }>(`/tournaments/${id}/winners`),
   calculatePrizes: (id: string) => api.post<{success: boolean, data: any[], message?: string, error?: string, metadata?: any}>(`/tournaments/${id}/prizes/calculate`),
   updatePrizeSettings: (id: string, prizeSettings: any) => 
     api.put<{success: boolean, message: string, error?: string}>(`/tournaments/${id}/prize-settings`, { prizeSettings }),

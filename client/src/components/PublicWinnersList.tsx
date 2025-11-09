@@ -1,96 +1,29 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { DollarSign, Trophy, Award } from 'lucide-react';
-import { tournamentApi } from '../services/api';
-
-interface PrizeDistribution {
-  id: string;
-  player_id: string;
-  player_name: string;
-  prize_name: string;
-  prize_type: 'cash' | 'trophy' | 'medal' | 'plaque';
-  amount?: number;
-  position?: number;
-  section?: string;
-  tie_group?: number;
-  rating_category?: string;
-}
+import React from 'react';
+import { Award, DollarSign, Sparkles, Trophy } from 'lucide-react';
+import { useWinnersData, WinnerEntry } from '../hooks/useWinnersData';
 
 interface PublicWinnersListProps {
   tournamentId: string;
 }
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+const getPrizeIcon = (type: string) => {
+  switch (type) {
+    case 'cash':
+      return <DollarSign className="w-4 h-4 text-green-600" />;
+    case 'trophy':
+      return <Trophy className="w-4 h-4 text-yellow-500" />;
+    case 'medal':
+      return <Award className="w-4 h-4 text-blue-500" />;
+    default:
+      return <Sparkles className="w-4 h-4 text-purple-500" />;
+  }
+};
+
 const PublicWinnersList: React.FC<PublicWinnersListProps> = ({ tournamentId }) => {
-  const [distributions, setDistributions] = useState<PrizeDistribution[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchDistributions = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await tournamentApi.getPrizes(tournamentId);
-        if (!isMounted) return;
-
-        if (response.data.success) {
-          const cashPrizes = (response.data.data || []).filter(
-            (dist: PrizeDistribution) => dist.prize_type === 'cash'
-          );
-          setDistributions(cashPrizes);
-        } else {
-          setError('Unable to load winners right now.');
-        }
-      } catch (err) {
-        console.error('Error fetching winners:', err);
-        if (isMounted) {
-          setError('Unable to load winners right now.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchDistributions();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [tournamentId]);
-
-  const groupedBySection = useMemo(() => {
-    const groups: Record<string, PrizeDistribution[]> = {};
-
-    distributions.forEach((dist) => {
-      const key = dist.section || 'Open';
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(dist);
-    });
-
-    Object.keys(groups).forEach((section) => {
-      groups[section].sort((a, b) => {
-        if (a.position && b.position && a.position !== b.position) {
-          return a.position - b.position;
-        }
-        if (a.amount && b.amount && a.amount !== b.amount) {
-          return b.amount - a.amount;
-        }
-        return a.player_name.localeCompare(b.player_name);
-      });
-    });
-
-    return groups;
-  }, [distributions]);
-
-  const totalCashAwarded = useMemo(
-    () => distributions.reduce((sum, dist) => sum + (dist.amount || 0), 0),
-    [distributions]
-  );
+  const { sections, totals, loading, error, totalWinners } = useWinnersData(tournamentId);
 
   if (loading) {
     return (
@@ -112,66 +45,141 @@ const PublicWinnersList: React.FC<PublicWinnersListProps> = ({ tournamentId }) =
     );
   }
 
-  if (distributions.length === 0) {
+  if (!sections.length || totalWinners === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6 text-center">
         <Trophy className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-        <p className="text-gray-700">Cash prize winners will appear here once prizes have been awarded.</p>
+        <p className="text-gray-700">
+          Prize winners will appear here once the event awards have been finalized.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Cash Prize Winners</h3>
-          <p className="text-sm text-gray-600">
-            Final prize distribution including pooled payouts for tied players.
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-200 flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-gradient-to-r from-blue-50 to-white">
+        <div className="space-y-1">
+          <h3 className="text-lg font-semibold text-gray-900">Tournament Winners</h3>
+          <p className="text-sm text-gray-600 max-w-2xl">
+            Official list of cash and award recipients. Cash prizes are pooled and split per US Chess
+            Rules 32B2–32B3. Non-cash awards (trophies, medals, etc.) follow posted tiebreaks.
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <DollarSign className="w-5 h-5 text-green-600" />
-          <span className="text-xl font-bold text-green-600">${totalCashAwarded.toFixed(2)}</span>
-        </div>
+        {totals && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Total Cash Awarded</p>
+              <p className="text-xl font-semibold text-green-600">
+                {formatCurrency(totals.totalCash || 0)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-wide text-gray-500">Total Winners</p>
+              <p className="text-xl font-semibold text-gray-900">{totalWinners}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-6 space-y-6">
-        {Object.entries(groupedBySection).map(([section, entries]) => (
-          <div key={section} className="border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                <span className="font-semibold text-gray-800">{section} Section</span>
-              </div>
-              <span className="text-sm text-gray-500">{entries.length} winners</span>
-            </div>
+        {sections.map((section) => {
+          const cashWinners = section.winners.filter(
+            (winner) => winner.prizeType === 'cash' && winner.amount > 0
+          );
+          const awardWinners = section.winners.filter((winner) => winner.prizeType !== 'cash');
 
-            <div className="divide-y divide-gray-200">
-              {entries.map((entry) => (
-                <div key={entry.id} className="px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-gray-900">{entry.player_name}</div>
-                    <div className="text-sm text-gray-600">{entry.prize_name}</div>
-                    {entry.tie_group && (
-                      <div className="text-xs text-blue-600 font-medium uppercase tracking-wide mt-1">
-                        Tied prize pool
-                      </div>
+          const renderWinnerRow = (winner: WinnerEntry) => (
+            <div
+              key={winner.id}
+              className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                {getPrizeIcon(winner.prizeType)}
+                <div>
+                  <div className="font-semibold text-gray-900">{winner.playerName}</div>
+                  <div className="text-sm text-gray-600">{winner.prizeName}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    {winner.position && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        #{winner.position}
+                      </span>
                     )}
-                  </div>
-                  <div className="text-right">
-                    {entry.position && (
-                      <div className="text-sm text-gray-500 mb-1">#{entry.position}</div>
+                    {winner.tieGroup && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                        Pooled prize
+                      </span>
                     )}
-                    <div className="text-lg font-bold text-green-600">
-                      ${entry.amount ? entry.amount.toFixed(2) : '0.00'}
-                    </div>
+                    {winner.prizeType !== 'cash' && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize">
+                        {winner.prizeType}
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
+              </div>
+              <div className="text-right">
+                {winner.prizeType === 'cash' ? (
+                  <div className="text-lg font-semibold text-green-600">
+                    {formatCurrency(winner.amount)}
+                  </div>
+                ) : (
+                  <div className="text-sm font-medium text-gray-500">Award</div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+
+          return (
+            <div key={section.section} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  <span className="font-semibold text-gray-800">{section.section} Section</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <span>{section.stats.cashCount} cash prizes</span>
+                  <span>•</span>
+                  <span>{section.stats.nonCashCount} awards</span>
+                  <span>•</span>
+                  <span>{section.stats.uniquePlayers} winners</span>
+                </div>
+              </div>
+
+              {cashWinners.length > 0 && (
+                <div className="border-b border-gray-200 bg-white/60">
+                  <div className="px-4 py-2 flex items-center justify-between bg-green-50">
+                    <span className="text-sm font-semibold text-green-800">Cash Prizes</span>
+                    <span className="text-sm font-semibold text-green-700">
+                      {formatCurrency(section.stats.cashTotal)}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-gray-200">
+                    {cashWinners.map((winner) => renderWinnerRow(winner))}
+                  </div>
+                </div>
+              )}
+
+              {awardWinners.length > 0 && (
+                <div className="bg-white">
+                  <div className="px-4 py-2 flex items-center justify-between bg-gray-50">
+                    <span className="text-sm font-semibold text-gray-800">Awards & Trophies</span>
+                    <span className="text-sm text-gray-500">{awardWinners.length} recipients</span>
+                  </div>
+                  <div className="divide-y divide-gray-200">
+                    {awardWinners.map((winner) => renderWinnerRow(winner))}
+                  </div>
+                </div>
+              )}
+
+              {cashWinners.length === 0 && awardWinners.length === 0 && (
+                <div className="px-4 py-6 text-center text-sm text-gray-500">
+                  Winners will be published here once the section is finalized.
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
