@@ -2208,7 +2208,10 @@ const PublicTournamentDisplay: React.FC = () => {
             )}
 
               {activeTab === 'winners' && id && (
-              <PublicWinnersList tournamentId={id} />
+              <PublicWinnersList
+                tournamentId={id}
+                initialDistributions={data?.prizeDistributions}
+              />
             )}
 
             {activeTab === 'teams' && (

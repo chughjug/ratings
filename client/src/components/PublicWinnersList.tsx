@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Award, DollarSign, Sparkles, Trophy } from 'lucide-react';
-import { useWinnersData, WinnerEntry } from '../hooks/useWinnersData';
+import {
+  useWinnersData,
+  WinnerEntry,
+  WinnersResponse,
+  WinnersSection,
+  WinnersTotals
+} from '../hooks/useWinnersData';
 
 interface PublicWinnersListProps {
   tournamentId: string;
+  initialDistributions?: any[] | null;
 }
 
 const formatCurrency = (value: number) =>
@@ -22,8 +29,168 @@ const getPrizeIcon = (type: string) => {
   }
 };
 
-const PublicWinnersList: React.FC<PublicWinnersListProps> = ({ tournamentId }) => {
-  const { sections, totals, loading, error, totalWinners } = useWinnersData(tournamentId);
+const buildInitialResponse = (distributions?: any[] | null): WinnersResponse | null => {
+  if (!distributions || distributions.length === 0) {
+    return null;
+  }
+
+  const sectionsMap = new Map<
+    string,
+    {
+      section: string;
+      winners: WinnerEntry[];
+      stats: {
+        cashTotal: number;
+        cashCount: number;
+        nonCashCount: number;
+        uniquePlayers: Set<string>;
+      };
+    }
+  >();
+  const uniquePlayers = new Set<string>();
+  let totalCash = 0;
+  let cashAwards = 0;
+  let nonCashAwards = 0;
+  let latestTimestamp: Date | null = null;
+
+  distributions.forEach((dist) => {
+    const sectionKey = dist.section || dist.player_section || 'Open';
+
+    if (!sectionsMap.has(sectionKey)) {
+      sectionsMap.set(sectionKey, {
+        section: sectionKey,
+        winners: [],
+        stats: {
+          cashTotal: 0,
+          cashCount: 0,
+          nonCashCount: 0,
+          uniquePlayers: new Set<string>()
+        }
+      });
+    }
+
+    const sectionEntry = sectionsMap.get(sectionKey)!;
+
+    const amountRaw =
+      typeof dist.amount === 'number' ? dist.amount : dist.amount ? Number(dist.amount) : 0;
+    const amount = Number.isFinite(amountRaw) ? amountRaw : 0;
+    const prizeType =
+      dist.prize_type ||
+      dist.prizeType ||
+      (amount > 0 ? 'cash' : 'recognition');
+    const prizeName = dist.prize_name || dist.prizeName || 'Prize';
+    const ratingCategory = dist.rating_category || dist.ratingCategory || null;
+    const tieGroup = dist.tie_group || dist.tieGroup || null;
+    const position = dist.position ?? null;
+    const prizeDescription = dist.description || dist.prize_description || null;
+
+    const ratingRange =
+      typeof ratingCategory === 'string' && ratingCategory.startsWith('rating:')
+        ? (() => {
+            const [, range] = ratingCategory.split(':');
+            if (!range) return null;
+            const [minPart, maxPart] = range.split('-');
+            const min = minPart && minPart !== '-' ? Number(minPart) : null;
+            const max = maxPart && maxPart !== '-' ? Number(maxPart) : null;
+            return {
+              min: Number.isFinite(min) ? min : null,
+              max: Number.isFinite(max) ? max : null
+            };
+          })()
+        : null;
+
+    const winner: WinnerEntry = {
+      id: dist.id,
+      prizeDistributionId: dist.id,
+      prizeId: dist.prize_id || dist.prizeId,
+      playerId: dist.player_id || dist.playerId,
+      playerName: dist.player_name || dist.playerName || 'Unknown Player',
+      playerRating:
+        typeof dist.player_rating === 'number'
+          ? dist.player_rating
+          : dist.player_rating
+          ? Number(dist.player_rating)
+          : null,
+      playerSection: dist.player_section || sectionKey,
+      playerUscfId: dist.player_uscf_id || dist.playerUscfId || null,
+      prizeName,
+      prizeType,
+      amount,
+      position,
+      ratingCategory,
+      tieGroup,
+      description: prizeDescription,
+      metadata: {
+        awardType: prizeType,
+        ...(ratingRange ? { ratingRange } : {})
+      }
+    };
+
+    sectionEntry.winners.push(winner);
+    if (winner.playerId) {
+      sectionEntry.stats.uniquePlayers.add(winner.playerId);
+      uniquePlayers.add(winner.playerId);
+    }
+
+    if (prizeType === 'cash' && amount > 0) {
+      sectionEntry.stats.cashTotal += amount;
+      sectionEntry.stats.cashCount += 1;
+      totalCash += amount;
+      cashAwards += 1;
+    } else {
+      sectionEntry.stats.nonCashCount += 1;
+      nonCashAwards += 1;
+    }
+
+    const timestampString = dist.updated_at || dist.created_at;
+    if (timestampString) {
+      const ts = new Date(timestampString);
+      if (!Number.isNaN(ts.getTime())) {
+        if (!latestTimestamp || ts > latestTimestamp) {
+          latestTimestamp = ts;
+        }
+      }
+    }
+  });
+
+  const sections = Array.from(sectionsMap.values()).map((section) => ({
+    section: section.section,
+    winners: section.winners,
+    stats: {
+      cashTotal: Number(section.stats.cashTotal.toFixed(2)),
+      cashCount: section.stats.cashCount,
+      nonCashCount: section.stats.nonCashCount,
+      uniquePlayers: section.stats.uniquePlayers.size
+    }
+  }));
+
+  const totals: WinnersTotals = {
+    sections: sections.length,
+    totalCash: Number(totalCash.toFixed(2)),
+    cashAwards,
+    nonCashAwards,
+    uniqueWinners: uniquePlayers.size
+  };
+
+  return {
+    sections,
+    totals,
+    lastUpdated: latestTimestamp ? latestTimestamp.toISOString() : undefined
+  };
+};
+
+const PublicWinnersList: React.FC<PublicWinnersListProps> = ({
+  tournamentId,
+  initialDistributions
+}) => {
+  const fallbackResponse = useMemo(
+    () => buildInitialResponse(initialDistributions),
+    [initialDistributions]
+  );
+  const { sections, totals, loading, error, totalWinners } = useWinnersData(
+    tournamentId,
+    fallbackResponse
+  );
 
   if (loading) {
     return (

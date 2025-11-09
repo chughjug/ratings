@@ -45,18 +45,23 @@ export interface WinnersResponse {
   lastUpdated?: string;
 }
 
-export const useWinnersData = (tournamentId?: string | null) => {
-  const [sections, setSections] = useState<WinnersSection[]>([]);
-  const [totals, setTotals] = useState<WinnersTotals | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+export const useWinnersData = (
+  tournamentId?: string | null,
+  initialData?: WinnersResponse | null
+) => {
+  const [sections, setSections] = useState<WinnersSection[]>(initialData?.sections || []);
+  const [totals, setTotals] = useState<WinnersTotals | null>(initialData?.totals || null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(initialData?.lastUpdated || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchWinners = useCallback(async () => {
     if (!tournamentId) {
-      setSections([]);
-      setTotals(null);
-      setLastUpdated(null);
+      setSections(initialData?.sections || []);
+      setTotals(initialData?.totals || null);
+      setLastUpdated(initialData?.lastUpdated || null);
+      setLoading(false);
+      setError(null);
       return;
     }
 
@@ -79,7 +84,15 @@ export const useWinnersData = (tournamentId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [tournamentId]);
+  }, [tournamentId, initialData]);
+
+  useEffect(() => {
+    if (initialData) {
+      setSections(initialData.sections || []);
+      setTotals(initialData.totals || null);
+      setLastUpdated(initialData.lastUpdated || null);
+    }
+  }, [initialData]);
 
   useEffect(() => {
     fetchWinners();
