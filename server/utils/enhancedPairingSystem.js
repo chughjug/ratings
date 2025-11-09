@@ -526,12 +526,19 @@ class EnhancedPairingSystem {
       // Combine bye pairings and regular pairings
       const allPairings = [...byePairings, ...regularPairings];
       
-      // Add section and board numbers
-      allPairings.forEach((pairing, index) => {
+      // Add section and board numbers (skip board assignment for byes)
+      let boardNumber = 1;
+      allPairings.forEach(pairing => {
         pairing.section = this.section;
-        pairing.board = index + 1;
         pairing.tournament_id = this.tournamentId;
         pairing.round = this.round;
+
+        if (pairing.is_bye || pairing.black_player_id == null) {
+          pairing.board = null;
+        } else {
+          pairing.board = boardNumber;
+          boardNumber += 1;
+        }
       });
 
       console.log(`[EnhancedPairingSystem] Generated ${allPairings.length} total pairings for section ${this.section} (${byePairings.length} byes, ${regularPairings.length} regular)`);

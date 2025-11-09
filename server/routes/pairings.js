@@ -25,6 +25,30 @@ class PairingStorageService {
     this.db = database;
   }
 
+  normalizePairingRow(row) {
+    if (!row || typeof row !== 'object') {
+      return row;
+    }
+
+    const isBye =
+      row.is_bye === 1 ||
+      row.is_bye === true ||
+      row.is_bye === '1' ||
+      (!row.black_player_id && row.black_player_id !== 0);
+
+    const numericBoard =
+      row.board === null || row.board === undefined
+        ? null
+        : Number.isNaN(Number(row.board))
+          ? row.board
+          : Number(row.board);
+
+    return {
+      ...row,
+      board: isBye || numericBoard === 0 ? null : numericBoard
+    };
+  }
+
   /**
    * Store pairings for a specific round with full validation and transaction support
    */
@@ -404,11 +428,18 @@ class PairingStorageService {
         const byeType = pairing.bye_type || null;
         const normalizedResult = pairing.result || (isBye ? `bye_${byeType || 'bye'}` : null);
 
+        const boardValue =
+          typeof pairing.board === 'number'
+            ? pairing.board
+            : isBye
+              ? 0
+              : index + 1;
+
         const pairingData = [
           id,
           tournamentId,
           round, // Ensure correct round number
-          pairing.board || (index + 1),
+          boardValue,
           pairing.white_player_id,
           pairing.black_player_id,
           pairing.section || 'Open',
@@ -432,7 +463,7 @@ class PairingStorageService {
               id: id,
               tournament_id: tournamentId,
               round: round,
-              board: pairing.board || (index + 1),
+              board: isBye ? null : boardValue,
               white_player_id: pairing.white_player_id,
               black_player_id: pairing.black_player_id,
               section: pairing.section || 'Open',
@@ -451,7 +482,7 @@ class PairingStorageService {
         if (err && !errorOccurred) {
           reject(err);
         } else if (!errorOccurred) {
-          resolve(storedPairings);
+          resolve(storedPairings.map(row => this.normalizePairingRow(row)));
         }
       });
     });
@@ -474,7 +505,7 @@ class PairingStorageService {
         [tournamentId, round],
           (err, rows) => {
             if (err) reject(err);
-            else resolve(rows);
+            else resolve(rows.map(row => this.normalizePairingRow(row)));
           }
         );
       });
@@ -497,7 +528,7 @@ class PairingStorageService {
         [tournamentId, round, sectionName],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows);
+          else resolve(rows.map(row => this.normalizePairingRow(row)));
         }
       );
     });
@@ -520,7 +551,7 @@ class PairingStorageService {
         [tournamentId],
           (err, rows) => {
             if (err) reject(err);
-            else resolve(rows);
+            else resolve(rows.map(row => this.normalizePairingRow(row)));
           }
         );
       });
@@ -807,8 +838,8 @@ class PairingStorageService {
          HAVING COUNT(*) > 1`,
         [tournamentId],
         (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
+            if (err) reject(err);
+            else resolve(rows.map(row => this.normalizePairingRow(row)));
         }
       );
     });
@@ -834,7 +865,7 @@ class PairingStorageService {
         [tournamentId, tournamentId],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows);
+          else resolve(rows.map(row => this.normalizePairingRow(row)));
         }
       );
     });
@@ -2001,7 +2032,7 @@ router.get('/tournament/:tournamentId/round/:round', async (req, res) => {
     
     res.json(pairings.map(pairing => ({
       ...pairing,
-      board_display: `Board ${pairing.board}`,
+      board_display: pairing.board ? `Board ${pairing.board}` : 'Bye',
       white_display: pairing.white_name ? `${pairing.white_name} (${pairing.white_rating})` : 'TBD',
       black_display: pairing.black_name ? `${pairing.black_name} (${pairing.black_rating})` : 'TBD'
     })));
@@ -2798,7 +2829,6 @@ router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', as
 
     if (prizeResult.prizesAwarded?.length) {
       const awarded = prizeResult.prizesAwarded;
-      const seenPrizeNames = new Set(awarded.map(award => award.prizeName));
 
       await new Promise((resolve, reject) => {
         db.serialize(() => {
@@ -2816,8 +2846,8 @@ router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', as
 
               const stmt = db.prepare(
                 `INSERT INTO prize_distributions 
-                 (id, tournament_id, player_id, prize_id, prize_name, prize_type, amount, position, rating_category, section, tie_group, metadata) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                 (id, tournament_id, player_id, prize_id, amount, position, rating_category, section, tie_group, prize_name) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
               );
 
               const prizeStmt = db.prepare(
@@ -2848,18 +2878,12 @@ router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', as
                     tournamentId,
                     award.playerId,
                     prizeId,
-                    award.prizeName,
-                    award.prizeType,
                     award.prizeAmount ?? null,
                     award.position || null,
                     null,
                     sectionName,
                     null,
-                    JSON.stringify({
-                      awardType: award.metadata?.awardType || award.prizeType,
-                      player: award.player || null,
-                      history: award.history || []
-                    })
+                    award.prizeName
                   );
                 });
 

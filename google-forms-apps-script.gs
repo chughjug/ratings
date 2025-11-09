@@ -553,5 +553,119 @@ function getActiveForm() {
   return FormApp.getActiveForm();
 }
 
+// ============================================================================
+// TEST HARNESS (OPTIONAL)
+// ============================================================================
+// The helpers below let you exercise the major code paths from the Script Editor.
+// They are safe to leave in production, but feel free to remove them once testing is complete.
+
+/**
+ * Runs the primary smoke tests in sequence.
+ * 1. setup()
+ * 2. testSetup()
+ * 3. testProcessFormResponseWithMockData()
+ * 4. testSyncPlayersDirect()
+ */
+function runAllIntegrationTests() {
+  Logger.log('🚀 Starting integration smoke tests...');
+
+  try {
+    setup();
+    Logger.log('✓ setup() completed');
+  } catch (error) {
+    Logger.log('✗ setup() failed: ' + error);
+  }
+
+  try {
+    testSetup();
+    Logger.log('✓ testSetup() completed');
+  } catch (error) {
+    Logger.log('✗ testSetup() failed: ' + error);
+  }
+
+  try {
+    testProcessFormResponseWithMockData();
+    Logger.log('✓ testProcessFormResponseWithMockData() completed');
+  } catch (error) {
+    Logger.log('✗ testProcessFormResponseWithMockData() failed: ' + error);
+  }
+
+  try {
+    testSyncPlayersDirect();
+    Logger.log('✓ testSyncPlayersDirect() completed');
+  } catch (error) {
+    Logger.log('✗ testSyncPlayersDirect() failed: ' + error);
+  }
+
+  Logger.log('✅ Integration smoke tests finished (check Execution logs for details).');
+}
+
+/**
+ * Mocks a minimal set of form responses and runs them through the
+ * convert/process pipeline to verify field-matching logic.
+ */
+function testProcessFormResponseWithMockData() {
+  const mockItemResponses = [
+    {
+      getItem: () => ({ getTitle: () => 'Player First Name' }),
+      getResponse: () => 'Jane'
+    },
+    {
+      getItem: () => ({ getTitle: () => 'Player Last Name' }),
+      getResponse: () => 'Doe'
+    },
+    {
+      getItem: () => ({ getTitle: () => 'Email Address' }),
+      getResponse: () => 'jane.doe@example.com'
+    },
+    {
+      getItem: () => ({ getTitle: () => 'Phone Number' }),
+      getResponse: () => '(555) 010-0001'
+    },
+    {
+      getItem: () => ({ getTitle: () => 'USCF ID' }),
+      getResponse: () => '12345678'
+    },
+    {
+      getItem: () => ({ getTitle: () => 'Section Preference' }),
+      getResponse: () => 'Open'
+    }
+  ];
+
+  Logger.log('Running mock form response through processFormResponse...');
+  processFormResponse(mockItemResponses);
+  Logger.log('Mock processing complete. Inspect logs for extracted fields.');
+}
+
+/**
+ * Calls syncPlayersToAPI directly with a single placeholder player.
+ * This will create (or attempt to create) a test player in your tournament.
+ */
+function testSyncPlayersDirect() {
+  const result = syncPlayersToAPI([
+    {
+      name: 'Direct Sync Test Player',
+      email: 'direct-sync-test@example.com',
+      source: 'manual_test'
+    }
+  ]);
+
+  Logger.log('syncPlayersToAPI result: ' + JSON.stringify(result));
+  safeAlert('Direct sync test complete. Check Execution logs and tournament roster.');
+}
+
+/**
+ * Optionally verifies Gmail permissions by sending yourself a confirmation email.
+ */
+function testSendConfirmationEmailDirect() {
+  if (!CONFIG.SEND_CONFIRMATION_EMAILS) {
+    safeAlert('Enable CONFIG.SEND_CONFIRMATION_EMAILS to test email sending.');
+    return;
+  }
+
+  sendConfirmationEmail('your-email@example.com', 'Email Permission Test');
+  safeAlert('Confirmation email dispatched (check your inbox).');
+}
+
 
 

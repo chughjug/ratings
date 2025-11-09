@@ -249,11 +249,18 @@ class BbpPairings {
 
         const allSectionPairings = [...regularPairings, ...byePairings];
 
-        allSectionPairings.forEach((pairing, index) => {
+        let boardNumber = 1;
+        allSectionPairings.forEach(pairing => {
           pairing.section = section;
-          pairing.board = index + 1;
           pairing.tournament_id = tournamentId;
           pairing.round = round;
+
+          if (pairing.is_bye || pairing.black_player_id == null) {
+            pairing.board = null;
+          } else {
+            pairing.board = boardNumber;
+            boardNumber += 1;
+          }
         });
 
         allPairings.push(...allSectionPairings);

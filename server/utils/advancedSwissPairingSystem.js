@@ -292,9 +292,15 @@ class AdvancedSwissPairingSystem {
       allPairings.push(automaticByePairing);
     }
     
-    // Assign proper board numbers
-    allPairings.forEach((pairing, index) => {
-      pairing.board = index + 1;
+    // Assign proper board numbers (skip byes)
+    let boardNumber = 1;
+    allPairings.forEach(pairing => {
+      if (pairing.is_bye || pairing.black_player_id == null) {
+        pairing.board = null;
+      } else {
+        pairing.board = boardNumber;
+        boardNumber += 1;
+      }
     });
     
     const totalByes = byePairings.length + (automaticByePairing ? 1 : 0);

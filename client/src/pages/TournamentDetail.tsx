@@ -1736,7 +1736,7 @@ const TournamentDetail: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-orange-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Integrated Overview Surface */}
-        <div className="mb-8 rounded-3xl border border-neutral-200 bg-white shadow-lg">
+        <header className="mb-8 rounded-3xl border border-neutral-200 bg-white shadow-lg">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-orange-50 to-orange-100">
             <div className="relative px-6 py-8 text-neutral-900 sm:px-8 lg:px-10">
               <div className="flex flex-col gap-10">
@@ -2104,7 +2104,7 @@ const TournamentDetail: React.FC = () => {
             </nav>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Display Settings Panel */}
       {showDisplaySettings && activeTab === 'pairings' && (
