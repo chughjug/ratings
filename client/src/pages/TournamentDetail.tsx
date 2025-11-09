@@ -1994,12 +1994,10 @@ const TournamentDetail: React.FC = () => {
                 )}
                 <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                   <span
-                    className={`relative flex h-2.5 w-2.5 items-center justify-center rounded-full ${
-                      tournament.allow_registration ? 'bg-emerald-500' : 'bg-red-500'
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      tournament.allow_registration ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
                     }`}
-                  >
-                    <span className="absolute inline-flex h-5 w-5 animate-ping rounded-full bg-current opacity-25"></span>
-                  </span>
+                  />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Registration
@@ -2410,153 +2408,6 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
-        {/* Modern Tab Navigation */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 mb-6 overflow-hidden">
-          <nav className="flex flex-wrap px-2 sm:px-4 overflow-x-auto scrollbar-hide">
-            {/* Core Tabs */}
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              <span>INFO</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('players')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'players'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              <span>Players</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                activeTab === 'players'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-gray-200 text-gray-600'
-              }`}>
-                {state.players.length}
-              </span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('pairings')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'pairings'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Trophy className="h-4 w-4" />
-              <span>Pairings</span>
-            </button>
-              
-            <button
-              onClick={() => setActiveTab('standings')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'standings'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Trophy className="h-4 w-4" />
-              <span>Standings</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('prizes')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'prizes'
-                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <DollarSign className="h-4 w-4" />
-              <span>Prizes</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('print')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'print'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Printer className="h-4 w-4" />
-              <span>Print</span>
-            </button>
-
-            {/* Club Ratings - Only show if tournament has organization */}
-            {tournament?.organization_id && (
-              <button
-                onClick={() => setActiveTab('club-ratings')}
-                className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                  activeTab === 'club-ratings'
-                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Trophy className="h-4 w-4" />
-                <span>Club Ratings</span>
-              </button>
-            )}
-
-            {/* Team-specific tabs - only show if relevant */}
-            {tournament && (
-              <>
-                <button
-                  onClick={() => {
-                    setActiveTab('team-standings');
-                    fetchTeamStandings();
-                  }}
-                  className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                    activeTab === 'team-standings'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  <Users className="h-4 w-4" />
-                  <span>Team Standings</span>
-                </button>
-                  
-                {/* Team Pairings - Hidden */}
-                  {/* <button
-                    onClick={() => setActiveTab('team-pairings')}
-                    className={`py-3 px-4 border-b-2 font-medium text-sm transition-colors rounded-t-md ${
-                      activeTab === 'team-pairings'
-                        ? 'border-blue-500 text-blue-600 bg-blue-50'
-                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Trophy className="h-4 w-4" />
-                      <span>Team Pairings</span>
-                    </div>
-                  </button> */}
-                </>
-              )}
-
-            {/* Registration Management */}
-            <button
-              onClick={() => setActiveTab('registrations')}
-              className={`flex items-center space-x-2 py-3 px-5 font-semibold text-sm rounded-lg transition-all ${
-                activeTab === 'registrations'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              <span>Registrations</span>
-            </button>
-          </nav>
-        </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-6">

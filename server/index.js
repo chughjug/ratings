@@ -35,7 +35,7 @@ app.set('trust proxy', 1);
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for now to debug Socket.io issues
   crossOriginEmbedderPolicy: false,
-  xFrameOptions: false, // Explicitly disable X-Frame-Options to allow iframe embedding
+  frameguard: false, // Disable X-Frame-Options header to allow iframe embedding
   originAgentCluster: false,
 }));
 

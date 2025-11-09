@@ -1919,6 +1919,13 @@ router.post('/tournament/:tournamentId/confirm-completion', async (req, res) => 
                          (pair.black_player_id = p.id AND pair.result = '1/2-1/2') OR
                          (pair.black_player_id = p.id AND pair.result = '1/2-1/2F')
                     THEN 0.5
+                    WHEN (pair.white_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%' OR pair.is_bye = 1)) OR
+                         (pair.black_player_id = p.id AND (pair.result = 'bye' OR pair.result LIKE 'bye_%' OR pair.is_bye = 1))
+                    THEN CASE 
+                      WHEN pair.bye_type = 'unpaired' THEN 1.0
+                      WHEN pair.bye_type IN ('bye', 'half_point_bye', 'inactive') THEN 0.5
+                      ELSE 0.5
+                    END
                     ELSE 0
                   END
                 ), 0) as total_points,
