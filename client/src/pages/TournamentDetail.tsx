@@ -1599,21 +1599,20 @@ const TournamentDetail: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Integrated Overview Surface */}
         <div className="mb-8 rounded-3xl border border-neutral-200 bg-white shadow-lg">
-          <div className="relative overflow-hidden rounded-3xl">
-            <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900" />
-            <div className="relative px-6 py-8 text-white sm:px-8 lg:px-10">
-              <div className="flex flex-col gap-10 text-neutral-900">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-orange-50 to-orange-100">
+            <div className="relative px-6 py-8 text-neutral-900 sm:px-8 lg:px-10">
+              <div className="flex flex-col gap-10">
                 <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex flex-col gap-5 min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
                       <button
                         onClick={() => navigate(-1)}
-                        className="inline-flex items-center gap-2 rounded-full bg-orange-500/10 px-3 py-1.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-500/20"
+                        className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-50"
                       >
                         <ArrowLeft className="h-4 w-4" />
                         <span>Back</span>
                       </button>
-                      <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-700 ring-1 ring-inset ring-orange-200">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-700 shadow-sm">
                         <span
                           className={`h-2 w-2 rounded-full ${
                             tournament.status === 'active'
@@ -1642,25 +1641,25 @@ const TournamentDetail: React.FC = () => {
                       </h2>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-700">
                         {tournament.format && (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                          <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-orange-700 shadow-sm">
                             <Trophy className="h-4 w-4 text-orange-500" />
                             <span className="capitalize">{tournament.format.replace('-', ' ')} format</span>
                           </span>
                         )}
                         {tournament.rounds && (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                          <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-orange-700 shadow-sm">
                             <Calendar className="h-4 w-4 text-orange-500" />
                             <span>
                               {tournament.rounds} {tournament.rounds === 1 ? 'round' : 'rounds'}
                             </span>
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-orange-700 shadow-sm">
                           <Users className="h-4 w-4 text-orange-500" />
                           <span>{state.players.length} registered</span>
                         </span>
                         {sectionCount > 0 && (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 ring-1 ring-inset ring-orange-200 text-orange-700">
+                          <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1 text-orange-700 shadow-sm">
                             <Layers className="h-4 w-4 text-orange-500" />
                             <span>
                               {sectionCount} {sectionCount === 1 ? 'section' : 'sections'}
@@ -1679,10 +1678,10 @@ const TournamentDetail: React.FC = () => {
                       />
                       <NotificationButton
                         notifications={tournamentNotifications}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm backdrop-blur ${
+                        className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm ${
                           hasNotifications
-                            ? 'bg-orange-400/20 text-orange-900 ring-2 ring-orange-200'
-                            : 'bg-white/80 text-neutral-800'
+                            ? 'bg-orange-100 text-orange-900 border border-orange-200'
+                            : 'bg-white text-neutral-700 border border-neutral-200'
                         }`}
                         webhookEnabled={emailsEnabled}
                         onWebhookToggle={(enabled) => {
@@ -1704,15 +1703,15 @@ const TournamentDetail: React.FC = () => {
                         }}
                       />
                       <div
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset ${
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold border ${
                           tournament.allow_registration
-                            ? 'bg-orange-200 text-orange-900 ring-orange-300'
-                            : 'bg-neutral-200 text-neutral-800 ring-neutral-300'
+                            ? 'border-orange-200 bg-orange-50 text-orange-800'
+                            : 'border-neutral-200 bg-white text-neutral-600'
                         }`}
                       >
                         <span
                           className={`h-2 w-2 rounded-full ${
-                            tournament.allow_registration ? 'bg-emerald-400' : 'bg-rose-400'
+                            tournament.allow_registration ? 'bg-emerald-500' : 'bg-rose-500'
                           }`}
                         />
                         <span>{tournament.allow_registration ? 'Registration open' : 'Registration closed'}</span>
@@ -1731,12 +1730,12 @@ const TournamentDetail: React.FC = () => {
                             alert('Failed to update registration setting. Please try again.');
                           }
                         }}
-                        className={`relative inline-flex h-9 w-16 items-center rounded-full border border-orange-200 bg-white/80 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-offset-2 focus:ring-offset-white ${
-                          tournament.allow_registration ? 'bg-orange-300/60' : 'bg-white/80'
+                        className={`relative inline-flex h-9 w-16 items-center rounded-full border border-orange-200 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-offset-2 focus:ring-offset-white ${
+                          tournament.allow_registration ? 'bg-orange-100' : 'bg-white'
                         }`}
                       >
                         <span
-                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-md transition-transform ${
                             tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
                           }`}
                         />
@@ -1747,7 +1746,7 @@ const TournamentDetail: React.FC = () => {
                         href={`/public/tournaments/${id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:bg-orange-100"
+                        className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:bg-orange-50"
                       >
                         <ExternalLink className="h-4 w-4 text-orange-500" />
                         <span>Public View</span>
@@ -1776,7 +1775,7 @@ const TournamentDetail: React.FC = () => {
                       <div className="relative">
                         <button
                           onClick={() => setShowDisplaySettings(!showDisplaySettings)}
-                          className="flex items-center gap-2 rounded-full bg-neutral-900/80 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-900"
+                          className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-100"
                         >
                           <Settings className="h-4 w-4" />
                           <span>Actions</span>
@@ -1833,7 +1832,7 @@ const TournamentDetail: React.FC = () => {
                         key={stat.key}
                         className={`flex items-start gap-4 ${index > 0 ? 'sm:border-l sm:border-orange-200 sm:pl-6' : ''}`}
                       >
-                        <span className="mt-1 flex h-12 w-12 items-center justify-center rounded-full bg-orange-500/10 ring-1 ring-orange-200">
+                        <span className="mt-1 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-orange-200">
                           <Icon className="h-5 w-5 text-orange-500" />
                         </span>
                         <div>
@@ -1854,8 +1853,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('settings')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'settings'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <Settings className="h-4 w-4" />
@@ -1866,16 +1865,16 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('players')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'players'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <Users className="h-4 w-4" />
                 <span>Players</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                   activeTab === 'players'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    ? 'bg-white/30 text-white'
+                    : 'bg-neutral-200 text-neutral-700'
                 }`}>
                   {state.players.length}
                 </span>
@@ -1885,8 +1884,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('pairings')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'pairings'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <Trophy className="h-4 w-4" />
@@ -1897,8 +1896,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('standings')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'standings'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <Trophy className="h-4 w-4" />
@@ -1909,8 +1908,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('prizes')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'prizes'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <DollarSign className="h-4 w-4" />
@@ -1921,8 +1920,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('print')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'print'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <Printer className="h-4 w-4" />
@@ -1933,8 +1932,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('club-ratings')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'club-ratings'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <BarChart3 className="h-4 w-4" />
@@ -1945,8 +1944,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('team-standings')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'team-standings'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <Users className="h-4 w-4" />
@@ -1957,8 +1956,8 @@ const TournamentDetail: React.FC = () => {
                 onClick={() => setActiveTab('registrations')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'registrations'
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
                 }`}
               >
                 <Users className="h-4 w-4" />

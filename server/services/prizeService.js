@@ -299,6 +299,19 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
 
   // Track players who have already received a cash prize across all prize categories
   const cashPrizeRecipients = new Set();
+  const prizeRecipients = new Set();
+
+  const registerDistributions = (newDistributions = []) => {
+    newDistributions.forEach(dist => {
+      distributions.push(dist);
+      if (dist.player_id) {
+        prizeRecipients.add(dist.player_id);
+        if (dist.prize_type === 'cash') {
+          cashPrizeRecipients.add(dist.player_id);
+        }
+      }
+    });
+  };
 
   // Process position-based prizes
   if (positionPrizes.length > 0) {
@@ -309,7 +322,7 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
       tournamentId,
       cashPrizeRecipients
     );
-    distributions.push(...positionDistributions);
+    registerDistributions(positionDistributions);
   }
 
   // Process rating-based prizes
@@ -321,14 +334,70 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
       tournamentId,
       cashPrizeRecipients
     );
-    distributions.push(...ratingDistributions);
+    registerDistributions(ratingDistributions);
   }
 
   // Process general prizes (trophies, medals, plaques without positions)
   // These are awarded to top performers based on standings
   if (generalPrizes.length > 0) {
-    const generalDistributions = distributeGeneralPrizes(standings, generalPrizes, sectionConfig.name, tournamentId);
-    distributions.push(...generalDistributions);
+    const generalDistributions = distributeGeneralPrizes(
+      standings,
+      generalPrizes,
+      sectionConfig.name,
+      tournamentId,
+      prizeRecipients
+    );
+    registerDistributions(generalDistributions);
+  }
+
+  return distributions;
+}
+
+/**
+ * Distribute general (non-cash, non-rating, non-position) prizes.
+ * These awards go to the next eligible players in the standings
+ * who have not already received a prize.
+ *
+ * @param {Array} standings - Sorted standings for the section
+ * @param {Array} generalPrizes - Array of general prize configurations
+ * @param {string} sectionName - Section name
+ * @param {string} tournamentId - Tournament ID
+ * @param {Set<string>} existingRecipients - Players who already received a prize in this section
+ * @returns {Array} Array of prize distributions
+ */
+function distributeGeneralPrizes(
+  standings,
+  generalPrizes,
+  sectionName,
+  tournamentId,
+  existingRecipients = new Set()
+) {
+  const distributions = [];
+  if (!generalPrizes || generalPrizes.length === 0) {
+    return distributions;
+  }
+
+  let prizeIndex = 0;
+  for (const player of standings) {
+    if (prizeIndex >= generalPrizes.length) break;
+    if (!player || !player.id) continue;
+    if (existingRecipients.has(player.id)) continue;
+
+    const prize = generalPrizes[prizeIndex];
+    if (!prize) continue;
+
+    distributions.push({
+      player_id: player.id,
+      prize_name: prize.name,
+      prize_type: prize.type,
+      amount: prize.amount || undefined,
+      position: getPlayerPosition(player, standings),
+      section: sectionName,
+      tournament_id: tournamentId
+    });
+
+    existingRecipients.add(player.id);
+    prizeIndex += 1;
   }
 
   return distributions;
@@ -1136,6 +1205,7 @@ module.exports = {
   getPrizeDistributions,
   autoAssignPrizesOnRoundCompletion,
   distributeSectionPrizes,
+  distributeGeneralPrizes,
   distributePositionPrizes,
   distributeRatingPrizes,
   distributePrizesToTiedPlayers,
