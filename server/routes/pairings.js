@@ -2829,6 +2829,11 @@ router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', as
                 awarded.forEach(award => {
                   const prizeId = uuidv4();
                   const distributionId = uuidv4();
+                  const ratingRange = award.metadata?.ratingRange;
+                  const ratingCategory =
+                    ratingRange && (ratingRange.min !== null || ratingRange.max !== null)
+                      ? `rating:${ratingRange.min ?? '-'}-${ratingRange.max ?? '-'}`
+                      : null;
 
                   prizeStmt.run(
                     prizeId,
@@ -2836,7 +2841,7 @@ router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', as
                     award.prizeName,
                     award.prizeType,
                     award.position || null,
-                    null,
+                    ratingCategory,
                     sectionName,
                     award.prizeAmount ?? null,
                     award.prizeName
@@ -2849,7 +2854,7 @@ router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', as
                     prizeId,
                     award.prizeAmount ?? null,
                     award.position || null,
-                    null,
+                    ratingCategory,
                     sectionName,
                     null,
                     award.prizeName

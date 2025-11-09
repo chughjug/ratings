@@ -405,6 +405,16 @@ export interface Result {
   created_at: string;
 }
 
+export interface StandingRoundResult {
+  result?: string;
+  opponent_name?: string;
+  opponent_rating?: number;
+  opponent_rank?: number | null;
+  points?: number | null;
+  color?: 'white' | 'black' | 'WHITE' | 'BLACK' | string | null;
+  board?: number | null;
+}
+
 export interface Standing {
   id: string;
   name: string;
@@ -423,6 +433,8 @@ export interface Standing {
     modifiedBuchholz?: number;
     cumulative?: number;
   };
+  roundResults?: Record<number, StandingRoundResult>;
+  prize?: string;
 }
 
 export interface PlayerInactiveRound {

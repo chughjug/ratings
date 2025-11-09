@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash, Crown } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash, Crown } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -29,10 +29,8 @@ import APIDocumentationModal from '../components/APIDocumentationModal';
 import APIStatusIndicator from '../components/APIStatusIndicator';
 import NotificationButton from '../components/NotificationButton';
 import SendPairingEmailsButton from '../components/SendPairingEmailsButton';
-import PrizeDisplay from '../components/PrizeDisplay';
 import PrizeManagerDrawer from '../components/PrizeManagerDrawer';
 import TournamentWinnersPanel from '../components/TournamentWinnersPanel';
-import ClubRatingsManager from '../components/ClubRatingsManager';
 import SMSManager from '../components/SMSManager';
 import QRCodeGenerator from '../components/QRCodeGenerator';
 import PlayerProfile from '../components/PlayerProfile';
@@ -57,7 +55,7 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'club-ratings' | 'settings' | 'print' | 'winners'>('settings');
+  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'winners' | 'team-standings' | 'team-pairings' | 'registrations' | 'settings' | 'print'>('settings');
   const [printViewTab, setPrintViewTab] = useState<'pairings' | 'standings'>('pairings');
   const [pairingsViewMode, setPairingsViewMode] = useState<'player' | 'board'>('player');
   const [currentRound, setCurrentRound] = useState(1);
@@ -160,6 +158,8 @@ const TournamentDetail: React.FC = () => {
     position: number;
     type: string;
     amount?: string | number;
+    ratingMin?: string;
+    ratingMax?: string;
   }>>([]);
   const [prizeCustomizationError, setPrizeCustomizationError] = useState<string | null>(null);
   
@@ -251,7 +251,14 @@ const TournamentDetail: React.FC = () => {
     });
   };
 
-  const getSectionPrizeTemplate = useCallback((section: string): Array<{ name: string; position: number; type: string; amount?: number | string; }> => {
+  const getSectionPrizeTemplate = useCallback((section: string): Array<{
+    name: string;
+    position: number;
+    type: string;
+    amount?: number | string;
+    ratingMin?: string;
+    ratingMax?: string;
+  }> => {
     const defaultTemplate = [
       { name: 'Champion', position: 1, type: 'trophy' },
       { name: 'Runner-Up', position: 2, type: 'medal' },
@@ -276,7 +283,17 @@ const TournamentDetail: React.FC = () => {
       name: prize.name || `Prize ${index + 1}`,
       position: prize.position || index + 1,
       type: prize.type || prize.awardType || 'recognition',
-      amount: prize.amount ?? ''
+      amount: prize.amount ?? '',
+      ratingMin: (() => {
+        const range = prize.metadata?.ratingRange || prize.ratingRange || {};
+        const value = prize.ratingMin ?? prize.rating_min ?? range.min;
+        return value !== undefined && value !== null && value !== '' ? String(value) : '';
+      })(),
+      ratingMax: (() => {
+        const range = prize.metadata?.ratingRange || prize.ratingRange || {};
+        const value = prize.ratingMax ?? prize.rating_max ?? range.max;
+        return value !== undefined && value !== null && value !== '' ? String(value) : '';
+      })()
     }));
   }, [tournament?.settings?.newPrizeTemplates]);
 
@@ -291,7 +308,11 @@ const TournamentDetail: React.FC = () => {
     setShowPrizeCustomization(true);
   };
 
-  const handlePrizeDraftChange = (index: number, field: 'name' | 'position' | 'type' | 'amount', value: string) => {
+  const handlePrizeDraftChange = (
+    index: number,
+    field: 'name' | 'position' | 'type' | 'amount' | 'ratingMin' | 'ratingMax',
+    value: string
+  ) => {
     setPrizeDraft(prev => {
       const next = [...prev];
       const updated = { ...next[index] };
@@ -299,6 +320,8 @@ const TournamentDetail: React.FC = () => {
         updated.position = Number(value) || 1;
       } else if (field === 'amount') {
         updated.amount = value;
+      } else if (field === 'ratingMin' || field === 'ratingMax') {
+        updated[field] = value;
       } else {
         updated[field] = value;
       }
@@ -314,7 +337,9 @@ const TournamentDetail: React.FC = () => {
         name: `Prize ${prev.length + 1}`,
         position: prev.length + 1,
         type: 'recognition',
-        amount: ''
+        amount: '',
+        ratingMin: '',
+        ratingMax: ''
       }
     ]));
   };
@@ -336,7 +361,15 @@ const TournamentDetail: React.FC = () => {
             name: trimmedName || `Prize ${prize.position}`,
             position: Number(prize.position),
             type: prize.type || 'recognition'
-          } as { name: string; position: number; type: string; amount?: number };
+          } as {
+            name: string;
+            position: number;
+            type: string;
+            amount?: number;
+            ratingMin?: number;
+            ratingMax?: number;
+            metadata?: Record<string, any>;
+          };
 
           if (prize.type === 'cash' && prize.amount !== '' && prize.amount !== undefined) {
             const parsedAmount = Number(prize.amount);
@@ -344,6 +377,48 @@ const TournamentDetail: React.FC = () => {
               throw new Error(`Invalid amount for prize "${trimmedName || `Prize ${prize.position}`}".`);
             }
             base.amount = parsedAmount;
+          }
+
+          const ratingMin =
+            prize.ratingMin !== undefined && prize.ratingMin !== ''
+              ? Number(prize.ratingMin)
+              : undefined;
+          const ratingMax =
+            prize.ratingMax !== undefined && prize.ratingMax !== ''
+              ? Number(prize.ratingMax)
+              : undefined;
+
+          if (
+            (ratingMin !== undefined && !Number.isFinite(ratingMin)) ||
+            (ratingMax !== undefined && !Number.isFinite(ratingMax))
+          ) {
+            throw new Error(`Invalid rating range for prize "${trimmedName || `Prize ${prize.position}`}".`);
+          }
+
+          if (
+            ratingMin !== undefined &&
+            ratingMax !== undefined &&
+            ratingMin > ratingMax
+          ) {
+            throw new Error(
+              `Rating minimum cannot exceed rating maximum for prize "${trimmedName || `Prize ${prize.position}`}".`
+            );
+          }
+
+          if (ratingMin !== undefined) {
+            base.ratingMin = ratingMin;
+          }
+          if (ratingMax !== undefined) {
+            base.ratingMax = ratingMax;
+          }
+          if (ratingMin !== undefined || ratingMax !== undefined) {
+            base.metadata = {
+              ...(base.metadata || {}),
+              ratingRange: {
+                min: ratingMin ?? null,
+                max: ratingMax ?? null
+              }
+            };
           }
 
           return base;
@@ -367,7 +442,11 @@ const TournamentDetail: React.FC = () => {
             const amountLabel = prize.prizeAmount
               ? ` - ${typeof prize.prizeAmount === 'number' ? `$${prize.prizeAmount.toFixed(2)}` : prize.prizeAmount}`
               : '';
-            return `${prize.prizeName} (${prize.prizeType || prize.metadata?.awardType || 'award'}) → ${prize.playerName || 'Unassigned'}${amountLabel}`;
+            const ratingRange = prize.metadata?.ratingRange;
+            const ratingLabel = ratingRange
+              ? ` [Rating ${ratingRange.min ?? '-'} to ${ratingRange.max ?? '-'}]`
+              : '';
+            return `${prize.prizeName} (${prize.prizeType || prize.metadata?.awardType || 'award'}) → ${prize.playerName || 'Unassigned'}${amountLabel}${ratingLabel}`;
           })
           .join('\n');
         alert(`Prizes assigned for ${selectedSection}:\n\n${summary}`);
@@ -601,17 +680,88 @@ const TournamentDetail: React.FC = () => {
     return warnings;
   };
 
+  const sortStandingsByRank = (players: any[]) => {
+    return [...players].sort((a, b) => {
+      const rankA = a?.rank ?? Number.MAX_SAFE_INTEGER;
+      const rankB = b?.rank ?? Number.MAX_SAFE_INTEGER;
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+      const pointsA = a?.total_points ?? 0;
+      const pointsB = b?.total_points ?? 0;
+      if (pointsA !== pointsB) {
+        return pointsB - pointsA;
+      }
+      return (b?.rating ?? 0) - (a?.rating ?? 0);
+    });
+  };
+
   // Helper function to get round result for print display
   const getRoundResultForPrint = (player: any, round: number, sectionPlayers: any[]) => {
+    const roundResults = player?.roundResults;
+    const roundInfo = roundResults ? roundResults[round] : undefined;
+
+    if (roundInfo) {
+      const normalizedResult = (roundInfo.result || '').toUpperCase();
+      const opponentRank = roundInfo.opponent_rank ?? null;
+      const opponentSuffix =
+        opponentRank !== null && opponentRank !== undefined
+          ? String(opponentRank)
+          : '';
+      const playerColor = (roundInfo.color || '').toString().toLowerCase();
+
+      if (!normalizedResult || normalizedResult === 'TBD') {
+        return opponentSuffix ? `A${opponentSuffix}` : 'TBD';
+      }
+
+      if (normalizedResult.startsWith('BYE')) {
+        return 'BYE';
+      }
+
+      if (normalizedResult === '1-0' || normalizedResult === '1-0F') {
+        if (playerColor === 'white') {
+          return opponentSuffix ? `W${opponentSuffix}` : 'W';
+        }
+        if (playerColor === 'black') {
+          return opponentSuffix ? `L${opponentSuffix}` : 'L';
+        }
+      }
+
+      if (normalizedResult === '0-1' || normalizedResult === '0-1F') {
+        if (playerColor === 'black') {
+          return opponentSuffix ? `W${opponentSuffix}` : 'W';
+        }
+        if (playerColor === 'white') {
+          return opponentSuffix ? `L${opponentSuffix}` : 'L';
+        }
+      }
+
+      if (normalizedResult === '1/2-1/2' || normalizedResult === '1/2-1/2F') {
+        return opponentSuffix ? `D${opponentSuffix}` : 'D';
+      }
+
+      if (roundInfo.points !== undefined && roundInfo.points !== null) {
+        if (roundInfo.points >= 0.99) {
+          return opponentSuffix ? `W${opponentSuffix}` : 'W';
+        }
+        if (roundInfo.points >= 0.49) {
+          return opponentSuffix ? `D${opponentSuffix}` : 'D';
+        }
+        if (roundInfo.points <= 0.01) {
+          return opponentSuffix ? `L${opponentSuffix}` : 'L';
+        }
+      }
+
+      return normalizedResult || '-';
+    }
+
     if (!state.pairings || state.pairings.length === 0) return '-';
 
-    // Determine which section this lookup should use.
     const sectionHint =
       player?.section ||
       sectionPlayers?.[0]?.section ||
       (selectedSection ? selectedSection : null);
 
-    // Filter pairings for the derived section (if available) and round
     const filteredPairings = state.pairings.filter((p: any) => {
       if (p.round !== round) return false;
       if (!sectionHint) return true;
@@ -627,10 +777,7 @@ const TournamentDetail: React.FC = () => {
     const isWhite = pairing.white_player_id === player.id;
     const opponentId = isWhite ? pairing.black_player_id : pairing.white_player_id;
     
-    // Find opponent's rank in current standings (sort by points descending)
-    const sortedPlayers = [...sectionPlayers].sort((a: any, b: any) => 
-      (b.total_points || 0) - (a.total_points || 0)
-    );
+    const sortedPlayers = sortStandingsByRank(sectionPlayers);
     const opponentIdx = sortedPlayers.findIndex((p: any) => p.id === opponentId);
     const opponentNum = opponentIdx !== undefined && opponentIdx !== -1 ? opponentIdx + 1 : '-';
     
@@ -639,16 +786,15 @@ const TournamentDetail: React.FC = () => {
     }
     
     if (!pairing.result || pairing.result === 'TBD') {
-      return `A${opponentNum}`;
+      return opponentNum !== '-' ? `A${opponentNum}` : 'TBD';
     }
     
-    // Determine if player won, lost, or drew
     if (pairing.result === '1-0' || pairing.result === '1-0F') {
       return isWhite ? `W${opponentNum}` : `L${opponentNum}`;
     } else if (pairing.result === '0-1' || pairing.result === '0-1F') {
       return isWhite ? `L${opponentNum}` : `W${opponentNum}`;
     } else if (pairing.result === '1/2-1/2' || pairing.result === '1/2-1/2F') {
-      return `D${opponentNum}`;
+      return opponentNum !== '-' ? `D${opponentNum}` : 'D';
     }
     
     return 'TBD';
@@ -2064,18 +2210,6 @@ const TournamentDetail: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('prizes')}
-                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  activeTab === 'prizes'
-                    ? 'bg-orange-500 text-white shadow-sm'
-                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
-                }`}
-              >
-                <DollarSign className="h-4 w-4" />
-                <span>Prizes</span>
-              </button>
-
-              <button
                 onClick={() => setActiveTab('print')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === 'print'
@@ -2085,18 +2219,6 @@ const TournamentDetail: React.FC = () => {
               >
                 <Printer className="h-4 w-4" />
                 <span>Print</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('club-ratings')}
-                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  activeTab === 'club-ratings'
-                    ? 'bg-orange-500 text-white shadow-sm'
-                    : 'text-neutral-600 hover:bg-orange-100 hover:text-orange-800'
-                }`}
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span>Club Ratings</span>
               </button>
 
               <button
@@ -3800,29 +3922,6 @@ const TournamentDetail: React.FC = () => {
                   </section>
                 )}
 
-                <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h4 className="text-base font-semibold text-gray-900">Prize Management</h4>
-                      <p className="text-sm text-gray-500">Define prize structures and keep them aligned with standings.</p>
-                    </div>
-                    <button
-                      onClick={() => setShowPrizeManager(true)}
-                      className="inline-flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Configure Prizes</span>
-                    </button>
-                  </div>
-                  <div className="mt-4">
-                    <PrizeDisplay
-                      tournamentId={id || ''}
-                      showPrizeSettings={true}
-                      onPrizeSettingsClick={() => setShowPrizeManager(true)}
-                    />
-                  </div>
-                </section>
-
                 {id && tournament && (
                   <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
                     <div>
@@ -3940,49 +4039,18 @@ const TournamentDetail: React.FC = () => {
             );
           })()}
 
-          {activeTab === 'club-ratings' && tournament?.organization_id && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Club Ratings</h2>
-              <p className="text-gray-600 mb-6">
-                Generate and view club ratings based on tournament results. Ratings are automatically calculated from completed games.
-              </p>
-              <ClubRatingsManager organizationId={tournament.organization_id} />
-            </div>
-          )}
-
           {activeTab === 'winners' && id && (
-            <TournamentWinnersPanel tournamentId={id} />
-          )}
-
-          {activeTab === 'prizes' && (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Prize Management</h2>
-                    <p className="text-sm text-gray-600">
-                      Configure and view prize distributions for this tournament.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setShowPrizeManager(true)}
-                      className="inline-flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Configure Prizes</span>
-                    </button>
-                  </div>
-                </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowPrizeManager(true)}
+                  className="inline-flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Configure Prizes</span>
+                </button>
               </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <PrizeDisplay
-                  tournamentId={id!}
-                  showPrizeSettings={true}
-                  onPrizeSettingsClick={() => setShowPrizeManager(true)}
-                />
-              </div>
+              <TournamentWinnersPanel tournamentId={id} />
             </div>
           )}
 
@@ -4570,10 +4638,9 @@ const TournamentDetail: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {state.standings
-                              .filter((s: any) => s.section === selectedSection)
-                              .sort((a: any, b: any) => (b.total_points || 0) - (a.total_points || 0))
-                              .map((player: any, idx: number) => (
+                            {sortStandingsByRank(
+                              state.standings.filter((s: any) => s.section === selectedSection)
+                            ).map((player: any, idx: number) => (
                                 <tr key={player.id} className="border-b border-gray-300">
                                   <td className="py-2 px-2">{idx + 1}.</td>
                                   <td className="py-2 px-2 font-semibold">{player.name}</td>
@@ -4623,9 +4690,7 @@ const TournamentDetail: React.FC = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {sectionPlayers
-                                  .sort((a: any, b: any) => (b.total_points || 0) - (a.total_points || 0))
-                                  .map((player: any, idx: number) => (
+                                {sortStandingsByRank(sectionPlayers).map((player: any, idx: number) => (
                                     <tr key={player.id} className="border-b border-gray-300">
                                       <td className="py-2 px-2">{idx + 1}.</td>
                                       <td className="py-2 px-2 font-semibold">{player.name}</td>
@@ -5001,6 +5066,32 @@ const TournamentDetail: React.FC = () => {
                             placeholder={prize.type === 'cash' ? 'Amount' : 'N/A'}
                           />
                         </div>
+
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Rating Min
+                      </label>
+                      <input
+                        type="number"
+                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={prize.ratingMin ?? ''}
+                        onChange={(e) => handlePrizeDraftChange(index, 'ratingMin', e.target.value)}
+                        placeholder="e.g. 1600"
+                      />
+                    </div>
+
+                    <div className="md:col-span-3">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Rating Max
+                      </label>
+                      <input
+                        type="number"
+                        className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={prize.ratingMax ?? ''}
+                        onChange={(e) => handlePrizeDraftChange(index, 'ratingMax', e.target.value)}
+                        placeholder="e.g. 1799"
+                      />
+                    </div>
                       </div>
 
                       <button

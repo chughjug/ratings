@@ -169,6 +169,13 @@ const TournamentWinnersPanel: React.FC<TournamentWinnersPanelProps> = ({ tournam
                         {winner.description && (
                           <div className="text-xs text-gray-500">{winner.description}</div>
                         )}
+                        {winner.metadata?.ratingRange &&
+                          (winner.metadata.ratingRange.min !== null ||
+                            winner.metadata.ratingRange.max !== null) && (
+                            <div className="text-xs text-emerald-600 font-medium">
+                              Rating {winner.metadata.ratingRange.min ?? '—'} to {winner.metadata.ratingRange.max ?? '—'}
+                            </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm capitalize text-gray-700">{winner.prizeType}</td>
                       <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">

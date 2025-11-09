@@ -61,6 +61,14 @@ const resolveAwardType = (prize, computedAmount) => {
   return 'recognition';
 };
 
+const parseOptionalNumber = (value) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const numeric = typeof value === 'string' ? parseFloat(value) : Number(value);
+  return Number.isFinite(numeric) ? numeric : undefined;
+};
+
 const sanitizePrizeTemplate = (template, fallbackCashPool) => {
   if (!Array.isArray(template) || template.length === 0) {
     return DEFAULT_TEMPLATE.map(item => ({ ...item }));
@@ -77,6 +85,29 @@ const sanitizePrizeTemplate = (template, fallbackCashPool) => {
       computedAmount = Math.round(fallbackCashPool * share * 100) / 100;
     }
 
+    const ratingMin = parseOptionalNumber(
+      prize.ratingMin ??
+      prize.rating_min ??
+      prize.min_rating ??
+      prize.ratingFloor ??
+      prize.metadata?.ratingRange?.min
+    );
+    const ratingMax = parseOptionalNumber(
+      prize.ratingMax ??
+      prize.rating_max ??
+      prize.max_rating ??
+      prize.ratingCeiling ??
+      prize.metadata?.ratingRange?.max
+    );
+
+    const ratingRange =
+      ratingMin !== undefined || ratingMax !== undefined
+        ? {
+            min: ratingMin ?? null,
+            max: ratingMax ?? null
+          }
+        : undefined;
+
     const awardType = resolveAwardType(prize, computedAmount);
 
     return {
@@ -84,9 +115,12 @@ const sanitizePrizeTemplate = (template, fallbackCashPool) => {
       position: prize.position || index + 1,
       amount: computedAmount,
       type: awardType,
+      ratingMin,
+      ratingMax,
       metadata: {
         ...(prize.metadata || {}),
-        awardType
+        awardType,
+        ...(ratingRange ? { ratingRange } : {})
       }
     };
   });
@@ -194,7 +228,14 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
     gamesPlayed: player.games_played
   }));
 
-  const prizeQueue = [...templatePrizes].sort((a, b) => {
+  const standardPrizes = templatePrizes.filter(
+    prize => prize.ratingMin === undefined && prize.ratingMax === undefined
+  );
+  const ratingPrizes = templatePrizes.filter(
+    prize => prize.ratingMin !== undefined || prize.ratingMax !== undefined
+  );
+
+  const prizeQueue = [...standardPrizes].sort((a, b) => {
     const posA = typeof a.position === 'number' ? a.position : Number.MAX_SAFE_INTEGER;
     const posB = typeof b.position === 'number' ? b.position : Number.MAX_SAFE_INTEGER;
     if (posA !== posB) {
@@ -210,6 +251,26 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
   const nonCashWinners = new Set();
   let prizeCursor = 0;
   let positionCursor = 1;
+
+  const isPlayerEligibleForPrize = (prize, player) => {
+    const rating =
+      typeof player.player_rating === 'number'
+        ? player.player_rating
+        : typeof player.rating === 'number'
+          ? player.rating
+          : null;
+
+    if (prize.ratingMin !== undefined && rating !== null && rating < prize.ratingMin) {
+      return false;
+    }
+    if (prize.ratingMax !== undefined && rating !== null && rating > prize.ratingMax) {
+      return false;
+    }
+    if (prize.ratingMin !== undefined && rating === null) {
+      return false;
+    }
+    return true;
+  };
 
   const groupedByScore = standings.reduce((map, player) => {
     const score = player.total_points || 0;
@@ -257,14 +318,23 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
       const maxPrizeAmount = cashPrizes.reduce((max, prize) => Math.max(max, parseNumber(prize.amount || 0)), 0);
 
       if (totalCash > 0) {
-        const baseShare = Math.floor((totalCash / groupSize) * 100) / 100;
-        const amounts = Array(groupSize).fill(baseShare);
-        let remainder = Math.round(totalCash * 100) - Math.round(baseShare * 100) * groupSize;
+        const eligiblePlayers = groupPlayers.filter(
+          player => !cashWinners.has(player.player_id)
+        );
+
+        if (eligiblePlayers.length === 0) {
+          return;
+        }
+
+        const eligibleCount = eligiblePlayers.length;
+        const baseShare = Math.floor((totalCash / eligibleCount) * 100) / 100;
+        const amounts = Array(eligibleCount).fill(baseShare);
+        let remainder = Math.round(totalCash * 100) - Math.round(baseShare * 100) * eligibleCount;
         let idx = 0;
-        while (remainder > 0 && groupSize > 0) {
+        while (remainder > 0 && eligibleCount > 0) {
           amounts[idx] = Math.round((amounts[idx] + 0.01) * 100) / 100;
           remainder -= 1;
-          idx = (idx + 1) % groupSize;
+          idx = (idx + 1) % eligibleCount;
         }
 
         const cappedAmounts = amounts.map(amount => Math.min(amount, maxPrizeAmount));
@@ -276,7 +346,7 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
           positionCursor
         );
 
-        groupPlayers.forEach((player, index) => {
+        eligiblePlayers.forEach((player, index) => {
           if (cashWinners.has(player.player_id)) {
             return;
           }
@@ -311,7 +381,7 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
             metadata: {
               awardType: 'cash',
               pooledAmount: totalCash,
-              shareCount: groupSize,
+              shareCount: eligibleCount,
               maxIndividualShare: maxPrizeAmount,
               scoreGroup: score,
               guideline: 'USCF 32B2-32B3 (pooled cash prizes)'
@@ -321,16 +391,16 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
       }
     }
 
-    nonCashPrizes.forEach((prize, index) => {
-      const player = groupPlayers[index];
-      if (!player) {
-        return;
-      }
-      if (nonCashWinners.has(player.player_id)) {
+    const eligibleNonCashPlayers = groupPlayers.filter(
+      player => !nonCashWinners.has(player.player_id)
+    );
+    nonCashPrizes.forEach((prize) => {
+      const winner = eligibleNonCashPlayers.shift();
+      if (!winner) {
         return;
       }
 
-      nonCashWinners.add(player.player_id);
+      nonCashWinners.add(winner.player_id);
       awards.push({
         tournamentId,
         section: targetSection,
@@ -338,19 +408,19 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
         prizeName: prize.name,
         prizeType: prize.type,
         prizeAmount: null,
-        playerId: player.player_id,
-        playerName: player.player_name,
-        playerRating: player.player_rating,
-        totalPoints: player.total_points,
-        gamesPlayed: player.games_played,
-        section: player.player_section || targetSection,
+        playerId: winner.player_id,
+        playerName: winner.player_name,
+        playerRating: winner.player_rating,
+        totalPoints: winner.total_points,
+        gamesPlayed: winner.games_played,
+        section: winner.player_section || targetSection,
         player: {
-          id: player.player_id,
-          name: player.player_name,
-          rating: player.player_rating,
-          section: player.player_section || targetSection,
-          totalPoints: player.total_points,
-          gamesPlayed: player.games_played
+          id: winner.player_id,
+          name: winner.player_name,
+          rating: winner.player_rating,
+          section: winner.player_section || targetSection,
+          totalPoints: winner.total_points,
+          gamesPlayed: winner.games_played
         },
         history: standingsSnapshot,
         metadata: {
@@ -362,6 +432,124 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db, o
     });
 
     positionCursor += groupSize;
+  });
+
+  ratingPrizes.forEach(prize => {
+    const eligiblePlayers = standings.filter(player => {
+      if (!isPlayerEligibleForPrize(prize, player)) {
+        return false;
+      }
+      if (prize.type === 'cash' && cashWinners.has(player.player_id)) {
+        return false;
+      }
+      if (prize.type !== 'cash' && nonCashWinners.has(player.player_id)) {
+        return false;
+      }
+      return true;
+    });
+
+    if (eligiblePlayers.length === 0) {
+      return;
+    }
+
+    const topScore = Math.max(...eligiblePlayers.map(player => player.total_points || 0));
+    const topEligible = eligiblePlayers.filter(player => (player.total_points || 0) === topScore);
+
+    if (prize.type === 'cash') {
+      const prizeAmount = parseNumber(prize.amount || 0);
+      if (prizeAmount <= 0) {
+        return;
+      }
+
+      const shareBase = Math.floor((prizeAmount / topEligible.length) * 100) / 100;
+      const amounts = Array(topEligible.length).fill(shareBase);
+      let remainder = Math.round(prizeAmount * 100) - Math.round(shareBase * 100) * topEligible.length;
+      let idx = 0;
+      while (remainder > 0 && topEligible.length > 0) {
+        amounts[idx] = Math.round((amounts[idx] + 0.01) * 100) / 100;
+        remainder -= 1;
+        idx = (idx + 1) % topEligible.length;
+      }
+
+      topEligible.forEach((player, index) => {
+        const share = amounts[index] || 0;
+        if (share <= 0) {
+          return;
+        }
+        cashWinners.add(player.player_id);
+        awards.push({
+          tournamentId,
+          section: targetSection,
+          position: prize.position || null,
+          prizeName: prize.name,
+          prizeType: 'cash',
+          prizeAmount: share,
+          playerId: player.player_id,
+          playerName: player.player_name,
+          playerRating: player.player_rating,
+          totalPoints: player.total_points,
+          gamesPlayed: player.games_played,
+          section: player.player_section || targetSection,
+          player: {
+            id: player.player_id,
+            name: player.player_name,
+            rating: player.player_rating,
+            section: player.player_section || targetSection,
+            totalPoints: player.total_points,
+            gamesPlayed: player.games_played
+          },
+          history: standingsSnapshot,
+          metadata: {
+            awardType: 'cash',
+            shareCount: topEligible.length,
+            ratingRange: {
+              min: prize.ratingMin ?? null,
+              max: prize.ratingMax ?? null
+            },
+            guideline: 'USCF 32B2-32B3 (rating class pooled cash)'
+          }
+        });
+      });
+    } else {
+      const winner = topEligible[0];
+      if (!winner) {
+        return;
+      }
+
+      nonCashWinners.add(winner.player_id);
+      awards.push({
+        tournamentId,
+        section: targetSection,
+        position: prize.position || null,
+        prizeName: prize.name,
+        prizeType: prize.type,
+        prizeAmount: null,
+        playerId: winner.player_id,
+        playerName: winner.player_name,
+        playerRating: winner.player_rating,
+        totalPoints: winner.total_points,
+        gamesPlayed: winner.games_played,
+        section: winner.player_section || targetSection,
+        player: {
+          id: winner.player_id,
+          name: winner.player_name,
+          rating: winner.player_rating,
+          section: winner.player_section || targetSection,
+          totalPoints: winner.total_points,
+          gamesPlayed: winner.games_played
+        },
+        history: standingsSnapshot,
+        metadata: {
+          awardType: prize.type,
+          ratingRange: {
+            min: prize.ratingMin ?? null,
+            max: prize.ratingMax ?? null
+          },
+          guideline: 'USCF 32F-32G (rating class award)',
+          ...(prize.metadata || {})
+        }
+      });
+    }
   });
 
   return {

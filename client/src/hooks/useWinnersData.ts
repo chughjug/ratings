@@ -17,6 +17,7 @@ export interface WinnerEntry {
   ratingCategory: string | null;
   tieGroup: number | null;
   description?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export interface WinnersSection {

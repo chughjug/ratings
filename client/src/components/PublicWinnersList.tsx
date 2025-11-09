@@ -110,6 +110,13 @@ const PublicWinnersList: React.FC<PublicWinnersListProps> = ({ tournamentId }) =
                         Pooled prize
                       </span>
                     )}
+            {winner.metadata?.ratingRange &&
+              (winner.metadata.ratingRange.min !== null ||
+                winner.metadata.ratingRange.max !== null) && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                  Rating {winner.metadata.ratingRange.min ?? '—'} to {winner.metadata.ratingRange.max ?? '—'}
+                </span>
+            )}
                     {winner.prizeType !== 'cash' && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize">
                         {winner.prizeType}

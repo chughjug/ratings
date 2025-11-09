@@ -1674,6 +1674,20 @@ router.get('/:id/winners', async (req, res) => {
         (amount > 0 ? 'cash' : null) ||
         'recognition';
       const prizeName = row.prize_name || row.defined_prize_name || 'Prize';
+      const ratingRange =
+        typeof row.rating_category === 'string' && row.rating_category.startsWith('rating:')
+          ? (() => {
+              const [, range] = row.rating_category.split(':');
+              if (!range) return null;
+              const [minPart, maxPart] = range.split('-');
+              const min = minPart && minPart !== '-' ? Number(minPart) : null;
+              const max = maxPart && maxPart !== '-' ? Number(maxPart) : null;
+              return {
+                min: Number.isFinite(min) ? min : null,
+                max: Number.isFinite(max) ? max : null
+              };
+            })()
+          : null;
 
       const winner = {
         id: row.id,
@@ -1690,7 +1704,11 @@ router.get('/:id/winners', async (req, res) => {
         position: row.position || null,
         ratingCategory: row.rating_category || null,
         tieGroup: row.tie_group || null,
-        description: row.prize_description || null
+        description: row.prize_description || null,
+        metadata: {
+          awardType: prizeType,
+          ...(ratingRange ? { ratingRange } : {})
+        }
       };
 
       entry.winners.push(winner);
