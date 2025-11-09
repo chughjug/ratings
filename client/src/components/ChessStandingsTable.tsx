@@ -126,42 +126,51 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
 
   // Generate round columns
   const sanitizeSectionName = (value?: string) => {
-    if (!value) return '';
-    return value.trim().replace(/\s+section$/i, '');
+    if (!value) return 'open';
+    return value.trim().replace(/\s+section$/i, '').toLowerCase();
   };
-
-  const normalizedSelectedSection = sanitizeSectionName(selectedSection || '').toLowerCase();
-  const shouldFilterBySection =
-    normalizedSelectedSection !== '' &&
-    normalizedSelectedSection !== 'all' &&
-    normalizedSelectedSection !== 'all sections';
 
   const getSectionLabel = (section?: string) => {
-    const trimmed = sanitizeSectionName(section);
-    return trimmed === '' ? 'Open' : trimmed;
+    const raw = (section || 'Open').trim();
+    const noSuffix = raw.replace(/\s+section$/i, '').trim();
+    return noSuffix === '' ? 'Open' : noSuffix;
   };
+
+  const normalizedSelectedSection = sanitizeSectionName(selectedSection || '');
+  const shouldFilterBySection =
+    normalizedSelectedSection !== '' &&
+    normalizedSelectedSection !== 'open' &&
+    normalizedSelectedSection !== 'all' &&
+    normalizedSelectedSection !== 'all sections';
 
   const totalRounds = Math.max(0, Number(tournament?.rounds) || 0);
   const roundColumns = Array.from({ length: totalRounds }, (_, i) => i + 1);
 
   const filteredStandings = shouldFilterBySection
-    ? standings.filter(player => getSectionLabel(player.section).toLowerCase() === normalizedSelectedSection)
+    ? standings.filter(player => sanitizeSectionName(player.section) === normalizedSelectedSection)
     : standings;
 
-  const groupedStandings = filteredStandings.reduce((acc, player) => {
-    const sectionLabel = getSectionLabel(player.section);
-    if (!acc[sectionLabel]) {
-      acc[sectionLabel] = [];
+  const groupedStandingsMap = filteredStandings.reduce((acc, player) => {
+    const key = sanitizeSectionName(player.section);
+    if (!acc[key]) {
+      acc[key] = {
+        label: getSectionLabel(player.section),
+        players: [] as PlayerStanding[]
+      };
     }
-    acc[sectionLabel].push(player);
+    acc[key].players.push(player);
     return acc;
-  }, {} as Record<string, PlayerStanding[]>);
+  }, {} as Record<string, { label: string; players: PlayerStanding[] }>);
 
-  const sectionOrder = Object.keys(groupedStandings).sort((a, b) => {
-    if (a.toLowerCase() === 'open') return -1;
-    if (b.toLowerCase() === 'open') return 1;
-    return a.localeCompare(b);
-  });
+  const sectionOrder = Object.values(groupedStandingsMap)
+    .map(group => group.label)
+    .sort((a, b) => {
+      if (a.toLowerCase() === 'open') return -1;
+      if (b.toLowerCase() === 'open') return 1;
+      return a.localeCompare(b);
+    });
+
+  const sectionLookup = new Map(sectionOrder.map(label => [label, groupedStandingsMap[sanitizeSectionName(label)].players]));
 
   const containerClassName = [
     'space-y-6 overflow-visible',
@@ -175,7 +184,7 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   return (
     <div className={containerClassName}>
       {sectionOrder.map(sectionName => {
-        const sectionStandings = groupedStandings[sectionName] || [];
+        const sectionStandings = sectionLookup.get(sectionName) || [];
 
         const playersByRank = new Map<number, PlayerStanding>();
         sectionStandings.forEach(sectionPlayer => {

@@ -493,6 +493,12 @@ async function persistDistributions(tournamentId, db, distributions) {
 /**
  * Public API
  */
+async function getStandingsForPrizes(tournamentId, db) {
+  const standings = await getTournamentStandings(tournamentId, db);
+  await calculateBasicTiebreakers(tournamentId, standings, db);
+  return standings;
+}
+
 async function calculateAndDistributePrizes(tournamentId, db) {
   const tournament = await new Promise((resolve, reject) => {
     db.get('SELECT * FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
@@ -506,8 +512,7 @@ async function calculateAndDistributePrizes(tournamentId, db) {
   }
 
   const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
-  const standings = await getTournamentStandings(tournamentId, db);
-  await calculateBasicTiebreakers(tournamentId, standings, db);
+  const standings = await getStandingsForPrizes(tournamentId, db);
 
   const prizeSettings = normalizePrizeSettings(tournament, standings, settings.prizes);
   if (!prizeSettings.enabled || prizeSettings.sections.length === 0) {
@@ -563,5 +568,6 @@ async function autoAssignPrizesOnRoundCompletion(tournamentId, round, db) {
 module.exports = {
   calculateAndDistributePrizes,
   getPrizeDistributions,
-  autoAssignPrizesOnRoundCompletion
+  autoAssignPrizesOnRoundCompletion,
+  getStandingsForPrizes
 };
