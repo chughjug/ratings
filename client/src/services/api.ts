@@ -685,12 +685,26 @@ export const pairingApi = {
 
 // Export API
 export const exportApi = {
-  exportDBF: (tournamentId: string, exportPath?: string) =>
-    api.get(`/export/dbf/${tournamentId}${exportPath ? `?exportPath=${encodeURIComponent(exportPath)}` : ''}`),
+  exportDBF: (
+    tournamentId: string,
+    options?: { exportPath?: string; mode?: 'generate' | 'regenerate' }
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.exportPath) {
+      params.append('exportPath', options.exportPath);
+    }
+    if (options?.mode) {
+      params.append('mode', options.mode);
+    }
+    const query = params.toString();
+    return api.get(
+      `/export/uscf/${tournamentId}${query ? `?${query}` : ''}`
+    );
+  },
   downloadDBF: (tournamentId: string) =>
-    api.get(`/export/dbf/${tournamentId}/download`, { responseType: 'blob' }),
+    api.get(`/export/uscf/${tournamentId}/download`, { responseType: 'blob' }),
   getExportStatus: (tournamentId: string) =>
-    api.get(`/export/status/${tournamentId}`),
+    api.get(`/export/uscf/${tournamentId}/status`),
 };
 
 

@@ -1045,6 +1045,7 @@ const PublicTournamentDisplay: React.FC = () => {
                 </div>
               </button>
               
+            {data?.prizeDistributions && data.prizeDistributions.length > 0 && (
               <button
                 onClick={() => setActiveTab('winners')}
                 className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
@@ -1061,6 +1062,7 @@ const PublicTournamentDisplay: React.FC = () => {
                   <span>Winners</span>
                 </div>
               </button>
+            )}
               
               <button
                 onClick={() => setActiveTab('teams')}
@@ -2204,7 +2206,7 @@ const PublicTournamentDisplay: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'winners' && id && (
+              {activeTab === 'winners' && id && (
               <PublicWinnersList tournamentId={id} />
             )}
 

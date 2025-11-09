@@ -284,85 +284,88 @@ async function createSectionHeaderFile(db, tournamentId, exportPath) {
 async function createPlayerDetailFile(db, tournamentId, exportPath) {
   return new Promise(async (resolve, reject) => {
     try {
-      // Get tournament rounds to determine structure
+      // Get tournament metadata (rounds + dates for event id generation)
       const tournament = await new Promise((resolve, reject) => {
-        db.get('SELECT rounds FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
+        db.get(
+          'SELECT rounds, start_date, end_date FROM tournaments WHERE id = ?',
+          [tournamentId],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
       });
 
-      const totalRounds = tournament ? tournament.rounds : 10;
-      const needsSecondRecord = totalRounds > 10;
+      // Determine total rounds (fallback to derived value later if missing)
+      let totalRounds = tournament?.rounds || 0;
 
-      // Define base DBF structure for Player Detail (USCF TDEXPORT.DBF specification)
-      const baseStructure = [
-        { name: 'D_EVENT_ID', type: 'C', size: 9 },       // Links to tournament ID
-        { name: 'D_SEC_NUM', type: 'C', size: 2 },        // Links to section number
-        { name: 'D_USCF_ID', type: 'C', size: 8 },        // USCF Member ID (Part of Compound Key)
-        { name: 'D_LASTNAME', type: 'C', size: 25 },      // Player Last Name
-        { name: 'D_FIRSTNAME', type: 'C', size: 15 },     // Player First Name
-        { name: 'D_STATE', type: 'C', size: 2 },          // Player State of Residence
-        { name: 'D_RATING', type: 'N', size: 4, decimal: 0 }, // Player Pre-Tournament USCF Regular Rating
-        { name: 'D_QRTG', type: 'N', size: 4, decimal: 0 },   // Player Pre-Tournament USCF Quick Rating
-        { name: 'D_PROV', type: 'C', size: 1 },           // Provisional Status Flag (Y/N)
-        { name: 'D_STATUS', type: 'C', size: 1 },         // Final Player Status Flag
-        { name: 'D_SCORE', type: 'N', size: 4, decimal: 1 } // Final Score in the Section
+      // Define DBF structure for Player Detail (USCF TDEXPORT.DBF specification)
+      const dbfStructure = [
+        { name: 'D_EVENT_ID', type: 'C', size: 9 },
+        { name: 'D_SEC_NUM', type: 'C', size: 2 },
+        { name: 'D_PAIR_NUM', type: 'C', size: 4 },
+        { name: 'D_REC_SEQ', type: 'C', size: 1 },
+        { name: 'D_USCF_ID', type: 'C', size: 8 },
+        { name: 'D_LASTNAME', type: 'C', size: 25 },
+        { name: 'D_FIRSTNAME', type: 'C', size: 15 },
+        { name: 'D_STATE', type: 'C', size: 2 },
+        { name: 'D_RATING', type: 'N', size: 4, decimal: 0 },
+        { name: 'D_QRTG', type: 'N', size: 4, decimal: 0 },
+        { name: 'D_PROV', type: 'C', size: 1 },
+        { name: 'D_STATUS', type: 'C', size: 1 },
+        { name: 'D_SCORE', type: 'N', size: 4, decimal: 1 }
       ];
 
-      // Add round data fields (RND01 through RND10)
-      const roundFields = [];
       for (let round = 1; round <= 10; round++) {
-        const roundNum = round.toString().padStart(2, '0');
-        roundFields.push(
-          { name: `RND${roundNum}_COL`, type: 'C', size: 1 },  // Color played (W=White, B=Black)
-          { name: `RND${roundNum}_RES`, type: 'C', size: 1 },  // Result code (W=Win, L=Loss, D=Draw, etc.)
-          { name: `RND${roundNum}_OPP`, type: 'C', size: 8 }   // Opponent's USCF ID
-        );
+        dbfStructure.push({
+          name: `D_RND${round.toString().padStart(2, '0')}`,
+          type: 'C',
+          size: 5
+        });
       }
 
-      const dbfStructure = [...baseStructure, ...roundFields];
-
-      // Get players and their results
+      // Fetch players that should be exported (active, inactive, withdrawn)
       const players = await new Promise((resolve, reject) => {
-        db.all(`
-          SELECT 
-            p.id,
-            p.name,
-            p.uscf_id,
-            p.fide_id,
-            p.rating,
-            COALESCE(p.section, 'Open') as section,
-            p.status,
-            p.expiration_date,
-            p.notes,
-            COALESCE(SUM(r.points), 0) as total_score
-          FROM players p
-          LEFT JOIN results r ON p.id = r.player_id
-          WHERE p.tournament_id = ? AND p.status = 'active'
-          GROUP BY p.id
-          ORDER BY p.section, p.name
-        `, [tournamentId], (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        });
+        db.all(
+          `
+            SELECT 
+              p.id,
+              p.name,
+              p.uscf_id,
+              p.rating,
+              COALESCE(p.section, 'Open') AS section,
+              COALESCE(p.status, 'active') AS status
+            FROM players p
+            WHERE p.tournament_id = ?
+              AND p.status IN ('active', 'inactive', 'withdrawn')
+            ORDER BY section, name
+          `,
+          [tournamentId],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+          }
+        );
       });
 
       // Create DBF file
       const filePath = path.join(exportPath, 'TDEXPORT.DBF');
-      
-      // Remove existing file if it exists
+
       try {
         await fs.unlink(filePath);
       } catch (error) {
-        // File doesn't exist, which is fine
+        // File didn't exist – that's fine
       }
-      
+
       const dbfFile = await DBFFile.create(filePath, dbfStructure);
 
-      // Generate event ID (same as tournament header)
-      const generateEventId = (tournament) => {
-        const startDate = new Date(tournament.start_date);
+      // Generate event id (YYMMDD###)
+      const generateEventId = (event) => {
+        const baseDateValue = event?.start_date || event?.end_date || new Date().toISOString();
+        let startDate = new Date(baseDateValue);
+        if (Number.isNaN(startDate.getTime())) {
+          startDate = new Date();
+        }
         const year = startDate.getFullYear().toString().slice(-2);
         const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
         const day = startDate.getDate().toString().padStart(2, '0');
@@ -370,151 +373,325 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
         return `${year}${month}${day}${sequence}`;
       };
 
-      // Get all pairings for this tournament
-      const allPairings = await new Promise((resolve, reject) => {
-        db.all(`
-          SELECT 
-            white_player_id,
-            black_player_id,
-            result,
-            round,
-            section,
-            board
-          FROM pairings 
-          WHERE tournament_id = ?
-          ORDER BY round, board
-        `, [tournamentId], (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
+      const eventId = generateEventId(tournament);
+
+      if (players.length === 0) {
+        // No players – nothing else to do
+        console.log(`✓ Created Player Detail file with 0 players: ${filePath}`);
+        resolve({ success: true, filePath });
+        return;
+      }
+
+      // Organize players by section
+      const playersBySection = new Map();
+      players.forEach((player) => {
+        const sectionName = player.section || 'Open';
+        if (!playersBySection.has(sectionName)) {
+          playersBySection.set(sectionName, []);
+        }
+        playersBySection.get(sectionName).push(player);
+      });
+
+      const sections = Array.from(playersBySection.keys()).sort((a, b) =>
+        a.localeCompare(b, 'en', { sensitivity: 'base' })
+      );
+
+      const sectionNumberMap = new Map();
+      sections.forEach((sectionName, index) => {
+        sectionNumberMap.set(sectionName, index + 1);
+      });
+
+      // Assign pairing numbers (global sequence by section order, seeded by rating desc then name)
+      const pairingNumberMap = new Map();
+      let nextPairNumber = 1;
+      sections.forEach((sectionName) => {
+        const sectionPlayers = playersBySection
+          .get(sectionName)
+          .slice()
+          .sort((a, b) => {
+            const ratingDiff = (b.rating || 0) - (a.rating || 0);
+            if (ratingDiff !== 0) return ratingDiff;
+            return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' });
+          });
+
+        sectionPlayers.forEach((player) => {
+          pairingNumberMap.set(player.id, nextPairNumber++);
         });
       });
 
-      // Group players by section
-      const playersBySection = {};
-      players.forEach(player => {
-        const section = player.section || 'Open';
-        if (!playersBySection[section]) {
-          playersBySection[section] = [];
-        }
-        playersBySection[section].push(player);
+      // Prepare structures to store per-round info
+      const roundsByPlayer = new Map();
+      const totalPointsByPlayer = new Map();
+      players.forEach((player) => {
+        roundsByPlayer.set(player.id, new Map());
+        totalPointsByPlayer.set(player.id, 0);
       });
 
-      let sectionNumber = 1;
-      const records = [];
-
-      // Process each section
-      for (const [sectionName, sectionPlayers] of Object.entries(playersBySection)) {
-        for (const player of sectionPlayers) {
-          // Get player's pairings
-          const playerPairings = allPairings.filter(pairing => 
-            pairing.white_player_id === player.id || pairing.black_player_id === player.id
-          );
-
-          // Create base record
-          const baseRecord = {
-            D_EVENT_ID: generateEventId(tournament),
-            D_SEC_NUM: ` ${sectionNumber}`.slice(-2),
-            D_USCF_ID: (player.uscf_id || '').substring(0, 8),
-            D_LASTNAME: (player.name.split(' ').slice(-1)[0] || '').substring(0, 25),
-            D_FIRSTNAME: (player.name.split(' ').slice(0, -1).join(' ') || '').substring(0, 15),
-            D_STATE: 'XX', // Default state
-            D_RATING: player.rating || 0,
-            D_QRTG: player.rating || 0, // Use same as regular rating for now
-            D_PROV: 'N', // Not provisional
-            D_STATUS: 'P', // Playing
-            D_SCORE: player.total_score || 0
-          };
-
-          // Add round data for rounds 1-10
-          for (let round = 1; round <= 10; round++) {
-            const roundNum = round.toString().padStart(2, '0');
-            const pairing = playerPairings.find(p => p.round === round);
-            
-            if (pairing) {
-              const isWhite = pairing.white_player_id === player.id;
-              const opponentId = isWhite ? pairing.black_player_id : pairing.white_player_id;
-              const opponent = players.find(p => p.id === opponentId);
-              
-              baseRecord[`RND${roundNum}_COL`] = isWhite ? 'W' : 'B';
-              
-              // Map result codes
-              let resultCode = 'L'; // Default to loss
-              if (pairing.result === '1-0') {
-                resultCode = isWhite ? 'W' : 'L';
-              } else if (pairing.result === '0-1') {
-                resultCode = isWhite ? 'L' : 'W';
-              } else if (pairing.result === '1/2-1/2') {
-                resultCode = 'D';
-              } else if (pairing.result === '1-0F') {
-                resultCode = isWhite ? 'W' : 'L';
-              } else if (pairing.result === '0-1F') {
-                resultCode = isWhite ? 'L' : 'W';
-              }
-              
-              baseRecord[`RND${roundNum}_RES`] = resultCode;
-              baseRecord[`RND${roundNum}_OPP`] = (opponent?.uscf_id || '').substring(0, 8);
-            } else {
-              baseRecord[`RND${roundNum}_COL`] = '';
-              baseRecord[`RND${roundNum}_RES`] = '';
-              baseRecord[`RND${roundNum}_OPP`] = '';
-            }
+      // Fetch pairings (include bye_type for accurate mapping)
+      const pairings = await new Promise((resolve, reject) => {
+        db.all(
+          `
+            SELECT 
+              white_player_id,
+              black_player_id,
+              result,
+              round,
+              section,
+              board,
+              bye_type
+            FROM pairings
+            WHERE tournament_id = ?
+            ORDER BY round, board
+          `,
+          [tournamentId],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
           }
+        );
+      });
 
-          records.push(baseRecord);
-
-          // If tournament has more than 10 rounds, create second record for rounds 11-20
-          if (needsSecondRecord) {
-            const secondRecord = { ...baseRecord };
-            
-            // Add round data for rounds 11-20
-            for (let round = 11; round <= Math.min(20, totalRounds); round++) {
-              const roundNum = (round - 10).toString().padStart(2, '0');
-              const pairing = playerPairings.find(p => p.round === round);
-              
-              if (pairing) {
-                const isWhite = pairing.white_player_id === player.id;
-                const opponentId = isWhite ? pairing.black_player_id : pairing.white_player_id;
-                const opponent = players.find(p => p.id === opponentId);
-                
-                secondRecord[`RND${roundNum}_COL`] = isWhite ? 'W' : 'B';
-                
-                // Map result codes
-                let resultCode = 'L';
-                if (pairing.result === '1-0') {
-                  resultCode = isWhite ? 'W' : 'L';
-                } else if (pairing.result === '0-1') {
-                  resultCode = isWhite ? 'L' : 'W';
-                } else if (pairing.result === '1/2-1/2') {
-                  resultCode = 'D';
-                } else if (pairing.result === '1-0F') {
-                  resultCode = isWhite ? 'W' : 'L';
-                } else if (pairing.result === '0-1F') {
-                  resultCode = isWhite ? 'L' : 'W';
-                }
-                
-                secondRecord[`RND${roundNum}_RES`] = resultCode;
-                secondRecord[`RND${roundNum}_OPP`] = (opponent?.uscf_id || '').substring(0, 8);
-              } else {
-                secondRecord[`RND${roundNum}_COL`] = '';
-                secondRecord[`RND${roundNum}_RES`] = '';
-                secondRecord[`RND${roundNum}_OPP`] = '';
-              }
-            }
-            
-            records.push(secondRecord);
-          }
-        }
-        sectionNumber++;
+      if (!totalRounds && pairings.length) {
+        totalRounds = Math.max(...pairings.map((p) => p.round || 0));
+      }
+      if (!totalRounds) {
+        totalRounds = 10; // default to 10 rounds if none recorded (USCF format minimum)
       }
 
-      // Add all records to DBF file
+      const needsSecondRecord = totalRounds > 10;
+
+      const mapResultToCode = (rawResult, byeType, isWhite, opponentExists) => {
+        const normalized = (rawResult || '').toString().trim().toUpperCase();
+        const colorChar = isWhite ? 'W' : 'B';
+
+        const win = () => ({ code: 'W', points: 1, color: colorChar });
+        const loss = () => ({ code: 'L', points: 0, color: colorChar });
+        const draw = () => ({ code: 'D', points: 0.5, color: colorChar });
+
+        if (!normalized && !byeType) {
+          return { code: '', points: 0, color: colorChar };
+        }
+
+        // Handle explicit bye records
+        const byeSource = (byeType || '').toLowerCase();
+        if (
+          normalized.startsWith('BYE') ||
+          byeSource === 'bye' ||
+          byeSource === 'half_point_bye' ||
+          byeSource === 'unpaired' ||
+          byeSource === 'inactive'
+        ) {
+          if (
+            normalized === 'BYE_UNPAIRED' ||
+            normalized === 'BYE_FULL' ||
+            byeSource === 'unpaired'
+          ) {
+            return { code: 'B', points: 1, color: ' ' };
+          }
+          return { code: 'H', points: 0.5, color: ' ' };
+        }
+
+        switch (normalized) {
+          case '1-0':
+          case 'W':
+          case 'WHITE':
+          case 'WHITE_WIN':
+            return isWhite ? win() : loss();
+          case '0-1':
+          case 'B':
+          case 'BLACK':
+          case 'BLACK_WIN':
+            return isWhite ? loss() : win();
+          case '1/2-1/2':
+          case '1/2-1/2F':
+          case 'DRAW':
+          case '1/2':
+          case '0.5':
+            return draw();
+          case '1-0F':
+          case 'W-F':
+          case 'WIN FORFEIT':
+            return isWhite ? win() : loss();
+          case '0-1F':
+          case 'B-F':
+          case 'LOSS FORFEIT':
+            return isWhite ? loss() : win();
+          case '0-0':
+          case '0F-0F':
+          case 'DOUBLE FORFEIT':
+            return { code: '0', points: 0, color: colorChar };
+          default:
+            // If opponent missing and result empty, treat as unplayed
+            if (!opponentExists) {
+              return { code: '0', points: 0, color: colorChar };
+            }
+            return { code: '', points: 0, color: colorChar };
+        }
+      };
+
+      const encodeRoundField = (entry) => {
+        if (!entry || !entry.code) {
+          return '    0';
+        }
+
+        if (entry.code === 'B' || entry.code === 'H') {
+          return `${entry.code}    `.slice(0, 5);
+        }
+
+        if (entry.code === '0') {
+          return `${entry.code}    `.slice(0, 5);
+        }
+
+        const colorChar = entry.color || ' ';
+        const opponent = entry.opponentPairNum
+          ? entry.opponentPairNum.toString().padStart(3, ' ')
+          : '   ';
+        return `${entry.code}${colorChar}${opponent}`;
+      };
+
+      const applyRoundEntry = (playerId, round, entry) => {
+        if (!roundsByPlayer.has(playerId)) {
+          return;
+        }
+
+        const roundMap = roundsByPlayer.get(playerId);
+        const existing = roundMap.get(round);
+        if (existing && existing.points) {
+          const currentPoints = totalPointsByPlayer.get(playerId) || 0;
+          totalPointsByPlayer.set(playerId, currentPoints - existing.points);
+        }
+
+        roundMap.set(round, entry);
+
+        const updatedPoints = totalPointsByPlayer.get(playerId) || 0;
+        totalPointsByPlayer.set(playerId, updatedPoints + (entry.points || 0));
+      };
+
+      pairings.forEach((pairing) => {
+        const roundNumber = pairing.round;
+
+        if (pairing.white_player_id) {
+          const opponentExists = Boolean(pairing.black_player_id);
+          const opponentPairNum = pairing.black_player_id
+            ? pairingNumberMap.get(pairing.black_player_id) || null
+            : null;
+          const entry = mapResultToCode(
+            pairing.result,
+            pairing.bye_type,
+            true,
+            opponentExists
+          );
+          entry.opponentPairNum = opponentPairNum;
+          applyRoundEntry(pairing.white_player_id, roundNumber, entry);
+        }
+
+        if (pairing.black_player_id) {
+          const opponentExists = Boolean(pairing.white_player_id);
+          const opponentPairNum = pairing.white_player_id
+            ? pairingNumberMap.get(pairing.white_player_id) || null
+            : null;
+          const entry = mapResultToCode(
+            pairing.result,
+            pairing.bye_type,
+            false,
+            opponentExists
+          );
+          entry.opponentPairNum = opponentPairNum;
+          applyRoundEntry(pairing.black_player_id, roundNumber, entry);
+        }
+      });
+
+      const records = [];
+
+      sections.forEach((sectionName) => {
+        const sectionPlayers = playersBySection
+          .get(sectionName)
+          .slice()
+          .sort((a, b) =>
+            a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+          );
+        const sectionNumber = sectionNumberMap.get(sectionName);
+
+        sectionPlayers.forEach((player) => {
+          const pairNumber = pairingNumberMap.get(player.id) || 0;
+          const playerRounds = roundsByPlayer.get(player.id) || new Map();
+          const totalPoints = Number(
+            (totalPointsByPlayer.get(player.id) || 0).toFixed(1)
+          );
+
+          const fullName = (player.name || '').trim();
+          let firstName = '';
+          let lastName = '';
+          if (fullName) {
+            const parts = fullName.split(/\s+/);
+            if (parts.length === 1) {
+              lastName = parts[0];
+            } else {
+              lastName = parts.pop() || '';
+              firstName = parts.join(' ');
+            }
+          }
+
+          const statusMap = {
+            active: 'P',
+            inactive: 'I',
+            withdrawn: 'W'
+          };
+          const statusCode = statusMap[player.status] || 'P';
+
+          const baseRecord = {
+            D_EVENT_ID: eventId,
+            D_SEC_NUM: ` ${sectionNumber}`.slice(-2),
+            D_PAIR_NUM: `   ${pairNumber}`.slice(-4),
+            D_USCF_ID: (player.uscf_id || '').substring(0, 8),
+            D_LASTNAME: lastName.substring(0, 25),
+            D_FIRSTNAME: firstName.substring(0, 15),
+            D_STATE: 'XX',
+            D_RATING: player.rating || 0,
+            D_QRTG: player.rating || 0,
+            D_PROV: 'N',
+            D_STATUS: statusCode
+          };
+
+          const buildRecord = (recordSeq, startRound, endRoundInclusive) => {
+            const record = {
+              ...baseRecord,
+              D_REC_SEQ: recordSeq.toString(),
+              D_SCORE: recordSeq === 1 ? totalPoints : null
+            };
+
+            for (let offset = 0; offset < 10; offset++) {
+              const roundNumber = startRound + offset;
+              const fieldName = `D_RND${(offset + 1)
+                .toString()
+                .padStart(2, '0')}`;
+              if (roundNumber > endRoundInclusive) {
+                record[fieldName] = '    0';
+              } else {
+                const entry = playerRounds.get(roundNumber);
+                record[fieldName] = encodeRoundField(entry);
+              }
+            }
+
+            records.push(record);
+          };
+
+          const firstRecordEnd = Math.min(10, totalRounds);
+          buildRecord(1, 1, firstRecordEnd);
+
+          if (needsSecondRecord) {
+            const secondRecordEnd = Math.min(20, totalRounds);
+            buildRecord(2, 11, secondRecordEnd);
+          }
+        });
+      });
+
       if (records.length > 0) {
         await dbfFile.appendRecords(records);
       }
 
       console.log(`✓ Created Player Detail file: ${filePath}`);
-      resolve({ success: true, filePath: filePath });
-
+      resolve({ success: true, filePath });
     } catch (error) {
       console.error('Error creating player detail file:', error);
       reject(error);
