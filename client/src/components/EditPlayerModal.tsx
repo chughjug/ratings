@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, User, Search } from 'lucide-react';
+import { X, Save, User, Search, Calendar } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { playerApi } from '../services/api';
 import PlayerSearchModal from './PlayerSearchModal';
@@ -26,13 +26,15 @@ interface EditPlayerModalProps {
   onClose: () => void;
   player: Player | null;
   tournamentId: string;
+  onEditByes?: (playerId: string, playerName: string) => void;
 }
 
 const EditPlayerModal: React.FC<EditPlayerModalProps> = ({ 
   isOpen, 
   onClose, 
   player, 
-  tournamentId 
+  tournamentId,
+  onEditByes
 }) => {
   const { state, dispatch } = useTournament();
   const [loading, setLoading] = useState(false);
@@ -164,6 +166,16 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
       return [];
     }
   };
+
+  const displayByeRounds = Array.isArray(formData.intentional_bye_rounds)
+    ? formData.intentional_bye_rounds
+        .map(round => {
+          const parsed = typeof round === 'string' ? parseInt(round, 10) : round;
+          return Number.isFinite(parsed) ? parsed : null;
+        })
+        .filter((round): round is number => round !== null)
+        .sort((a, b) => a - b)
+    : [];
 
   // Early return if modal is closed or no player data
   if (!isOpen) return null;
@@ -376,8 +388,33 @@ const EditPlayerModal: React.FC<EditPlayerModalProps> = ({
 
           {/* Additional Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Additional Information</h3>
-            
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Additional Information</h3>
+              {onEditByes && (
+                <button
+                  type="button"
+                  onClick={() => onEditByes(player.id, formData.name || player.name || '')}
+                  className="inline-flex items-center space-x-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span>Edit Bye Rounds</span>
+                </button>
+              )}
+            </div>
+
+            {displayByeRounds.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {displayByeRounds.map(round => (
+                  <span
+                    key={round}
+                    className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700"
+                  >
+                    Round {round}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div>
               <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
                 Notes
