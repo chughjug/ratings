@@ -1646,46 +1646,276 @@ const TournamentDetail: React.FC = () => {
   const hasAdditionalDetails = additionalDetails.length > 0;
   const sectionCount = tournament.settings?.sections?.length ?? 0;
 
-  const tournamentStats = getTournamentStats();
-
-  const playerCount = state.players?.length ?? 0;
-  const teamCount = teams?.length ?? 0;
-
-  type TabColor = 'primary' | 'success' | 'accent';
-  type TabConfig = {
-    id: string;
-    label: string;
-    icon: React.ElementType;
-    color: TabColor;
-    badge?: number;
-    visible: boolean;
-  };
-
-  const tabItems: TabConfig[] = [
-    { id: 'settings', label: 'Info', icon: Settings, color: 'primary', visible: true },
-    { id: 'players', label: 'Players', icon: Users, color: 'primary', badge: playerCount, visible: true },
-    { id: 'pairings', label: 'Pairings', icon: Trophy, color: 'primary', visible: true },
-    { id: 'standings', label: 'Standings', icon: Trophy, color: 'primary', visible: true },
-    { id: 'prizes', label: 'Prizes', icon: DollarSign, color: 'success', visible: true },
-    { id: 'print', label: 'Print', icon: Printer, color: 'primary', visible: true },
-    { id: 'club-ratings', label: 'Club Ratings', icon: Trophy, color: 'accent', visible: Boolean(tournament?.organization_id) },
-    { id: 'team-standings', label: 'Team Standings', icon: Users, color: 'primary', badge: teamCount, visible: Boolean(tournament) },
-    { id: 'registrations', label: 'Registrations', icon: Users, color: 'primary', visible: true }
-  ].filter((tab) => tab.visible);
-
-  const getActiveClasses = (color: TabColor) => {
-    switch (color) {
-      case 'success':
-        return 'bg-emerald-600 text-white shadow-[0_12px_24px_-12px_rgba(16,185,129,0.6)]';
-      case 'accent':
-        return 'bg-amber-500 text-white shadow-[0_12px_24px_-12px_rgba(245,158,11,0.55)]';
-      default:
-        return 'bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-[0_12px_24px_-12px_rgba(234,88,12,0.6)]';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 via-white to-orange-50/40">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Modern Enhanced Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20 py-3">
+            {/* Left side - Navigation and Title */}
+            <div className="flex items-center space-x-4 flex-1 min-w-0">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <ArrowLeft className="h-5 w-5 mr-1" />
+                <span className="text-sm font-semibold">Back</span>
+              </button>
+              <div className="h-8 w-px bg-gray-300"></div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold text-gray-900 truncate">{tournament.name}</h1>
+                <div className="flex items-center space-x-3 mt-1 flex-wrap">
+                  <span
+                    className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
+                      tournament.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : tournament.status === 'completed'
+                        ? 'bg-gray-100 text-gray-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
+                    {tournament.status ? tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1) : 'Unknown'}
+                  </span>
+                  <span className="text-sm font-medium text-gray-600 capitalize">
+                    {tournament.format ? tournament.format.replace('-', ' ') : 'Unknown'}
+                  </span>
+                  <span className="text-sm font-medium text-gray-600">{tournament.rounds} rounds</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Right side - Essential Actions Only */}
+            <div className="flex items-center space-x-2 ml-4">
+              {/* Tournament Director Dashboard - Hidden */}
+              {false && (
+              <button
+                onClick={() => navigate(`/tournaments/${id}/director`)}
+                className="flex items-center space-x-1 px-3 py-1 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Director</span>
+              </button>
+              )}
+              
+              {/* PWA Status - Hidden */}
+              {false && (
+              <button
+                onClick={() => setShowPWAStatus(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+              >
+                <Smartphone className="h-4 w-4" />
+                <span>PWA</span>
+              </button>
+              )}
+              
+              {/* New Feature Buttons in Header - Hidden */}
+              {false && (
+              <>
+              <button
+                onClick={() => setShowSMSManager(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-green-600 hover:bg-green-700 rounded"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>SMS</span>
+              </button>
+              
+              <button
+                onClick={() => setShowQRCodeGenerator(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded"
+              >
+                <QrCode className="h-4 w-4" />
+                <span>QR</span>
+              </button>
+              
+              <button
+                onClick={() => setShowAnalyticsDashboard(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-orange-600 hover:bg-orange-700 rounded"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>Analytics</span>
+              </button>
+              
+              <button
+                onClick={() => setShowChessIntegration(true)}
+                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-cyan-600 hover:bg-cyan-700 rounded"
+              >
+                <Gamepad2 className="h-4 w-4" />
+                <span>Chess</span>
+              </button>
+              </>
+              )}
+              
+              {/* API Status - Compact */}
+              <APIStatusIndicator 
+                tournamentId={id || ''} 
+                apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94" 
+              />
+              
+              {/* Notifications - Only show if there are any */}
+              {(() => {
+                const warnings = getExpirationWarnings();
+                const notifications = getAllTournamentNotifications(tournament, state.players, warnings);
+                return notifications.length > 0 ? (
+                  <NotificationButton
+                    notifications={notifications}
+                    webhookEnabled={emailsEnabled}
+                    onWebhookToggle={(enabled) => {
+                      setEmailsEnabled(enabled);
+                    }}
+                    webhookUrl={tournament?.webhook_url || process.env.REACT_APP_PAIRING_NOTIFICATION_WEBHOOK}
+                    onDismiss={(notificationId) => {
+                      console.log('Dismissed notification:', notificationId);
+                    }}
+                    onMarkAsRead={(notificationId) => {
+                      console.log('Marked as read:', notificationId);
+                    }}
+                    onViewPlayer={(playerName) => {
+                      const player = state.players.find(p => p.name === playerName);
+                      if (player) {
+                        setActiveTab('players');
+                        console.log('Viewing player:', playerName);
+                      }
+                    }}
+                  />
+                ) : null;
+              })()}
+              
+              {/* Actions Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowDisplaySettings(!showDisplaySettings)}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Actions</span>
+                </button>
+                
+                {/* Dropdown Menu */}
+                {showDisplaySettings && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          dispatch({ type: 'SET_ERROR', payload: null });
+                          fetchTournament();
+                          fetchPlayers();
+                          fetchStandings();
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-3" />
+                        Refresh Data
+                      </button>
+                      
+                      <button
+                        onClick={() => setShowSectionManager(true)}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <Settings className="h-4 w-4 mr-3" />
+                        Manage Sections
+                      </button>
+                      
+                      <button
+                        onClick={clearStandings}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-3" />
+                        Clear Standings
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          const apiUrl = `${window.location.origin}/api/players/api-import/${id}`;
+                          const registerUrl = `${window.location.origin}/api/players/register/${id}`;
+                          const registrationFormUrl = `${window.location.origin}/register/${id}`;
+                          const apiKey = 'demo-key-123';
+                          
+                          const modal = document.createElement('div');
+                          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                          modal.innerHTML = `
+                            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                              <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">API Integration & Registration</h3>
+                                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                  </svg>
+                                </button>
+                              </div>
+                              <div class="space-y-6">
+                                <div class="bg-gray-50 rounded-lg p-4">
+                                  <h4 class="font-semibold text-gray-900 mb-2">Tournament Information</h4>
+                                  <p class="text-sm text-gray-600">Tournament ID: <code class="bg-gray-200 px-2 py-1 rounded">${id}</code></p>
+                                  <p class="text-sm text-gray-600">Tournament Name: ${tournament?.name || 'Loading...'}</p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Bulk Import API:</label>
+                                    <div class="flex">
+                                      <input type="text" value="${apiUrl}" readonly 
+                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                      <button onclick="navigator.clipboard.writeText('${apiUrl}')" 
+                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
+                                        Copy
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Single Registration API:</label>
+                                    <div class="flex">
+                                      <input type="text" value="${registerUrl}" readonly 
+                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                      <button onclick="navigator.clipboard.writeText('${registerUrl}')" 
+                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
+                                        Copy
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-2">Registration Form URL:</label>
+                                  <div class="flex">
+                                    <input type="text" value="${registrationFormUrl}" readonly 
+                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
+                                    <button onclick="navigator.clipboard.writeText('${registrationFormUrl}')" 
+                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm">
+                                      Copy
+                                    </button>
+                                    <button onclick="window.open('${registrationFormUrl}', '_blank')" 
+                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm ml-1">
+                                      Open
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          `;
+                          document.body.appendChild(modal);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <FileText className="h-4 w-4 mr-3" />
+                        API & Registration
+                      </button>
+                      
+                      <a
+                        href={`/public/tournaments/${id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-3" />
+                        Public View
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Combined Overview Card */}
@@ -1696,7 +1926,7 @@ const TournamentDetail: React.FC = () => {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <button
                     onClick={() => navigate(-1)}
-                    className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:bg-orange-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     <span>Back</span>
@@ -1716,17 +1946,17 @@ const TournamentDetail: React.FC = () => {
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2 text-sm text-gray-600">
                       {tournament.format && (
-                        <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50/70 px-3 py-1 text-orange-800">
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
                           {tournament.format.replace('-', ' ')} Format
                         </span>
                       )}
                       {tournament.rounds && (
-                        <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50/70 px-3 py-1 text-orange-800">
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
                           {tournament.rounds} {tournament.rounds === 1 ? 'Round' : 'Rounds'}
                         </span>
                       )}
                       {sectionCount > 0 && (
-                        <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50/70 px-3 py-1 text-orange-800">
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
                           {sectionCount} {sectionCount === 1 ? 'Section' : 'Sections'}
                         </span>
                       )}
@@ -1762,12 +1992,14 @@ const TournamentDetail: React.FC = () => {
                     }}
                   />
                 )}
-                <div className="flex items-center gap-3 rounded-xl border border-orange-200 bg-white/90 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                   <span
-                    className={`h-2.5 w-2.5 rounded-full ${
-                      tournament.allow_registration ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                    className={`relative flex h-2.5 w-2.5 items-center justify-center rounded-full ${
+                      tournament.allow_registration ? 'bg-emerald-500' : 'bg-red-500'
                     }`}
-                  />
+                  >
+                    <span className="absolute inline-flex h-5 w-5 animate-ping rounded-full bg-current opacity-25"></span>
+                  </span>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Registration
@@ -1804,7 +2036,7 @@ const TournamentDetail: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setShowDisplaySettings(!showDisplaySettings)}
-                    className="flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-600 to-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-orange-700 hover:to-orange-600"
+                    className="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
                   >
                     <Settings className="h-4 w-4" />
                     <span>Actions</span>
@@ -1935,9 +2167,9 @@ const TournamentDetail: React.FC = () => {
                 return (
                   <div
                     key={stat.key}
-                    className="flex items-center gap-4 rounded-2xl border border-orange-100 bg-white/80 p-4"
+                    className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-4"
                   >
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/15 to-orange-500/30 text-orange-700 shadow-sm">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-chess-board shadow-sm">
                       <Icon className="h-5 w-5" />
                     </span>
                     <div>
@@ -1951,7 +2183,7 @@ const TournamentDetail: React.FC = () => {
               })}
             </div>
 
-            <div className="rounded-2xl border border-orange-100 bg-white/90 p-6 sm:p-8">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 sm:p-8">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
@@ -2000,23 +2232,122 @@ const TournamentDetail: React.FC = () => {
             </div>
           </div>
 
-          <div className="border-t border-orange-100/70 bg-white/80 px-3 py-3 sm:px-6 backdrop-blur-md">
+          <div className="border-t border-gray-200 bg-gray-50 px-3 py-3 sm:px-6">
             <nav className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide sm:gap-3">
-              {tabItems.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as 'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'club-ratings' | 'settings' | 'print')}
-                  className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    activeTab === tab.id ? getActiveClasses(tab.color as TabColor) : 'text-gray-600 hover:bg-white hover:text-gray-900'
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-bold">{tab.badge}</span>
-                  )}
-                </button>
-              ))}
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'settings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Settings className="h-4 w-4" />
+                <span>INFO</span>
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('players')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'players'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Players</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  activeTab === 'players'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {state.players.length}
+                </span>
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('pairings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'pairings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>Pairings</span>
+              </button>
+                
+              <button
+                onClick={() => setActiveTab('standings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'standings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>Standings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('prizes')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'prizes'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <DollarSign className="h-4 w-4" />
+                <span>Prizes</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('print')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'print'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Printer className="h-4 w-4" />
+                <span>Print</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('club-ratings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'club-ratings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>Club Ratings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('team-standings')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'team-standings'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Team Standings</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('registrations')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === 'registrations'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-900'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Registrations</span>
+              </button>
             </nav>
           </div>
         </div>
@@ -3382,59 +3713,59 @@ const TournamentDetail: React.FC = () => {
                       </button>
                     </div>
                   </div>
-              
-              {!state.standings || !Array.isArray(state.standings) || state.standings.length === 0 ? (
-                <div className="text-center py-8">
-                  <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No standings available yet</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {(() => {
-                    // Group standings by section
-                    const standingsBySection: { [key: string]: any[] } = {};
-                    state.standings.forEach((standing, index) => {
-                      const section = standing.section || 'Open';
-                      if (!standingsBySection[section]) {
-                        standingsBySection[section] = [];
-                      }
-                      standingsBySection[section].push({ ...standing, originalIndex: index });
-                    });
 
-                    // Filter sections based on selected section
-                    let sectionsToShow = Object.keys(standingsBySection).sort();
-                    if (selectedSection && selectedSection !== '') {
-                      sectionsToShow = sectionsToShow.filter(section => section === selectedSection);
-                    }
+                  {!state.standings || !Array.isArray(state.standings) || state.standings.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No standings available yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {(() => {
+                        // Group standings by section
+                        const standingsBySection: { [key: string]: any[] } = {};
+                        state.standings.forEach((standing, index) => {
+                          const section = standing.section || 'Open';
+                          if (!standingsBySection[section]) {
+                            standingsBySection[section] = [];
+                          }
+                          standingsBySection[section].push({ ...standing, originalIndex: index });
+                        });
 
-                    return sectionsToShow.map(sectionName => {
-                      const sectionStandings = standingsBySection[sectionName];
-                      // Re-sort within section by points (descending)
-                      sectionStandings.sort((a, b) => b.total_points - a.total_points);
+                        // Filter sections based on selected section
+                        let sectionsToShow = Object.keys(standingsBySection).sort();
+                        if (selectedSection && selectedSection !== '') {
+                          sectionsToShow = sectionsToShow.filter(section => section === selectedSection);
+                        }
 
-                      return (
-                        <div key={sectionName} className="border border-gray-200 rounded-lg">
-                          <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
-                            <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
-                          </div>
-                          
-                          <div className="p-4">
-                            <ChessStandingsTable
-                              standings={sectionStandings}
-                              tournament={tournament}
-                              selectedSection={sectionName}
-                              showTiebreakers={showTiebreakers}
-                              showPrizes={true}
-                              tournamentId={id}
-                            />
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              )}
+                        return sectionsToShow.map(sectionName => {
+                          const sectionStandings = standingsBySection[sectionName];
+                          // Re-sort within section by points (descending)
+                          sectionStandings.sort((a, b) => b.total_points - a.total_points);
+
+                          return (
+                            <div key={sectionName} className="border border-gray-200 rounded-lg">
+                              <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                                <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
+                                <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
+                              </div>
+                              
+                              <div className="p-4">
+                                <ChessStandingsTable
+                                  standings={sectionStandings}
+                                  tournament={tournament}
+                                  selectedSection={sectionName}
+                                  showTiebreakers={showTiebreakers}
+                                  showPrizes={true}
+                                  tournamentId={id}
+                                />
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -3828,71 +4159,74 @@ const TournamentDetail: React.FC = () => {
           })()}
 
           {activeTab === 'club-ratings' && tournament?.organization_id && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Club Ratings</h2>
-                <p className="text-gray-600">
-                  Generate and view club ratings based on tournament results. Ratings are automatically calculated from completed games.
-                </p>
-              </div>
-              
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Club Ratings</h2>
+              <p className="text-gray-600 mb-6">
+                Generate and view club ratings based on tournament results. Ratings are automatically calculated from completed games.
+              </p>
               <ClubRatingsManager organizationId={tournament.organization_id} />
             </div>
           )}
 
           {activeTab === 'prizes' && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Prize Management</h2>
-                  <p className="text-sm text-gray-600">
-                    Configure and view prize distributions for this tournament
-                  </p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setShowPrizeConfiguration(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span>Configure Prizes</span>
-                  </button>
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Prize Management</h2>
+                    <p className="text-sm text-gray-600">
+                      Configure and view prize distributions for this tournament.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setShowPrizeConfiguration(true)}
+                      className="inline-flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>Configure Prizes</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-              
-              <PrizeDisplay
-                tournamentId={id!}
-                showPrizeSettings={true}
-                onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
-              />
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <PrizeDisplay
+                  tournamentId={id!}
+                  showPrizeSettings={true}
+                  onPrizeSettingsClick={() => setShowPrizeConfiguration(true)}
+                />
+              </div>
             </div>
           )}
 
           {activeTab === 'team-standings' && (
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-4">
-                  <h2 className="text-lg font-semibold">Team Standings</h2>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={fetchTeamStandings}
-                    className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    <span>Refresh</span>
-                  </button>
-                  <button
-                    onClick={() => setShowTiebreakers(!showTiebreakers)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                      showTiebreakers 
-                        ? 'bg-chess-board text-white hover:bg-chess-dark' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <Trophy className="h-4 w-4" />
-                    <span>Tiebreakers</span>
-                  </button>
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center space-x-3">
+                    <h2 className="text-lg font-semibold text-gray-900">Team Standings</h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={fetchTeamStandings}
+                      className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      <span>Refresh</span>
+                    </button>
+                    <button
+                      onClick={() => setShowTiebreakers(!showTiebreakers)}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                        showTiebreakers 
+                          ? 'bg-chess-board text-white hover:bg-chess-dark' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Trophy className="h-4 w-4" />
+                      <span>Tiebreakers</span>
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -3938,10 +4272,9 @@ const TournamentDetail: React.FC = () => {
                   totalRounds={tournament?.rounds}
                 />
               ) : (
-                <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">No team standings available</p>
-                  <p className="text-sm text-gray-500">Assign players to teams to see team standings</p>
+                  <p className="text-gray-600">Team pairings are not available for Swiss or Online tournaments</p>
                 </div>
               )}
             </div>
@@ -3987,15 +4320,15 @@ const TournamentDetail: React.FC = () => {
 
 
           {activeTab === 'registrations' && (
-            <div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <RegistrationManagement tournamentId={id || ''} />
             </div>
           )}
 
           {activeTab === 'print' && (
             <div className="space-y-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 no-print">
-                <div className="flex items-center justify-between mb-4">
+              <div className="no-print rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-center space-x-4">
                     <button
                       onClick={() => setPrintViewTab('pairings')}
@@ -4669,12 +5002,6 @@ const TournamentDetail: React.FC = () => {
         }}
         player={playerToEdit}
         tournamentId={id || ''}
-        onEditByes={(playerId, playerName) => {
-          setShowEditPlayer(false);
-          setPlayerToEdit(null);
-          setSelectedPlayer({ id: playerId, name: playerName });
-          setTimeout(() => setShowInactiveRounds(true), 0);
-        }}
       />
 
       {/* Bye Management Modal */}
@@ -4920,968 +5247,6 @@ const TournamentDetail: React.FC = () => {
         />
       )}
 
-      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-        <nav className="flex flex-wrap gap-2">
-          {tabItems.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const Icon = tab.icon;
-            const activeClasses = getActiveClasses(tab.color as TabColor);
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as typeof activeTab);
-                  if (tab.id === 'team-standings') {
-                    fetchTeamStandings();
-                  }
-                }}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  isActive ? activeClasses : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-gray-500'}`} />
-                <span>{tab.label}</span>
-                {typeof tab.badge === 'number' && tab.badge >= 0 && (
-                  <span
-                    className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6">
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Tournament Overview</h3>
-                  <p className="text-gray-600">Welcome to the tournament management system. Use the tabs above to navigate between different sections.</p>
-                </div>
-                
-                {/* Lichess Integration - Always visible in overview tab */}
-                {state.currentTournament && (
-                  <div className="mt-6">
-                    <LichessIntegration
-                      tournamentId={id || ''}
-                      tournamentName={state.currentTournament.name}
-                      timeControl={state.currentTournament.time_control || 'G/45+15'}
-                      rounds={state.currentTournament.rounds}
-                      players={state.players || []}
-                      onGamesCreated={(games) => {
-                        console.log('Lichess games created:', games);
-                        // Refresh pairings or show success message
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'players' && (
-            <div>
-              {/* Debug Info for Team Tournaments */}
-              {tournament?.format && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>Team Tournament Mode:</strong> Format: {tournament.format} | Teams loaded: {teams.length} | 
-                    Sections: {groupTeamsBySection(teams).map(s => s.section).join(', ') || 'None'}
-                  </p>
-                </div>
-              )}
-              {/* Combined Player Management Toolbar */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Player Management</h2>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setShowAddPlayer(true)}
-                      className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Add Player</span>
-                    </button>
-                    <button
-                      onClick={() => setShowBulkAddPlayer(true)}
-                      className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Bulk Add</span>
-                    </button>
-                    <button
-                      onClick={() => setShowUnifiedImport(true)}
-                      className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>Import Players</span>
-                    </button>
-                    {tournament?.organization_id && (
-                      <button
-                        onClick={() => setShowImportClubMembers(true)}
-                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                      >
-                        <Users className="h-4 w-4" />
-                        <span>Import from Club Members</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowGoogleFormsConnector(true)}
-                      className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <LinkIcon className="h-4 w-4" />
-                      <span>Connect Google Form</span>
-                    </button>
-                    <button
-                      onClick={() => setShowDBFExport(true)}
-                      className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span>Export USCF</span>
-                    </button>
-                    {tournament?.format === 'team-tournament' && (
-                      <button
-                        onClick={() => setShowTeamTournamentManagement(true)}
-                        className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                      >
-                        <Users className="h-4 w-4" />
-                        <span>Manage Teams</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowAPIDocs(true)}
-                      className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      <Code className="h-4 w-4" />
-                      <span>API Docs</span>
-                    </button>
-                    <button
-                      onClick={() => setShowByeManagement(true)}
-                      className="flex items-center space-x-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                      <span>Manage Byes</span>
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteDuplicates(true)}
-                      className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span>Delete Duplicates</span>
-                    </button>
-                    {tournament && tournament.format === 'quad' && (
-                      <button
-                        onClick={generateQuadPairings}
-                        disabled={isLoading}
-                        className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
-                      >
-                        <span>🎯</span>
-                        <span>{isLoading ? 'Generating...' : 'Generate Quads'}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600 mt-2">
-                  <p>• Click ✏️ next to team names to edit them inline</p>
-                  <p>• Select multiple players to assign them to teams or perform bulk operations</p>
-                </div>
-              </div>
-            
-            {/* Batch Actions Bar */}
-            {selectedPlayers.size > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm font-medium text-blue-800">
-                      {selectedPlayers.size} player(s) selected
-                    </span>
-                    <button
-                      onClick={() => setSelectedPlayers(new Set())}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline"
-                    >
-                      Clear selection
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setShowBatchOperations(true)}
-                      className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Batch Operations</span>
-                    </button>
-                    <button
-                      onClick={handleBatchActivate}
-                      className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <span>Activate Selected</span>
-                    </button>
-                    <button
-                      onClick={handleBatchDeactivate}
-                      className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <span>Deactivate Selected</span>
-                    </button>
-                    <button
-                      onClick={handleBulkTeamAssignment}
-                      className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Assign to Team</span>
-                    </button>
-                    <button
-                      onClick={handleCreateTeamFromSelected}
-                      className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Create New Team</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* New Feature Tools Section - Hidden */}
-            {false && (
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 mb-6 border border-purple-200">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Tournament Tools</h2>
-                  <p className="text-sm text-gray-600">Advanced features for tournament management</p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => setShowSMSManager(true)}
-                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    <span>SMS</span>
-                  </button>
-                  <button
-                    onClick={() => setShowQRCodeGenerator(true)}
-                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
-                  >
-                    <QrCode className="h-4 w-4" />
-                    <span>QR Codes</span>
-                  </button>
-                  <button
-                    onClick={() => setShowAnalyticsDashboard(true)}
-                    className="flex items-center space-x-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors shadow-sm"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    <span>Analytics</span>
-                  </button>
-                  <button
-                    onClick={() => setShowChessIntegration(true)}
-                    className="flex items-center space-x-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors shadow-sm"
-                  >
-                    <Gamepad2 className="h-4 w-4" />
-                    <span>Chess Platforms</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            )}
-            
-            {/* For team tournaments, always show teams section first, then players */}
-            {tournament?.format && ['team-swiss', 'team-round-robin', 'team-tournament'].includes(tournament.format) ? (
-              <div className="space-y-4">
-                {/* Sectioned Teams Display for Team Tournaments */}
-                {teams.length === 0 ? (
-                      <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Teams Created Yet</h3>
-                        <p className="text-gray-600 mb-4">
-                          Teams will be displayed here once you create them. Teams can be organized into different sections.
-                        </p>
-                        <button
-                          onClick={() => setShowTeamTournamentManagement(true)}
-                          className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Your First Team
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        {groupTeamsBySection(teams).length === 0 ? (
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                            <p className="text-yellow-800 text-sm">
-                              <strong>Debug:</strong> Teams exist ({teams.length}) but couldn't be grouped. Team data: {JSON.stringify(teams.slice(0, 2), null, 2)}
-                            </p>
-                          </div>
-                        ) : null}
-                        {groupTeamsBySection(teams).map((sectionGroup) => (
-                      <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        {/* Section Header */}
-                        <div 
-                          className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-blue-100 hover:to-indigo-100 transition-colors"
-                          onClick={() => toggleSectionCollapse(sectionGroup.section)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                                {collapsedSections.has(sectionGroup.section) ? (
-                                  <ChevronRight className="h-5 w-5" />
-                                ) : (
-                                  <ChevronDown className="h-5 w-5" />
-                                )}
-                              </button>
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                {sectionGroup.section} Section
-                              </h3>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {sectionGroup.count} team{sectionGroup.count !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Click to {collapsedSections.has(sectionGroup.section) ? 'expand' : 'collapse'}
-                            </div>
-                          </div>
-                        </div>
-
-                      {/* Section Content - Teams */}
-                      {!collapsedSections.has(sectionGroup.section) && (
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Team Name
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Members
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Section
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {sectionGroup.teams.map((team: any) => (
-                                <tr key={team.id} className="hover:bg-gray-50">
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <button
-                                      onClick={() => {
-                                        const newExpanded = new Set(expandedTeams);
-                                        if (newExpanded.has(team.id)) {
-                                          newExpanded.delete(team.id);
-                                        } else {
-                                          newExpanded.add(team.id);
-                                        }
-                                        setExpandedTeams(newExpanded);
-                                      }}
-                                      className="flex items-center space-x-2 text-sm font-medium text-gray-900 hover:text-blue-600"
-                                    >
-                                      {expandedTeams.has(team.id) ? (
-                                        <ChevronDown className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4" />
-                                      )}
-                                      <span>{team.name}</span>
-                                    </button>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {team.member_count || team.members?.length || 0} player{team.member_count !== 1 && team.members?.length !== 1 ? 's' : ''}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {team.section || 'Open'}
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <button
-                                      onClick={() => setShowTeamTournamentManagement(true)}
-                                      className="text-blue-600 hover:text-blue-800"
-                                    >
-                                      Manage
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                              {sectionGroup.teams.map((team: any) => (
-                                expandedTeams.has(team.id) && team.members && team.members.length > 0 && (
-                                  <tr key={`${team.id}-members`} className="bg-gray-50">
-                                    <td colSpan={4} className="px-6 py-4">
-                                      <div className="ml-8">
-                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Team Members:</h4>
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                          <thead className="bg-gray-100">
-                                            <tr>
-                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
-                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">USCF ID</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="bg-white divide-y divide-gray-200">
-                                            {team.members.map((member: any, idx: number) => (
-                                              <tr key={member.id || idx}>
-                                                <td className="px-4 py-2 text-sm text-gray-900">{member.player_name || member.name}</td>
-                                                <td className="px-4 py-2 text-sm text-gray-500">{member.rating || 'Unrated'}</td>
-                                                <td className="px-4 py-2 text-sm text-gray-500">{member.uscf_id || '-'}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                        ))}
-                      </div>
-                    )}
-                
-                {/* Players List Below Teams (if any) - Grouped by Section then Team */}
-                {state.players.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">All Players by Section and Team</h3>
-                    {groupPlayersBySectionAndTeam(sortPlayers(state.players)).map((sectionGroup) => (
-                      <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-4">
-                        {/* Section Header */}
-                        <div 
-                          className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-purple-100 hover:to-indigo-100 transition-colors"
-                          onClick={() => toggleSectionCollapse(`players-${sectionGroup.section}`)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                                {collapsedSections.has(`players-${sectionGroup.section}`) ? (
-                                  <ChevronRight className="h-5 w-5" />
-                                ) : (
-                                  <ChevronDown className="h-5 w-5" />
-                                )}
-                              </button>
-                              <h4 className="text-md font-semibold text-gray-900">
-                                {sectionGroup.section} Section
-                              </h4>
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                {sectionGroup.teams.reduce((sum, t) => sum + t.count, 0)} player{sectionGroup.teams.reduce((sum, t) => sum + t.count, 0) !== 1 ? 's' : ''} in {sectionGroup.teams.length} team{sectionGroup.teams.length !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        {!collapsedSections.has(`players-${sectionGroup.section}`) && (
-                          <div className="p-4 space-y-4">
-                            {sectionGroup.teams.map((teamGroup) => (
-                              <div key={teamGroup.teamName} className="border border-gray-200 rounded-lg overflow-hidden">
-                                {/* Team Header */}
-                                <div 
-                                  className="bg-gray-50 border-b border-gray-200 px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors"
-                                  onClick={() => toggleSectionCollapse(`team-${teamGroup.teamName}`)}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-2">
-                                      <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                                        {collapsedSections.has(`team-${teamGroup.teamName}`) ? (
-                                          <ChevronRight className="h-4 w-4" />
-                                        ) : (
-                                          <ChevronDown className="h-4 w-4" />
-                                        )}
-                                      </button>
-                                      <h5 className="text-sm font-semibold text-gray-900">
-                                        {teamGroup.teamName}
-                                      </h5>
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
-                                        {teamGroup.count} player{teamGroup.count !== 1 ? 's' : ''}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                                {!collapsedSections.has(`team-${teamGroup.teamName}`) && (
-                                  <div className="p-4 bg-white">
-                                    <div className="overflow-x-auto">
-                                      <table className="min-w-full divide-y divide-gray-200">
-                                        <thead className="bg-gray-50">
-                                          <tr>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
-                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">USCF ID</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                          {teamGroup.players.map((player: any, idx: number) => (
-                                            <tr key={player.id || idx} className="hover:bg-gray-50">
-                                              <td className="px-4 py-2 text-sm text-gray-900">{player.name}</td>
-                                              <td className="px-4 py-2 text-sm text-gray-500">{player.rating || 'Unrated'}</td>
-                                              <td className="px-4 py-2 text-sm text-gray-500">{player.uscf_id || '-'}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : state.players.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">No players added yet</p>
-                <button
-                  onClick={() => setShowAddPlayer(true)}
-                  className="text-chess-board hover:text-chess-dark font-medium"
-                >
-                  Add your first player
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Regular Players Display for Non-Team Tournaments */}
-                {groupPlayersBySection(sortPlayers(state.players)).map((sectionGroup) => (
-                  <div key={sectionGroup.section} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    {/* Section Header */}
-                    <div 
-                      className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 px-6 py-4 cursor-pointer hover:from-blue-100 hover:to-indigo-100 transition-colors"
-                      onClick={() => toggleSectionCollapse(sectionGroup.section)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                            {collapsedSections.has(sectionGroup.section) ? (
-                              <ChevronRight className="h-5 w-5" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5" />
-                            )}
-                          </button>
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {sectionGroup.section}
-                          </h3>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {sectionGroup.count} player{sectionGroup.count !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Click to {collapsedSections.has(sectionGroup.section) ? 'expand' : 'collapse'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section Content */}
-                    {!collapsedSections.has(sectionGroup.section) && (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <input
-                                  type="checkbox"
-                                  checked={sectionGroup.players.length > 0 && sectionGroup.players.every((p: any) => selectedPlayers.has(p.id))}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      sectionGroup.players.forEach((player: any) => selectedPlayers.add(player.id));
-                                      setSelectedPlayers(new Set(selectedPlayers));
-                                    } else {
-                                      sectionGroup.players.forEach((player: any) => selectedPlayers.delete(player.id));
-                                      setSelectedPlayers(new Set(selectedPlayers));
-                                    }
-                                  }}
-                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('name')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>Name</span>
-                                  {sortField === 'name' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('rating')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>Rating</span>
-                                  {sortField === 'rating' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('points')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>Score</span>
-                                  {sortField === 'points' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('uscf_id')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>USCF ID</span>
-                                  {sortField === 'uscf_id' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('section')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>Section</span>
-                                  {sortField === 'section' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('team_name')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>Team</span>
-                                  {sortField === 'team_name' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('is_active')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>Status</span>
-                                  {sortField === 'is_active' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('expiration_date')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>ID Expires</span>
-                                  {sortField === 'expiration_date' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <button
-                                  onClick={() => handleSort('bye_rounds')}
-                                  className="flex items-center space-x-1 hover:text-gray-700 transition-colors"
-                                >
-                                  <span>Bye Rounds</span>
-                                  {sortField === 'bye_rounds' && (
-                                    sortDirection === 'asc' ? 
-                                      <ChevronUp className="h-4 w-4" /> : 
-                                      <ChevronDown className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {sectionGroup.players.map((player: any) => (
-                      <tr key={player.id} className={selectedPlayers.has(player.id) ? 'bg-blue-50' : ''}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <input
-                            type="checkbox"
-                            checked={selectedPlayers.has(player.id)}
-                            onChange={() => handleSelectPlayer(player.id)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {player.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {player.rating || 'Unrated'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {player.points !== undefined && player.points !== null ? parseFloat(player.points.toString()).toFixed(1) : '0.0'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {player.uscf_id || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {player.section || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {editingPlayerId === player.id ? (
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="text"
-                                value={editingTeamName}
-                                onChange={(e) => setEditingTeamName(e.target.value)}
-                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Enter team name"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleSaveTeamEdit(player.id);
-                                  } else if (e.key === 'Escape') {
-                                    handleCancelTeamEdit();
-                                  }
-                                }}
-                              />
-                              <button
-                                onClick={() => handleSaveTeamEdit(player.id)}
-                                className="text-green-600 hover:text-green-800"
-                                title="Save"
-                              >
-                                ✓
-                              </button>
-                              <button
-                                onClick={handleCancelTeamEdit}
-                                className="text-red-600 hover:text-red-800"
-                                title="Cancel"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <span>{player.team_name || '-'}</span>
-                              <button
-                                onClick={() => handleStartTeamEdit(player.id, player.team_name || '')}
-                                className="text-blue-600 hover:text-blue-800 text-xs"
-                                title="Edit team"
-                              >
-                                ✏️
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                player.status === 'active'
-                                  ? 'bg-green-100 text-green-800'
-                                  : player.status === 'withdrawn'
-                                  ? 'bg-red-100 text-red-800'
-                                  : player.status === 'inactive'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}
-                            >
-                              {player.status}
-                            </span>
-                            {player.expiration_date && (
-                              (() => {
-                                try {
-                                  const expirationDate = new Date(player.expiration_date);
-                                  if (isNaN(expirationDate.getTime())) return null;
-                                  
-                                  const now = new Date();
-                                  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                  
-                                  if (daysUntilExpiration < 0) {
-                                    return (
-                                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                                        ID Expired
-                                      </span>
-                                    );
-                                  } else if (daysUntilExpiration <= 30) {
-                                    return (
-                                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                        Expires in {daysUntilExpiration} days
-                                      </span>
-                                    );
-                                  }
-                                  return null;
-                                } catch (error) {
-                                  return null;
-                                }
-                              })()
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {player.expiration_date ? (
-                            (() => {
-                              try {
-                                const expirationDate = new Date(player.expiration_date);
-                                if (isNaN(expirationDate.getTime())) {
-                                  return <span className="text-gray-400">Invalid Date</span>;
-                                }
-                                
-                                const now = new Date();
-                                const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                
-                                if (daysUntilExpiration < 0) {
-                                  return (
-                                    <span className="text-red-600 font-medium">
-                                      Expired
-                                    </span>
-                                  );
-                                } else if (daysUntilExpiration <= 30) {
-                                  return (
-                                    <span className="text-yellow-600 font-medium">
-                                      {daysUntilExpiration} days
-                                    </span>
-                                  );
-                                } else {
-                                  return (
-                                    <span className="text-gray-600">
-                                      {expirationDate.toLocaleDateString()}
-                                    </span>
-                                  );
-                                }
-                              } catch (error) {
-                                return <span className="text-gray-400">-</span>;
-                              }
-                            })()
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {(() => {
-                            try {
-                              // Check intentional_bye_rounds first (preferred), then bye_rounds
-                              let byeRounds: number[] = [];
-                              
-                              if (player.intentional_bye_rounds) {
-                                // Handle array, JSON string, or comma-separated string
-                                if (Array.isArray(player.intentional_bye_rounds)) {
-                                  byeRounds = player.intentional_bye_rounds;
-                                } else if (typeof player.intentional_bye_rounds === 'string') {
-                                  try {
-                                    byeRounds = JSON.parse(player.intentional_bye_rounds);
-                                  } catch {
-                                    byeRounds = player.intentional_bye_rounds.split(',').map((r: string) => parseInt(r.trim())).filter((r: number) => !isNaN(r));
-                                  }
-                                }
-                              } else if (player.bye_rounds && typeof player.bye_rounds === 'string') {
-                                const byeRoundsStr = player.bye_rounds.trim();
-                                
-                                // Check if it looks like a date
-                                const isDatePattern = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(byeRoundsStr);
-                                if (isDatePattern || byeRoundsStr.toLowerCase() === 'expired') {
-                                  return <span className="text-gray-400">-</span>;
-                                }
-                                
-                                if (byeRoundsStr !== '') {
-                                  byeRounds = byeRoundsStr.split(',').map((r: string) => parseInt(r.trim())).filter((r: number) => !isNaN(r));
-                                }
-                              }
-                              
-                              if (byeRounds.length === 0) {
-                                return <span className="text-gray-400">-</span>;
-                              }
-                              
-                              const byeRoundsStr = byeRounds.join(', ');
-                              return (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                  {byeRoundsStr}
-                                </span>
-                              );
-                            } catch (error) {
-                              return <span className="text-gray-400">-</span>;
-                            }
-                          })()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => {
-                                setPlayerToEdit(player);
-                                setShowEditPlayer(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedPlayer({ id: player.id, name: player.name });
-                                setShowInactiveRounds(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
-                            >
-                              Manage Inactive Rounds
-                            </button>
-                            {player.status === 'active' && (
-                              <button
-                                onClick={() => handleWithdrawPlayer(player.id)}
-                                className="text-red-600 hover:text-red-800 transition-colors"
-                              >
-                                Withdraw
-                              </button>
-                            )}
-                            {player.status === 'withdrawn' && (
-                              <button
-                                onClick={() => handleReactivatePlayer(player.id)}
-                                className="text-green-600 hover:text-green-800 transition-colors"
-                              >
-                                Reactivate
-                              </button>
-                            )}
-                            {player.status === 'inactive' && (
-                              <button
-                                onClick={() => handleActivatePlayer(player.id)}
-                                className="text-green-600 hover:text-green-800 transition-colors"
-                              >
-                                Activate
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
