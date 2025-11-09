@@ -967,7 +967,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
           {activeTab === 'standings' && (
             <div className="space-y-6">
               <div className="rounded-3xl border border-gray-200 bg-white shadow-lg">
-                <div className="rounded-t-3xl bg-gradient-to-r from-brand-primary to-brand-secondary px-6 py-4 text-white">
+                <div className="rounded-t-3xl bg-gradient-to-r from-brand-primary via-brand-primary/60 to-orange-900 px-6 py-4 text-white">
                   <h3 className="text-lg font-semibold">Tournament Standings</h3>
                 </div>
                 <div className="space-y-6 px-6 py-6">
