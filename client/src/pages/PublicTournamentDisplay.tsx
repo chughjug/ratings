@@ -1046,24 +1046,22 @@ const PublicTournamentDisplay: React.FC = () => {
                 </div>
               </button>
               
-            {data?.prizeDistributions && data.prizeDistributions.length > 0 && (
-              <button
-                onClick={() => setActiveTab('winners')}
-                className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  activeTab === 'winners'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
-                }`}
-                role="tab"
-                aria-selected={activeTab === 'winners'}
-                aria-label="View winners"
-              >
-                <div className="flex items-center space-x-2">
-                  <Crown className="h-4 w-4" />
-                  <span>Winners</span>
-                </div>
-              </button>
-            )}
+            <button
+              onClick={() => setActiveTab('winners')}
+              className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                activeTab === 'winners'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+              }`}
+              role="tab"
+              aria-selected={activeTab === 'winners'}
+              aria-label="View winners"
+            >
+              <div className="flex items-center space-x-2">
+                <Crown className="h-4 w-4" />
+                <span>Winners</span>
+              </div>
+            </button>
               
               <button
                 onClick={() => setActiveTab('teams')}
