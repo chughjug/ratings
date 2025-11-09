@@ -1648,273 +1648,6 @@ const TournamentDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Modern Enhanced Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20 py-3">
-            {/* Left side - Navigation and Title */}
-            <div className="flex items-center space-x-4 flex-1 min-w-0">
-              <button
-                onClick={() => navigate(-1)}
-                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
-              >
-                <ArrowLeft className="h-5 w-5 mr-1" />
-                <span className="text-sm font-semibold">Back</span>
-              </button>
-              <div className="h-8 w-px bg-gray-300"></div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 truncate">{tournament.name}</h1>
-                <div className="flex items-center space-x-3 mt-1 flex-wrap">
-                  <span
-                    className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
-                      tournament.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
-                        : tournament.status === 'completed'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {tournament.status ? tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1) : 'Unknown'}
-                  </span>
-                  <span className="text-sm font-medium text-gray-600 capitalize">
-                    {tournament.format ? tournament.format.replace('-', ' ') : 'Unknown'}
-                  </span>
-                  <span className="text-sm font-medium text-gray-600">{tournament.rounds} rounds</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Right side - Essential Actions Only */}
-            <div className="flex items-center space-x-2 ml-4">
-              {/* Tournament Director Dashboard - Hidden */}
-              {false && (
-              <button
-                onClick={() => navigate(`/tournaments/${id}/director`)}
-                className="flex items-center space-x-1 px-3 py-1 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Director</span>
-              </button>
-              )}
-              
-              {/* PWA Status - Hidden */}
-              {false && (
-              <button
-                onClick={() => setShowPWAStatus(true)}
-                className="flex items-center space-x-1 px-2 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-              >
-                <Smartphone className="h-4 w-4" />
-                <span>PWA</span>
-              </button>
-              )}
-              
-              {/* New Feature Buttons in Header - Hidden */}
-              {false && (
-              <>
-              <button
-                onClick={() => setShowSMSManager(true)}
-                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-green-600 hover:bg-green-700 rounded"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span>SMS</span>
-              </button>
-              
-              <button
-                onClick={() => setShowQRCodeGenerator(true)}
-                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded"
-              >
-                <QrCode className="h-4 w-4" />
-                <span>QR</span>
-              </button>
-              
-              <button
-                onClick={() => setShowAnalyticsDashboard(true)}
-                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-orange-600 hover:bg-orange-700 rounded"
-              >
-                <BarChart3 className="h-4 w-4" />
-                <span>Analytics</span>
-              </button>
-              
-              <button
-                onClick={() => setShowChessIntegration(true)}
-                className="flex items-center space-x-1 px-2 py-1 text-sm text-white bg-cyan-600 hover:bg-cyan-700 rounded"
-              >
-                <Gamepad2 className="h-4 w-4" />
-                <span>Chess</span>
-              </button>
-              </>
-              )}
-              
-              {/* API Status - Compact */}
-              <APIStatusIndicator 
-                tournamentId={id || ''} 
-                apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94" 
-              />
-              
-              {/* Notifications - Only show if there are any */}
-              {(() => {
-                const warnings = getExpirationWarnings();
-                const notifications = getAllTournamentNotifications(tournament, state.players, warnings);
-                return notifications.length > 0 ? (
-                  <NotificationButton
-                    notifications={notifications}
-                    webhookEnabled={emailsEnabled}
-                    onWebhookToggle={(enabled) => {
-                      setEmailsEnabled(enabled);
-                    }}
-                    webhookUrl={tournament?.webhook_url || process.env.REACT_APP_PAIRING_NOTIFICATION_WEBHOOK}
-                    onDismiss={(notificationId) => {
-                      console.log('Dismissed notification:', notificationId);
-                    }}
-                    onMarkAsRead={(notificationId) => {
-                      console.log('Marked as read:', notificationId);
-                    }}
-                    onViewPlayer={(playerName) => {
-                      const player = state.players.find(p => p.name === playerName);
-                      if (player) {
-                        setActiveTab('players');
-                        console.log('Viewing player:', playerName);
-                      }
-                    }}
-                  />
-                ) : null;
-              })()}
-              
-              {/* Actions Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowDisplaySettings(!showDisplaySettings)}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Actions</span>
-                </button>
-                
-                {/* Dropdown Menu */}
-                {showDisplaySettings && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          dispatch({ type: 'SET_ERROR', payload: null });
-                          fetchTournament();
-                          fetchPlayers();
-                          fetchStandings();
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-3" />
-                        Refresh Data
-                      </button>
-                      
-                      <button
-                        onClick={() => setShowSectionManager(true)}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <Settings className="h-4 w-4 mr-3" />
-                        Manage Sections
-                      </button>
-                      
-                      <button
-                        onClick={clearStandings}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4 mr-3" />
-                        Clear Standings
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          const apiUrl = `${window.location.origin}/api/players/api-import/${id}`;
-                          const registerUrl = `${window.location.origin}/api/players/register/${id}`;
-                          const registrationFormUrl = `${window.location.origin}/register/${id}`;
-                          const apiKey = 'demo-key-123';
-                          
-                          const modal = document.createElement('div');
-                          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-                          modal.innerHTML = `
-                            <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                              <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-semibold">API Integration & Registration</h3>
-                                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
-                                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                  </svg>
-                                </button>
-                              </div>
-                              <div class="space-y-6">
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                  <h4 class="font-semibold text-gray-900 mb-2">Tournament Information</h4>
-                                  <p class="text-sm text-gray-600">Tournament ID: <code class="bg-gray-200 px-2 py-1 rounded">${id}</code></p>
-                                  <p class="text-sm text-gray-600">Tournament Name: ${tournament?.name || 'Loading...'}</p>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Bulk Import API:</label>
-                                    <div class="flex">
-                                      <input type="text" value="${apiUrl}" readonly 
-                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
-                                      <button onclick="navigator.clipboard.writeText('${apiUrl}')" 
-                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
-                                        Copy
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Single Registration API:</label>
-                                    <div class="flex">
-                                      <input type="text" value="${registerUrl}" readonly 
-                                             class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
-                                      <button onclick="navigator.clipboard.writeText('${registerUrl}')" 
-                                              class="px-3 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 text-sm">
-                                        Copy
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div>
-                                  <label class="block text-sm font-medium text-gray-700 mb-2">Registration Form URL:</label>
-                                  <div class="flex">
-                                    <input type="text" value="${registrationFormUrl}" readonly 
-                                           class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm font-mono">
-                                    <button onclick="navigator.clipboard.writeText('${registrationFormUrl}')" 
-                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm">
-                                      Copy
-                                    </button>
-                                    <button onclick="window.open('${registrationFormUrl}', '_blank')" 
-                                            class="px-3 py-2 bg-green-600 text-white rounded-r-md hover:bg-green-700 text-sm ml-1">
-                                      Open
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          `;
-                          document.body.appendChild(modal);
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <FileText className="h-4 w-4 mr-3" />
-                        API & Registration
-                      </button>
-                      
-                      <a
-                        href={`/public/tournaments/${id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-3" />
-                        Public View
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1994,12 +1727,10 @@ const TournamentDetail: React.FC = () => {
                 )}
                 <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                   <span
-                    className={`relative flex h-2.5 w-2.5 items-center justify-center rounded-full ${
+                    className={`flex h-2.5 w-2.5 rounded-full ${
                       tournament.allow_registration ? 'bg-emerald-500' : 'bg-red-500'
                     }`}
-                  >
-                    <span className="absolute inline-flex h-5 w-5 animate-ping rounded-full bg-current opacity-25"></span>
-                  </span>
+                  />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Registration
@@ -2033,6 +1764,15 @@ const TournamentDetail: React.FC = () => {
                     }`}
                   />
                 </button>
+                <a
+                  href={`/public/tournaments/${id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span>Public View</span>
+                </a>
                 <div className="relative">
                   <button
                     onClick={() => setShowDisplaySettings(!showDisplaySettings)}
@@ -2145,15 +1885,6 @@ const TournamentDetail: React.FC = () => {
                           <FileText className="h-4 w-4 mr-3" />
                           API & Registration
                         </button>
-                        <a
-                          href={`/public/tournaments/${id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-3" />
-                          Public View
-                        </a>
                       </div>
                     </div>
                   )}
