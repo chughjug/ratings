@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, UserPlus, Mail, Phone, Calendar, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { formatDateSafe } from '../utils/dateUtils';
 
 type Props = {
   tournamentId?: string | number;
@@ -346,11 +347,15 @@ const RegistrationManagement: React.FC<Props> = ({ tournamentId }) => {
                       <div className="font-medium">{player.name}</div>
                       <div className="text-sm text-gray-500">
                         USCF ID: {player.uscf_id} | Rating: {player.rating}
-                        {player.expiration_date && (
-                          <span className="ml-2">
-                            | Expires: {new Date(player.expiration_date).toLocaleDateString()}
-                          </span>
-                        )}
+                        {player.expiration_date && (() => {
+                          const expirationLabel = formatDateSafe(player.expiration_date);
+                          if (!expirationLabel) return null;
+                          return (
+                            <span className="ml-2">
+                              | Expires: {expirationLabel}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </button>
                   ))}

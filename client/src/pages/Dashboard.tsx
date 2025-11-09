@@ -11,6 +11,7 @@ import { useOrganization } from '../contexts/OrganizationContext';
 import { tournamentApi } from '../services/api';
 import NotificationButton from '../components/NotificationButton';
 import { getAllTournamentNotifications } from '../utils/notificationUtils';
+import { calculateDaysUntil, formatDateSafe, parseDateSafe } from '../utils/dateUtils';
 
 interface TeamStanding {
   team_name: string;
@@ -130,13 +131,20 @@ const Dashboard: React.FC = () => {
     const allNotificationsList: any[] = [];
     state.tournaments.forEach(tournament => {
       const tournamentPlayers = state.players.filter(p => p.tournament_id === tournament.id);
+      const now = new Date();
       const warnings = tournamentPlayers
         .filter(player => player.expiration_date)
         .map(player => {
-          const now = new Date();
-          const expirationDate = new Date(player.expiration_date!);
-          const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          
+          const expirationDate = parseDateSafe(player.expiration_date);
+          if (!expirationDate) {
+            return null;
+          }
+
+          const daysUntilExpiration = calculateDaysUntil(expirationDate, now);
+          if (daysUntilExpiration === null) {
+            return null;
+          }
+
           if (daysUntilExpiration < 0) {
             return { type: 'expired' as const, player: player.name, message: `${player.name}'s USCF ID has expired` };
           } else if (daysUntilExpiration <= 30) {
@@ -155,7 +163,8 @@ const Dashboard: React.FC = () => {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'TBD';
-    return new Date(dateString).toLocaleDateString();
+    const formatted = formatDateSafe(dateString);
+    return formatted || 'TBD';
   };
 
   const getOrganizationName = (orgId?: string) => {
