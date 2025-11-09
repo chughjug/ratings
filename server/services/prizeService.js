@@ -34,6 +34,16 @@ const runAsync = (db, sql, params = []) =>
     });
   });
 
+const normalizeSectionName = (value) => {
+  if (!value || typeof value !== 'string') {
+    return 'open';
+  }
+  return value
+    .trim()
+    .replace(/\s+section$/i, '')
+    .toLowerCase();
+};
+
 function normalizePrizeSettings(tournament, standings, rawSettings) {
   const baseSettings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
   const normalized = {
@@ -119,14 +129,16 @@ async function calculateAndDistributePrizes(tournamentId, db) {
     }
 
     // Get unique sections from standings (this is the actual source of truth)
-    const actualSections = new Set();
+    const actualSections = new Map();
     standings.forEach(player => {
-      if (player.section) {
-        actualSections.add(player.section);
+      const rawSection = player.section || 'Open';
+      const normalized = normalizeSectionName(rawSection);
+      if (!actualSections.has(normalized)) {
+        actualSections.set(normalized, rawSection);
       }
     });
     
-    console.log(`Sections found in standings: ${Array.from(actualSections).join(', ')}`);
+    console.log(`Sections found in standings: ${Array.from(actualSections.values()).join(', ')}`);
 
     // Clear existing distributions
     await runAsync(db, 'DELETE FROM prize_distributions WHERE tournament_id = ?', [tournamentId]);
@@ -136,14 +148,15 @@ async function calculateAndDistributePrizes(tournamentId, db) {
     
     // Process each section's prizes
     for (const sectionConfig of prizeSettings.sections) {
-      // Check if this section exists in actual sections from standings
-      if (!actualSections.has(sectionConfig.name)) {
+      const normalizedTarget = normalizeSectionName(sectionConfig.name);
+      if (!actualSections.has(normalizedTarget)) {
         console.log(`Section ${sectionConfig.name} not found in standings, skipping...`);
         continue;
       }
       
+      const canonicalSectionName = actualSections.get(normalizedTarget) || sectionConfig.name;
       const sectionStandings = standings.filter(player => 
-        (player.section || 'Open') === sectionConfig.name
+        normalizeSectionName(player.section) === normalizedTarget
       );
 
       if (sectionStandings.length === 0) continue;
@@ -154,7 +167,7 @@ async function calculateAndDistributePrizes(tournamentId, db) {
       // Distribute prizes for this section
       const sectionDistributions = distributeSectionPrizes(
         sortedStandings, 
-        sectionConfig, 
+        { ...sectionConfig, name: canonicalSectionName }, 
         tournamentId
       );
 
