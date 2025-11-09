@@ -272,107 +272,49 @@ const PrintableView: React.FC<PrintableViewProps> = ({
 
   const renderStandings = () => {
     const filteredStandings = filterBySection(standings);
-    
-    if (selectedSection !== 'all') {
-      // Single section view
-      const sectionStandings = filteredStandings;
-      sectionStandings.sort((a, b) => b.total_points - a.total_points);
 
+    if ((!filteredStandings || filteredStandings.length === 0) && (!teamStandings || teamStandings.length === 0)) {
       return (
         <div className="section">
-          <h3 className="section-header">{selectedSection} Section</h3>
-          
+          <h3 className="section-header">Standings</h3>
           <div className="table-container">
-            <table className="standings-table">
-              <thead>
-                <tr>
-                  <th className="rank">Rank</th>
-                  <th>Name</th>
-                  <th>Rating</th>
-                  <th className="points">Points</th>
-                  <th>Games</th>
-                  <th>W-L-D</th>
-                  <th className="tiebreak">Buchholz</th>
-                  <th className="tiebreak">S-B</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sectionStandings.map((standing, index) => (
-                  <tr key={standing.id} className="player-row">
-                    <td className="rank">{index + 1}</td>
-                    <td>
-                      <div className="player-name">{standing.name}</div>
-                      {standing.uscf_id && (
-                        <div className="player-id">[{standing.uscf_id}]</div>
-                      )}
-                    </td>
-                    <td>{standing.rating || 'Unrated'}</td>
-                    <td className="points">{standing.total_points}</td>
-                    <td>{standing.games_played}</td>
-                    <td>{standing.wins}-{standing.losses}-{standing.draws}</td>
-                    <td className="tiebreak">{standing.buchholz?.toFixed(1) || '-'}</td>
-                    <td className="tiebreak">{standing.sonneborn_berger?.toFixed(1) || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p className="text-sm text-gray-600">No standings available.</p>
           </div>
         </div>
       );
     }
 
-    // All sections view
-    const standingsBySection = groupBySection(filteredStandings);
-    const sortedSections = Object.keys(standingsBySection).sort();
+    const normalizedStandings = filteredStandings.map((standing, index) => ({
+      ...standing,
+      rank: standing.rank || index + 1,
+      total_points: standing.total_points || standing.score || 0,
+      games_played: standing.games_played ?? standing.rounds_played ?? 0,
+      wins: standing.wins ?? standing.record?.wins ?? 0,
+      losses: standing.losses ?? standing.record?.losses ?? 0,
+      draws: standing.draws ?? standing.record?.draws ?? 0,
+      tiebreakers: {
+        buchholz: standing.tiebreakers?.buchholz ?? standing.buchholz ?? 0,
+        sonnebornBerger: standing.tiebreakers?.sonnebornBerger ?? standing.sonneborn_berger ?? 0,
+        performanceRating: standing.tiebreakers?.performanceRating ?? standing.performance_rating ?? 0,
+        modifiedBuchholz: standing.tiebreakers?.modifiedBuchholz ?? standing.modified_buchholz ?? 0,
+        cumulative: standing.tiebreakers?.cumulative ?? standing.cumulative ?? 0
+      }
+    }));
 
     return (
       <div className="section">
-        {sortedSections.map((sectionName, index) => {
-          const sectionStandings = standingsBySection[sectionName];
-          sectionStandings.sort((a, b) => b.total_points - a.total_points);
-
-          return (
-            <div key={sectionName} className={separatePages && index > 0 ? 'section-break' : 'no-page-break'}>
-              <h3 className="section-header">{sectionName} Section</h3>
-              
-              <div className="table-container">
-                <table className="standings-table">
-                  <thead>
-                    <tr>
-                      <th className="rank">Rank</th>
-                      <th>Name</th>
-                      <th>Rating</th>
-                      <th className="points">Points</th>
-                      <th>Games</th>
-                      <th>W-L-D</th>
-                      <th className="tiebreak">Buchholz</th>
-                      <th className="tiebreak">S-B</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sectionStandings.map((standing, index) => (
-                      <tr key={standing.id} className="player-row">
-                        <td className="rank">{index + 1}</td>
-                        <td>
-                          <div className="player-name">{standing.name}</div>
-                          {standing.uscf_id && (
-                            <div className="player-id">[{standing.uscf_id}]</div>
-                          )}
-                        </td>
-                        <td>{standing.rating || 'Unrated'}</td>
-                        <td className="points">{standing.total_points}</td>
-                        <td>{standing.games_played}</td>
-                        <td>{standing.wins}-{standing.losses}-{standing.draws}</td>
-                        <td className="tiebreak">{standing.buchholz?.toFixed(1) || '-'}</td>
-                        <td className="tiebreak">{standing.sonneborn_berger?.toFixed(1) || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        })}
+        <ChessStandingsTable
+          standings={normalizedStandings}
+          tournament={{
+            rounds: tournament.rounds || 0,
+            name: tournament.name
+          }}
+          selectedSection={selectedSection}
+          showTiebreakers={true}
+          showPrizes={true}
+          tournamentId={tournament.id}
+          className="print"
+        />
       </div>
     );
   };

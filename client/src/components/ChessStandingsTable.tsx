@@ -61,6 +61,8 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   className
 }) => {
   const { id } = useParams<{ id: string }>();
+
+  const isPrintContext = className === 'print';
   
   // Use tournamentId from props, fallback to URL params
   const actualTournamentId = tournamentId || id;
@@ -161,7 +163,10 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
     return a.localeCompare(b);
   });
 
-  const containerClassName = ['space-y-6 overflow-visible', className].filter(Boolean).join(' ');
+  const containerClassName = [
+    'space-y-6 overflow-visible',
+    className === 'print' ? 'print-standings-table' : className
+  ].filter(Boolean).join(' ');
 
   if (sectionOrder.length === 0) {
     return null;
@@ -234,8 +239,8 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                         <td className="whitespace-nowrap px-4 py-3 text-center font-semibold text-gray-900">
                           {player.rank}.
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-left">
-                          {actualTournamentId ? (
+                        <td className={`whitespace-nowrap px-4 py-3 text-left ${isPrintContext ? 'text-xs font-semibold text-black' : ''}`}>
+                          {actualTournamentId && !isPrintContext ? (
                             <Link
                               to={`/tournaments/${actualTournamentId}/player/${player.id}`}
                               className="text-left text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
@@ -243,12 +248,12 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                               {formatPlayerName(player)}
                             </Link>
                           ) : (
-                            <span className="text-sm font-semibold text-gray-900">
+                            <span className={isPrintContext ? 'text-xs font-semibold text-black' : 'text-sm font-semibold text-gray-900'}>
                               {formatPlayerName(player)}
                             </span>
                           )}
                           {player.games_played !== undefined && (
-                            <span className="block text-xs text-gray-500">
+                            <span className={`block text-xs ${isPrintContext ? 'text-black' : 'text-gray-500'}`}>
                               {player.games_played} games • {player.wins || 0}W {player.draws || 0}D {player.losses || 0}L
                             </span>
                           )}
@@ -279,9 +284,11 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                           return (
                             <td
                               key={round}
-                              className="whitespace-nowrap px-3 py-3 text-center text-xs font-medium text-gray-700"
+                              className={`whitespace-nowrap px-3 py-3 text-center text-xs font-medium ${
+                                isPrintContext ? 'text-black' : 'text-gray-700'
+                              }`}
                             >
-                              {opponentLink ? (
+                              {opponentLink && !isPrintContext ? (
                                 <Link
                                   to={opponentLink}
                                   className="rounded-full bg-blue-50 px-2 py-1 text-blue-700 transition hover:bg-blue-100"
@@ -296,19 +303,19 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
                         })}
                         {showTiebreakers && (
                           <>
-                            <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600">
+                            <td className={`whitespace-nowrap px-3 py-3 text-center text-xs ${isPrintContext ? 'text-black' : 'text-gray-600'}`}>
                               {formatTiebreaker(player.tiebreakers?.buchholz)}
                             </td>
-                            <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600">
+                            <td className={`whitespace-nowrap px-3 py-3 text-center text-xs ${isPrintContext ? 'text-black' : 'text-gray-600'}`}>
                               {formatTiebreaker(player.tiebreakers?.sonnebornBerger)}
                             </td>
-                            <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600">
+                            <td className={`whitespace-nowrap px-3 py-3 text-center text-xs ${isPrintContext ? 'text-black' : 'text-gray-600'}`}>
                               {formatTiebreaker(player.tiebreakers?.performanceRating)}
                             </td>
                           </>
                         )}
                         {showPrizes && (
-                          <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-700">
+                          <td className={`whitespace-nowrap px-4 py-3 text-center text-sm ${isPrintContext ? 'text-black' : 'text-gray-700'}`}>
                             {player.prize || '—'}
                           </td>
                         )}

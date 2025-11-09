@@ -1595,7 +1595,7 @@ const TournamentDetail: React.FC = () => {
   const sectionCount = tournament.settings?.sections?.length ?? 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-orange-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Integrated Overview Surface */}
         <div className="mb-8 rounded-3xl border border-neutral-200 bg-white shadow-lg">
@@ -1673,18 +1673,16 @@ const TournamentDetail: React.FC = () => {
 
                   <div className="flex flex-col items-stretch gap-4 xl:flex-none">
                     <div className="flex flex-wrap items-center justify-end gap-3">
-                      <div className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-neutral-900 shadow-sm">
-                        <APIStatusIndicator
-                          tournamentId={id || ''}
-                          apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94"
-                        />
-                      </div>
+                      <APIStatusIndicator
+                        tournamentId={id || ''}
+                        apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94"
+                      />
                       <NotificationButton
                         notifications={tournamentNotifications}
                         className={`rounded-full px-4 py-2 text-sm font-semibold shadow-sm backdrop-blur ${
                           hasNotifications
-                            ? 'bg-amber-500/15 text-amber-800 ring-2 ring-amber-300'
-                            : 'bg-white/70 text-neutral-800'
+                            ? 'bg-orange-400/20 text-orange-900 ring-2 ring-orange-200'
+                            : 'bg-white/80 text-neutral-800'
                         }`}
                         webhookEnabled={emailsEnabled}
                         onWebhookToggle={(enabled) => {
@@ -1708,8 +1706,8 @@ const TournamentDetail: React.FC = () => {
                       <div
                         className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset ${
                           tournament.allow_registration
-                            ? 'bg-emerald-100 text-emerald-700 ring-emerald-200'
-                            : 'bg-rose-100 text-rose-700 ring-rose-200'
+                            ? 'bg-orange-200 text-orange-900 ring-orange-300'
+                            : 'bg-neutral-200 text-neutral-800 ring-neutral-300'
                         }`}
                       >
                         <span
@@ -1734,11 +1732,11 @@ const TournamentDetail: React.FC = () => {
                           }
                         }}
                         className={`relative inline-flex h-9 w-16 items-center rounded-full border border-orange-200 bg-white/80 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-offset-2 focus:ring-offset-white ${
-                          tournament.allow_registration ? 'bg-emerald-200/80' : ''
+                          tournament.allow_registration ? 'bg-orange-300/60' : 'bg-white/80'
                         }`}
                       >
                         <span
-                        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
                             tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
                           }`}
                         />
@@ -1749,28 +1747,28 @@ const TournamentDetail: React.FC = () => {
                         href={`/public/tournaments/${id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm transition hover:bg-white"
+                        className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:bg-orange-100"
                       >
                         <ExternalLink className="h-4 w-4 text-orange-500" />
                         <span>Public View</span>
                       </a>
                       <button
                         onClick={() => setShowDBFExport(true)}
-                        className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-600"
+                        className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600"
                       >
                         <Download className="h-4 w-4" />
                         <span>Export USCF</span>
                       </button>
                       <button
                         onClick={() => setShowGoogleFormsConnector(true)}
-                        className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-600"
+                        className="inline-flex items-center gap-2 rounded-full bg-orange-400 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-500"
                       >
                         <LinkIcon className="h-4 w-4" />
                         <span>Connect Google Form</span>
                       </button>
                       <button
                         onClick={() => setShowAPIDocs(true)}
-                        className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-600"
+                        className="inline-flex items-center gap-2 rounded-full bg-orange-300 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-400"
                       >
                         <Code className="h-4 w-4" />
                         <span>API Docs</span>
