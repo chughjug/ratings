@@ -1800,34 +1800,68 @@ const TournamentDetail: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Combined Overview Card */}
-        <div className="mb-8 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-lg">
-          <div className="space-y-8 px-6 py-6 sm:px-8 lg:px-10">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {overviewStats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <div
-                    key={stat.key}
-                    className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-4"
-                  >
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-chess-board shadow-sm">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        {stat.label}
-                      </p>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{stat.value}</p>
-                    </div>
+        {/* Integrated Overview Surface */}
+        <div className="mb-8 rounded-3xl border border-neutral-200 bg-white shadow-lg">
+          <div className="relative overflow-hidden rounded-3xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900" />
+            <div className="relative px-6 py-8 text-white sm:px-8 lg:px-10">
+              <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/60">
+                      Snapshot
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
+                      {tournament.name || 'Tournament overview'}
+                    </h2>
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white/80 ring-1 ring-inset ring-white/20">
+                      <Users className="h-4 w-4 text-white/70" />
+                      <span>{state.players.length} registered players</span>
+                    </div>
+                    {tournament.rounds && (
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white/80 ring-1 ring-inset ring-white/20">
+                        <Calendar className="h-4 w-4 text-white/70" />
+                        <span>
+                          {tournament.rounds} {tournament.rounds === 1 ? 'round' : 'rounds'}
+                        </span>
+                      </div>
+                    )}
+                    {tournament.format && (
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white/80 ring-1 ring-inset ring-white/20">
+                        <Trophy className="h-4 w-4 text-white/70" />
+                        <span className="capitalize">{tournament.format.replace('-', ' ')} format</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-          <div className="border-t border-gray-200 bg-gray-50 px-3 py-3 sm:px-6">
-            <nav className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide sm:gap-3">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                  {overviewStats.map((stat, index) => {
+                    const Icon = stat.icon;
+                    return (
+                      <div
+                        key={stat.key}
+                        className={`flex items-start gap-4 ${index > 0 ? 'sm:border-l sm:border-white/15 sm:pl-6' : ''}`}
+                      >
+                        <span className="mt-1 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+                          <Icon className="h-5 w-5 text-white" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                            {stat.label}
+                          </p>
+                          <p className="mt-1 text-2xl font-semibold">{stat.value}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="relative border-t border-white/10 bg-white px-3 py-3 text-neutral-700 sm:px-6">
+              <nav className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide sm:gap-3">
               <button
                 onClick={() => setActiveTab('settings')}
                 className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
