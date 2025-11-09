@@ -896,6 +896,21 @@ function setup() {
             </p>
           </div>
 
+          <div className="mb-8 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+            <p className="text-indigo-900 font-semibold mb-2">Need Microsoft Forms or Other Providers?</p>
+            <p className="text-sm text-indigo-800 mb-3">
+              Use our Power Automate + universal webhook guide to connect Microsoft Forms, Typeform, Jotform, Wufoo, Formstack, and Cognito Forms directly to this tournament.
+            </p>
+            <a
+              href="/docs/MICROSOFT_FORMS_POWER_AUTOMATE_SETUP.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition"
+            >
+              <ExternalLink size={16} /> Open Microsoft Forms & Webhook Guide
+            </a>
+          </div>
+
           {/* Tournament-Specific Configuration Preview */}
           <div className="border-2 border-amber-500 rounded-lg p-4 bg-amber-50 mb-6">
             <p className="font-semibold text-amber-900 mb-3">⚙️ Your Tournament Configuration:</p>
@@ -1015,6 +1030,14 @@ function setup() {
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
               >
                 <ExternalLink size={16} /> Deployment Instructions
+              </a>
+              <a
+                href="/docs/MICROSOFT_FORMS_POWER_AUTOMATE_SETUP.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
+              >
+                <ExternalLink size={16} /> Microsoft Forms & Other Form Services
               </a>
             </div>
           </div>

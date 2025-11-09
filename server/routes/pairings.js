@@ -2749,7 +2749,7 @@ router.post('/tournament/:tournamentId/round/:round/complete', async (req, res) 
       let prizeMetadata = null;
 
       try {
-        const prizeResult = await generateSectionPrizeDistribution(tournamentId, targetSectionName, db);
+        const prizeResult = await generateSectionPrizeDistribution(tournamentId, targetSectionName, db, {});
         prizeDistribution = prizeResult.prizesAwarded || [];
         prizeMetadata = prizeResult.metadata || null;
         console.log(`[PrizeDistribution] Generated ${prizeDistribution.length} prize records for section "${targetSectionName}" (tournament ${tournamentId}).`);
@@ -2785,9 +2785,12 @@ router.post('/tournament/:tournamentId/round/:round/complete', async (req, res) 
  */
 router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', async (req, res) => {
   const { tournamentId, sectionName } = req.params;
+  const { prizes } = req.body || {};
 
   try {
-    const prizeResult = await generateSectionPrizeDistribution(tournamentId, sectionName, db);
+    const prizeResult = await generateSectionPrizeDistribution(tournamentId, sectionName, db, {
+      prizes: Array.isArray(prizes) ? prizes : undefined
+    });
     res.json({
       success: true,
       ...prizeResult,

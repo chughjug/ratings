@@ -129,7 +129,7 @@ const fetchSectionStandings = (db, tournamentId, normalizedSection) =>
     );
   });
 
-async function generateSectionPrizeDistribution(tournamentId, sectionName, db) {
+async function generateSectionPrizeDistribution(tournamentId, sectionName, db, options = {}) {
   if (!tournamentId) {
     throw new Error('tournamentId is required to generate prizes');
   }
@@ -137,6 +137,7 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db) {
   const targetSection = sectionName || 'Open';
   const normalizedSection = normalizeSectionKey(targetSection);
   const tournament = await fetchTournament(db, tournamentId);
+  const customPrizes = Array.isArray(options?.prizes) ? options.prizes : null;
 
   if (!tournament) {
     return {
@@ -171,7 +172,8 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db) {
     tournament.prize_fund
   );
 
-  const templatePrizes = sanitizePrizeTemplate(matchingTemplate?.prizes, prizeFund);
+  const effectiveTemplateSource = customPrizes && customPrizes.length > 0 ? customPrizes : matchingTemplate?.prizes;
+  const templatePrizes = sanitizePrizeTemplate(effectiveTemplateSource, prizeFund);
   const standings = await fetchSectionStandings(db, tournamentId, normalizedSection);
 
   if (!standings || standings.length === 0) {
@@ -216,7 +218,9 @@ async function generateSectionPrizeDistribution(tournamentId, sectionName, db) {
     metadata: {
       evaluatedPlayers: standings.length,
       templateSize: templatePrizes.length,
-      prizeFund: prizeFund > 0 ? prizeFund : null
+      prizeFund: prizeFund > 0 ? prizeFund : null,
+      customTemplateUsed: Boolean(customPrizes && customPrizes.length > 0),
+      templatePrizes
     }
   };
 }

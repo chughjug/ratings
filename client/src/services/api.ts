@@ -529,7 +529,7 @@ export const pairingApi = {
       canGenerateNextRound: boolean;
     }>(`/pairings/tournament/${tournamentId}/round/${round}/section/${sectionName}/status`),
   
-  generateSectionPrizes: (tournamentId: string, sectionName: string) =>
+  generateSectionPrizes: (tournamentId: string, sectionName: string, prizes?: any[]) =>
     api.post<{
       success: boolean;
       tournamentId: string;
@@ -539,7 +539,9 @@ export const pairingApi = {
       prizeMetadata?: any;
       message?: string;
       error?: string;
-    }>(`/pairings/tournament/${tournamentId}/section/${encodeURIComponent(sectionName)}/prizes/generate`),
+    }>(`/pairings/tournament/${tournamentId}/section/${encodeURIComponent(sectionName)}/prizes/generate`, {
+      prizes
+    }),
 
   updateResult: (id: string, result: string) => 
     api.put(`/pairings/${id}/result`, { result }),

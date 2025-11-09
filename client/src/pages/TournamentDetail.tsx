@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -153,6 +153,14 @@ const TournamentDetail: React.FC = () => {
   const [newSectionName, setNewSectionName] = useState('');
   const [showTeamTournamentManagement, setShowTeamTournamentManagement] = useState(false);
   const [isGeneratingSectionPrizes, setIsGeneratingSectionPrizes] = useState(false);
+  const [showPrizeCustomization, setShowPrizeCustomization] = useState(false);
+  const [prizeDraft, setPrizeDraft] = useState<Array<{
+    name: string;
+    position: number;
+    type: string;
+    amount?: string | number;
+  }>>([]);
+  const [prizeCustomizationError, setPrizeCustomizationError] = useState<string | null>(null);
   
   const handleCopyToClipboard = useCallback((value: string) => {
     if (!value) return;
@@ -242,16 +250,110 @@ const TournamentDetail: React.FC = () => {
     });
   };
 
-  const handleGenerateSectionPrizes = async () => {
+  const getSectionPrizeTemplate = useCallback((section: string): Array<{ name: string; position: number; type: string; amount?: number | string; }> => {
+    const defaultTemplate = [
+      { name: 'Champion', position: 1, type: 'trophy' },
+      { name: 'Runner-Up', position: 2, type: 'medal' },
+      { name: 'Third Place', position: 3, type: 'medal' }
+    ];
+
+    if (!tournament?.settings?.newPrizeTemplates) {
+      return defaultTemplate;
+    }
+
+    const templates = tournament.settings.newPrizeTemplates as Array<any>;
+    const match = templates.find(template => {
+      const templateSection = template.section || template.name;
+      return templateSection && templateSection.toString().toLowerCase() === section.toLowerCase();
+    });
+
+    if (!match || !Array.isArray(match.prizes) || match.prizes.length === 0) {
+      return defaultTemplate;
+    }
+
+    return match.prizes.map((prize: any, index: number) => ({
+      name: prize.name || `Prize ${index + 1}`,
+      position: prize.position || index + 1,
+      type: prize.type || prize.awardType || 'recognition',
+      amount: prize.amount ?? ''
+    }));
+  }, [tournament?.settings?.newPrizeTemplates]);
+
+  const handleOpenPrizeCustomization = () => {
     if (!id) return;
     if (!selectedSection) {
       alert('Please select a section first.');
       return;
     }
+    setPrizeDraft(getSectionPrizeTemplate(selectedSection));
+    setPrizeCustomizationError(null);
+    setShowPrizeCustomization(true);
+  };
 
+  const handlePrizeDraftChange = (index: number, field: 'name' | 'position' | 'type' | 'amount', value: string) => {
+    setPrizeDraft(prev => {
+      const next = [...prev];
+      const updated = { ...next[index] };
+      if (field === 'position') {
+        updated.position = Number(value) || 1;
+      } else if (field === 'amount') {
+        updated.amount = value;
+      } else {
+        updated[field] = value;
+      }
+      next[index] = updated;
+      return next;
+    });
+  };
+
+  const handleAddPrizeRow = () => {
+    setPrizeDraft(prev => ([
+      ...prev,
+      {
+        name: `Prize ${prev.length + 1}`,
+        position: prev.length + 1,
+        type: 'recognition',
+        amount: ''
+      }
+    ]));
+  };
+
+  const handleRemovePrizeRow = (index: number) => {
+    setPrizeDraft(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleConfirmSectionPrizes = async () => {
+    if (!id || !selectedSection) return;
     try {
+      setPrizeCustomizationError(null);
       setIsGeneratingSectionPrizes(true);
-      const response = await pairingApi.generateSectionPrizes(id, selectedSection);
+      const sanitizedPrizes = prizeDraft
+        .filter(prize => prize.name && prize.position)
+        .map(prize => {
+          const trimmedName = prize.name.trim();
+          const base = {
+            name: trimmedName || `Prize ${prize.position}`,
+            position: Number(prize.position),
+            type: prize.type || 'recognition'
+          } as { name: string; position: number; type: string; amount?: number };
+
+          if (prize.type === 'cash' && prize.amount !== '' && prize.amount !== undefined) {
+            const parsedAmount = Number(prize.amount);
+            if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+              throw new Error(`Invalid amount for prize "${trimmedName || `Prize ${prize.position}`}".`);
+            }
+            base.amount = parsedAmount;
+          }
+
+          return base;
+        });
+
+      if (sanitizedPrizes.length === 0) {
+        setPrizeCustomizationError('Please configure at least one prize.');
+        return;
+      }
+
+      const response = await pairingApi.generateSectionPrizes(id, selectedSection, sanitizedPrizes);
       if (!response.data?.success) {
         throw new Error(response.data?.error || response.data?.message || 'Prize generation failed');
       }
@@ -264,6 +366,7 @@ const TournamentDetail: React.FC = () => {
           .join('\n');
         alert(`Prizes assigned for ${selectedSection}:\n\n${summary}`);
       }
+      setShowPrizeCustomization(false);
     } catch (error: any) {
       alert(`Failed to generate prizes: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -3031,7 +3134,7 @@ const TournamentDetail: React.FC = () => {
                           <span>Download Branded Score Sheets</span>
                         </button>
                         <button
-                          onClick={handleGenerateSectionPrizes}
+                          onClick={handleOpenPrizeCustomization}
                           disabled={!selectedSection || isGeneratingSectionPrizes}
                           className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -4752,6 +4855,177 @@ const TournamentDetail: React.FC = () => {
               >
                 Delete Duplicates
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPrizeCustomization && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4"
+          onClick={() => {
+            if (!isGeneratingSectionPrizes) {
+              setShowPrizeCustomization(false);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-3xl rounded-xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Customize Section Prizes</h3>
+                {selectedSection && (
+                  <p className="text-sm text-gray-500">
+                    Section: <span className="font-medium text-gray-700">{selectedSection}</span>
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => !isGeneratingSectionPrizes && setShowPrizeCustomization(false)}
+                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                disabled={isGeneratingSectionPrizes}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-4">
+              <p className="text-sm text-gray-600">
+                Configure which prizes should be awarded for this section. Adjust titles, positions, award types, and optional cash amounts before assigning them to players.
+              </p>
+
+              {prizeCustomizationError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {prizeCustomizationError}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {prizeDraft.map((prize, index) => (
+                  <div
+                    key={`${index}-${prize.position}`}
+                    className="rounded-lg border border-gray-200 bg-gray-50 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="grid w-full gap-3 md:grid-cols-12">
+                        <div className="md:col-span-5">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Prize Name
+                          </label>
+                          <input
+                            type="text"
+                            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={prize.name}
+                            onChange={(e) => handlePrizeDraftChange(index, 'name', e.target.value)}
+                            placeholder="e.g., Champion"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Position
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={prize.position}
+                            onChange={(e) => handlePrizeDraftChange(index, 'position', e.target.value)}
+                          />
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Award Type
+                          </label>
+                          <select
+                            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={prize.type}
+                            onChange={(e) => handlePrizeDraftChange(index, 'type', e.target.value)}
+                          >
+                            <option value="trophy">Trophy</option>
+                            <option value="medal">Medal</option>
+                            <option value="cash">Cash</option>
+                            <option value="recognition">Recognition</option>
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Amount
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            disabled={prize.type !== 'cash'}
+                            className={`mt-1 w-full rounded-md border px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              prize.type === 'cash'
+                                ? 'border-gray-300 text-gray-900'
+                                : 'border-gray-200 bg-gray-100 text-gray-400'
+                            }`}
+                            value={prize.amount ?? ''}
+                            onChange={(e) => handlePrizeDraftChange(index, 'amount', e.target.value)}
+                            placeholder={prize.type === 'cash' ? 'Amount' : 'N/A'}
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleRemovePrizeRow(index)}
+                        className="mt-2 rounded-lg border border-transparent p-2 text-gray-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                        title="Remove prize"
+                        type="button"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={handleAddPrizeRow}
+                className="inline-flex items-center space-x-2 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-blue-500 hover:text-blue-600"
+                type="button"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Prize</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+              <div className="text-xs text-gray-500">
+                Awards will be assigned automatically to the highest-ranked players in this section based on current standings.
+              </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => !isGeneratingSectionPrizes && setShowPrizeCustomization(false)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                  disabled={isGeneratingSectionPrizes}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmSectionPrizes}
+                  disabled={isGeneratingSectionPrizes}
+                  className="inline-flex items-center space-x-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:opacity-60"
+                >
+                  {isGeneratingSectionPrizes ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
+                      <span>Assigning...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Award className="h-4 w-4" />
+                      <span>Assign Prizes</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
