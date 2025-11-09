@@ -79,6 +79,17 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
     // We need to convert it to the current player's perspective based on their color
     let resultSymbol = '';
     
+    if (result?.startsWith('bye')) {
+      const byePoints = roundResult.points ?? (result === 'bye_unpaired' ? 1 : 0.5);
+      const pointsLabel =
+        byePoints === 1
+          ? '1.0'
+          : Number.isFinite(byePoints)
+            ? byePoints.toString()
+            : '';
+      return pointsLabel ? `BYE (${pointsLabel})` : 'BYE';
+    }
+
     if (result === '1/2-1/2' || result === '1/2-1/2F') {
       // Draw is the same for both players
       resultSymbol = 'D';

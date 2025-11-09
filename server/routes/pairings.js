@@ -469,8 +469,8 @@ class PairingStorageService {
          FROM pairings p
          LEFT JOIN players wp ON p.white_player_id = wp.id
          LEFT JOIN players bp ON p.black_player_id = bp.id
-         WHERE p.tournament_id = ? AND p.round = ?
-         ORDER BY p.section, p.board`,
+        WHERE p.tournament_id = ? AND p.round = ?
+         ORDER BY p.section, p.is_bye, p.board`,
         [tournamentId, round],
         (err, rows) => {
           if (err) reject(err);
@@ -492,8 +492,8 @@ class PairingStorageService {
          FROM pairings p
          LEFT JOIN players wp ON p.white_player_id = wp.id
          LEFT JOIN players bp ON p.black_player_id = bp.id
-         WHERE p.tournament_id = ? AND p.round = ? AND COALESCE(p.section, 'Open') = ?
-         ORDER BY p.board`,
+        WHERE p.tournament_id = ? AND p.round = ? AND COALESCE(p.section, 'Open') = ?
+         ORDER BY p.is_bye, p.board`,
         [tournamentId, round, sectionName],
         (err, rows) => {
           if (err) reject(err);
@@ -516,7 +516,7 @@ class PairingStorageService {
          LEFT JOIN players wp ON p.white_player_id = wp.id
          LEFT JOIN players bp ON p.black_player_id = bp.id
          WHERE p.tournament_id = ?
-         ORDER BY p.round, p.section, p.board`,
+         ORDER BY p.round, p.section, p.is_bye, p.board`,
         [tournamentId],
         (err, rows) => {
           if (err) reject(err);
@@ -539,7 +539,7 @@ class PairingStorageService {
          LEFT JOIN players wp ON p.white_player_id = wp.id
          LEFT JOIN players bp ON p.black_player_id = bp.id
          WHERE p.tournament_id = ?
-         ORDER BY p.round, p.section, p.board`,
+         ORDER BY p.round, p.section, p.is_bye, p.board`,
         [tournamentId],
           (err, rows) => {
             if (err) {
@@ -1592,8 +1592,8 @@ router.get('/tournament/:tournamentId/round/:round/section/:sectionName', async 
          FROM pairings p
          LEFT JOIN players pw ON p.white_player_id = pw.id
          LEFT JOIN players pb ON p.black_player_id = pb.id
-         WHERE p.tournament_id = ? AND p.round = ? AND p.section = ?
-         ORDER BY p.board`,
+        WHERE p.tournament_id = ? AND p.round = ? AND p.section = ?
+         ORDER BY p.is_bye, p.board`,
         [tournamentId, currentRound, sectionName],
         (err, rows) => {
           if (err) reject(err);
@@ -3350,8 +3350,8 @@ router.get('/tournament/:tournamentId/section/:sectionName', async (req, res) =>
          FROM pairings p
          LEFT JOIN players pw ON p.white_player_id = pw.id
          LEFT JOIN players pb ON p.black_player_id = pb.id
-         WHERE p.tournament_id = ? AND p.section = ?
-         ORDER BY p.round, p.board`,
+        WHERE p.tournament_id = ? AND p.section = ?
+         ORDER BY p.round, p.is_bye, p.board`,
         [tournamentId, sectionName],
         (err, rows) => {
           if (err) reject(err);

@@ -77,18 +77,15 @@ const GoogleFormsConnector: React.FC<GoogleFormsConnectorProps> = ({
   useEffect(() => {
     const loadFullScript = async () => {
       try {
-        const response = await fetch('/google-apps-script.js');
-        if (response.ok) {
-          const scriptContent = await response.text();
-          console.log(`Loaded complete script: ${scriptContent.split('\n').length} lines`);
-          setFullScriptCode(scriptContent);
-        } else {
-          console.error('Failed to fetch script:', response.statusText);
-          setTestMessage({ type: 'error', text: 'Could not load complete script file' });
+        const response = await fetch('/google-forms-apps-script.gs');
+        if (!response.ok) {
+          throw new Error('Failed to load script');
         }
+        const text = await response.text();
+        setFullScriptCode(text);
       } catch (err) {
         console.error('Error loading script:', err);
-        setTestMessage({ type: 'error', text: 'Failed to load Google Apps Script' });
+        setTestMessage({ type: 'error', text: 'Could not load complete script file' });
       }
     };
     
@@ -217,7 +214,13 @@ const FORMS_CONFIG = {
   };
 
   const generateCompleteScript = () => {
-    const script: string = `/**
+    const scriptBody = getCompleteCopyCode();
+    setGeneratedScript(scriptBody);
+    setShowScriptGenerator(true);
+    return scriptBody;
+  };
+
+  const fallbackScript = `/**
  * Google Apps Script for Real-time Chess Tournament Registration
  * 
  * This script runs DIRECTLY in Google Forms and automatically syncs player data
@@ -845,15 +848,14 @@ function setup() {
 //
 // ============================================================================`;
     
-    setGeneratedScript(script);
-    setShowScriptGenerator(true);
-    return script;
-  };
 
-  // Build the complete code to copy (FORMS_CONFIG + full script)
+/**
+ * Build the complete code to copy (CONFIG + full script)
+ */
   const getCompleteCopyCode = () => {
-    // Create the tournament-specific FORMS_CONFIG
-    const formsConfig = `const FORMS_CONFIG = {
+    const base = fullScriptCode && fullScriptCode.trim().length > 0 ? fullScriptCode : fallbackScript;
+
+    const formsConfig = `const CONFIG = {
   ENABLE_FORM_IMPORT: true,
   FORM_ID: '${config.formId}',
   API_BASE_URL: '${config.apiBaseUrl}',
@@ -864,21 +866,10 @@ function setup() {
   AUTO_ASSIGN_SECTIONS: ${config.autoAssignSections},
   LOOKUP_RATINGS: ${config.lookupRatings}
 };`;
-    
-    // Find where the hardcoded FORMS_CONFIG ends in the full script
-    // Look for "let FORMS_CONFIG = {" or "const FORMS_CONFIG = {" and replace it
-    const configStartPattern = /let FORMS_CONFIG = \{[\s\S]*?\};/;
-    const configEndPattern = /const FORMS_CONFIG = \{[\s\S]*?\};/;
-    
-    let updatedScript = fullScriptCode;
-    
-    // Try to replace the existing FORMS_CONFIG
-    if (configStartPattern.test(updatedScript)) {
-      updatedScript = updatedScript.replace(configStartPattern, formsConfig);
-    } else if (configEndPattern.test(updatedScript)) {
-      updatedScript = updatedScript.replace(configEndPattern, formsConfig);
-    }
-    
+
+    const configPattern = /const CONFIG = \{[\s\S]*?\};/;
+    const updatedScript = base.replace(configPattern, formsConfig);
+
     return updatedScript;
   };
 
@@ -932,7 +923,7 @@ function setup() {
           <div className="border-2 border-amber-500 rounded-lg p-4 bg-amber-50 mb-6">
             <p className="font-semibold text-amber-900 mb-3">⚙️ Your Tournament Configuration:</p>
             <div className="bg-gray-900 text-amber-400 p-4 rounded-lg font-mono text-sm overflow-x-auto border border-gray-700">
-              <pre>{`const FORMS_CONFIG = {
+              <pre>{`const CONFIG = {
   ENABLE_FORM_IMPORT: true,
   FORM_ID: '${config.formId}',
   API_BASE_URL: '${config.apiBaseUrl}',
@@ -961,16 +952,16 @@ function setup() {
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
               <p className="font-semibold text-green-900 mb-2">✅ Recommended: Copy from File</p>
               <a
-                href="/GOOGLE_APPS_SCRIPT_COMPLETE.md"
+                href="/google-forms-apps-script.gs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
               >
                 <ExternalLink size={18} />
-                Open Complete Script in New Tab
+                Open Google Forms Script (.gs)
               </a>
               <p className="text-xs text-green-700 mt-2">
-                Opens the complete 1200+ line script - easy to copy all at once
+                Opens the maintained Google Forms Apps Script in a new tab for quick copy.
               </p>
             </div>
 
@@ -978,15 +969,15 @@ function setup() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <p className="font-semibold text-blue-900 mb-2">📥 Or Download Raw File</p>
               <a
-                href="/google-apps-script.js"
-                download="google-apps-script.js"
+                href="/google-forms-apps-script.gs"
+                download="google-forms-apps-script.gs"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
               >
                 <FileText size={18} />
-                Download google-apps-script.js
+                Download google-forms-apps-script.gs
               </a>
               <p className="text-xs text-blue-700 mt-2">
-                Downloads the raw JavaScript file for direct copy
+                Downloads the raw Apps Script file for offline editing.
               </p>
             </div>
 
