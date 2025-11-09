@@ -427,21 +427,24 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
         totalPointsByPlayer.set(player.id, 0);
       });
 
-      // Fetch pairings (include bye_type for accurate mapping)
-      const pairings = await new Promise((resolve, reject) => {
+      const playerExists = new Set(players.map((player) => player.id));
+
+      // Fetch results data (faster than scanning pairings repeatedly)
+      const results = await new Promise((resolve, reject) => {
         db.all(
           `
             SELECT 
-              white_player_id,
-              black_player_id,
+              player_id,
               result,
               round,
-              section,
-              board,
-              bye_type
-            FROM pairings
+              opponent_id,
+              color,
+              points,
+              created_at,
+              updated_at
+            FROM results
             WHERE tournament_id = ?
-            ORDER BY round, board
+            ORDER BY round
           `,
           [tournamentId],
           (err, rows) => {
@@ -451,8 +454,8 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
         );
       });
 
-      if (!totalRounds && pairings.length) {
-        totalRounds = Math.max(...pairings.map((p) => p.round || 0));
+      if (!totalRounds && results.length) {
+        totalRounds = Math.max(...results.map((r) => r.round || 0));
       }
       if (!totalRounds) {
         totalRounds = 10; // default to 10 rounds if none recorded (USCF format minimum)
@@ -460,7 +463,7 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
 
       const needsSecondRecord = totalRounds > 10;
 
-      const mapResultToCode = (rawResult, byeType, isWhite, opponentExists) => {
+      const mapResultToCode = (rawResult, isWhite, opponentExists) => {
         const normalized = (rawResult || '').toString().trim().toUpperCase();
         const colorChar = isWhite ? 'W' : 'B';
 
@@ -468,23 +471,20 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
         const loss = () => ({ code: 'L', points: 0, color: colorChar });
         const draw = () => ({ code: 'D', points: 0.5, color: colorChar });
 
-        if (!normalized && !byeType) {
+        if (!normalized) {
           return { code: '', points: 0, color: colorChar };
         }
 
         // Handle explicit bye records
-        const byeSource = (byeType || '').toLowerCase();
         if (
           normalized.startsWith('BYE') ||
-          byeSource === 'bye' ||
-          byeSource === 'half_point_bye' ||
-          byeSource === 'unpaired' ||
-          byeSource === 'inactive'
+          normalized === 'H' ||
+          normalized === 'B'
         ) {
           if (
             normalized === 'BYE_UNPAIRED' ||
             normalized === 'BYE_FULL' ||
-            byeSource === 'unpaired'
+            normalized === 'B'
           ) {
             return { code: 'B', points: 1, color: ' ' };
           }
@@ -567,38 +567,32 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
         totalPointsByPlayer.set(playerId, updatedPoints + (entry.points || 0));
       };
 
-      pairings.forEach((pairing) => {
-        const roundNumber = pairing.round;
-
-        if (pairing.white_player_id) {
-          const opponentExists = Boolean(pairing.black_player_id);
-          const opponentPairNum = pairing.black_player_id
-            ? pairingNumberMap.get(pairing.black_player_id) || null
-            : null;
-          const entry = mapResultToCode(
-            pairing.result,
-            pairing.bye_type,
-            true,
-            opponentExists
-          );
-          entry.opponentPairNum = opponentPairNum;
-          applyRoundEntry(pairing.white_player_id, roundNumber, entry);
+      results.forEach((row) => {
+        const playerId = row.player_id;
+        if (!playerExists.has(playerId)) {
+          return;
         }
 
-        if (pairing.black_player_id) {
-          const opponentExists = Boolean(pairing.white_player_id);
-          const opponentPairNum = pairing.white_player_id
-            ? pairingNumberMap.get(pairing.white_player_id) || null
-            : null;
-          const entry = mapResultToCode(
-            pairing.result,
-            pairing.bye_type,
-            false,
-            opponentExists
-          );
-          entry.opponentPairNum = opponentPairNum;
-          applyRoundEntry(pairing.black_player_id, roundNumber, entry);
-        }
+        const roundNumber = row.round;
+        const colorValue = typeof row.color === 'string' ? row.color.toLowerCase() : 'white';
+        const isWhite = colorValue !== 'black';
+        const opponentId = row.opponent_id || null;
+        const opponentExists = Boolean(opponentId);
+        const opponentPairNum = opponentId ? pairingNumberMap.get(opponentId) || null : null;
+
+        const entry = mapResultToCode(row.result, isWhite, opponentExists);
+        entry.color = entry.color || (isWhite ? 'W' : 'B');
+        entry.opponentPairNum = opponentPairNum;
+
+        const numericPoints =
+          typeof row.points === 'number'
+            ? row.points
+            : row.points
+            ? Number(row.points)
+            : entry.points || 0;
+        entry.points = Number.isFinite(numericPoints) ? numericPoints : entry.points || 0;
+
+        applyRoundEntry(playerId, roundNumber, entry);
       });
 
       const records = [];
