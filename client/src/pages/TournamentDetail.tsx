@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -152,6 +152,7 @@ const TournamentDetail: React.FC = () => {
   const [showSectionManager, setShowSectionManager] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
   const [showTeamTournamentManagement, setShowTeamTournamentManagement] = useState(false);
+  const [isGeneratingSectionPrizes, setIsGeneratingSectionPrizes] = useState(false);
   
   const handleCopyToClipboard = useCallback((value: string) => {
     if (!value) return;
@@ -239,6 +240,35 @@ const TournamentDetail: React.FC = () => {
       if (aStr > bStr) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
+  };
+
+  const handleGenerateSectionPrizes = async () => {
+    if (!id) return;
+    if (!selectedSection) {
+      alert('Please select a section first.');
+      return;
+    }
+
+    try {
+      setIsGeneratingSectionPrizes(true);
+      const response = await pairingApi.generateSectionPrizes(id, selectedSection);
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || response.data?.message || 'Prize generation failed');
+      }
+      const prizes = response.data.prizeDistribution || response.data.prizesAwarded || [];
+      if (prizes.length === 0) {
+        alert(`No prizes were assigned for ${selectedSection}.`);
+      } else {
+        const summary = prizes
+          .map((prize: any) => `${prize.prizeName} (${prize.prizeType || prize.metadata?.awardType || 'award'}) → ${prize.playerName || 'Unassigned'}`)
+          .join('\n');
+        alert(`Prizes assigned for ${selectedSection}:\n\n${summary}`);
+      }
+    } catch (error: any) {
+      alert(`Failed to generate prizes: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setIsGeneratingSectionPrizes(false);
+    }
   };
 
   // Handle column header click for sorting
@@ -2999,6 +3029,23 @@ const TournamentDetail: React.FC = () => {
                         >
                           <FileText className="h-4 w-4" />
                           <span>Download Branded Score Sheets</span>
+                        </button>
+                        <button
+                          onClick={handleGenerateSectionPrizes}
+                          disabled={!selectedSection || isGeneratingSectionPrizes}
+                          className="flex items-center space-x-2 bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isGeneratingSectionPrizes ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                              <span>Generating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Award className="h-4 w-4" />
+                              <span>Generate Section Prizes</span>
+                            </>
+                          )}
                         </button>
                         {tournament && tournament.format === 'quad' && (
                           <button

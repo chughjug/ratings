@@ -2781,6 +2781,28 @@ router.post('/tournament/:tournamentId/round/:round/complete', async (req, res) 
 });
 
 /**
+ * Generate section prize distribution on demand
+ */
+router.post('/tournament/:tournamentId/section/:sectionName/prizes/generate', async (req, res) => {
+  const { tournamentId, sectionName } = req.params;
+
+  try {
+    const prizeResult = await generateSectionPrizeDistribution(tournamentId, sectionName, db);
+    res.json({
+      success: true,
+      ...prizeResult,
+      prizeDistribution: prizeResult.prizesAwarded || []
+    });
+  } catch (error) {
+    console.error('Error generating section prizes:', error);
+    res.status(500).json({
+      success: false,
+      error: error?.message || 'Failed to generate section prizes'
+    });
+  }
+});
+
+/**
  * Generate quad tournament pairings
  * Divides players into groups of 4 by rating and generates round-robin pairings
  */

@@ -84,26 +84,38 @@ class EnhancedPairingSystem {
       }
       
       // Check both bye_rounds and intentional_bye_rounds columns
-      const byeRounds = player.bye_rounds || player.intentional_bye_rounds;
-      
-      if (byeRounds) {
+      const byeRoundsRaw = player.bye_rounds || player.intentional_bye_rounds;
+      if (byeRoundsRaw) {
         try {
           let rounds = [];
-          
-          // Handle different formats: JSON array, comma-separated string, or already an array
-          if (typeof byeRounds === 'string') {
-            // Try parsing as JSON first
-            try {
-              rounds = JSON.parse(byeRounds);
-            } catch {
-              // If not JSON, try comma-separated string
-              rounds = byeRounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+
+          if (Array.isArray(byeRoundsRaw)) {
+            rounds = byeRoundsRaw;
+          } else if (typeof byeRoundsRaw === 'number') {
+            rounds = [byeRoundsRaw];
+          } else if (typeof byeRoundsRaw === 'string') {
+            const trimmed = byeRoundsRaw.trim();
+            if (trimmed) {
+              try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                  rounds = parsed;
+                } else if (typeof parsed === 'number') {
+                  rounds = [parsed];
+                } else {
+                  rounds = trimmed.split(',');
+                }
+              } catch {
+                rounds = trimmed.split(',');
+              }
             }
-          } else if (Array.isArray(byeRounds)) {
-            rounds = byeRounds;
           }
-          
-          if (rounds.includes(this.round)) {
+
+          const normalizedRounds = rounds
+            .map(r => (typeof r === 'number' ? r : parseInt((r || '').toString().trim(), 10)))
+            .filter(r => !Number.isNaN(r));
+
+          if (normalizedRounds.includes(this.round)) {
             playersWithByes.add(player.id);
             console.log(`[EnhancedPairingSystem] Player ${player.name} has intentional bye for round ${this.round}`);
           }

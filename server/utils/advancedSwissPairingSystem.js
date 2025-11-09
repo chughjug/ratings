@@ -118,14 +118,39 @@ class AdvancedSwissPairingSystem {
       }
       
       // Check both bye_rounds and intentional_bye_rounds columns
-      const byeRounds = player.bye_rounds || player.intentional_bye_rounds;
-      
-      if (byeRounds && byeRounds.trim() !== '') {
+      const rawByeRounds = player.bye_rounds ?? player.intentional_bye_rounds;
+      let rounds = [];
+
+      if (Array.isArray(rawByeRounds)) {
+        rounds = rawByeRounds;
+      } else if (typeof rawByeRounds === 'number') {
+        rounds = [rawByeRounds];
+      } else if (typeof rawByeRounds === 'string') {
+        const trimmed = rawByeRounds.trim();
+        if (trimmed) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              rounds = parsed;
+            } else if (typeof parsed === 'number') {
+              rounds = [parsed];
+            } else {
+              // Fallback to comma-separated handling below
+              rounds = trimmed.split(',');
+            }
+          } catch {
+            rounds = trimmed.split(',');
+          }
+        }
+      }
+
+      if (rounds.length) {
         try {
-          // Parse comma-separated round numbers
-          const rounds = byeRounds.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
-          
-          if (rounds.includes(this.round)) {
+          const normalizedRounds = rounds
+            .map(r => (typeof r === 'number' ? r : parseInt((r || '').toString().trim(), 10)))
+            .filter(r => !Number.isNaN(r));
+
+          if (normalizedRounds.includes(this.round)) {
             playersWithByes.add(player.id);
             console.log(`[AdvancedSwissPairingSystem] Player ${player.name} has intentional bye for round ${this.round}`);
           }
