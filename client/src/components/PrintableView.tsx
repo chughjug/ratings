@@ -1,4 +1,5 @@
 import React from 'react';
+import ChessStandingsTable from './ChessStandingsTable';
 import { TournamentData, PairingData, StandingData } from '../services/pdfExport';
 
 interface PrintableViewProps {
@@ -273,7 +274,7 @@ const PrintableView: React.FC<PrintableViewProps> = ({
   const renderStandings = () => {
     const filteredStandings = filterBySection(standings);
 
-    if ((!filteredStandings || filteredStandings.length === 0) && (!teamStandings || teamStandings.length === 0)) {
+    if (!filteredStandings || filteredStandings.length === 0) {
       return (
         <div className="section">
           <h3 className="section-header">Standings</h3>
