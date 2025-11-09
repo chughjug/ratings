@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import RegistrationFormWithPayment from '../components/RegistrationFormWithPayment';
 import { 
-  Trophy, Users, Calendar, Clock, RefreshCw, Download, Share2, 
+  Trophy, Users, Calendar, Clock, RefreshCw, Download, 
   ArrowLeft, Search, ChevronLeft, ChevronRight, 
   Crown, Award, BarChart3, TrendingUp, Activity, Star, MapPin, 
   UserCheck, Timer, Gamepad2, Globe, Eye, EyeOff, Shield, Settings, CheckCircle, Play
@@ -366,21 +366,6 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
     };
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: data?.tournament?.name || 'Chess Tournament',
-        text: `Check out this chess tournament: ${data?.tournament?.name}`,
-        url: window.location.href
-      });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        alert('Link copied to clipboard!');
-      });
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen brand-background flex items-center justify-center">
@@ -481,7 +466,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   }, {});
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 ${isEmbedded ? 'embed-mode' : ''}`} 
+    <div className={`min-h-screen bg-white ${isEmbedded ? 'embed-mode' : ''}`} 
          style={isEmbedded ? { 
            minHeight: embedSettings?.minHeight || '400px',
            maxHeight: embedSettings?.maxHeight || 'none',
@@ -489,7 +474,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
          } : {}}>
       {/* Simple Header with Logo Space */}
       {!isEmbedded && (
-        <div className="bg-white/70 backdrop-blur-md border-b border-neutral-200">
+        <div className="bg-white border-b border-neutral-200">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -497,21 +482,21 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   <img
                     src={organization?.logoUrl || tournament?.logo_url}
                     alt={organization?.name || tournament?.name}
-                    className="h-12 w-auto rounded-lg border border-neutral-200/70 bg-white/80 p-2"
+                    className="h-12 w-auto rounded-lg border border-neutral-200 bg-white p-2"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo=';
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSIjRTVFN0VCIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iI0U1RTdFQiIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgJ0hlbHZldGljYSBOZXVlJywgJ1RpbWVzIE5ldyBSb21YWydzYW5zLXNlcmlmJyIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMzNzQxNTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkxPR088L3RleHQ+Cjwvc3ZnPgo=';
                     }}
                   />
                 ) : (
                   <img
-                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iIzE2NjNlYSIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWlyQ3JhZnQ8L3RleHQ+Cjwvc3ZnPgo="
-                    alt="PairCraft"
-                    className="h-12 w-auto rounded-lg border border-neutral-200/70 bg-white/80 p-2"
+                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTIwIDQwIiBmaWxsPSIjRTVFN0VCIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTIwIiBoZWlnaHQ9IjQwIiByeD0iNCIgZmlsbD0iI0U1RTdFQiIvPgo8dGV4dCB4PSI2MCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgJ0hlbHZldGljYSBOZXVlJywgJ1RpbWVzIE5ldyBSb21YWydzYW5zLXNlcmlmJyIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMzNzQxNTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkxPR088L3RleHQ+Cjwvc3ZnPgo="
+                    alt="Organization logo"
+                    className="h-12 w-auto rounded-lg border border-neutral-200 bg-white p-2"
                   />
                 )}
                 <div>
                   <div className="text-sm font-semibold uppercase tracking-[0.16em] text-neutral-500">
-                    {organization?.name || 'PairCraft'}
+                    {organization?.name || 'Tournament'}
                   </div>
                   <div className="text-lg font-semibold text-neutral-900">
                     {tournament?.name || 'Chess Tournament'}
@@ -521,17 +506,10 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
               <div className="hidden md:flex items-center gap-3">
                 <button
                   onClick={() => setShowSettings((prev) => !prev)}
-                  className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-4 py-2 text-sm font-medium text-neutral-600 transition-all hover:border-neutral-300 hover:text-neutral-900 hover:shadow-sm"
+                  className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-300 hover:text-neutral-900"
                 >
                   <Settings className="h-4 w-4" />
-                  {showSettings ? 'Hide display options' : 'Show display options'}
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-4 py-2 text-sm font-medium text-neutral-600 transition-all hover:border-neutral-300 hover:text-neutral-900 hover:shadow-sm"
-                >
-                  <Share2 className="h-4 w-4" />
-                  Share
+                  {showSettings ? 'Hide options' : 'Display options'}
                 </button>
               </div>
             </div>
@@ -540,52 +518,48 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
       )}
 
       {/* Tournament Header */}
-      <div className="relative overflow-hidden border-b border-neutral-200 bg-gradient-to-br from-neutral-950 via-neutral-900 to-orange-800 text-white">
-        <div className="absolute inset-y-0 right-0 w-1/2 pointer-events-none">
-          <div className="h-full w-full bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.14),transparent_65%)]" />
-        </div>
-        <div className="absolute inset-x-0 bottom-0 h-px bg-white/10" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative">
+      <div className="border-b border-neutral-200 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid gap-10 md:grid-cols-[1.4fr_minmax(0,1fr)] items-center">
             <div className="space-y-6">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+              <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-600">
                 {organization?.name || 'Public Tournament'}
               </span>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900">
                 {tournament.name}
               </h1>
-              <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/80">
+              <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-neutral-600">
                 <div className="inline-flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-white/60" />
+                  <Calendar className="h-4 w-4 text-neutral-400" />
                   <span>{tournament.start_date ? new Date(tournament.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date TBD'}</span>
                 </div>
                 {tournament.location && (
                   <div className="inline-flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-white/60" />
+                    <MapPin className="h-4 w-4 text-neutral-400" />
                     <span>{tournament.location}</span>
                   </div>
                 )}
                 <div className="inline-flex items-center gap-2">
-                  <Users className="h-4 w-4 text-white/60" />
+                  <Users className="h-4 w-4 text-neutral-400" />
                   <span>{stats?.totalPlayers || 0} players</span>
                 </div>
               </div>
             </div>
-            <div className="bg-white/10 border border-white/10 rounded-2xl p-8 shadow-xl backdrop-blur">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
+            <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-8 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">
                 Currently viewing
               </div>
-              <div className="mt-3 text-3xl font-semibold text-white">
+              <div className="mt-3 text-3xl font-semibold text-neutral-900">
                 {activeTabLabel}
               </div>
-              <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-white/70">
+              <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-neutral-600">
                 <div>
-                  <div className="uppercase tracking-[0.2em] text-xs text-white/50">Players</div>
-                  <div className="mt-1 text-2xl font-bold text-white">{stats?.totalPlayers || 0}</div>
+                  <div className="uppercase tracking-[0.2em] text-xs text-neutral-400">Players</div>
+                  <div className="mt-1 text-2xl font-bold text-neutral-900">{stats?.totalPlayers || 0}</div>
                 </div>
                 <div>
-                  <div className="uppercase tracking-[0.2em] text-xs text-white/50">Round</div>
-                  <div className="mt-1 text-2xl font-bold text-white">
+                  <div className="uppercase tracking-[0.2em] text-xs text-neutral-400">Round</div>
+                  <div className="mt-1 text-2xl font-bold text-neutral-900">
                     {tournament?.rounds
                       ? `${Math.max(currentRound || 0, 1)} / ${tournament.rounds}`
                       : Math.max(currentRound || 0, 1)}
@@ -595,15 +569,15 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
             </div>
           </div>
           {navigationTabs.length > 0 && (
-            <nav className="mt-10 flex flex-wrap gap-2">
+            <nav className="mt-10 flex flex-wrap gap-1 border-t border-neutral-200 pt-4">
               {navigationTabs.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-4 py-2 text-sm font-medium rounded-full border transition-all ${
+                  className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
                     activeTab === tab.key
-                      ? 'border-white bg-white text-neutral-900 shadow-lg'
-                      : 'border-white/20 bg-white/5 text-white/80 hover:border-white/40 hover:bg-white/20 hover:text-white'
+                      ? 'border border-neutral-900 text-neutral-900 bg-white'
+                      : 'border border-transparent text-neutral-500 hover:text-neutral-900'
                   }`}
                 >
                   {tab.label}
