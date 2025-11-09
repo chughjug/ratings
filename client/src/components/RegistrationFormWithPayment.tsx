@@ -78,6 +78,8 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+  const [registrationDisabledMessage, setRegistrationDisabledMessage] = useState<string | null>(null);
   
   // Payment states - shopping cart style
   const [showCheckout, setShowCheckout] = useState(false);
@@ -121,6 +123,40 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           console.log('Entry fee from API:', data.entry_fee);
           console.log('Payment settings from API:', data.payment_settings);
           console.log('Full API response data:', JSON.stringify(data, null, 2));
+
+          const formSettings = data.registration_form_settings || {};
+          const isExplicitlyDisabled = (value: any) =>
+            value === false || value === 'false' || value === 0 || value === '0';
+
+          const allowRegistration =
+            data.allow_registration === undefined ? true : Boolean(data.allow_registration);
+          const formAllowsPublic = !(
+            isExplicitlyDisabled(formSettings.allow_registration) ||
+            isExplicitlyDisabled(formSettings.allowRegistration) ||
+            isExplicitlyDisabled(formSettings.publicEnabled) ||
+            isExplicitlyDisabled(formSettings.public_enabled) ||
+            isExplicitlyDisabled(formSettings.enabled)
+          );
+
+          let disabledMessage: string | null = null;
+          if (!allowRegistration) {
+            disabledMessage =
+              formSettings?.disabled_message ||
+              formSettings?.disabledMessage ||
+              formSettings?.public_disabled_message ||
+              formSettings?.publicDisabledMessage ||
+              'Registration has been disabled by the tournament director.';
+          } else if (!formAllowsPublic) {
+            disabledMessage =
+              formSettings?.public_disabled_message ||
+              formSettings?.publicDisabledMessage ||
+              formSettings?.disabled_message ||
+              formSettings?.disabledMessage ||
+              'Registration form is currently unavailable.';
+          }
+
+          setRegistrationEnabled(!disabledMessage);
+          setRegistrationDisabledMessage(disabledMessage);
           
           // Check if payment_settings exists and has values
           if (data.payment_settings) {
@@ -153,25 +189,31 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
             sections: data.sections,
             custom_fields: data.custom_fields,
             registration_form_settings: data.registration_form_settings,
-            allow_registration: data.allow_registration
+            allow_registration: allowRegistration
           });
           
-          // Initialize payment SDKs if needed
+          if (!disabledMessage) {
+            // Initialize payment SDKs if needed
 
-          // Load PayPal SDK if credentials exist
-          if (data.payment_settings?.paypal_client_id && data.payment_settings.paypal_client_id.trim() !== '') {
-            console.log('✅ Loading PayPal SDK with Client ID:', data.payment_settings.paypal_client_id.substring(0, 20) + '...');
-            loadPayPalSDK(data.payment_settings.paypal_client_id);
-          } else {
-            console.warn('⚠️ No PayPal Client ID found or it is empty. payment_settings:', data.payment_settings);
-          }
+            // Load PayPal SDK if credentials exist
+            if (data.payment_settings?.paypal_client_id && data.payment_settings.paypal_client_id.trim() !== '') {
+              console.log('✅ Loading PayPal SDK with Client ID:', data.payment_settings.paypal_client_id.substring(0, 20) + '...');
+              loadPayPalSDK(data.payment_settings.paypal_client_id);
+            } else {
+              console.warn('⚠️ No PayPal Client ID found or it is empty. payment_settings:', data.payment_settings);
+            }
 
-          // Load Stripe SDK if credentials exist
-          if (data.payment_settings?.stripe_publishable_key && data.payment_settings.stripe_publishable_key.trim() !== '') {
-            console.log('✅ Loading Stripe SDK with Publishable Key:', data.payment_settings.stripe_publishable_key.substring(0, 20) + '...');
-            loadStripeSDK(data.payment_settings.stripe_publishable_key);
+            // Load Stripe SDK if credentials exist
+            if (data.payment_settings?.stripe_publishable_key && data.payment_settings.stripe_publishable_key.trim() !== '') {
+              console.log('✅ Loading Stripe SDK with Publishable Key:', data.payment_settings.stripe_publishable_key.substring(0, 20) + '...');
+              loadStripeSDK(data.payment_settings.stripe_publishable_key);
+            } else {
+              console.warn('⚠️ No Stripe Publishable Key found or it is empty');
+            }
           } else {
-            console.warn('⚠️ No Stripe Publishable Key found or it is empty');
+            console.log('ℹ️ Registration disabled; skipping payment SDK initialization.');
+            setShowCheckout(false);
+            setPaymentError(null);
           }
         } else {
           setError(response.data.error || 'Failed to load tournament information');
@@ -189,7 +231,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
 
   // Re-initialize payment buttons when checkout is shown
   useEffect(() => {
-    if (showCheckout && tournamentInfo) {
+    if (showCheckout && tournamentInfo && registrationEnabled) {
       // Small delay to ensure container exists in DOM
       const timer = setTimeout(() => {
         // Initialize PayPal if credentials exist
@@ -207,7 +249,7 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
       
       return () => clearTimeout(timer);
     }
-  }, [showCheckout, tournamentInfo]);
+  }, [showCheckout, tournamentInfo, registrationEnabled]);
 
   const loadPayPalSDK = (clientId: string) => {
     // Check if script already exists
@@ -632,6 +674,22 @@ const RegistrationFormWithPayment: React.FC<RegistrationFormWithPaymentProps> = 
           <div className="bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded">
             <p className="font-medium mb-2">Error</p>
             <p className="text-sm">Tournament not found or registration is not available.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!registrationEnabled) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="max-w-lg mx-auto px-6">
+          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center shadow-sm">
+            <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+            <h2 className="text-xl font-semibold text-black mb-2">Registration Closed</h2>
+            <p className="text-sm text-gray-700">
+              {registrationDisabledMessage || 'Registration is currently closed for this tournament.'}
+            </p>
           </div>
         </div>
       </div>

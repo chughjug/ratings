@@ -170,6 +170,19 @@ export const tournamentApi = {
   getAll: () => api.get<{success: boolean, data: Tournament[], error?: string}>(`/tournaments?t=${Date.now()}`),
   getById: (id: string) => api.get<{success: boolean, data: Tournament, error?: string}>(`/tournaments/${id}?t=${Date.now()}`),
   getPublic: (id: string) => api.get<{success: boolean, data: any, error?: string}>(`/tournaments/${id}/public?t=${Date.now()}`),
+  submitContactMessage: (
+    id: string,
+    payload: { name: string; email: string; phone?: string; message: string; metadata?: any }
+  ) =>
+    api.post<{ success: boolean; data: any; error?: string }>(
+      `/tournaments/${id}/contact-messages`,
+      payload
+    ),
+  getContactMessages: (id: string, limit?: number) =>
+    api.get<{ success: boolean; data: any[]; error?: string }>(
+      `/tournaments/${id}/contact-messages`,
+      limit ? { params: { limit } } : undefined
+    ),
   create: (tournament: Omit<Tournament, 'id' | 'created_at'>) => 
     api.post<{success: boolean, data: {id: string}, error?: string}>('/tournaments', tournament),
   update: (id: string, tournament: Partial<Tournament>) => 

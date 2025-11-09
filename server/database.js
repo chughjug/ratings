@@ -344,6 +344,27 @@ db.serialize(() => {
     )
   `);
 
+  // Contact messages submitted from public tournament view
+  db.run(`
+    CREATE TABLE IF NOT EXISTS contact_messages (
+      id TEXT PRIMARY KEY,
+      tournament_id TEXT NOT NULL,
+      name TEXT,
+      email TEXT,
+      phone TEXT,
+      message TEXT NOT NULL,
+      metadata TEXT,
+      source TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
+    )
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_contact_messages_tournament
+    ON contact_messages (tournament_id)
+  `);
+
   // Add payment fields to registrations if they don't exist
   db.run(`
     ALTER TABLE registrations ADD COLUMN payment_amount REAL

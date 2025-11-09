@@ -2,11 +2,59 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../database');
 const router = express.Router();
+const validator = require('validator');
 const { autoPopulatePrizes } = require('../services/prizeAutoPopulate');
 const { calculateTiebreakers } = require('../utils/tiebreakers');
 const { calculateAndDistributePrizes, getPrizeDistributions, autoAssignPrizesOnRoundCompletion } = require('../services/prizeService');
 const { authenticate, verifyToken } = require('../middleware/auth');
 const { cleanupTournamentData, cleanupAllCompletedTournaments } = require('../services/dataCleanupService');
+
+const fetchContactMessages = (tournamentId, limit = 100) => {
+  if (!tournamentId) {
+    return Promise.resolve([]);
+  }
+
+  let sql = `
+    SELECT id, tournament_id, name, email, phone, message, metadata, source, created_at
+    FROM contact_messages
+    WHERE tournament_id = ?
+    ORDER BY datetime(created_at) DESC
+  `;
+  const params = [tournamentId];
+
+  if (Number.isFinite(limit) && limit > 0) {
+    sql += ' LIMIT ?';
+    params.push(limit);
+  }
+
+  return new Promise((resolve) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        console.error('Error fetching contact messages:', err);
+        return resolve([]);
+      }
+
+      const normalized = (rows || []).map((row) => ({
+        ...row,
+        createdAt: row.created_at
+      }));
+      resolve(normalized);
+    });
+  });
+};
+
+const attachContactMessagesToTournament = async (tournament, limit) => {
+  if (!tournament || !tournament.id) {
+    return tournament;
+  }
+
+  const messages = await fetchContactMessages(tournament.id, limit);
+  return {
+    ...tournament,
+    contact_messages: messages,
+    contactMessages: messages
+  };
+};
 
 // Optional authentication middleware - tries to authenticate but doesn't fail if no token
 const optionalAuth = async (req, res, next) => {
@@ -68,7 +116,7 @@ router.get('/', optionalAuth, (req, res) => {
   
   query += ' ORDER BY created_at DESC';
   
-  db.all(query, params, (err, rows) => {
+  db.all(query, params, async (err, rows) => {
     if (err) {
       console.error('Error fetching tournaments:', err);
       return res.status(500).json({ 
@@ -76,36 +124,219 @@ router.get('/', optionalAuth, (req, res) => {
         error: 'Failed to fetch tournaments' 
       });
     }
-    res.json({ 
-      success: true,
-      data: rows 
-    });
+
+    try {
+      const tournamentsWithMessages = await Promise.all(
+        (rows || []).map((row) => attachContactMessagesToTournament(row, 50))
+      );
+
+      res.json({ 
+        success: true,
+        data: tournamentsWithMessages 
+      });
+    } catch (enhanceError) {
+      console.error('Error enhancing tournaments with contact messages:', enhanceError);
+      res.json({ 
+        success: true,
+        data: rows 
+      });
+    }
   });
 });
 
 // Get tournament by ID
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
-  
-  db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, tournament) => {
-    if (err) {
-      console.error('Error fetching tournament:', err);
-      return res.status(500).json({ 
-        success: false,
-        error: 'Failed to fetch tournament' 
+
+  try {
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(row);
       });
-    }
+    });
+
     if (!tournament) {
       return res.status(404).json({ 
         success: false,
         error: 'Tournament not found' 
       });
     }
+
+    const enhancedTournament = await attachContactMessagesToTournament(tournament);
+
     res.json({ 
       success: true,
-      data: tournament 
+      data: enhancedTournament 
     });
-  });
+  } catch (error) {
+    console.error('Error fetching tournament:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch tournament' 
+    });
+  }
+});
+
+// Submit a contact form message for a tournament (public endpoint)
+router.post('/:id/contact-messages', async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phone, message, metadata } = req.body || {};
+
+  try {
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT id, is_public FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    const trimmedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const trimmedPhone = typeof phone === 'string' ? phone.trim() : '';
+    const trimmedMessage = typeof message === 'string' ? message.trim() : '';
+
+    if (!trimmedName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name is required'
+      });
+    }
+
+    if (!trimmedEmail || !validator.isEmail(trimmedEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid email is required'
+      });
+    }
+
+    if (!trimmedMessage) {
+      return res.status(400).json({
+        success: false,
+        error: 'Message cannot be empty'
+      });
+    }
+
+    const MAX_LENGTH = 5000;
+    const safeMessage = trimmedMessage.slice(0, MAX_LENGTH);
+    const safeName = trimmedName.slice(0, 255);
+    const safeEmail = trimmedEmail.slice(0, 255);
+    const safePhone = trimmedPhone ? trimmedPhone.slice(0, 50) : null;
+
+    let metadataString = null;
+    if (metadata !== undefined && metadata !== null) {
+      try {
+        metadataString = typeof metadata === 'string' ? metadata : JSON.stringify(metadata);
+      } catch {
+        metadataString = null;
+      }
+    }
+
+    const messageId = uuidv4();
+    const createdAt = new Date().toISOString();
+
+    await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO contact_messages (id, tournament_id, name, email, phone, message, metadata, source, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          messageId,
+          id,
+          safeName,
+          safeEmail,
+          safePhone,
+          safeMessage,
+          metadataString,
+          'public_contact_form',
+          createdAt
+        ],
+        (err) => {
+          if (err) {
+            return reject(err);
+          }
+          resolve();
+        }
+      );
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: messageId,
+        tournament_id: id,
+        name: safeName,
+        email: safeEmail,
+        phone: safePhone,
+        message: safeMessage,
+        metadata: metadataString,
+        source: 'public_contact_form',
+        created_at: createdAt,
+        createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error submitting contact message:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit contact message'
+    });
+  }
+});
+
+// Fetch contact form messages (authenticated - notification center, admin tools)
+router.get('/:id/contact-messages', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { limit } = req.query;
+
+  try {
+    const tournament = await new Promise((resolve, reject) => {
+      db.get('SELECT id FROM tournaments WHERE id = ?', [id], (err, row) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(row);
+      });
+    });
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    let parsedLimit = 200;
+    if (limit !== undefined) {
+      const numericLimit = parseInt(limit, 10);
+      if (!Number.isNaN(numericLimit) && numericLimit > 0) {
+        parsedLimit = Math.min(numericLimit, 500);
+      }
+    }
+
+    const contactMessages = await fetchContactMessages(id, parsedLimit);
+
+    res.json({
+      success: true,
+      data: contactMessages
+    });
+  } catch (error) {
+    console.error('Error fetching contact messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch contact messages'
+    });
+  }
 });
 
 // Create new tournament
@@ -260,7 +491,7 @@ router.put('/:id', (req, res) => {
         }
         
         // Return the updated tournament data
-        db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, tournament) => {
+        db.get('SELECT * FROM tournaments WHERE id = ?', [id], async (err, tournament) => {
           if (err) {
             console.error('Error fetching updated tournament:', err);
             return res.json({ 
@@ -268,9 +499,10 @@ router.put('/:id', (req, res) => {
               message: 'Tournament updated successfully' 
             });
           }
+          const enhancedTournament = await attachContactMessagesToTournament(tournament);
           res.json({ 
             success: true,
-            data: tournament,
+            data: enhancedTournament,
             message: 'Tournament updated successfully' 
           });
         });
@@ -477,7 +709,7 @@ router.put('/:id', (req, res) => {
         });
       }
       // Return the updated tournament data
-      db.get('SELECT * FROM tournaments WHERE id = ?', [id], (err, tournament) => {
+      db.get('SELECT * FROM tournaments WHERE id = ?', [id], async (err, tournament) => {
         if (err) {
           console.error('Error fetching updated tournament:', err);
           return res.json({ 
@@ -485,9 +717,10 @@ router.put('/:id', (req, res) => {
             message: 'Tournament updated successfully' 
           });
         }
+        const enhancedTournament = await attachContactMessagesToTournament(tournament);
         res.json({ 
           success: true,
-          data: tournament,
+          data: enhancedTournament,
           message: 'Tournament updated successfully' 
         });
       });

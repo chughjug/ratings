@@ -99,6 +99,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   });
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Calculate player scores from all pairings
   const calculatePlayerScores = useCallback(() => {
@@ -1433,6 +1434,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                       <button
                         onClick={() => {
                           setFormSubmitted(false);
+                          setFormError(null);
                           setContactForm({
                             name: '',
                             email: '',
@@ -1445,19 +1447,63 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={async (e) => {
-                      e.preventDefault();
-                      setFormSubmitting(true);
-                      try {
-                        // TODO: Implement API call to submit contact form
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        setFormSubmitted(true);
-                      } catch (error) {
-                        console.error('Contact form error:', error);
-                      } finally {
-                        setFormSubmitting(false);
-                      }
-                    }} className="space-y-4">
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+
+                        if (!id) {
+                          setFormError('Tournament not found. Please refresh and try again.');
+                          return;
+                        }
+
+                        try {
+                          const trimmedName = contactForm.name.trim();
+                          const trimmedEmail = contactForm.email.trim();
+                          const trimmedMessage = contactForm.message.trim();
+
+                          if (!trimmedName || !trimmedEmail || !trimmedMessage) {
+                            setFormError('Please complete all required fields before sending.');
+                            return;
+                          }
+
+                          setFormError(null);
+                          setFormSubmitting(true);
+
+                          const payload = {
+                            name: trimmedName,
+                            email: trimmedEmail,
+                            message: trimmedMessage,
+                            metadata: {
+                              userAgent: navigator.userAgent,
+                              page: window.location.href
+                            }
+                          };
+
+                          const response = await tournamentApi.submitContactMessage(id, payload);
+
+                          if (!response.data?.success) {
+                            throw new Error(response.data?.error || 'Failed to send message');
+                          }
+
+                          setFormSubmitted(true);
+                          setContactForm({
+                            name: '',
+                            email: '',
+                            message: ''
+                          });
+                        } catch (error: any) {
+                          console.error('Contact form error:', error);
+                          const errorMessage =
+                            error.response?.data?.error ||
+                            error.message ||
+                            'Failed to send message. Please try again.';
+                          setFormError(errorMessage);
+                        } finally {
+                          setFormSubmitting(false);
+                        }
+                      }}
+                      className="space-y-4"
+                    >
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Your Name <span className="text-red-500">*</span>
@@ -1467,6 +1513,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                           required
                           value={contactForm.name}
                           onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                          disabled={formSubmitting}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                           placeholder="Enter your name"
                         />
@@ -1480,6 +1527,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                           required
                           value={contactForm.email}
                           onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                          disabled={formSubmitting}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                           placeholder="your.email@example.com"
                         />
@@ -1493,10 +1541,16 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                           rows={6}
                           value={contactForm.message}
                           onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                          disabled={formSubmitting}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                           placeholder="Enter your message..."
                         />
                       </div>
+                      {formError && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                          {formError}
+                        </div>
+                      )}
                       <button
                         type="submit"
                         disabled={formSubmitting}
