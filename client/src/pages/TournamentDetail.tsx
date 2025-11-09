@@ -2800,70 +2800,59 @@ const TournamentDetail: React.FC = () => {
                               >
                                 {player.status}
                               </span>
-                              {player.expiration_date && (
-                                (() => {
-                                  try {
-                                    const expirationDate = new Date(player.expiration_date);
-                                    if (isNaN(expirationDate.getTime())) return null;
-                                    
-                                    const now = new Date();
-                                    const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                    
-                                    if (daysUntilExpiration < 0) {
-                                      return (
-                                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                                          ID Expired
-                                        </span>
-                                      );
-                                    } else if (daysUntilExpiration <= 30) {
-                                      return (
-                                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                          Expires in {daysUntilExpiration} days
-                                        </span>
-                                      );
-                                    }
-                                    return null;
-                                  } catch (error) {
-                                    return null;
-                                  }
-                                })()
-                              )}
+                              {player.expiration_date && (() => {
+                                const details = getExpirationDetails(player.expiration_date);
+                                if (!details) return null;
+                                
+                                if (details.days < 0) {
+                                  return (
+                                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                      ID Expired
+                                    </span>
+                                  );
+                                }
+                                
+                                if (details.days <= 30) {
+                                  return (
+                                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                      Expires in {details.days} days
+                                    </span>
+                                  );
+                                }
+                                
+                                return null;
+                              })()}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {player.expiration_date ? (
                               (() => {
-                                try {
-                                  const expirationDate = new Date(player.expiration_date);
-                                  if (isNaN(expirationDate.getTime())) {
-                                    return <span className="text-gray-400">Invalid Date</span>;
-                                  }
-                                  
-                                  const now = new Date();
-                                  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                  
-                                  if (daysUntilExpiration < 0) {
-                                    return (
-                                      <span className="text-red-600 font-medium">
-                                        Expired
-                                      </span>
-                                    );
-                                  } else if (daysUntilExpiration <= 30) {
-                                    return (
-                                      <span className="text-yellow-600 font-medium">
-                                        {daysUntilExpiration} days
-                                      </span>
-                                    );
-                                  } else {
-                                    return (
-                                      <span className="text-gray-600">
-                                        {expirationDate.toLocaleDateString()}
-                                      </span>
-                                    );
-                                  }
-                                } catch (error) {
-                                  return <span className="text-gray-400">-</span>;
+                                const details = getExpirationDetails(player.expiration_date);
+                                if (!details) {
+                                  return <span className="text-gray-400">Invalid Date</span>;
                                 }
+
+                                if (details.days < 0) {
+                                  return (
+                                    <span className="text-red-600 font-medium">
+                                      Expired
+                                    </span>
+                                  );
+                                }
+
+                                if (details.days <= 30) {
+                                  return (
+                                    <span className="text-yellow-600 font-medium">
+                                      {details.days} days
+                                    </span>
+                                  );
+                                }
+
+                                return (
+                                  <span className="text-gray-600">
+                                    {formatDateSafe(details.date)}
+                                  </span>
+                                );
                               })()
                             ) : (
                               <span className="text-gray-400">-</span>
