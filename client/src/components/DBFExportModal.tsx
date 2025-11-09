@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { exportApi } from '../services/api';
 
 interface DBFExportModalProps {
@@ -8,25 +8,18 @@ interface DBFExportModalProps {
   tournamentName: string;
 }
 
-interface ExportStatus {
-  success: boolean;
-  tournament: {
-    id: string;
-    name: string;
-    rounds: number;
-    format: string;
-    status: string;
-  };
-  exportPath: string;
-  files: {
-    [key: string]: {
-      exists: boolean;
-      size: number;
-      modified: string | null;
-      path: string;
-    };
-  };
+interface ExportStatusFileInfo {
+  exists: boolean;
+  size: number;
+  modified: string | null;
+  path?: string;
+  sizeFormatted?: string;
+  name?: string;
+}
+
+interface ExportStatusData {
   allFilesExist: boolean;
+  files: Record<string, ExportStatusFileInfo> | ExportStatusFileInfo[];
 }
 
 const DBFExportModal: React.FC<DBFExportModalProps> = ({
@@ -35,22 +28,36 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
   tournamentId,
   tournamentName
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isStatusLoading, setIsStatusLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMode, setProcessingMode] = useState<'generate' | 'regenerate' | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [exportStatus, setExportStatus] = useState<ExportStatus | null>(null);
+  const [exportStatus, setExportStatus] = useState<ExportStatusData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const loadExportStatus = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setIsStatusLoading(true);
       setError(null);
       const response = await exportApi.getExportStatus(tournamentId);
-      setExportStatus(response.data);
+      const data = response.data;
+
+      let statusPayload: ExportStatusData;
+      if (data?.exportStatus) {
+        statusPayload = data.exportStatus as ExportStatusData;
+      } else {
+        statusPayload = {
+          allFilesExist: Boolean(data?.allFilesExist),
+          files: (data?.files ?? {}) as Record<string, ExportStatusFileInfo>
+        };
+      }
+
+      setExportStatus(statusPayload);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load export status');
     } finally {
-      setIsLoading(false);
+      setIsStatusLoading(false);
     }
   }, [tournamentId]);
 
@@ -63,34 +70,52 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
     }
   }, [isOpen, tournamentId, loadExportStatus]);
 
-  const handleExportDBF = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      setSuccess(null);
-      
-      const response = await exportApi.exportDBF(tournamentId);
-      
-      if (response.data.success) {
-        setSuccess('DBF files exported successfully!');
-        await loadExportStatus(); // Refresh status
-      } else {
-        setError(response.data.message || 'Export failed');
+  const triggerExport = useCallback(
+    async (mode: 'generate' | 'regenerate') => {
+      try {
+        setProcessingMode(mode);
+        setIsProcessing(true);
+        setError(null);
+        setSuccess(null);
+
+        const response = await exportApi.exportDBF(tournamentId, { mode });
+
+        if (response.data.success) {
+          const successMessage =
+            mode === 'regenerate'
+              ? 'DBF files regenerated from the latest results!'
+              : 'DBF files generated successfully!';
+          setSuccess(successMessage);
+          await loadExportStatus();
+        } else {
+          setError(response.data.message || 'Export failed');
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Failed to export DBF files');
+      } finally {
+        setIsProcessing(false);
+        setProcessingMode(null);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to export DBF files');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [tournamentId, loadExportStatus]
+  );
+
+  const handleGenerateDBF = useCallback(() => {
+    triggerExport('generate');
+  }, [triggerExport]);
+
+  const handleRegenerateDBF = useCallback(() => {
+    triggerExport('regenerate');
+  }, [triggerExport]);
 
   const handleDownloadDBF = async () => {
     try {
       setIsDownloading(true);
       setError(null);
-      
+      setSuccess(null);
+
       const response = await exportApi.downloadDBF(tournamentId);
-      
+
       // Create blob and download
       const blob = new Blob([response.data], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
@@ -101,7 +126,7 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       setSuccess('DBF files downloaded successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to download DBF files');
@@ -110,8 +135,8 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -122,6 +147,25 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleString();
   };
+
+  const normalizedFiles = useMemo(() => {
+    if (!exportStatus) {
+      return [] as Array<ExportStatusFileInfo & { name: string }>;
+    }
+
+    if (Array.isArray(exportStatus.files)) {
+      return (exportStatus.files as ExportStatusFileInfo[]).map(file => ({
+        ...file,
+        name: file.name || 'TDEXPORT.DBF'
+      }));
+    }
+
+    const fileMap = exportStatus.files as Record<string, ExportStatusFileInfo>;
+    return Object.entries(fileMap).map(([name, info]) => ({
+      ...info,
+      name
+    }));
+  }, [exportStatus]);
 
   if (!isOpen) return null;
 
@@ -172,19 +216,19 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
               </h4>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {Object.entries(exportStatus.files).map(([fileName, fileInfo]) => (
-                    <div key={fileName} className="text-sm">
-                      <div className="font-medium text-gray-700">{fileName}</div>
-                      <div className={`text-xs ${fileInfo.exists ? 'text-green-600' : 'text-red-600'}`}>
-                        {fileInfo.exists ? '✓ Exists' : '✗ Missing'}
+                  {normalizedFiles.map(file => (
+                    <div key={file.name} className="text-sm">
+                      <div className="font-medium text-gray-700">{file.name}</div>
+                      <div className={`text-xs ${file.exists ? 'text-green-600' : 'text-red-600'}`}>
+                        {file.exists ? '✓ Exists' : '✗ Missing'}
                       </div>
-                      {fileInfo.exists && (
+                      {file.exists && (
                         <>
                           <div className="text-xs text-gray-500">
-                            Size: {formatFileSize(fileInfo.size)}
+                            Size: {file.sizeFormatted || formatFileSize(file.size)}
                           </div>
                           <div className="text-xs text-gray-500">
-                            Modified: {formatDate(fileInfo.modified)}
+                            Modified: {formatDate(file.modified)}
                           </div>
                         </>
                       )}
@@ -220,26 +264,51 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={handleExportDBF}
-              disabled={isLoading}
+              onClick={handleGenerateDBF}
+              disabled={isProcessing || isStatusLoading}
               className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {isLoading ? (
+              {isProcessing && processingMode === 'generate' ? (
                 <>
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Exporting...
+                  Generating...
                 </>
               ) : (
-                'Export DBF Files'
+                'Generate DBF Files'
               )}
             </button>
 
+            {exportStatus?.allFilesExist && (
+              <button
+                onClick={handleRegenerateDBF}
+                disabled={isProcessing || isStatusLoading}
+                className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {isProcessing && processingMode === 'regenerate' ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Regenerating...
+                  </>
+                ) : (
+                  'Regenerate From Latest Results'
+                )}
+              </button>
+            )}
+
             <button
               onClick={handleDownloadDBF}
-              disabled={isDownloading || !exportStatus?.allFilesExist}
+              disabled={
+                isDownloading ||
+                !exportStatus?.allFilesExist ||
+                isProcessing ||
+                isStatusLoading
+              }
               className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {isDownloading ? (
@@ -257,7 +326,7 @@ const DBFExportModal: React.FC<DBFExportModalProps> = ({
 
             <button
               onClick={loadExportStatus}
-              disabled={isLoading}
+              disabled={isStatusLoading || isProcessing}
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Refresh

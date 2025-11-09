@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash, Crown } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash, Crown, Globe, Copy } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -138,6 +138,8 @@ const TournamentDetail: React.FC = () => {
   const [showPrizeManager, setShowPrizeManager] = useState(false);
   const [prizeSettings, setPrizeSettings] = useState<any>(null);
   const [showPublicViewCustomization, setShowPublicViewCustomization] = useState(false);
+  const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [embedCopyState, setEmbedCopyState] = useState<'url' | 'code' | null>(null);
   
   // New feature modals
   const [showSMSManager, setShowSMSManager] = useState(false);
@@ -179,6 +181,18 @@ const TournamentDetail: React.FC = () => {
     }
   }, []);
 
+  const handleEmbedCopy = useCallback((type: 'url' | 'code', value: string) => {
+    if (!value) return;
+    handleCopyToClipboard(value);
+    if (embedCopyTimeoutRef.current) {
+      clearTimeout(embedCopyTimeoutRef.current);
+    }
+    setEmbedCopyState(type);
+    embedCopyTimeoutRef.current = setTimeout(() => {
+      setEmbedCopyState(null);
+    }, 2000);
+  }, [handleCopyToClipboard]);
+
   const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const apiIntegrationUrls = id
     ? {
@@ -192,11 +206,34 @@ const TournamentDetail: React.FC = () => {
         registrationFormUrl: ''
       };
 
+  const publicViewUrl = id ? `${appOrigin}/public/tournaments/${id}` : '';
+  const embedPublicUrl = publicViewUrl ? `${publicViewUrl}?embedded=true` : '';
+  const embedIframeCode = embedPublicUrl
+    ? `<iframe
+  src="${embedPublicUrl}"
+  width="100%"
+  height="800"
+  frameborder="0"
+  style="border: 0; border-radius: 12px;"
+  allowfullscreen
+  loading="lazy"
+></iframe>`
+    : '';
+
+  useEffect(() => {
+    return () => {
+      if (embedCopyTimeoutRef.current) {
+        clearTimeout(embedCopyTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Settings tab state
   const [logoUrl, setLogoUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [tournamentInfo, setTournamentInfo] = useState('');
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const embedCopyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Sorting state - default to section sorting as requested
   const [sortField, setSortField] = useState<string>('section');
@@ -2094,6 +2131,17 @@ const TournamentDetail: React.FC = () => {
                               >
                                 <Settings className="h-4 w-4 mr-3" />
                                 Manage Sections
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!embedPublicUrl) return;
+                                  setShowDisplaySettings(false);
+                                  setShowEmbedModal(true);
+                                }}
+                                className="flex w-full items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                              >
+                                <Globe className="h-4 w-4 mr-3" />
+                                Embed Public View
                               </button>
                               <button
                                 onClick={clearStandings}
@@ -4870,6 +4918,89 @@ const TournamentDetail: React.FC = () => {
         tournamentName={state.currentTournament?.name || 'Tournament'}
         apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94"
       />
+
+      {/* Embed Public View Modal */}
+      {showEmbedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900">Embed Public View</h3>
+                <p className="text-sm text-neutral-500">Use the links below to add this tournament page to your website.</p>
+              </div>
+              <button
+                onClick={() => setShowEmbedModal(false)}
+                className="rounded-full p-2 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-6 px-6 py-6">
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-medium text-neutral-700">Public View URL</span>
+                  {embedCopyState === 'url' && (
+                    <span className="text-xs font-semibold text-emerald-600">Copied!</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    readOnly
+                    value={embedPublicUrl}
+                    className="flex-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-mono text-neutral-700 focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEmbedCopy('url', embedPublicUrl)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy URL
+                    </button>
+                    <button
+                      onClick={() => handleOpenInNewTab(publicViewUrl)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-medium text-neutral-700">Embed Code</span>
+                  {embedCopyState === 'code' && (
+                    <span className="text-xs font-semibold text-emerald-600">Copied!</span>
+                  )}
+                </div>
+                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                  <pre className="whitespace-pre-wrap break-words text-xs font-mono text-neutral-700">
+                    {embedIframeCode}
+                  </pre>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={() => handleEmbedCopy('code', embedIframeCode)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy Embed Code
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowEmbedModal(false)}
+                  className="inline-flex items-center rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Duplicates Confirmation Modal */}
       {showDeleteDuplicates && (

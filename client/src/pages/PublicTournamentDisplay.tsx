@@ -24,6 +24,7 @@ interface PublicDisplayData {
   currentRound: number;
   teamStandings?: any[];
   prizes?: any[];
+  prizeDistributions?: any[];
   analytics?: any;
   activePlayersList?: any[];
   customPages?: any[];
