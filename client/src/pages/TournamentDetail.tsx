@@ -57,7 +57,7 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
-  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'club-ratings' | 'settings' | 'print'>('settings');
+  const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'team-standings' | 'team-pairings' | 'registrations' | 'prizes' | 'club-ratings' | 'settings' | 'print' | 'winners'>('settings');
   const [printViewTab, setPrintViewTab] = useState<'pairings' | 'standings'>('pairings');
   const [pairingsViewMode, setPairingsViewMode] = useState<'player' | 'board'>('player');
   const [currentRound, setCurrentRound] = useState(1);
