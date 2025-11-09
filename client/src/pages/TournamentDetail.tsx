@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, User, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, MapPin, ShieldCheck, Globe, Scale } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, DollarSign, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 import { tournamentApi, playerApi, pairingApi } from '../services/api';
 import { getSectionOptions } from '../utils/sectionUtils';
@@ -1551,276 +1551,192 @@ const TournamentDetail: React.FC = () => {
     }
   ];
 
-  const additionalDetails = ([
-    tournament.city && tournament.state
-      ? {
-          key: 'location',
-          label: 'Location',
-          icon: MapPin,
-          primary: `${tournament.city}, ${tournament.state}`,
-          secondary: tournament.location || undefined
-        }
-      : null,
-    tournament.uscf_id
-      ? {
-          key: 'uscf-id',
-          label: 'USCF ID',
-          icon: ShieldCheck,
-          primary: tournament.uscf_id
-        }
-      : null,
-    tournament.chief_td_name
-      ? {
-          key: 'chief-td',
-          label: 'Chief TD',
-          icon: User,
-          primary: tournament.chief_td_name,
-          secondary: tournament.chief_td_uscf_id
-            ? `USCF ID: ${tournament.chief_td_uscf_id}`
-            : undefined
-        }
-      : null,
-    tournament.chief_arbiter_name
-      ? {
-          key: 'chief-arbiter',
-          label: 'Chief Arbiter',
-          icon: Scale,
-          primary: tournament.chief_arbiter_name,
-          secondary: tournament.chief_arbiter_fide_id
-            ? `FIDE ID: ${tournament.chief_arbiter_fide_id}`
-            : undefined
-        }
-      : null,
-    tournament.website
-      ? {
-          key: 'website',
-          label: 'Website',
-          icon: Globe,
-          primary: (
-            <a
-              href={tournament.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800"
-            >
-              {tournament.website.replace(/^https?:\/\//, '')}
-            </a>
-          )
-        }
-      : null,
-    tournament.uscf_rated || tournament.fide_rated
-      ? {
-          key: 'rating-systems',
-          label: 'Rating Systems',
-          icon: Trophy,
-          primary: (
-            <div className="flex flex-wrap gap-2">
-              {tournament.uscf_rated && (
-                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-                  USCF Rated
-                </span>
-              )}
-              {tournament.fide_rated && (
-                <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  FIDE Rated
-                </span>
-              )}
-            </div>
-          )
-        }
-      : null
-  ] as Array<{
-    key: string;
-    label: string;
-    icon: React.ElementType;
-    primary: React.ReactNode;
-    secondary?: React.ReactNode;
-  } | null>).filter((detail): detail is {
-    key: string;
-    label: string;
-    icon: React.ElementType;
-    primary: React.ReactNode;
-    secondary?: React.ReactNode;
-  } => Boolean(detail));
-
-  const hasAdditionalDetails = additionalDetails.length > 0;
   const sectionCount = tournament.settings?.sections?.length ?? 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Combined Overview Card */}
-        <div className="mb-8 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-lg">
-          <div className="space-y-8 px-6 py-6 sm:px-8 lg:px-10">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                  <button
-                    onClick={() => navigate(-1)}
-                    className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+      <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/80 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-1 items-start gap-4 min-w-0">
+              <button
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-100"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back</span>
+              </button>
+              <div className="min-w-0 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Tournament Overview
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="truncate text-2xl font-bold text-neutral-900 sm:text-3xl">
+                    {tournament.name || 'Untitled Tournament'}
+                  </h1>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusColor(tournament.status)}`}
                   >
-                    <ArrowLeft className="h-4 w-4" />
-                    <span>Back</span>
-                  </button>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-                        {tournament.name || 'Untitled Tournament'}
-                      </h1>
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusColor(tournament.status)}`}
-                      >
-                        {tournament.status
-                          ? tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)
-                          : 'Unknown'}
+                    {tournament.status
+                      ? tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)
+                      : 'Unknown'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
+                  {tournament.format && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
+                      <Trophy className="h-3.5 w-3.5 text-neutral-500" />
+                      <span className="capitalize">
+                        {tournament.format.replace('-', ' ')} format
                       </span>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2 text-sm text-gray-600">
-                      {tournament.format && (
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
-                          {tournament.format.replace('-', ' ')} Format
-                        </span>
-                      )}
-                      {tournament.rounds && (
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
-                          {tournament.rounds} {tournament.rounds === 1 ? 'Round' : 'Rounds'}
-                        </span>
-                      )}
-                      {sectionCount > 0 && (
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1">
-                          {sectionCount} {sectionCount === 1 ? 'Section' : 'Sections'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    </span>
+                  )}
+                  {tournament.rounds && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
+                      <Calendar className="h-3.5 w-3.5 text-neutral-500" />
+                      <span>
+                        {tournament.rounds} {tournament.rounds === 1 ? 'round' : 'rounds'}
+                      </span>
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
+                    <Users className="h-3.5 w-3.5 text-neutral-500" />
+                    <span>{state.players.length} registered</span>
+                  </span>
+                  {sectionCount > 0 && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1">
+                      <Layers className="h-3.5 w-3.5 text-neutral-500" />
+                      <span>
+                        {sectionCount} {sectionCount === 1 ? 'section' : 'sections'}
+                      </span>
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4">
-                <APIStatusIndicator
-                  tournamentId={id || ''}
-                  apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94"
-                />
-                {hasNotifications && (
-                  <NotificationButton
-                    notifications={tournamentNotifications}
-                    webhookEnabled={emailsEnabled}
-                    onWebhookToggle={(enabled) => {
-                      setEmailsEnabled(enabled);
-                    }}
-                    webhookUrl={tournament.webhook_url || process.env.REACT_APP_PAIRING_NOTIFICATION_WEBHOOK}
-                    onDismiss={(notificationId) => {
-                      console.log('Dismissed notification:', notificationId);
-                    }}
-                    onMarkAsRead={(notificationId) => {
-                      console.log('Marked as read:', notificationId);
-                    }}
-                    onViewPlayer={(playerName) => {
-                      const player = state.players.find(p => p.name === playerName);
-                      if (player) {
-                        setActiveTab('players');
-                        console.log('Viewing player:', playerName);
-                      }
-                    }}
-                  />
-                )}
-                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                  <span
-                    className={`flex h-2.5 w-2.5 rounded-full ${
-                      tournament.allow_registration ? 'bg-emerald-500' : 'bg-red-500'
-                    }`}
-                  />
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Registration
-                    </p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {tournament.allow_registration ? 'Open for new players' : 'Currently closed'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={async () => {
-                    try {
-                      const updatedTournament = {
-                        ...tournament,
-                        allow_registration: !tournament.allow_registration
-                      };
-                      await tournamentApi.update(id!, updatedTournament);
-                      await fetchTournament();
-                    } catch (error) {
-                      console.error('Failed to update registration setting:', error);
-                      alert('Failed to update registration setting. Please try again.');
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <APIStatusIndicator
+                tournamentId={id || ''}
+                apiKey="ctk_f5de4f4cf423a194d00c078baa10e7a153fcca3e229ee7aadfdd72fec76cdd94"
+              />
+              {hasNotifications && (
+                <NotificationButton
+                  notifications={tournamentNotifications}
+                  webhookEnabled={emailsEnabled}
+                  onWebhookToggle={(enabled) => {
+                    setEmailsEnabled(enabled);
+                  }}
+                  webhookUrl={tournament.webhook_url || process.env.REACT_APP_PAIRING_NOTIFICATION_WEBHOOK}
+                  onDismiss={(notificationId) => {
+                    console.log('Dismissed notification:', notificationId);
+                  }}
+                  onMarkAsRead={(notificationId) => {
+                    console.log('Marked as read:', notificationId);
+                  }}
+                  onViewPlayer={(playerName) => {
+                    const player = state.players.find((p) => p.name === playerName);
+                    if (player) {
+                      setActiveTab('players');
+                      console.log('Viewing player:', playerName);
                     }
                   }}
-                  className={`relative inline-flex h-8 w-16 items-center rounded-full border border-gray-200 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
-                    tournament.allow_registration ? 'bg-chess-board text-white' : 'bg-gray-100'
+                />
+              )}
+              <div
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold ${
+                  tournament.allow_registration
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-rose-200 bg-rose-50 text-rose-700'
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    tournament.allow_registration ? 'bg-emerald-500' : 'bg-rose-500'
                   }`}
+                />
+                <span>{tournament.allow_registration ? 'Registration open' : 'Registration closed'}</span>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const updatedTournament = {
+                      ...tournament,
+                      allow_registration: !tournament.allow_registration
+                    };
+                    await tournamentApi.update(id!, updatedTournament);
+                    await fetchTournament();
+                  } catch (error) {
+                    console.error('Failed to update registration setting:', error);
+                    alert('Failed to update registration setting. Please try again.');
+                  }
+                }}
+                className={`relative inline-flex h-8 w-16 items-center rounded-full border border-neutral-200 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 ${
+                  tournament.allow_registration ? 'bg-neutral-900 text-white' : 'bg-neutral-100'
+                }`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                    tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <a
+                href={`/public/tournaments/${id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>Public View</span>
+              </a>
+              <div className="relative">
+                <button
+                  onClick={() => setShowDisplaySettings(!showDisplaySettings)}
+                  className="flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800"
                 >
-                  <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
-                      tournament.allow_registration ? 'translate-x-8' : 'translate-x-1'
-                    }`}
-                  />
+                  <Settings className="h-4 w-4" />
+                  <span>Actions</span>
                 </button>
-                <a
-                  href={`/public/tournaments/${id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  <span>Public View</span>
-                </a>
-                <div className="relative">
-                  <button
-                    onClick={() => setShowDisplaySettings(!showDisplaySettings)}
-                    className="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span>Actions</span>
-                  </button>
-                  {showDisplaySettings && (
-                    <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-gray-200 bg-white shadow-xl z-50">
-                      <div className="py-2">
-                        <button
-                          onClick={() => {
-                            dispatch({ type: 'SET_ERROR', payload: null });
-                            fetchTournament();
-                            fetchPlayers();
-                            fetchStandings();
-                          }}
-                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-3" />
-                          Refresh Data
-                        </button>
-                        <button
-                          onClick={() => setShowSectionManager(true)}
-                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <Settings className="h-4 w-4 mr-3" />
-                          Manage Sections
-                        </button>
-                        <button
-                          onClick={clearStandings}
-                          className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 mr-3" />
-                          Clear Standings
-                        </button>
-                        <button
-                          onClick={() => {
-                            const apiUrl = `${window.location.origin}/api/players/api-import/${id}`;
-                            const registerUrl = `${window.location.origin}/api/players/register/${id}`;
-                            const registrationFormUrl = `${window.location.origin}/register/${id}`;
-                            const apiKey = 'demo-key-123';
+                {showDisplaySettings && (
+                  <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-neutral-200 bg-white shadow-xl z-50">
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          dispatch({ type: 'SET_ERROR', payload: null });
+                          fetchTournament();
+                          fetchPlayers();
+                          fetchStandings();
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-3" />
+                        Refresh Data
+                      </button>
+                      <button
+                        onClick={() => setShowSectionManager(true)}
+                        className="flex w-full items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <Settings className="h-4 w-4 mr-3" />
+                        Manage Sections
+                      </button>
+                      <button
+                        onClick={clearStandings}
+                        className="flex w-full items-center px-4 py-2 text-sm text-rose-600 hover:bg-rose-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-3" />
+                        Clear Standings
+                      </button>
+                      <button
+                        onClick={() => {
+                          const apiUrl = `${window.location.origin}/api/players/api-import/${id}`;
+                          const registerUrl = `${window.location.origin}/api/players/register/${id}`;
+                          const registrationFormUrl = `${window.location.origin}/register/${id}`;
+                          const apiKey = 'demo-key-123';
 
-                            const modal = document.createElement('div');
-                            modal.className =
-                              'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-                            modal.innerHTML = `
+                          const modal = document.createElement('div');
+                          modal.className =
+                            'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                          modal.innerHTML = `
                             <div class="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                               <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-lg font-semibold">API Integration & Registration</h3>
@@ -1878,20 +1794,27 @@ const TournamentDetail: React.FC = () => {
                               </div>
                             </div>
                           `;
-                            document.body.appendChild(modal);
-                          }}
-                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          <FileText className="h-4 w-4 mr-3" />
-                          API & Registration
-                        </button>
-                      </div>
+                          document.body.appendChild(modal);
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <FileText className="h-4 w-4 mr-3" />
+                        API & Registration
+                      </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
+          </div>
+        </div>
+      </header>
 
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Combined Overview Card */}
+        <div className="mb-8 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-lg">
+          <div className="space-y-8 px-6 py-6 sm:px-8 lg:px-10">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {overviewStats.map((stat) => {
                 const Icon = stat.icon;
@@ -1912,54 +1835,6 @@ const TournamentDetail: React.FC = () => {
                   </div>
                 );
               })}
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 sm:p-8">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
-                    Key Details
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Share these essentials with your players and staff.
-                  </p>
-                </div>
-              </div>
-
-              {hasAdditionalDetails ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {additionalDetails.map((detail) => {
-                    const Icon = detail.icon;
-                    return (
-                      <div
-                        key={detail.key}
-                        className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4"
-                      >
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-chess-board">
-                          <Icon className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            {detail.label}
-                          </p>
-                          <div className="mt-1 text-sm font-semibold text-gray-900">
-                            {detail.primary}
-                          </div>
-                          {detail.secondary && (
-                            <p className="mt-0.5 text-sm text-gray-500">{detail.secondary}</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center">
-                  <p className="text-sm text-gray-500">
-                    Add more tournament information in the info tab to see it highlighted here.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
