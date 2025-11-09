@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, FileText, FileSpreadsheet, Code, Database, CheckCircle, XCircle, AlertCircle, Users, Brain, Eye, Download, ExternalLink } from 'lucide-react';
+import { X, Upload, FileText, FileSpreadsheet, Code, Database, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
 
 interface UnifiedImportModalProps {
@@ -28,15 +28,11 @@ interface ImportResult {
 const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose, tournamentId }) => {
   const { dispatch } = useTournament();
   const [step, setStep] = useState<'select' | 'configure' | 'preview' | 'importing' | 'complete'>('select');
-  const [importType, setImportType] = useState<'csv' | 'excel' | 'sheets' | 'forms' | 'api' | null>(null);
+  const [importType, setImportType] = useState<'csv' | 'excel' | 'api' | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [spreadsheetId, setSpreadsheetId] = useState('');
-  const [formId, setFormId] = useState('');
-  const [range, setRange] = useState('Sheet1!A1:Z1000');
   const [apiData, setApiData] = useState('');
   const [lookupRatings, setLookupRatings] = useState(true);
   const [autoAssignSections, setAutoAssignSections] = useState(true);
-  const [useSmartImport, setUseSmartImport] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<any>(null);
@@ -50,13 +46,9 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
       setStep('select');
       setImportType(null);
       setFile(null);
-      setSpreadsheetId('');
-      setFormId('');
-      setRange('Sheet1!A1:Z1000');
       setApiData('');
       setLookupRatings(true);
       setAutoAssignSections(true);
-      setUseSmartImport(true);
       setLoading(false);
       setError(null);
       setPreviewData(null);
@@ -64,7 +56,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
     }
   }, [isOpen]);
 
-  const handleImportTypeSelect = (type: 'csv' | 'excel' | 'sheets' | 'forms' | 'api') => {
+  const handleImportTypeSelect = (type: 'csv' | 'excel' | 'api') => {
     setImportType(type);
     setStep('configure');
     setError(null);
@@ -156,9 +148,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
     setError(null);
 
     try {
-      let endpoint = '';
-      let requestBody: any = {};
-
       switch (importType) {
         case 'csv':
         case 'excel':
@@ -167,55 +156,14 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             setLoading(false);
             return;
           }
-          // Parse file for preview
           await handleFilePreview();
           setLoading(false);
           return;
 
-        case 'sheets':
-          // Determine the correct base URL based on environment
-          const getSheetsPreviewBaseUrl = () => {
-            if (process.env.REACT_APP_API_URL) {
-              return process.env.REACT_APP_API_URL;
-            }
-            if (process.env.NODE_ENV === 'production') {
-              return '/api';
-            }
-            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
-          };
-          const sheetsPreviewBaseUrl = getSheetsPreviewBaseUrl();
-          endpoint = `${sheetsPreviewBaseUrl}/google-import/sheets/preview`;
-          requestBody = { 
-            spreadsheet_id: spreadsheetId, 
-            range, 
-            api_key: apiKey 
-          };
-          break;
-
-        case 'forms':
-          // Determine the correct base URL based on environment
-          const getFormsPreviewBaseUrl = () => {
-            if (process.env.REACT_APP_API_URL) {
-              return process.env.REACT_APP_API_URL;
-            }
-            if (process.env.NODE_ENV === 'production') {
-              return '/api';
-            }
-            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
-          };
-          const formsPreviewBaseUrl = getFormsPreviewBaseUrl();
-          endpoint = `${formsPreviewBaseUrl}/google-import/forms/preview`;
-          requestBody = { 
-            form_id: formId, 
-            api_key: apiKey 
-          };
-          break;
-
         case 'api':
-          // For API data, we'll parse it directly
           try {
             const parsedData = JSON.parse(apiData);
-            setPreviewData({ 
+            setPreviewData({
               players: Array.isArray(parsedData) ? parsedData : parsedData.players || [],
               message: 'API data parsed successfully'
             });
@@ -227,23 +175,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             setLoading(false);
             return;
           }
-      }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setPreviewData(data.data);
-        setStep('preview');
-      } else {
-        setError(data.error || 'Failed to preview data');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to preview data');
@@ -267,11 +198,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
         auto_assign_sections: autoAssignSections
       };
 
-      // Add API key only for services that require it
-      if (importType === 'sheets' || importType === 'forms' || importType === 'api') {
-        requestBody.api_key = apiKey;
-      }
-
       switch (importType) {
         case 'csv':
           if (!file) {
@@ -280,7 +206,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             setLoading(false);
             return;
           }
-          // Determine the correct base URL based on environment
           const getApiBaseUrl = () => {
             if (process.env.REACT_APP_API_URL) {
               return process.env.REACT_APP_API_URL;
@@ -292,7 +217,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
           };
           const baseUrl = getApiBaseUrl();
           endpoint = `${baseUrl}/players/csv-upload`;
-          // For file uploads, we need to use FormData
           const csvFormData = new FormData();
           csvFormData.append('csvFile', file);
           csvFormData.append('tournament_id', tournamentId);
@@ -305,7 +229,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
 
           const csvData = await csvResponse.json();
           if (csvData.success) {
-            // Now import the parsed data
             const importResponse = await fetch(`${baseUrl}/players/csv-import`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -333,7 +256,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             setLoading(false);
             return;
           }
-          // Determine the correct base URL based on environment
           const getExcelApiBaseUrl = () => {
             if (process.env.REACT_APP_API_URL) {
               return process.env.REACT_APP_API_URL;
@@ -345,7 +267,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
           };
           const excelBaseUrl = getExcelApiBaseUrl();
           endpoint = `${excelBaseUrl}/players/excel-upload`;
-          // For file uploads, we need to use FormData
           const excelFormData = new FormData();
           excelFormData.append('excelFile', file);
           excelFormData.append('tournament_id', tournamentId);
@@ -358,7 +279,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
 
           const excelData = await excelResponse.json();
           if (excelData.success) {
-            // Now import the parsed data
             const importResponse = await fetch(`${excelBaseUrl}/players/excel-import`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -379,68 +299,33 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
           setLoading(false);
           return;
 
-        case 'sheets':
-          // Determine the correct base URL based on environment
-          const getSheetsApiBaseUrl = () => {
-            if (process.env.REACT_APP_API_URL) {
-              return process.env.REACT_APP_API_URL;
-            }
-            if (process.env.NODE_ENV === 'production') {
-              return '/api';
-            }
-            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
-          };
-          const sheetsBaseUrl = getSheetsApiBaseUrl();
-          endpoint = useSmartImport 
-            ? `${sheetsBaseUrl}/google-import/smart/sheets` 
-            : `${sheetsBaseUrl}/google-import/sheets`;
-          requestBody = {
-            ...requestBody,
-            spreadsheet_id: spreadsheetId,
-            range
-          };
-          break;
-
-        case 'forms':
-          // Determine the correct base URL based on environment
-          const getFormsApiBaseUrl = () => {
-            if (process.env.REACT_APP_API_URL) {
-              return process.env.REACT_APP_API_URL;
-            }
-            if (process.env.NODE_ENV === 'production') {
-              return '/api';
-            }
-            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
-          };
-          const formsBaseUrl = getFormsApiBaseUrl();
-          endpoint = useSmartImport 
-            ? `${formsBaseUrl}/google-import/smart/forms` 
-            : `${formsBaseUrl}/google-import/forms`;
-          requestBody = {
-            ...requestBody,
-            form_id: formId
-          };
-          break;
-
         case 'api':
-          // Determine the correct base URL based on environment
-          const getApiImportBaseUrl = () => {
-            if (process.env.REACT_APP_API_URL) {
-              return process.env.REACT_APP_API_URL;
-            }
-            if (process.env.NODE_ENV === 'production') {
-              return '/api';
-            }
-            return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
-          };
-          const apiImportBaseUrl = getApiImportBaseUrl();
-          endpoint = `${apiImportBaseUrl}/players/api-import/${tournamentId}`;
-          requestBody = {
-            api_key: apiKey,
-            players: JSON.parse(apiData),
-            lookup_ratings: lookupRatings,
-            auto_assign_sections: autoAssignSections
-          };
+          try {
+            const parsedPlayers = JSON.parse(apiData);
+            const getApiImportBaseUrl = () => {
+              if (process.env.REACT_APP_API_URL) {
+                return process.env.REACT_APP_API_URL;
+              }
+              if (process.env.NODE_ENV === 'production') {
+                return '/api';
+              }
+              return 'https://chess-tournament-director-6ce5e76147d7.herokuapp.com/api';
+            };
+            const apiImportBaseUrl = getApiImportBaseUrl();
+            endpoint = `${apiImportBaseUrl}/players/api-import/${tournamentId}`;
+            requestBody = {
+              ...requestBody,
+              api_key: apiKey,
+              players: parsedPlayers,
+              lookup_ratings: lookupRatings,
+              auto_assign_sections: autoAssignSections
+            };
+          } catch (parseError) {
+            setError('Invalid JSON data. Please check your API data format.');
+            setStep('configure');
+            setLoading(false);
+            return;
+          }
           break;
       }
 
@@ -482,16 +367,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
     }
   };
 
-  const getSpreadsheetIdFromUrl = (url: string) => {
-    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    return match ? match[1] : '';
-  };
-
-  const getFormIdFromUrl = (url: string) => {
-    const match = url.match(/\/forms\/d\/([a-zA-Z0-9-_]+)/);
-    return match ? match[1] : '';
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -523,7 +398,7 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Choose Import Source</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* File Upload */}
                   <div className="space-y-4">
                     <h4 className="font-medium text-gray-700">File Upload</h4>
@@ -550,38 +425,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
                           <div>
                             <h5 className="font-medium text-gray-900">Excel File</h5>
                             <p className="text-sm text-gray-500">Upload Excel file</p>
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Google Services */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-gray-700">Google Services</h4>
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => handleImportTypeSelect('sheets')}
-                        className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all group text-left"
-                      >
-                        <div className="flex items-center space-x-3 mb-2">
-                          <FileSpreadsheet className="h-6 w-6 text-green-600" />
-                          <div>
-                            <h5 className="font-medium text-gray-900">Google Sheets</h5>
-                            <p className="text-sm text-gray-500">Import from spreadsheet</p>
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => handleImportTypeSelect('forms')}
-                        className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all group text-left"
-                      >
-                        <div className="flex items-center space-x-3 mb-2">
-                          <FileText className="h-6 w-6 text-purple-600" />
-                          <div>
-                            <h5 className="font-medium text-gray-900">Google Forms</h5>
-                            <p className="text-sm text-gray-500">Import from form responses</p>
                           </div>
                         </div>
                       </button>
@@ -626,8 +469,8 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
                 </h3>
               </div>
 
-              {/* API Key - Only show for Google services and API */}
-              {(importType === 'sheets' || importType === 'forms' || importType === 'api') && (
+              {/* API Key - Only show for API imports */}
+              {importType === 'api' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     API Key
@@ -666,67 +509,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
                 </div>
               )}
 
-              {/* Google Sheets Configuration */}
-              {importType === 'sheets' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Spreadsheet URL or ID
-                    </label>
-                    <input
-                      type="text"
-                      value={spreadsheetId}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value.includes('docs.google.com')) {
-                          setSpreadsheetId(getSpreadsheetIdFromUrl(value));
-                        } else {
-                          setSpreadsheetId(value);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://docs.google.com/spreadsheets/d/... or spreadsheet ID"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Range (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={range}
-                      onChange={(e) => setRange(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Sheet1!A1:Z1000"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Google Forms Configuration */}
-              {importType === 'forms' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Form URL or ID
-                  </label>
-                  <input
-                    type="text"
-                    value={formId}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value.includes('forms.google.com')) {
-                        setFormId(getFormIdFromUrl(value));
-                      } else {
-                        setFormId(value);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://forms.google.com/d/... or form ID"
-                  />
-                </div>
-              )}
-
               {/* API Data Configuration */}
               {importType === 'api' && (
                 <div>
@@ -749,23 +531,6 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
               <div className="space-y-4">
                 <h4 className="font-medium text-gray-900">Import Options</h4>
                 
-                {(importType === 'sheets' || importType === 'forms') && (
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      id="smartImport"
-                      checked={useSmartImport}
-                      onChange={(e) => setUseSmartImport(e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="smartImport" className="flex items-center space-x-2">
-                      <Brain className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium text-gray-700">Smart Import</span>
-                      <span className="text-xs text-gray-500">(Recommended)</span>
-                    </label>
-                  </div>
-                )}
-
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
@@ -803,11 +568,10 @@ const UnifiedImportModal: React.FC<UnifiedImportModalProps> = ({ isOpen, onClose
                 </button>
                 <button
                   onClick={handlePreview}
-                  disabled={loading || 
+                  disabled={
+                    loading ||
                     (importType === 'csv' && !file) ||
                     (importType === 'excel' && !file) ||
-                    (importType === 'sheets' && !spreadsheetId) ||
-                    (importType === 'forms' && !formId) ||
                     (importType === 'api' && !apiData)
                   }
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"

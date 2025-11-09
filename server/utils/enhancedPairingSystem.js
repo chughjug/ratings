@@ -508,7 +508,7 @@ class EnhancedPairingSystem {
         };
 
         // Generate pairings using bbpPairings for players without byes
-        regularPairings = bbpPairings.generateDutchPairings(playersWithoutByes, tournament);
+        regularPairings = await bbpPairings.generateDutchPairings(playersWithoutByes, tournament);
       }
       
       // Combine bye pairings and regular pairings
@@ -918,7 +918,7 @@ class EnhancedPairingSystem {
     
     console.log(`[EnhancedPairingSystem] Tournament object:`, tournament);
     
-    const result = bbpPairings.generateDutchPairings(this.players, tournament);
+    const result = await bbpPairings.generateDutchPairings(this.players, tournament);
     console.log(`[EnhancedPairingSystem] BBPPairingsDirect result:`, result);
     
     // Add section and board information
@@ -982,7 +982,7 @@ class EnhancedPairingSystem {
     // Fallback to JavaScript implementation
     console.log(`[EnhancedPairingSystem] Using JavaScript bbpPairings implementation for Burstein`);
     const bbpPairings = new BBPPairingsDirect();
-    const result = bbpPairings.generateDutchPairings(this.players, {
+    const result = await bbpPairings.generateDutchPairings(this.players, {
       round: this.round,
       section: this.section,
       tournamentId: this.tournamentId,
