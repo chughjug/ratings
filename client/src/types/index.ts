@@ -248,6 +248,7 @@ export interface TournamentSettings {
   enable_player_photos?: boolean;
   enable_time_tracking?: boolean;
   enable_tournament_archives?: boolean;
+  newPrizeTemplates?: PrizeTemplateConfig[];
 }
 
 export interface PrizeSettings {
@@ -269,6 +270,23 @@ export interface PrizeConfiguration {
   amount?: number; // For cash prizes
   description?: string;
   isSpecialPrize?: boolean; // US Chess Rule 32B1: Special prizes (e.g., biggest upset, best game) must be designated
+}
+
+export interface PrizeTemplateEntry {
+  name?: string;
+  position?: number;
+  amount?: number | string;
+  share?: number | string;
+  type?: string;
+  awardType?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PrizeTemplateConfig {
+  section?: string;
+  name?: string;
+  prizeFund?: number | string;
+  prizes: PrizeTemplateEntry[];
 }
 
 export interface PrizeStructure {
