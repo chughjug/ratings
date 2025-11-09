@@ -1,6 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import '../styles/pairing-system.css';
 
 interface RoundResult {
@@ -46,6 +45,8 @@ interface ChessStandingsTableProps {
   showTiebreakers?: boolean;
   showPrizes?: boolean;
   tournamentId?: string;
+  showSectionHeader?: boolean;
+  className?: string;
 }
 
 const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
@@ -54,7 +55,9 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   selectedSection = 'all',
   showTiebreakers = true,
   showPrizes = true,
-  tournamentId
+  tournamentId,
+  showSectionHeader = true,
+  className
 }) => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -120,119 +123,165 @@ const ChessStandingsTable: React.FC<ChessStandingsTableProps> = ({
   };
 
   // Generate round columns
-  const roundColumns = Array.from({ length: tournament.rounds }, (_, i) => i + 1);
+  const sanitizeSectionName = (value?: string) => {
+    if (!value) return '';
+    return value.trim().replace(/\s+section$/i, '');
+  };
 
-  // Group standings by section
-  const groupedStandings = standings.reduce((acc, player) => {
-    const section = player.section || 'Open';
-    if (!acc[section]) {
-      acc[section] = [];
+  const normalizedSelectedSection = sanitizeSectionName(selectedSection || '').toLowerCase();
+  const shouldFilterBySection =
+    normalizedSelectedSection !== '' &&
+    normalizedSelectedSection !== 'all' &&
+    normalizedSelectedSection !== 'all sections';
+
+  const getSectionLabel = (section?: string) => {
+    const trimmed = sanitizeSectionName(section);
+    return trimmed === '' ? 'Open' : trimmed;
+  };
+
+  const totalRounds = Math.max(0, Number(tournament?.rounds) || 0);
+  const roundColumns = Array.from({ length: totalRounds }, (_, i) => i + 1);
+
+  const filteredStandings = shouldFilterBySection
+    ? standings.filter(player => getSectionLabel(player.section).toLowerCase() === normalizedSelectedSection)
+    : standings;
+
+  const groupedStandings = filteredStandings.reduce((acc, player) => {
+    const sectionLabel = getSectionLabel(player.section);
+    if (!acc[sectionLabel]) {
+      acc[sectionLabel] = [];
     }
-    acc[section].push(player);
+    acc[sectionLabel].push(player);
     return acc;
   }, {} as Record<string, PlayerStanding[]>);
 
-  // Filter standings by section if needed
-  const filteredStandings = selectedSection === 'all' 
-    ? standings 
-    : standings.filter(player => (player.section || 'Open') === selectedSection);
+  const sectionOrder = Object.keys(groupedStandings).sort((a, b) => {
+    if (a.toLowerCase() === 'open') return -1;
+    if (b.toLowerCase() === 'open') return 1;
+    return a.localeCompare(b);
+  });
 
-  // If showing all sections, group them; otherwise show filtered list
-  const displayData = selectedSection === 'all' ? groupedStandings : { [selectedSection]: filteredStandings };
+  const containerClassName = ['space-y-6 overflow-visible', className].filter(Boolean).join(' ');
+
+  if (sectionOrder.length === 0) {
+    return null;
+  }
 
   return (
-    <div className="space-y-8 overflow-visible">
-      {Object.entries(displayData).map(([sectionName, sectionStandings]) => (
-        <div key={sectionName} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-visible">
-          {/* Section Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-slate-600 px-6 py-4">
-            <h3 className="text-lg font-semibold text-white">
-              {sectionName} Section
-              <span className="ml-2 text-blue-200 text-sm">
-                ({sectionStandings.length} players)
-              </span>
-            </h3>
-          </div>
-          
-          {/* Standings Table */}
-          <div className="overflow-x-auto overflow-y-visible mb-6" style={{ padding: 0, margin: 0 }}>
-            <table className="standings-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'center', padding: '8px' }}>No.</th>
-            <th style={{ textAlign: 'left', padding: '8px' }}>Player's Name</th>
-            <th style={{ textAlign: 'left', padding: '8px' }}>USCF</th>
-            <th style={{ textAlign: 'center', padding: '8px' }}>Rating</th>
-            <th className="score" style={{ textAlign: 'center', padding: '8px' }}>Pts</th>
-            {roundColumns.map(round => (
-              <th key={round} style={{ textAlign: 'center', padding: '8px' }}>Rnd{round}</th>
-            ))}
-            {showTiebreakers && (
-              <>
-                <th style={{ textAlign: 'center', padding: '8px' }}>BH</th>
-                <th style={{ textAlign: 'center', padding: '8px' }}>SB</th>
-                <th style={{ textAlign: 'center', padding: '8px' }}>Perf</th>
-              </>
+    <div className={containerClassName}>
+      {sectionOrder.map(sectionName => {
+        const sectionStandings = groupedStandings[sectionName] || [];
+
+        return (
+          <div
+            key={sectionName}
+            className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+          >
+            {showSectionHeader && (
+              <div className="flex flex-col gap-1 border-b border-gray-200 bg-gray-50 px-6 py-4 md:flex-row md:items-center md:justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {sectionName} Section
+                </h3>
+                <span className="text-sm font-medium text-gray-500">
+                  {sectionStandings.length} {sectionStandings.length === 1 ? 'player' : 'players'}
+                </span>
+              </div>
             )}
-            {showPrizes && (
-              <th style={{ textAlign: 'center', padding: '8px' }}>Prize</th>
-            )}
-          </tr>
-        </thead>
-              <tbody>
-                {sectionStandings.map((player) => (
-                  <tr key={player.id}>
-                    <td style={{ textAlign: 'center', padding: '8px' }}>
-                      {player.rank}.
-                    </td>
-                    <td className="player" style={{ textAlign: 'left', padding: '8px' }}>
-                      <button
-                        onClick={() => navigate(`/tournaments/${actualTournamentId}/player/${player.id}`)}
-                        className="text-blue-600 hover:text-blue-800 underline font-semibold text-left cursor-pointer"
-                        style={{ border: 'none', background: 'none', padding: 0, margin: 0, cursor: 'pointer' }}
+
+            <div className="relative">
+              <div className="overflow-x-auto">
+                <table className="standings-table min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                      <th scope="col" className="px-4 py-3 text-center">No.</th>
+                      <th scope="col" className="px-4 py-3 text-left">Player</th>
+                      <th scope="col" className="px-4 py-3 text-left">USCF</th>
+                      <th scope="col" className="px-4 py-3 text-center">Rating</th>
+                      <th scope="col" className="px-4 py-3 text-center">Pts</th>
+                      {roundColumns.map(round => (
+                        <th key={round} scope="col" className="px-3 py-3 text-center">
+                          Rnd {round}
+                        </th>
+                      ))}
+                      {showTiebreakers && (
+                        <>
+                          <th scope="col" className="px-3 py-3 text-center">BH</th>
+                          <th scope="col" className="px-3 py-3 text-center">SB</th>
+                          <th scope="col" className="px-3 py-3 text-center">Perf</th>
+                        </>
+                      )}
+                      {showPrizes && (
+                        <th scope="col" className="px-4 py-3 text-center">Prize</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {sectionStandings.map(player => (
+                      <tr
+                        key={player.id}
+                        className="transition-colors even:bg-gray-50 hover:bg-blue-50/60"
                       >
-                        {formatPlayerName(player)}
-                      </button>
-                    </td>
-                    <td style={{ textAlign: 'left', padding: '8px' }}>
-                      {player.uscf_id || ''}
-                    </td>
-                    <td style={{ textAlign: 'center', padding: '8px' }}>
-                      {formatRating(player.rating)}
-                    </td>
-                    <td className="score" style={{ textAlign: 'center', padding: '8px', fontWeight: 'bold' }}>
-                      {formatPoints(player.total_points)}
-                    </td>
-                    {roundColumns.map(round => (
-                      <td key={round} className="opponent" style={{ textAlign: 'center', padding: '8px' }}>
-                        {formatRoundResult(player.roundResults[round], round)}
-                      </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-center font-semibold text-gray-900">
+                          {player.rank}.
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-left">
+                          <button
+                            onClick={() => navigate(`/tournaments/${actualTournamentId}/player/${player.id}`)}
+                            className="text-left text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                            type="button"
+                          >
+                            {formatPlayerName(player)}
+                          </button>
+                          {player.games_played !== undefined && (
+                            <span className="block text-xs text-gray-500">
+                              {player.games_played} games • {player.wins || 0}W {player.draws || 0}D {player.losses || 0}L
+                            </span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-left text-sm text-gray-700">
+                          {player.uscf_id || '—'}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium text-gray-900">
+                          {player.rating ?? '—'}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-semibold text-blue-600">
+                          {formatPoints(player.total_points)}
+                        </td>
+                        {roundColumns.map(round => (
+                          <td
+                            key={round}
+                            className="whitespace-nowrap px-3 py-3 text-center text-xs font-medium text-gray-700"
+                          >
+                            {formatRoundResult(player.roundResults?.[round], round)}
+                          </td>
+                        ))}
+                        {showTiebreakers && (
+                          <>
+                            <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600">
+                              {formatTiebreaker(player.tiebreakers?.buchholz)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600">
+                              {formatTiebreaker(player.tiebreakers?.sonnebornBerger)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600">
+                              {formatTiebreaker(player.tiebreakers?.performanceRating)}
+                            </td>
+                          </>
+                        )}
+                        {showPrizes && (
+                          <td className="whitespace-nowrap px-4 py-3 text-center text-sm text-gray-700">
+                            {player.prize || '—'}
+                          </td>
+                        )}
+                      </tr>
                     ))}
-                    {showTiebreakers && (
-                      <>
-                        <td style={{ textAlign: 'center', padding: '8px' }}>
-                          {formatTiebreaker(player.tiebreakers.buchholz)}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '8px' }}>
-                          {formatTiebreaker(player.tiebreakers.sonnebornBerger)}
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '8px' }}>
-                          {formatTiebreaker(player.tiebreakers.performanceRating)}
-                        </td>
-                      </>
-                    )}
-                    {showPrizes && (
-                      <td style={{ textAlign: 'center', padding: '8px' }}>
-                        {player.prize || ''}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

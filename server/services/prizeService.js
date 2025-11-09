@@ -297,15 +297,30 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
   const ratingPrizes = prizes.filter(prize => prize.ratingCategory && !prize.position);
   const generalPrizes = prizes.filter(prize => !prize.position && !prize.ratingCategory && prize.type !== 'cash');
 
+  // Track players who have already received a cash prize across all prize categories
+  const cashPrizeRecipients = new Set();
+
   // Process position-based prizes
   if (positionPrizes.length > 0) {
-    const positionDistributions = distributePositionPrizes(standings, positionPrizes, sectionConfig.name, tournamentId);
+    const positionDistributions = distributePositionPrizes(
+      standings,
+      positionPrizes,
+      sectionConfig.name,
+      tournamentId,
+      cashPrizeRecipients
+    );
     distributions.push(...positionDistributions);
   }
 
   // Process rating-based prizes
   if (ratingPrizes.length > 0) {
-    const ratingDistributions = distributeRatingPrizes(standings, ratingPrizes, sectionConfig.name, tournamentId);
+    const ratingDistributions = distributeRatingPrizes(
+      standings,
+      ratingPrizes,
+      sectionConfig.name,
+      tournamentId,
+      cashPrizeRecipients
+    );
     distributions.push(...ratingDistributions);
   }
 
@@ -333,7 +348,7 @@ function distributeSectionPrizes(standings, sectionConfig, tournamentId) {
  * @param {string} tournamentId - Tournament ID
  * @returns {Array} Array of prize distributions
  */
-function distributePositionPrizes(standings, positionPrizes, sectionName, tournamentId) {
+function distributePositionPrizes(standings, positionPrizes, sectionName, tournamentId, existingCashWinners = new Set()) {
   const distributions = [];
   const playersWithPrizes = new Set(); // Track players who have received a prize (one prize per person rule)
   
@@ -348,7 +363,7 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
     if (tiedPlayers.length === 0) continue;
 
     // Filter out players who already have a prize (US Chess: one cash prize per player)
-    const eligiblePlayers = tiedPlayers.filter(p => !playersWithPrizes.has(p.id));
+    const eligiblePlayers = tiedPlayers.filter(p => !playersWithPrizes.has(p.id) && !existingCashWinners.has(p.id));
     if (eligiblePlayers.length === 0) {
       currentPosition += tiedPlayers.length;
       continue;
@@ -379,6 +394,9 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
       
       prizeDistributions.forEach(dist => {
         playersWithPrizes.add(dist.player_id);
+        if (dist.prize_type === 'cash') {
+          existingCashWinners.add(dist.player_id);
+        }
         distributions.push(dist);
       });
     }
@@ -421,7 +439,7 @@ function distributePositionPrizes(standings, positionPrizes, sectionName, tourna
  * @param {string} tournamentId - Tournament ID
  * @returns {Array} Array of prize distributions
  */
-function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournamentId) {
+function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournamentId, existingCashWinners = new Set()) {
   const distributions = [];
   const playersWithPrizes = new Set(); // Track players who have received a prize (one prize per person)
 
@@ -429,7 +447,7 @@ function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournament
     // Filter players eligible for this rating category and who don't already have a prize
     const eligiblePlayers = standings
       .filter(player => isEligibleForRatingPrize(player, prize.ratingCategory))
-      .filter(player => !playersWithPrizes.has(player.id));
+      .filter(player => !playersWithPrizes.has(player.id) && !existingCashWinners.has(player.id));
     
     if (eligiblePlayers.length === 0) continue;
 
@@ -463,6 +481,9 @@ function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournament
         
         prizeDistributions.forEach(dist => {
           playersWithPrizes.add(dist.player_id);
+          if (dist.prize_type === 'cash') {
+            existingCashWinners.add(dist.player_id);
+          }
           distributions.push(dist);
         });
         remainingPrizeCount -= playersToAward.length;
@@ -479,6 +500,9 @@ function distributeRatingPrizes(standings, ratingPrizes, sectionName, tournament
         
         prizeDistributions.forEach(dist => {
           playersWithPrizes.add(dist.player_id);
+          if (dist.prize_type === 'cash') {
+            existingCashWinners.add(dist.player_id);
+          }
           distributions.push(dist);
         });
         remainingPrizeCount -= playersToAward.length;

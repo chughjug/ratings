@@ -15,6 +15,7 @@ import { CrosstableService } from '../services/crosstableService';
 import ChessStandingsTable from '../components/ChessStandingsTable';
 import PairCraftLogo from '../components/PairCraftLogo';
 import PrizeDisplay from '../components/PrizeDisplay';
+import PublicWinnersList from '../components/PublicWinnersList';
 
 interface PublicDisplayData {
   tournament: any;
@@ -42,7 +43,7 @@ const PublicTournamentDisplay: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [customPages, setCustomPages] = useState<any[]>([]);
-  const [selectedSection, setSelectedSection] = useState<string>('');
+  const [selectedSection, setSelectedSection] = useState<string>('all');
   const [selectedRound, setSelectedRound] = useState<number>(1);
   const [allRoundsData, setAllRoundsData] = useState<{ [round: number]: any[] }>({});
   const [displayOptions, setDisplayOptions] = useState<DisplayOptions>({
@@ -1045,6 +1046,23 @@ const PublicTournamentDisplay: React.FC = () => {
               </button>
               
               <button
+                onClick={() => setActiveTab('winners')}
+                className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === 'winners'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+                }`}
+                role="tab"
+                aria-selected={activeTab === 'winners'}
+                aria-label="View winners"
+              >
+                <div className="flex items-center space-x-2">
+                  <Crown className="h-4 w-4" />
+                  <span>Winners</span>
+                </div>
+              </button>
+              
+              <button
                 onClick={() => setActiveTab('teams')}
                 className={`px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
                   activeTab === 'teams'
@@ -1650,7 +1668,7 @@ const PublicTournamentDisplay: React.FC = () => {
                       
                       // Filter pairings by selected section
                       let filteredPairings = currentPairings;
-                      if (selectedSection && selectedSection !== '') {
+                      if (selectedSection && selectedSection !== '' && selectedSection !== 'all') {
                         filteredPairings = currentPairings.filter(pairing => pairing.section === selectedSection);
                       }
 
@@ -2027,7 +2045,7 @@ const PublicTournamentDisplay: React.FC = () => {
                     {(() => {
                       // Filter standings by selected section and search
                       let filteredStandings = getFilteredStandings(standings);
-                      if (selectedSection && selectedSection !== '') {
+                      if (selectedSection && selectedSection !== '' && selectedSection !== 'all') {
                         filteredStandings = filteredStandings.filter(standing => standing.section === selectedSection);
                       }
 
@@ -2050,34 +2068,25 @@ const PublicTournamentDisplay: React.FC = () => {
                         sectionStandings.sort((a, b) => b.total_points - a.total_points);
 
                         return (
-                          <div key={sectionName}>
+                          <div key={sectionName} className="space-y-3">
                             {/* Desktop Table View */}
-                            <div className="hidden md:block border border-gray-200 rounded-lg overflow-visible">
-                              <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                                <h3 className="text-lg font-semibold text-gray-900">{sectionName} Section</h3>
-                                <p className="text-sm text-gray-600">{sectionStandings.length} players</p>
-                              </div>
-                              
-                              <div className="p-4 overflow-visible">
-                                <div className="overflow-x-auto overflow-y-visible">
-                                  <ChessStandingsTable
-                                    standings={sectionStandings.map(player => ({
-                                      ...player,
-                                      tiebreakers: player.tiebreakers || {
-                                        buchholz: 0,
-                                        sonnebornBerger: 0,
-                                        performanceRating: 0,
-                                        modifiedBuchholz: 0,
-                                        cumulative: 0
-                                      }
-                                    }))}
-                                    tournament={data?.tournament}
-                                    selectedSection={sectionName}
-                                    showTiebreakers={true}
-                                    showPrizes={true}
-                                  />
-                                </div>
-                              </div>
+                            <div className="hidden md:block">
+                              <ChessStandingsTable
+                                standings={sectionStandings.map(player => ({
+                                  ...player,
+                                  tiebreakers: player.tiebreakers || {
+                                    buchholz: 0,
+                                    sonnebornBerger: 0,
+                                    performanceRating: 0,
+                                    modifiedBuchholz: 0,
+                                    cumulative: 0
+                                  }
+                                }))}
+                                tournament={data?.tournament}
+                                selectedSection={sectionName}
+                                showTiebreakers={true}
+                                showPrizes={true}
+                              />
                             </div>
 
                             {/* Mobile Card View */}
@@ -2166,6 +2175,9 @@ const PublicTournamentDisplay: React.FC = () => {
               </div>
             )}
 
+            {activeTab === 'winners' && id && (
+              <PublicWinnersList tournamentId={id} />
+            )}
 
             {activeTab === 'teams' && (
               <div>

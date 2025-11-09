@@ -154,6 +154,39 @@ const PublicOrganizationPage: React.FC = () => {
     }
   };
 
+  const highlightFeatures = [
+    {
+      icon: Trophy,
+      title: 'Automated Swiss Pairings',
+      description: 'Advanced pairing algorithms ensure fair and competitive matches every round.'
+    },
+    {
+      icon: Users,
+      title: 'Player Management',
+      description: 'Comprehensive player registration, rating tracking, and tournament history.'
+    },
+    {
+      icon: BarChart3,
+      title: 'Live Analytics',
+      description: 'Real-time standings, statistics, and tournament progress tracking.'
+    },
+    {
+      icon: Calendar,
+      title: 'Flexible Scheduling',
+      description: 'Support for multiple tournament formats and customizable time controls.'
+    },
+    {
+      icon: Shield,
+      title: 'Secure & Reliable',
+      description: 'Enterprise-grade security with 99.9% uptime guarantee.'
+    },
+    {
+      icon: Globe,
+      title: 'Public Access',
+      description: 'Public tournament pages for spectators and easy player registration.'
+    }
+  ];
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -229,62 +262,55 @@ const PublicOrganizationPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-orange-600 via-orange-700 to-red-600 text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
-        </div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div className="border-b border-neutral-200 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
             {organization?.logoUrl && (
-              <div className="relative group">
-                <div className="absolute inset-0 bg-white/30 rounded-3xl blur-2xl"></div>
-                <img
-                  src={organization.logoUrl}
-                  alt={`${organization.name} logo`}
-                  className="relative h-32 w-32 object-cover rounded-3xl border-4 border-white/50 shadow-2xl"
-                />
-              </div>
+              <img
+                src={organization.logoUrl}
+                alt={`${organization.name} logo`}
+                className="h-24 w-auto rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+              />
             )}
-            <div className="flex-1">
-              <h1 className="text-5xl md:text-6xl font-extrabold mb-4 leading-tight">
-                {organization.settings?.branding?.headerText || organization?.name}
-              </h1>
-              {(organization?.description || organization.settings?.branding?.tagline) && (
-                <p className="text-xl md:text-2xl text-orange-100 mb-6 max-w-3xl font-medium">
-                  {organization.settings?.branding?.tagline || organization.description}
-                </p>
-              )}
-              
-              <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex-1 space-y-6">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-neutral-900">
+                  {organization.settings?.branding?.headerText || organization?.name}
+                </h1>
+                {(organization?.description || organization.settings?.branding?.tagline) && (
+                  <p className="mt-3 text-lg text-neutral-600 max-w-2xl">
+                    {organization.settings?.branding?.tagline || organization.description}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-sm">
                 {organization?.website && (
                   <a
                     href={organization.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center bg-white/20 backdrop-blur-sm px-5 py-2.5 rounded-xl hover:bg-white/30 transition-all border border-white/30 font-medium"
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-600 transition-colors hover:border-neutral-300 hover:text-neutral-900"
                   >
-                    <Globe className="h-4 w-4 mr-2" />
+                    <Globe className="h-4 w-4" />
                     Website
                   </a>
                 )}
                 {organization?.contactEmail && (
-                  <div className="flex items-center bg-white/10 backdrop-blur-sm px-5 py-2.5 rounded-xl border border-white/20">
-                    <Mail className="h-4 w-4 mr-2" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-600">
+                    <Mail className="h-4 w-4" />
                     {organization.contactEmail}
                   </div>
                 )}
                 {organization?.contactPhone && (
-                  <div className="flex items-center bg-white/10 backdrop-blur-sm px-5 py-2.5 rounded-xl border border-white/20">
-                    <Phone className="h-4 w-4 mr-2" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-600">
+                    <Phone className="h-4 w-4" />
                     {organization.contactPhone}
                   </div>
                 )}
                 {(organization?.city || organization?.state) && (
-                  <div className="flex items-center bg-white/10 backdrop-blur-sm px-5 py-2.5 rounded-xl border border-white/20">
-                    <MapPin className="h-4 w-4 mr-2" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-neutral-600">
+                    <MapPin className="h-4 w-4" />
                     {organization?.city && organization?.state
                       ? `${organization.city}, ${organization.state}`
                       : organization?.city || organization?.state}
@@ -293,7 +319,7 @@ const PublicOrganizationPage: React.FC = () => {
               </div>
 
               {organization?.settings?.social && Object.keys(organization.settings.social).length > 0 && (
-                <div className="flex items-center space-x-3 mt-6">
+                <div className="flex items-center gap-3 pt-2">
                   {Object.entries(organization.settings.social).map(([platform, url]) => {
                     if (!url) return null;
                     const Icon = getSocialIcon(platform);
@@ -303,9 +329,9 @@ const PublicOrganizationPage: React.FC = () => {
                         href={url as string}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-3 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 border border-white/30 transition-all hover:scale-110"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition-colors hover:border-neutral-300 hover:text-neutral-900"
                       >
-                        <Icon className="h-5 w-5 text-white" />
+                        <Icon className="h-5 w-5" />
                       </a>
                     );
                   })}
@@ -318,47 +344,47 @@ const PublicOrganizationPage: React.FC = () => {
 
       {/* Stats Section */}
       {stats && (
-        <div className="relative -mt-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="border-b border-neutral-200 bg-neutral-50">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mb-3">
-                  <Trophy className="h-6 w-6 text-white" />
+              <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-900 text-white mb-3">
+                  <Trophy className="h-6 w-6" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 mb-1">
+                <div className="text-3xl font-semibold text-neutral-900 mb-1">
                   {stats.tournaments.total_tournaments}
                 </div>
-                <div className="text-sm text-gray-600 font-medium">Tournaments</div>
+                <div className="text-sm text-neutral-600 font-medium">Tournaments</div>
               </div>
-              
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 mb-3">
-                  <Activity className="h-6 w-6 text-white" />
+
+              <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-900 text-white mb-3">
+                  <Activity className="h-6 w-6" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 mb-1">
+                <div className="text-3xl font-semibold text-neutral-900 mb-1">
                   {stats.tournaments.active_tournaments}
                 </div>
-                <div className="text-sm text-gray-600 font-medium">Active Now</div>
+                <div className="text-sm text-neutral-600 font-medium">Active Now</div>
               </div>
-              
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 mb-3">
-                  <Award className="h-6 w-6 text-white" />
+
+              <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-900 text-white mb-3">
+                  <Award className="h-6 w-6" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 mb-1">
+                <div className="text-3xl font-semibold text-neutral-900 mb-1">
                   {stats.tournaments.completed_tournaments}
                 </div>
-                <div className="text-sm text-gray-600 font-medium">Completed</div>
+                <div className="text-sm text-neutral-600 font-medium">Completed</div>
               </div>
-              
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-gray-100">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 mb-3">
-                  <Users className="h-6 w-6 text-white" />
+
+              <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-900 text-white mb-3">
+                  <Users className="h-6 w-6" />
                 </div>
-                <div className="text-3xl font-extrabold text-gray-900 mb-1">
+                <div className="text-3xl font-semibold text-neutral-900 mb-1">
                   {stats.players.total_players}
                 </div>
-                <div className="text-sm text-gray-600 font-medium">Players</div>
+                <div className="text-sm text-neutral-600 font-medium">Players</div>
               </div>
             </div>
           </div>
@@ -671,74 +697,31 @@ const PublicOrganizationPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="py-20 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose {organization?.name}?</h2>
-            <p className="text-xl text-gray-600">Professional tournament management with cutting-edge features</p>
+      {/* Highlights */}
+      <div className="border-t border-neutral-200 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="max-w-2xl">
+            <h2 className="text-2xl md:text-3xl font-semibold text-neutral-900">
+              Professional tournament management with cutting-edge features
+            </h2>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
-                <Trophy className="h-7 w-7 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Automated Swiss Pairings</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Advanced pairing algorithms ensure fair and competitive matches every round.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
-                <Users className="h-7 w-7 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Player Management</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Comprehensive player registration, rating tracking, and tournament history.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
-                <BarChart3 className="h-7 w-7 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Live Analytics</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Real-time standings, statistics, and tournament progress tracking.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
-                <Calendar className="h-7 w-7 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Flexible Scheduling</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Support for multiple tournament formats and customizable time controls.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
-                <Shield className="h-7 w-7 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Secure & Reliable</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Enterprise-grade security with 99.9% uptime guarantee.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center mb-6">
-                <Globe className="h-7 w-7 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Public Access</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Public tournament pages for spectators and easy player registration.
-              </p>
-            </div>
+
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {highlightFeatures.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={feature.title}
+                  className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm transition-colors hover:border-neutral-300"
+                >
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-neutral-900 text-white mb-4">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-neutral-900">{feature.title}</h3>
+                  <p className="mt-2 text-sm text-neutral-600 leading-relaxed">{feature.description}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
