@@ -11,6 +11,7 @@ import { tournamentApi, pairingApi } from '../services/api';
 import { exportPairingsPDF, exportStandingsPDF } from '../services/pdfExport';
 import { CrosstableService } from '../services/crosstableService';
 import ChessStandingsTable from '../components/ChessStandingsTable';
+import PublicWinnersList from '../components/PublicWinnersList';
 import BrandedHeader from '../components/BrandedHeader';
 import BrandedFooter from '../components/BrandedFooter';
 import { BrandingProvider, useBranding } from '../contexts/BrandingContext';
@@ -20,6 +21,7 @@ const STATIC_TAB_LABELS: Record<string, string> = {
   preregistered: 'Entries',
   pairings: 'Pairings',
   standings: 'Standings',
+  winners: 'Winners',
   register: 'Register',
   contact: 'Contact',
   print: 'Print View',
@@ -405,7 +407,8 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
   const baseTabs = [
     { key: 'preregistered', label: STATIC_TAB_LABELS.preregistered },
     { key: 'pairings', label: STATIC_TAB_LABELS.pairings },
-    { key: 'standings', label: STATIC_TAB_LABELS.standings }
+    { key: 'standings', label: STATIC_TAB_LABELS.standings },
+    { key: 'winners', label: STATIC_TAB_LABELS.winners }
   ];
 
   if (tournament?.allow_registration) {
@@ -676,6 +679,7 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
             {activeTab === 'preregistered' && 'Entries'}
             {activeTab === 'pairings' && 'Pairings'}
             {activeTab === 'standings' && 'Standings'}
+            {activeTab === 'winners' && 'Winners'}
             {activeTab === 'print' && 'Print View'}
             {activeTab === 'teams' && 'Teams'}
             {activeTab === 'prizes' && 'Prizes'}
@@ -907,6 +911,15 @@ const BrandedPublicTournamentDisplayContent: React.FC<BrandedPublicTournamentDis
                   })()}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'winners' && id && (
+            <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm p-6">
+              <PublicWinnersList
+                tournamentId={id}
+                initialDistributions={data?.prizeDistributions}
+              />
             </div>
           )}
 

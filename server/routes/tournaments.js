@@ -2122,15 +2122,17 @@ router.post('/:id/merge-sections', async (req, res) => {
   const { sourceSection, targetSection, removeSourceSection } = req.body;
 
   try {
-    // Validate inputs
-    if (!sourceSection || !targetSection) {
+    const normalizedSourceSection = typeof sourceSection === 'string' ? sourceSection.trim() : '';
+    const normalizedTargetSection = typeof targetSection === 'string' ? targetSection.trim() : '';
+
+    if (!normalizedSourceSection || !normalizedTargetSection) {
       return res.status(400).json({
         success: false,
         error: 'Source section and target section are required'
       });
     }
 
-    if (sourceSection === targetSection) {
+    if (normalizedSourceSection.toLowerCase() === normalizedTargetSection.toLowerCase()) {
       return res.status(400).json({
         success: false,
         error: 'Source and target sections must be different'
@@ -2152,6 +2154,157 @@ router.post('/:id/merge-sections', async (req, res) => {
       });
     }
 
+    const shouldRemoveSection =
+      Boolean(removeSourceSection) && normalizedSourceSection.toLowerCase() !== 'open';
+
+    let playersUpdated = 0;
+    let pairingsUpdated = 0;
+    const relatedStats = {
+      registrationsUpdated: 0,
+      teamsUpdated: 0,
+      prizesUpdated: 0,
+      prizeDistributionsUpdated: 0
+    };
+
+    const relatedUpdates = [
+      {
+        label: 'registrations',
+        statKey: 'registrationsUpdated',
+        sql: `UPDATE registrations
+              SET section = ?
+              WHERE tournament_id = ?
+                AND section IS NOT NULL
+                AND LOWER(section) = LOWER(?)`,
+        params: [normalizedTargetSection, id, normalizedSourceSection],
+        errorMessage: 'Failed to update registration sections'
+      },
+      {
+        label: 'teams',
+        statKey: 'teamsUpdated',
+        sql: `UPDATE teams
+              SET section = ?
+              WHERE tournament_id = ?
+                AND LOWER(COALESCE(section, 'Open')) = LOWER(?)`,
+        params: [normalizedTargetSection, id, normalizedSourceSection],
+        errorMessage: 'Failed to update team sections'
+      },
+      {
+        label: 'prizes',
+        statKey: 'prizesUpdated',
+        sql: `UPDATE prizes
+              SET section = ?
+              WHERE tournament_id = ?
+                AND section IS NOT NULL
+                AND LOWER(section) = LOWER(?)`,
+        params: [normalizedTargetSection, id, normalizedSourceSection],
+        errorMessage: 'Failed to update prize sections'
+      },
+      {
+        label: 'prize distributions',
+        statKey: 'prizeDistributionsUpdated',
+        sql: `UPDATE prize_distributions
+              SET section = ?
+              WHERE tournament_id = ?
+                AND section IS NOT NULL
+                AND LOWER(section) = LOWER(?)`,
+        params: [normalizedTargetSection, id, normalizedSourceSection],
+        errorMessage: 'Failed to update prize distribution sections'
+      }
+    ];
+
+    const commitAndRespond = (sourceSectionRemoved) => {
+      db.run('COMMIT', (err) => {
+        if (err) {
+          console.error('Error committing transaction:', err);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to commit changes'
+          });
+        }
+
+        res.json({
+          success: true,
+          message: `Successfully merged ${normalizedSourceSection} into ${normalizedTargetSection}`,
+          data: {
+            playersUpdated,
+            pairingsUpdated,
+            ...relatedStats,
+            sourceSectionRemoved
+          }
+        });
+      });
+    };
+
+    const handleSectionRemoval = () => {
+      if (!shouldRemoveSection) {
+        if (removeSourceSection && normalizedSourceSection.toLowerCase() === 'open') {
+          console.warn('Requested to remove the default "Open" section; skipping removal.');
+        }
+        return commitAndRespond(false);
+      }
+
+      try {
+        const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
+        if (settings.sections && Array.isArray(settings.sections)) {
+          settings.sections = settings.sections.filter(
+            (section) =>
+              (section?.name || '').trim().toLowerCase() !== normalizedSourceSection.toLowerCase()
+          );
+        }
+
+        db.run(
+          'UPDATE tournaments SET settings = ? WHERE id = ?',
+          [JSON.stringify(settings), id],
+          function(err) {
+            if (err) {
+              console.error('Error updating tournament settings:', err);
+              db.run('ROLLBACK');
+              return res.status(500).json({
+                success: false,
+                error: 'Failed to update tournament settings'
+              });
+            }
+
+            commitAndRespond(true);
+          }
+        );
+      } catch (parseError) {
+        console.error('Error parsing tournament settings:', parseError);
+        db.run('ROLLBACK');
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to parse tournament settings'
+        });
+      }
+    };
+
+    const runRelatedUpdates = (index) => {
+      if (index >= relatedUpdates.length) {
+        return handleSectionRemoval();
+      }
+
+      const currentUpdate = relatedUpdates[index];
+      db.run(currentUpdate.sql, currentUpdate.params, function(err) {
+        if (err) {
+          console.error(`Error updating ${currentUpdate.label}:`, err);
+          db.run('ROLLBACK');
+          return res.status(500).json({
+            success: false,
+            error: currentUpdate.errorMessage
+          });
+        }
+
+        relatedStats[currentUpdate.statKey] = this.changes || 0;
+        if (this.changes) {
+          console.log(
+            `[Merge Sections] Updated ${this.changes} ${currentUpdate.label} from ${normalizedSourceSection} to ${normalizedTargetSection}`
+          );
+        }
+
+        runRelatedUpdates(index + 1);
+      });
+    };
+
     // Start transaction
     db.serialize(() => {
       db.run('BEGIN TRANSACTION');
@@ -2159,7 +2312,7 @@ router.post('/:id/merge-sections', async (req, res) => {
       // 1. Update players in source section to target section
       db.run(
         'UPDATE players SET section = ? WHERE tournament_id = ? AND section = ?',
-        [targetSection, id, sourceSection],
+        [normalizedTargetSection, id, normalizedSourceSection],
         function(err) {
           if (err) {
             console.error('Error updating player sections:', err);
@@ -2169,13 +2322,17 @@ router.post('/:id/merge-sections', async (req, res) => {
               error: 'Failed to update player sections'
             });
           }
-          const playersUpdated = this.changes;
-          console.log(`Updated ${playersUpdated} players from ${sourceSection} to ${targetSection}`);
+          playersUpdated = this.changes || 0;
+          if (playersUpdated) {
+            console.log(
+              `[Merge Sections] Updated ${playersUpdated} players from ${normalizedSourceSection} to ${normalizedTargetSection}`
+            );
+          }
 
           // 2. Update pairings in source section to target section
           db.run(
             'UPDATE pairings SET section = ? WHERE tournament_id = ? AND COALESCE(section, "Open") = ?',
-            [targetSection, id, sourceSection],
+            [normalizedTargetSection, id, normalizedSourceSection],
             function(err) {
               if (err) {
                 console.error('Error updating pairing sections:', err);
@@ -2185,108 +2342,19 @@ router.post('/:id/merge-sections', async (req, res) => {
                   error: 'Failed to update pairing sections'
                 });
               }
-              const pairingsUpdated = this.changes;
-              console.log(`Updated ${pairingsUpdated} pairings from ${sourceSection} to ${targetSection}`);
-
-              // 3. If requested, remove the source section from tournament settings
-              if (removeSourceSection) {
-                try {
-                  const settings = tournament.settings ? JSON.parse(tournament.settings) : {};
-                  if (settings.sections && Array.isArray(settings.sections)) {
-                    settings.sections = settings.sections.filter(s => s.name !== sourceSection);
-                    
-                    db.run(
-                      'UPDATE tournaments SET settings = ? WHERE id = ?',
-                      [JSON.stringify(settings), id],
-                      function(err) {
-                        if (err) {
-                          console.error('Error updating tournament settings:', err);
-                          db.run('ROLLBACK');
-                          return res.status(500).json({
-                            success: false,
-                            error: 'Failed to update tournament settings'
-                          });
-                        }
-                        
-                        db.run('COMMIT', (err) => {
-                          if (err) {
-                            console.error('Error committing transaction:', err);
-                            return res.status(500).json({
-                              success: false,
-                              error: 'Failed to commit changes'
-                            });
-                          }
-                          
-                          res.json({
-                            success: true,
-                            message: `Successfully merged ${sourceSection} into ${targetSection}`,
-                            data: {
-                              playersUpdated,
-                              pairingsUpdated,
-                              sourceSectionRemoved: removeSourceSection
-                            }
-                          });
-                        });
-                      }
-                    );
-                  } else {
-                    // No sections array, just commit
-                    db.run('COMMIT', (err) => {
-                      if (err) {
-                        console.error('Error committing transaction:', err);
-                        return res.status(500).json({
-                          success: false,
-                          error: 'Failed to commit changes'
-                        });
-                      }
-                      
-                      res.json({
-                        success: true,
-                        message: `Successfully merged ${sourceSection} into ${targetSection}`,
-                        data: {
-                          playersUpdated,
-                          pairingsUpdated,
-                          sourceSectionRemoved: false
-                        }
-                      });
-                    });
-                  }
-                } catch (parseError) {
-                  console.error('Error parsing tournament settings:', parseError);
-                  db.run('ROLLBACK');
-                  return res.status(500).json({
-                    success: false,
-                    error: 'Failed to parse tournament settings'
-                  });
-                }
-              } else {
-                // Don't remove section, just commit
-                db.run('COMMIT', (err) => {
-                  if (err) {
-                    console.error('Error committing transaction:', err);
-                    return res.status(500).json({
-                      success: false,
-                      error: 'Failed to commit changes'
-                    });
-                  }
-                  
-                  res.json({
-                    success: true,
-                    message: `Successfully merged ${sourceSection} into ${targetSection}`,
-                    data: {
-                      playersUpdated,
-                      pairingsUpdated,
-                      sourceSectionRemoved: false
-                    }
-                  });
-                });
+              pairingsUpdated = this.changes || 0;
+              if (pairingsUpdated) {
+                console.log(
+                  `[Merge Sections] Updated ${pairingsUpdated} pairings from ${normalizedSourceSection} to ${normalizedTargetSection}`
+                );
               }
+
+              runRelatedUpdates(0);
             }
           );
         }
       );
     });
-
   } catch (error) {
     console.error('Error merging sections:', error);
     res.status(500).json({

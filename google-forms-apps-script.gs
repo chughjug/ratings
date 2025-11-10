@@ -136,10 +136,6 @@ const FIELD_MAPPING = {
   }
 };
 
-// ============================================================================
-// CORE FORM HANDLERS
-// ============================================================================
-
 function onFormSubmit(e) {
   if (!CONFIG.ENABLE_FORM_IMPORT) {
     console.log('Form import disabled; ignoring submission.');

@@ -161,7 +161,37 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
       );
 
       if (response.data.success) {
-        alert(response.data.message);
+        const mergeData = response.data.data || {};
+        const summaryLines: string[] = [];
+        if (typeof mergeData.playersUpdated === 'number') {
+          summaryLines.push(`Players moved: ${mergeData.playersUpdated}`);
+        }
+        if (typeof mergeData.pairingsUpdated === 'number') {
+          summaryLines.push(`Pairings re-tagged: ${mergeData.pairingsUpdated}`);
+        }
+        if (typeof mergeData.registrationsUpdated === 'number') {
+          summaryLines.push(`Registrations updated: ${mergeData.registrationsUpdated}`);
+        }
+        if (typeof mergeData.teamsUpdated === 'number') {
+          summaryLines.push(`Teams updated: ${mergeData.teamsUpdated}`);
+        }
+        if (typeof mergeData.prizesUpdated === 'number') {
+          summaryLines.push(`Prize definitions updated: ${mergeData.prizesUpdated}`);
+        }
+        if (typeof mergeData.prizeDistributionsUpdated === 'number') {
+          summaryLines.push(`Prize awards updated: ${mergeData.prizeDistributionsUpdated}`);
+        }
+        if (typeof mergeData.sourceSectionRemoved === 'boolean') {
+          summaryLines.push(
+            `Source section removed from settings: ${mergeData.sourceSectionRemoved ? 'Yes' : 'No'}`
+          );
+        }
+
+        const summaryMessage = summaryLines.length
+          ? `${response.data.message}\n\n${summaryLines.join('\n')}`
+          : response.data.message;
+
+        alert(summaryMessage);
         
         // Reload sections
         const updatedSections = sections.filter(s => s.name !== mergingSection);
