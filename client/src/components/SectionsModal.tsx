@@ -11,6 +11,11 @@ interface SectionsModalProps {
   onUpdatePlayer: (playerId: string, updates: Partial<Player>) => Promise<void>;
   tournamentSettings?: any;
   onUpdateTournamentSettings?: (settings: any) => Promise<void>;
+  onAfterMerge?: (details: {
+    sourceSection: string;
+    targetSection: string;
+    stats: Record<string, any>;
+  }) => Promise<void> | void;
 }
 
 const SectionsModal: React.FC<SectionsModalProps> = ({
@@ -20,7 +25,8 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
   players,
   onUpdatePlayer,
   tournamentSettings,
-  onUpdateTournamentSettings
+  onUpdateTournamentSettings,
+  onAfterMerge
 }) => {
   const [sections, setSections] = useState<Section[]>([]);
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -323,6 +329,19 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
         });
         setPlayerSectionAssignments(updatedAssignments);
         
+        // Notify parent so it can refresh players/pairings/standings
+        if (onAfterMerge) {
+          try {
+            await onAfterMerge({
+              sourceSection: mergingSection,
+              targetSection,
+              stats: mergeData
+            });
+          } catch (callbackError) {
+            console.error('onAfterMerge callback failed:', callbackError);
+          }
+        }
+
         // Close merge modal
         setMergingSection(null);
         setTargetSection('');

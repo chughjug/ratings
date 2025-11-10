@@ -1342,6 +1342,33 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const handleSectionMergeComplete = useCallback(
+    async ({
+      sourceSection,
+      targetSection
+    }: {
+      sourceSection: string;
+      targetSection: string;
+    }) => {
+      const sourceRound = sectionRounds[sourceSection] || 1;
+      const targetRoundExisting = sectionRounds[targetSection] || 1;
+      const nextRound = Math.max(sourceRound, targetRoundExisting, 1);
+
+      setSectionRounds((prev) => {
+        const next = { ...prev };
+        next[targetSection] = nextRound;
+        delete next[sourceSection];
+        return next;
+      });
+
+      setSelectedSection(targetSection);
+
+      await Promise.all([fetchPlayers(), fetchStandings()]);
+      await fetchPairings(nextRound, targetSection);
+    },
+    [sectionRounds, fetchPlayers, fetchStandings, fetchPairings]
+  );
+
   const addSection = async () => {
     if (!newSectionName.trim()) {
       alert('Please enter a section name');
@@ -5547,6 +5574,7 @@ const TournamentDetail: React.FC = () => {
               throw error;
             }
           }}
+          onAfterMerge={handleSectionMergeComplete}
         />
       )}
 
