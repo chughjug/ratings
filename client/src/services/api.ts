@@ -214,7 +214,15 @@ export const tournamentApi = {
     api.delete<{success: boolean, message: string, error?: string}>(`/tournaments/${id}/prizes/assign/${distributionId}`),
   // Section management
   mergeSections: (id: string, sourceSection: string, targetSection: string, removeSourceSection?: boolean) =>
-    api.post<{success: boolean, message: string, data: {playersUpdated: number, pairingsUpdated: number, sourceSectionRemoved: boolean}, error?: string}>(
+    api.post<{success: boolean, message: string, data: {
+      playersUpdated?: number;
+      pairingsUpdated?: number;
+      registrationsUpdated?: number;
+      teamsUpdated?: number;
+      prizesUpdated?: number;
+      prizeDistributionsUpdated?: number;
+      sourceSectionRemoved?: boolean;
+    }, error?: string}>(
       `/tournaments/${id}/merge-sections`,
       { sourceSection, targetSection, removeSourceSection: removeSourceSection ?? false }
     ),
