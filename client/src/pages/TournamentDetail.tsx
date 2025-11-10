@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Plus, Trophy, Calendar, Clock, CheckCircle, Upload, Settings, ExternalLink, Download, RefreshCw, FileText, Printer, X, RotateCcw, Code, Trash2, ChevronUp, ChevronDown, ChevronRight, LinkIcon, MessageSquare, QrCode, BarChart3, Activity, CreditCard, Smartphone, Gamepad2, Save, AlertCircle, Eye, Image as ImageIcon, Layers, Award, Trash, Crown, Globe, Copy } from 'lucide-react';
 import { useTournament } from '../contexts/TournamentContext';
@@ -192,6 +192,23 @@ const TournamentDetail: React.FC = () => {
       setEmbedCopyState(null);
     }, 2000);
   }, [handleCopyToClipboard]);
+
+  const normalizedTournamentSettings = useMemo(() => {
+    if (!tournament?.settings) {
+      return {};
+    }
+
+    if (typeof tournament.settings === 'string') {
+      try {
+        return JSON.parse(tournament.settings);
+      } catch (error) {
+        console.error('Failed to parse tournament settings JSON:', error);
+        return {};
+      }
+    }
+
+    return tournament.settings;
+  }, [tournament?.settings]);
 
   const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const apiIntegrationUrls = id
@@ -5514,7 +5531,7 @@ const TournamentDetail: React.FC = () => {
               throw error;
             }
           }}
-          tournamentSettings={tournament.settings}
+          tournamentSettings={normalizedTournamentSettings}
           onUpdateTournamentSettings={async (settings: any) => {
             try {
               // Include required fields (name, format, rounds) along with settings

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Plus, Trash2, Edit, Save, Users, ArrowRight } from 'lucide-react';
 import { Section, Player } from '../types';
 import { tournamentApi } from '../services/api';
@@ -30,12 +30,109 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
   const [mergingSection, setMergingSection] = useState<string | null>(null);
   const [targetSection, setTargetSection] = useState<string>('');
   const [isMerging, setIsMerging] = useState(false);
+  const [settingsState, setSettingsState] = useState<any>({});
+
+  const normalizeSections = useCallback((rawSections: any): Section[] => {
+    if (!rawSections && rawSections !== 0) {
+      return [];
+    }
+
+    let parsedSections: any = rawSections;
+    if (typeof rawSections === 'string') {
+      try {
+        parsedSections = JSON.parse(rawSections);
+      } catch (error) {
+        console.error('Failed to parse sections JSON:', error);
+        parsedSections = [];
+      }
+    }
+
+    if (!Array.isArray(parsedSections)) {
+      return [];
+    }
+
+    return parsedSections
+      .map((section) => {
+        if (!section && section !== 0) {
+          return null;
+        }
+
+        if (typeof section === 'string') {
+          const name = section.trim();
+          return name ? { name } : null;
+        }
+
+        const nameCandidate = section.name || section.title || section.label;
+        if (!nameCandidate) {
+          return null;
+        }
+
+        const normalized: Section = {
+          name: nameCandidate.toString().trim()
+        };
+
+        if (section.min_rating !== undefined && section.min_rating !== null && section.min_rating !== '') {
+          const min = Number(section.min_rating);
+          if (!Number.isNaN(min)) {
+            normalized.min_rating = min;
+          }
+        }
+
+        if (section.max_rating !== undefined && section.max_rating !== null && section.max_rating !== '') {
+          const max = Number(section.max_rating);
+          if (!Number.isNaN(max)) {
+            normalized.max_rating = max;
+          }
+        }
+
+        if (section.description) {
+          normalized.description = section.description.toString();
+        }
+
+        return normalized;
+      })
+      .filter((section): section is Section => Boolean(section && section.name));
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      // Load existing sections from tournament settings
-      const existingSections = tournamentSettings?.sections || [];
-      setSections(existingSections);
+      let parsedSettings: any = {};
+      if (tournamentSettings) {
+        if (typeof tournamentSettings === 'string') {
+          try {
+            parsedSettings = JSON.parse(tournamentSettings) || {};
+          } catch (error) {
+            console.error('Failed to parse tournament settings string:', error);
+            parsedSettings = {};
+          }
+        } else {
+          parsedSettings = { ...tournamentSettings };
+        }
+      }
+
+      let existingSections = normalizeSections(parsedSettings?.sections);
+
+      if (existingSections.length === 0) {
+        const derivedSectionNames = Array.from(
+          new Set(
+            players
+              .map(player => (player.section || '').trim())
+              .filter(name => name && name.length > 0 && name.toLowerCase() !== 'open')
+          )
+        );
+
+        if (derivedSectionNames.length > 0) {
+          existingSections = derivedSectionNames.map(name => ({ name }));
+        }
+      }
+
+      const sortedSections = [...existingSections].sort((a, b) => a.name.localeCompare(b.name));
+      const nextSettingsState = {
+        ...parsedSettings,
+        sections: sortedSections
+      };
+      setSettingsState(nextSettingsState);
+      setSections(sortedSections);
       
       // Initialize player section assignments
       const assignments: { [playerId: string]: string } = {};
@@ -44,7 +141,7 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
       });
       setPlayerSectionAssignments(assignments);
     }
-  }, [isOpen, tournamentSettings, players]);
+  }, [isOpen, tournamentSettings, players, normalizeSections]);
 
   const handleAddSection = async () => {
     if (!newSection.name?.trim()) return;
@@ -63,10 +160,13 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
 
     // Update tournament settings if callback provided
     if (onUpdateTournamentSettings) {
-      await onUpdateTournamentSettings({
-        ...tournamentSettings,
+      const baseSettings = settingsState && typeof settingsState === 'object' ? settingsState : {};
+      const updatedSettings = {
+        ...baseSettings,
         sections: updatedSections
-      });
+      };
+      await onUpdateTournamentSettings(updatedSettings);
+      setSettingsState(updatedSettings);
     }
   };
 
@@ -78,10 +178,13 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
 
     // Update tournament settings if callback provided
     if (onUpdateTournamentSettings) {
-      await onUpdateTournamentSettings({
-        ...tournamentSettings,
+      const baseSettings = settingsState && typeof settingsState === 'object' ? settingsState : {};
+      const updatedSettings = {
+        ...baseSettings,
         sections: updatedSections
-      });
+      };
+      await onUpdateTournamentSettings(updatedSettings);
+      setSettingsState(updatedSettings);
     }
   };
 
@@ -107,10 +210,13 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
 
       // Update tournament settings if callback provided
       if (onUpdateTournamentSettings) {
-        await onUpdateTournamentSettings({
-          ...tournamentSettings,
+        const baseSettings = settingsState && typeof settingsState === 'object' ? settingsState : {};
+        const updatedSettings = {
+          ...baseSettings,
           sections: updatedSections
-        });
+        };
+        await onUpdateTournamentSettings(updatedSettings);
+        setSettingsState(updatedSettings);
       }
     }
   };
@@ -199,10 +305,13 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
         
         // Update tournament settings
         if (onUpdateTournamentSettings) {
-          await onUpdateTournamentSettings({
-            ...tournamentSettings,
+          const baseSettings = settingsState && typeof settingsState === 'object' ? settingsState : {};
+          const updatedSettings = {
+            ...baseSettings,
             sections: updatedSections
-          });
+          };
+          await onUpdateTournamentSettings(updatedSettings);
+          setSettingsState(updatedSettings);
         }
         
         // Move players in state
