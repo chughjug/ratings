@@ -8,6 +8,47 @@ const { calculateTiebreakers } = require('../utils/tiebreakers');
 const { calculateAndDistributePrizes, getPrizeDistributions, autoAssignPrizesOnRoundCompletion } = require('../services/prizeService');
 const { authenticate, verifyToken } = require('../middleware/auth');
 const { cleanupTournamentData, cleanupAllCompletedTournaments } = require('../services/dataCleanupService');
+const path = require('path');
+const os = require('os');
+const fs = require('fs').promises;
+const { execFile } = require('child_process');
+const axios = require('axios');
+
+function runDb(dbInstance, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    dbInstance.run(sql, params, function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ changes: this.changes, lastID: this.lastID });
+      }
+    });
+  });
+}
+
+function getDb(dbInstance, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    dbInstance.get(sql, params, (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row);
+      }
+    });
+  });
+}
+
+function allDb(dbInstance, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    dbInstance.all(sql, params, (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
 
 // Map of request payload fields to database column names for USCF compliance data
 const USCF_COMPLIANCE_FIELD_MAP = {
@@ -2365,6 +2406,273 @@ router.post('/:id/merge-sections', async (req, res) => {
   }
 });
 
+router.post('/:id/merge-sections-bulk', async (req, res) => {
+  const { id } = req.params;
+  const { sourceSections, newSection, removeSourceSections = true } = req.body;
+
+  try {
+    if (!Array.isArray(sourceSections) || sourceSections.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Provide at least two source sections to merge'
+      });
+    }
+
+    if (!newSection || typeof newSection.name !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'A new section with a valid name is required'
+      });
+    }
+
+    const normalizedSources = Array.from(
+      new Set(
+        sourceSections
+          .map((section) => (section || '').toString().trim())
+          .filter((section) => section.length > 0)
+      )
+    );
+
+    if (normalizedSources.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Provide at least two unique source sections to merge'
+      });
+    }
+
+    const newSectionName = newSection.name.trim();
+    if (!newSectionName) {
+      return res.status(400).json({
+        success: false,
+        error: 'New section name cannot be empty'
+      });
+    }
+
+    if (normalizedSources.some((section) => section.toLowerCase() === newSectionName.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        error: 'New section name must be different from source sections'
+      });
+    }
+
+    const tournament = await getDb(db, 'SELECT settings FROM tournaments WHERE id = ?', [id]);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tournament not found'
+      });
+    }
+
+    let settings = {};
+    if (tournament.settings) {
+      try {
+        settings = typeof tournament.settings === 'string' ? JSON.parse(tournament.settings) : tournament.settings;
+      } catch (parseError) {
+        console.error('Failed to parse tournament settings during bulk merge:', parseError);
+        settings = {};
+      }
+    }
+
+    let sectionsArray = Array.isArray(settings.sections) ? [...settings.sections] : [];
+    const newSectionLower = newSectionName.toLowerCase();
+    const newSectionConfig = { name: newSectionName };
+
+    if (newSection.min_rating !== undefined && newSection.min_rating !== null) {
+      const min = Number(newSection.min_rating);
+      if (!Number.isNaN(min)) {
+        newSectionConfig.min_rating = min;
+      }
+    }
+
+    if (newSection.max_rating !== undefined && newSection.max_rating !== null) {
+      const max = Number(newSection.max_rating);
+      if (!Number.isNaN(max)) {
+        newSectionConfig.max_rating = max;
+      }
+    }
+
+    if (newSection.description) {
+      newSectionConfig.description = newSection.description.toString();
+    }
+
+    const existingNewSectionIndex = sectionsArray.findIndex(
+      (section) => section && section.name && section.name.toString().trim().toLowerCase() === newSectionLower
+    );
+
+    if (existingNewSectionIndex >= 0) {
+      sectionsArray[existingNewSectionIndex] = {
+        ...sectionsArray[existingNewSectionIndex],
+        ...newSectionConfig
+      };
+    } else {
+      sectionsArray.push(newSectionConfig);
+    }
+
+    const totals = {
+      playersUpdated: 0,
+      pairingsUpdated: 0,
+      registrationsUpdated: 0,
+      teamsUpdated: 0,
+      prizesUpdated: 0,
+      prizeDistributionsUpdated: 0,
+      sourceSectionsRemoved: []
+    };
+
+    const perSectionStats = {};
+
+    await runDb(db, 'BEGIN TRANSACTION');
+
+    try {
+      for (const sourceSection of normalizedSources) {
+        const sectionStats = {
+          playersUpdated: 0,
+          pairingsUpdated: 0,
+          registrationsUpdated: 0,
+          teamsUpdated: 0,
+          prizesUpdated: 0,
+          prizeDistributionsUpdated: 0
+        };
+
+        const playerResult = await runDb(
+          db,
+          'UPDATE players SET section = ? WHERE tournament_id = ? AND section = ?',
+          [newSectionName, id, sourceSection]
+        );
+        sectionStats.playersUpdated = playerResult.changes || 0;
+        totals.playersUpdated += sectionStats.playersUpdated;
+
+        const pairingsResult = await runDb(
+          db,
+          'UPDATE pairings SET section = ? WHERE tournament_id = ? AND COALESCE(section, "Open") = ?',
+          [newSectionName, id, sourceSection]
+        );
+        sectionStats.pairingsUpdated = pairingsResult.changes || 0;
+        totals.pairingsUpdated += sectionStats.pairingsUpdated;
+
+        const registrationsResult = await runDb(
+          db,
+          `UPDATE registrations
+             SET section = ?
+           WHERE tournament_id = ?
+             AND section IS NOT NULL
+             AND LOWER(section) = LOWER(?)`,
+          [newSectionName, id, sourceSection]
+        );
+        sectionStats.registrationsUpdated = registrationsResult.changes || 0;
+        totals.registrationsUpdated += sectionStats.registrationsUpdated;
+
+        const teamsResult = await runDb(
+          db,
+          `UPDATE teams
+             SET section = ?
+           WHERE tournament_id = ?
+             AND LOWER(COALESCE(section, 'Open')) = LOWER(?)`,
+          [newSectionName, id, sourceSection]
+        );
+        sectionStats.teamsUpdated = teamsResult.changes || 0;
+        totals.teamsUpdated += sectionStats.teamsUpdated;
+
+        const prizesResult = await runDb(
+          db,
+          `UPDATE prizes
+             SET section = ?
+           WHERE tournament_id = ?
+             AND section IS NOT NULL
+             AND LOWER(section) = LOWER(?)`,
+          [newSectionName, id, sourceSection]
+        );
+        sectionStats.prizesUpdated = prizesResult.changes || 0;
+        totals.prizesUpdated += sectionStats.prizesUpdated;
+
+        const prizeDistributionsResult = await runDb(
+          db,
+          `UPDATE prize_distributions
+             SET section = ?
+           WHERE tournament_id = ?
+             AND section IS NOT NULL
+             AND LOWER(section) = LOWER(?)`,
+          [newSectionName, id, sourceSection]
+        );
+        sectionStats.prizeDistributionsUpdated = prizeDistributionsResult.changes || 0;
+        totals.prizeDistributionsUpdated += sectionStats.prizeDistributionsUpdated;
+
+        perSectionStats[sourceSection] = sectionStats;
+      }
+
+      if (removeSourceSections) {
+        const sourcesLower = normalizedSources.map((section) => section.toLowerCase());
+        sectionsArray = sectionsArray.filter((section) => {
+          const sectionName = (section?.name || '').toString().trim();
+          if (!sectionName) {
+            return false;
+          }
+
+          if (sectionName.toLowerCase() === 'open') {
+            return true;
+          }
+
+          const shouldRemove = sourcesLower.includes(sectionName.toLowerCase());
+          if (shouldRemove) {
+            totals.sourceSectionsRemoved.push(sectionName);
+          }
+          return !shouldRemove;
+        });
+      }
+
+      const dedupedSections = [];
+      const seenSections = new Set();
+      sectionsArray.forEach((section) => {
+        if (!section || !section.name) {
+          return;
+        }
+        const trimmedName = section.name.toString().trim();
+        if (!trimmedName) {
+          return;
+        }
+        const lower = trimmedName.toLowerCase();
+        if (seenSections.has(lower)) {
+          return;
+        }
+        seenSections.add(lower);
+        dedupedSections.push({ ...section, name: trimmedName });
+      });
+
+      const updatedSettings = {
+        ...settings,
+        sections: dedupedSections
+      };
+
+      await runDb(db, 'UPDATE tournaments SET settings = ? WHERE id = ?', [
+        JSON.stringify(updatedSettings),
+        id
+      ]);
+
+      await runDb(db, 'COMMIT');
+
+      res.json({
+        success: true,
+        message: `Successfully merged sections (${normalizedSources.join(', ')}) into new section "${newSectionName}"`,
+        data: {
+          newSection: newSectionConfig,
+          totals,
+          perSection: perSectionStats
+        }
+      });
+    } catch (transactionError) {
+      await runDb(db, 'ROLLBACK').catch(() => {});
+      throw transactionError;
+    }
+  } catch (error) {
+    console.error('Error merging sections into new section:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to merge sections into new section',
+      details: error.message
+    });
+  }
+});
+
 // Get player performance details
 router.get('/:tournamentId/player/:playerId/performance', async (req, res) => {
   const { tournamentId, playerId } = req.params;
@@ -3001,6 +3309,7 @@ router.get('/:id/embed', async (req, res) => {
  * GET /api/tournaments/:id/score-sheets
  */
 router.get('/:id/score-sheets', async (req, res) => {
+  let tempDir;
   try {
     const { id } = req.params;
     const { round = 1 } = req.query;
@@ -3045,49 +3354,68 @@ router.get('/:id/score-sheets', async (req, res) => {
       }
     }
 
-    // Get pairings for the round
-    const pairings = await new Promise((resolve, reject) => {
-      db.all(
-        `SELECT 
-          p.id,
-          p.round,
-          p.board,
-          p.section,
-          p.result,
-          white.id as white_id,
-          white.name as white_name,
-          white.rating as white_rating,
-          white.uscf_id as white_uscf_id,
-          black.id as black_id,
-          black.name as black_name,
-          black.rating as black_rating,
-          black.uscf_id as black_uscf_id,
-          p.is_bye
-        FROM pairings p
-        LEFT JOIN players white ON p.white_player_id = white.id
-        LEFT JOIN players black ON p.black_player_id = black.id
-        WHERE p.tournament_id = ? AND p.round = ?
-        ORDER BY p.board`,
-        [id, roundNum],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scoresheet-'));
+    const htmlOutputPath = path.join(tempDir, `scoresheet-${roundNum}.html`);
+    const pdfOutputPath = path.join(tempDir, `scoresheet-${roundNum}.pdf`);
+
+    const defaultLogoPath = path.resolve(__dirname, '../../client/public/new-logo.png');
+    let logoPath = defaultLogoPath;
+
+    if (organization && organization.logo_url) {
+      try {
+        if (/^https?:\/\//i.test(organization.logo_url)) {
+          const response = await axios.get(organization.logo_url, { responseType: 'arraybuffer' });
+          const url = new URL(organization.logo_url);
+          const ext = path.extname(url.pathname) || '.png';
+          logoPath = path.join(tempDir, `logo${ext}`);
+          await fs.writeFile(logoPath, Buffer.from(response.data));
+        } else {
+          const resolvedLogo = path.isAbsolute(organization.logo_url)
+            ? organization.logo_url
+            : path.resolve(__dirname, '../../', organization.logo_url);
+          await fs.access(resolvedLogo);
+          logoPath = resolvedLogo;
         }
-      );
+      } catch (logoError) {
+        console.warn('Falling back to default logo for score sheets:', logoError.message || logoError);
+        logoPath = defaultLogoPath;
+      }
+    }
+
+    const pythonScriptPath = path.resolve(__dirname, '../../scripts/generate_branded_scoresheet.py');
+    let pythonExecutable = path.resolve(__dirname, '../../.venv/bin/python');
+    try {
+      await fs.access(pythonExecutable);
+    } catch (err) {
+      pythonExecutable = 'python3';
+    }
+
+    const pythonArgs = [
+      pythonScriptPath,
+      '--logo',
+      logoPath,
+      '--output',
+      htmlOutputPath,
+      '--pdf-output',
+      pdfOutputPath,
+      '--title',
+      `${tournament.name || 'Chess Scoresheet'} - Round ${roundNum}`,
+      '--logo-alt',
+      organization?.name ? `${organization.name} Logo` : 'Tournament Logo'
+    ];
+
+    await new Promise((resolve, reject) => {
+      execFile(pythonExecutable, pythonArgs, (error, stdout, stderr) => {
+        if (error) {
+          console.error('Score sheet generator failed:', stderr || error.message);
+          reject(new Error('Failed to generate branded score sheets'));
+          return;
+        }
+        resolve();
+      });
     });
 
-    // Generate PDF
-    const brandedPdfService = require('../services/brandedPdfService');
-    const pdfBuffer = await brandedPdfService.generateScoreSheets(
-      tournament,
-      pairings,
-      organization ? {
-        id: organization.id,
-        name: organization.name,
-        logoUrl: organization.logo_url
-      } : null,
-      roundNum
-    );
+    const pdfBuffer = await fs.readFile(pdfOutputPath);
 
     // Send PDF response
     res.setHeader('Content-Type', 'application/pdf');
@@ -3100,6 +3428,14 @@ router.get('/:id/score-sheets', async (req, res) => {
       success: false,
       error: error.message || 'Failed to generate score sheets'
     });
+  } finally {
+    if (tempDir) {
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.warn('Failed to clean temporary directory for score sheets:', cleanupError.message || cleanupError);
+      }
+    }
   }
 });
 

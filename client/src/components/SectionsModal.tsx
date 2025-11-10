@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Plus, Trash2, Edit, Save, Users, ArrowRight } from 'lucide-react';
+import { X, Plus, Trash2, Edit, Save, Users, ArrowRight, Layers } from 'lucide-react';
 import { Section, Player } from '../types';
 import { tournamentApi } from '../services/api';
 
@@ -12,7 +12,8 @@ interface SectionsModalProps {
   tournamentSettings?: any;
   onUpdateTournamentSettings?: (settings: any) => Promise<void>;
   onAfterMerge?: (details: {
-    sourceSection: string;
+    sourceSection?: string;
+    sourceSections?: string[];
     targetSection: string;
     stats: Record<string, any>;
   }) => Promise<void> | void;
@@ -37,6 +38,14 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
   const [targetSection, setTargetSection] = useState<string>('');
   const [isMerging, setIsMerging] = useState(false);
   const [settingsState, setSettingsState] = useState<any>({});
+  const [showBulkMerge, setShowBulkMerge] = useState(false);
+  const [bulkMergeSelection, setBulkMergeSelection] = useState<string[]>([]);
+  const [bulkMergeName, setBulkMergeName] = useState('');
+  const [bulkMergeMinRating, setBulkMergeMinRating] = useState<string>('');
+  const [bulkMergeMaxRating, setBulkMergeMaxRating] = useState<string>('');
+  const [bulkMergeDescription, setBulkMergeDescription] = useState('');
+  const [isBulkMerging, setIsBulkMerging] = useState(false);
+  const [bulkMergeError, setBulkMergeError] = useState<string | null>(null);
 
   const normalizeSections = useCallback((rawSections: any): Section[] => {
     if (!rawSections && rawSections !== 0) {
@@ -146,8 +155,34 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
         assignments[player.id] = player.section || 'Open';
       });
       setPlayerSectionAssignments(assignments);
+      setBulkMergeSelection([]);
+      setBulkMergeName('');
+      setBulkMergeMinRating('');
+      setBulkMergeMaxRating('');
+      setBulkMergeDescription('');
+      setBulkMergeError(null);
+      setIsBulkMerging(false);
     }
   }, [isOpen, tournamentSettings, players, normalizeSections]);
+
+  const toggleBulkMergeSelection = useCallback((sectionName: string) => {
+    setBulkMergeSelection((prev) => {
+      if (prev.includes(sectionName)) {
+        return prev.filter((name) => name !== sectionName);
+      }
+      return [...prev, sectionName];
+    });
+  }, []);
+
+  const resetBulkMergeForm = useCallback(() => {
+    setBulkMergeSelection([]);
+    setBulkMergeName('');
+    setBulkMergeMinRating('');
+    setBulkMergeMaxRating('');
+    setBulkMergeDescription('');
+    setBulkMergeError(null);
+    setIsBulkMerging(false);
+  }, []);
 
   const handleAddSection = async () => {
     if (!newSection.name?.trim()) return;
@@ -241,6 +276,121 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
 
   const getAvailableSections = () => {
     return ['Open', ...sections.map(s => s.name)];
+  };
+
+  const handleBulkMergeSections = async () => {
+    setBulkMergeError(null);
+
+    const selectedCount = bulkMergeSelection.length;
+    if (selectedCount < 2) {
+      setBulkMergeError('Select at least two sections to merge.');
+      return;
+    }
+
+    const targetName = bulkMergeName.trim();
+    if (!targetName) {
+      setBulkMergeError('Enter a name for the new section.');
+      return;
+    }
+
+    try {
+      setIsBulkMerging(true);
+      const payload = {
+        sourceSections: bulkMergeSelection,
+        newSection: {
+          name: targetName,
+          min_rating: bulkMergeMinRating ? Number(bulkMergeMinRating) : undefined,
+          max_rating: bulkMergeMaxRating ? Number(bulkMergeMaxRating) : undefined,
+          description: bulkMergeDescription || undefined
+        },
+        removeSourceSections: true
+      };
+
+      const response = await tournamentApi.mergeSectionsToNew(tournamentId, payload);
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Bulk merge failed');
+      }
+
+      const totals = response.data.data?.totals || {};
+      const summaryLines: string[] = [];
+      if (typeof totals.playersUpdated === 'number') {
+        summaryLines.push(`Players moved: ${totals.playersUpdated}`);
+      }
+      if (typeof totals.pairingsUpdated === 'number') {
+        summaryLines.push(`Pairings re-tagged: ${totals.pairingsUpdated}`);
+      }
+      if (typeof totals.registrationsUpdated === 'number') {
+        summaryLines.push(`Registrations updated: ${totals.registrationsUpdated}`);
+      }
+      if (typeof totals.teamsUpdated === 'number') {
+        summaryLines.push(`Teams updated: ${totals.teamsUpdated}`);
+      }
+      if (typeof totals.prizesUpdated === 'number') {
+        summaryLines.push(`Prize definitions updated: ${totals.prizesUpdated}`);
+      }
+      if (typeof totals.prizeDistributionsUpdated === 'number') {
+        summaryLines.push(`Prize awards updated: ${totals.prizeDistributionsUpdated}`);
+      }
+      if (Array.isArray(totals.sourceSectionsRemoved) && totals.sourceSectionsRemoved.length) {
+        summaryLines.push(`Removed from settings: ${totals.sourceSectionsRemoved.join(', ')}`);
+      }
+
+      const summaryMessage = summaryLines.length
+        ? `${response.data.message}\n\n${summaryLines.join('\n')}`
+        : response.data.message;
+
+      alert(summaryMessage);
+
+      const updatedSections = sections
+        .filter((section) => !bulkMergeSelection.includes(section.name))
+        .concat(
+          response.data.data?.newSection && response.data.data.newSection.name
+            ? [response.data.data.newSection]
+            : []
+        )
+        .filter((section) => section && section.name)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setSections(updatedSections);
+
+      const updatedAssignments = { ...playerSectionAssignments };
+      Object.keys(updatedAssignments).forEach((playerId) => {
+        if (bulkMergeSelection.includes(updatedAssignments[playerId])) {
+          updatedAssignments[playerId] = targetName;
+        }
+      });
+      setPlayerSectionAssignments(updatedAssignments);
+
+      setSettingsState((prev) => {
+        const baseSettings = prev && typeof prev === 'object' ? prev : {};
+        const mergedSections = updatedSections;
+        return {
+          ...baseSettings,
+          sections: mergedSections
+        };
+      });
+
+      if (onAfterMerge) {
+        try {
+          await onAfterMerge({
+            sourceSections: bulkMergeSelection,
+            targetSection: targetName,
+            stats: response.data.data
+          });
+        } catch (callbackError) {
+          console.error('onAfterMerge callback failed for bulk merge:', callbackError);
+        }
+      }
+
+      setShowBulkMerge(false);
+      resetBulkMergeForm();
+    } catch (error: any) {
+      console.error('Bulk merge failed:', error);
+      setBulkMergeError(error.message || 'Failed to merge sections.');
+    } finally {
+      setIsBulkMerging(false);
+    }
   };
 
   const handleMergeSections = async () => {
@@ -377,13 +527,25 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Sections</h3>
-                <button
-                  onClick={() => setIsAdding(true)}
-                  className="flex items-center space-x-2 bg-chess-board text-white px-3 py-2 rounded-lg hover:bg-chess-dark transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Section</span>
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsAdding(true)}
+                    className="flex items-center space-x-2 bg-chess-board text-white px-3 py-2 rounded-lg hover:bg-chess-dark transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Section</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      resetBulkMergeForm();
+                      setShowBulkMerge(true);
+                    }}
+                    className="flex items-center space-x-2 bg-orange-500 text-white px-3 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                  >
+                    <Layers className="h-4 w-4" />
+                    <span>Merge Into New</span>
+                  </button>
+                </div>
               </div>
 
               {/* Add New Section */}
@@ -595,6 +757,128 @@ const SectionsModal: React.FC<SectionsModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Bulk Merge Modal */}
+      {showBulkMerge && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <div className="p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Merge Sections Into a New Section</h3>
+              <p className="text-sm text-gray-600">
+                Select two or more sections and provide a name for the new combined section. All players,
+                pairings, registrations, teams, prizes, and prize awards from the selected sections will be reassigned.
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New Section Name *</label>
+                  <input
+                    type="text"
+                    value={bulkMergeName}
+                    onChange={(e) => setBulkMergeName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., Championship Combined"
+                    disabled={isBulkMerging}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Rating</label>
+                    <input
+                      type="number"
+                      value={bulkMergeMinRating}
+                      onChange={(e) => setBulkMergeMinRating(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Optional"
+                      disabled={isBulkMerging}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Rating</label>
+                    <input
+                      type="number"
+                      value={bulkMergeMaxRating}
+                      onChange={(e) => setBulkMergeMaxRating(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Optional"
+                      disabled={isBulkMerging}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={bulkMergeDescription}
+                    onChange={(e) => setBulkMergeDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Optional section description"
+                    disabled={isBulkMerging}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sections to Merge (select at least two)
+                </label>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-200">
+                  {sections.length === 0 ? (
+                    <p className="p-4 text-sm text-gray-500">No custom sections available yet.</p>
+                  ) : (
+                    sections.map((section) => (
+                      <label
+                        key={section.name}
+                        className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <div>
+                          <span className="font-medium text-gray-900">{section.name}</span>
+                          <span className="block text-xs text-gray-500">
+                            {getPlayersInSection(section.name).length} players
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                          checked={bulkMergeSelection.includes(section.name)}
+                          onChange={() => toggleBulkMergeSelection(section.name)}
+                          disabled={isBulkMerging}
+                        />
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {bulkMergeError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
+                  {bulkMergeError}
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowBulkMerge(false);
+                    resetBulkMergeForm();
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={isBulkMerging}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkMergeSections}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isBulkMerging}
+                >
+                  {isBulkMerging ? 'Merging...' : 'Merge Sections'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Merge Section Modal */}
       {mergingSection && (

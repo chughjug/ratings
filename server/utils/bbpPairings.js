@@ -85,11 +85,14 @@ class BbpPairings {
       return [];
     }
 
-    if (this.preferCPP) {
+    const accelerationEnabled = Boolean(options?.accelerationSettings?.enabled);
+    const useCPP = this.preferCPP && !accelerationEnabled;
+
+    if (useCPP) {
       this.initCPP();
     }
 
-    if (this.cppAvailable) {
+    if (useCPP && this.cppAvailable) {
       try {
         const response = await this.cppInstance.generatePairings(
           tournament.tournamentId || options.tournamentId || 0,
@@ -108,7 +111,7 @@ class BbpPairings {
       }
     }
 
-    return this.generateDutchPairingsFallback(players, tournament);
+    return this.generateDutchPairingsFallback(players, tournament, options);
   }
 
   async generateBursteinPairings(players, tournament = {}, options = {}) {
@@ -146,6 +149,9 @@ class BbpPairings {
     console.log(`[BBPPairings] Generating pairings for tournament ${tournamentId}, round ${round}`);
 
     try {
+      const tournamentSettings = await this.getTournamentSettings(tournamentId, db);
+      const resolvedAccelerationSettings = this.resolveAccelerationSettings(tournamentSettings, options);
+
       const playersBySection = await new Promise((resolve, reject) => {
         db.all(
           'SELECT COALESCE(section, "Open") as section FROM players WHERE tournament_id = ? AND (status = "active" OR status = "inactive") GROUP BY COALESCE(section, "Open")',
@@ -241,10 +247,20 @@ class BbpPairings {
             colorHistory,
             pointsForWin: options.pointsForWin || 1,
             pointsForDraw: options.pointsForDraw || 0.5,
-            pointsForLoss: options.pointsForLoss || 0
+            pointsForLoss: options.pointsForLoss || 0,
+            accelerationSettings: resolvedAccelerationSettings
           };
 
-          regularPairings = await this.generateDutchPairings(activePlayers, tournamentContext, options);
+          const playersForPairing = this.applyAccelerationToPlayers(
+            activePlayers,
+            tournamentContext,
+            resolvedAccelerationSettings
+          );
+
+          regularPairings = await this.generateDutchPairings(playersForPairing, tournamentContext, {
+            ...options,
+            accelerationSettings: resolvedAccelerationSettings
+          });
         }
 
         const allSectionPairings = [...regularPairings, ...byePairings];
@@ -306,14 +322,14 @@ class BbpPairings {
     }
   }
 
-  generateDutchPairingsFallback(players, tournament = {}) {
+  generateDutchPairingsFallback(players, tournament = {}, options = {}) {
     if (!Array.isArray(players) || players.length < 2) {
       return [];
     }
 
     const sortedPlayers = [...players].sort((a, b) => {
-      const scoreA = this.getPlayerScore(a);
-      const scoreB = this.getPlayerScore(b);
+      const scoreA = this.getPlayerScore(a, tournament);
+      const scoreB = this.getPlayerScore(b, tournament);
       if (scoreA !== scoreB) {
         return scoreB - scoreA;
       }
@@ -325,7 +341,7 @@ class BbpPairings {
       return (a.name || '').localeCompare(b.name || '');
     });
 
-    const scoreGroups = this.groupPlayersByScore(sortedPlayers);
+    const scoreGroups = this.groupPlayersByScore(sortedPlayers, tournament);
     const sortedScores = Array.from(scoreGroups.keys()).sort((a, b) => b - a);
 
     const pairings = [];
@@ -383,11 +399,11 @@ class BbpPairings {
     return pairings;
   }
 
-  groupPlayersByScore(players) {
+  groupPlayersByScore(players, tournament = {}) {
     const groups = new Map();
 
     players.forEach(player => {
-      const score = this.getPlayerScore(player);
+      const score = this.getPlayerScore(player, tournament);
       if (!groups.has(score)) {
         groups.set(score, []);
       }
@@ -397,16 +413,43 @@ class BbpPairings {
     return groups;
   }
 
-  getPlayerScore(player) {
+  getPlayerScore(player, tournament = {}) {
+    let baseScore = 0;
     if (typeof player.points === 'number') {
-      return player.points;
+      baseScore = player.points;
+    } else if (typeof player.score === 'number') {
+      baseScore = player.score;
+    } else if (typeof player.total_points === 'number') {
+      baseScore = player.total_points;
     }
-    if (typeof player.score === 'number') {
-      return player.score;
+
+    const acceleration = this.getPlayerAcceleration(player, tournament);
+    if (Number.isFinite(acceleration)) {
+      baseScore += acceleration;
     }
-    if (typeof player.total_points === 'number') {
-      return player.total_points;
+
+    return baseScore;
+  }
+
+  getPlayerAcceleration(player, tournament = {}) {
+    if (Array.isArray(player.accelerations) && player.accelerations.length) {
+      const roundIndex = Math.max(0, ((tournament.round || 1) - 1));
+      if (roundIndex < player.accelerations.length) {
+        const value = parseFloat(player.accelerations[roundIndex]);
+        if (!Number.isNaN(value)) {
+          return value;
+        }
+      }
+      const lastValue = parseFloat(player.accelerations[player.accelerations.length - 1]);
+      if (!Number.isNaN(lastValue)) {
+        return lastValue;
+      }
     }
+
+    if (typeof player.acceleration === 'number') {
+      return player.acceleration;
+    }
+
     return 0;
   }
 
@@ -468,6 +511,131 @@ class BbpPairings {
       }
       return sum;
     }, 0);
+  }
+
+  applyAccelerationToPlayers(players, tournament = {}, accelerationSettings = {}) {
+    if (!accelerationSettings || !accelerationSettings.enabled || !Array.isArray(players) || players.length < 2) {
+      return players;
+    }
+
+    const unlimitedRounds = accelerationSettings.type === 'all_rounds';
+    const totalRounds = unlimitedRounds ? Infinity : this.normalizeNumber(accelerationSettings.rounds, 2);
+    const roundIndex = Math.max(0, ((tournament.round || 1) - 1));
+
+    if (!unlimitedRounds && (!Number.isFinite(totalRounds) || totalRounds <= 0 || roundIndex >= totalRounds)) {
+      return players;
+    }
+
+    const clonedPlayers = players.map(player => ({
+      ...player,
+      accelerations: Array.isArray(player.accelerations) ? [...player.accelerations] : []
+    }));
+
+    const sortedByRating = [...clonedPlayers].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+    let breakPoint = this.normalizeNumber(accelerationSettings.breakPoint, null);
+    if (!breakPoint || breakPoint <= 0) {
+      breakPoint = Math.ceil(sortedByRating.length / 2);
+    } else {
+      breakPoint = Math.min(sortedByRating.length, Math.max(1, Math.floor(breakPoint)));
+    }
+
+    const acceleratedIds = new Set(sortedByRating.slice(0, breakPoint).map(player => player.id));
+    const accelerationValue = this.getAccelerationValueForType(accelerationSettings.type, roundIndex, accelerationSettings);
+
+    clonedPlayers.forEach(player => {
+      const accelerations = Array.isArray(player.accelerations) ? player.accelerations : [];
+      if (accelerations.length <= roundIndex) {
+        for (let i = accelerations.length; i <= roundIndex; i++) {
+          accelerations[i] = 0;
+        }
+      }
+      accelerations[roundIndex] = acceleratedIds.has(player.id) ? accelerationValue : 0;
+      player.accelerations = accelerations;
+    });
+
+    return clonedPlayers;
+  }
+
+  getAccelerationValueForType(type = 'standard', roundIndex = 0, settings = {}) {
+    switch (type) {
+      case 'added_score':
+        return this.normalizeNumber(settings.addedScoreValue, 1) || 1;
+      case 'sixths':
+        return roundIndex === 0 ? 1 : 0.5;
+      case 'all_rounds':
+        return this.normalizeNumber(settings.allRoundsValue, 1) || 1;
+      case 'standard':
+      default:
+        return roundIndex === 0 ? 1 : 0.5;
+    }
+  }
+
+  resolveAccelerationSettings(tournamentSettings = {}, options = {}) {
+    if (options && options.accelerationSettings) {
+      const provided = options.accelerationSettings;
+      return {
+        enabled: Boolean(provided.enabled),
+        type: provided.type || 'standard',
+        rounds: this.normalizeNumber(provided.rounds, 2),
+        threshold: this.normalizeNumber(provided.threshold, null),
+        breakPoint: this.normalizeNumber(provided.breakPoint, null),
+        addedScoreValue: this.normalizeNumber(provided.addedScoreValue, undefined),
+        allRoundsValue: this.normalizeNumber(provided.allRoundsValue, undefined)
+      };
+    }
+
+    let settings = tournamentSettings || {};
+    if (settings.settings && typeof settings.settings === 'object') {
+      settings = settings.settings;
+    }
+
+    if (settings.pairing_type === 'accelerated') {
+      return {
+        enabled: true,
+        type: settings.acceleration_type || 'standard',
+        rounds: this.normalizeNumber(settings.acceleration_rounds, 2),
+        threshold: this.normalizeNumber(settings.acceleration_threshold, null),
+        breakPoint: this.normalizeNumber(settings.acceleration_break_point, null),
+        addedScoreValue: this.normalizeNumber(settings.acceleration_added_score_value, undefined),
+        allRoundsValue: this.normalizeNumber(settings.acceleration_all_rounds_value, undefined)
+      };
+    }
+
+    return { enabled: false };
+  }
+
+  normalizeNumber(value, defaultValue = null) {
+    if (value === undefined || value === null || value === '') {
+      return defaultValue;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : defaultValue;
+  }
+
+  async getTournamentSettings(tournamentId, db) {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT settings FROM tournaments WHERE id = ?', [tournamentId], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        if (!row || !row.settings) {
+          resolve({});
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(row.settings);
+          resolve(parsed || {});
+        } catch (error) {
+          console.warn(`[BBPPairings] Failed to parse tournament settings for ${tournamentId}: ${error.message}`);
+          resolve({});
+        }
+      });
+    });
   }
 
   async getColorHistory(tournamentId, section, db) {

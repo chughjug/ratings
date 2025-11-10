@@ -98,11 +98,12 @@ class TRFExtensions {
       XXZ: [],    // Absent players
       XXS: {},    // Scoring system
       XXF: [],    // Forbidden pairs
-      XXA: [],    // Accelerated rounds
+      XXA: {},    // Player acceleration map (TRF player id => [acceleration per round])
       XXC: null,  // Check-list format
       XXB: null,  // Build number
       XXV: null   // Release number
     };
+    this.hasCustomAcceleration = false;
   }
 
   /**
@@ -130,13 +131,7 @@ class TRFExtensions {
           }
         }
       } else if (line.startsWith('XXA')) {
-        const parts = line.split(/\s+/);
-        for (let i = 1; i < parts.length; i++) {
-          const round = parseInt(parts[i]);
-          if (!isNaN(round)) {
-            this.extensions.XXA.push(round);
-          }
-        }
+        this.parseAccelerationLine(line);
       } else if (line.startsWith('XXC')) {
         this.extensions.XXC = line.split(/\s+/).slice(1).join(' ');
       } else if (line.startsWith('XXB')) {
@@ -145,6 +140,35 @@ class TRFExtensions {
         this.extensions.XXV = line.split(/\s+/).slice(1).join(' ');
       }
     });
+  }
+
+  /**
+   * Parse XXA acceleration line from TRF
+   * Format: "XXA 0001  1.0  0.5 ..."
+   */
+  parseAccelerationLine(line) {
+    const playerIdSegment = line.slice(4, 8);
+    const numericId = parseInt(playerIdSegment, 10);
+    if (Number.isNaN(numericId) || numericId <= 0) {
+      return;
+    }
+
+    const canonicalId = String(numericId);
+    const accelerations = [];
+
+    for (let idx = 9; idx < line.length; idx += 5) {
+      const chunk = line.slice(idx, idx + 5);
+      if (!chunk || chunk.trim() === '') {
+        accelerations.push(0);
+        continue;
+      }
+
+      const value = parseFloat(chunk.trim());
+      accelerations.push(Number.isNaN(value) ? 0 : value);
+    }
+
+    this.extensions.XXA[canonicalId] = accelerations;
+    this.hasCustomAcceleration = true;
   }
 
   /**
@@ -165,6 +189,13 @@ class TRFExtensions {
    * Get accelerated rounds
    */
   getAcceleratedRounds() {
+    return Object.keys(this.extensions.XXA).map(id => parseInt(id, 10)).filter(id => !Number.isNaN(id));
+  }
+
+  /**
+   * Get player acceleration map keyed by TRF player id (1-based, string)
+   */
+  getPlayerAccelerations() {
     return this.extensions.XXA;
   }
 

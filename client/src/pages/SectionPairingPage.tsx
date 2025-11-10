@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -63,6 +63,48 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
     return 'Open';
   });
   const [isLoading, setIsLoading] = useState(propIsLoading || false);
+  const [pairingMode, setPairingMode] = useState<'fide_dutch' | 'accelerated_swiss'>('fide_dutch');
+  const pairingInitialized = useRef(false);
+
+  const tournamentSettings: any = useMemo(() => {
+    const source = tournament || propTournament;
+    if (!source) return undefined;
+    const rawSettings = source.settings ?? source.tournament_settings ?? source.config;
+    if (!rawSettings) return undefined;
+    if (typeof rawSettings === 'string') {
+      try {
+        return JSON.parse(rawSettings);
+      } catch (error) {
+        console.warn('Failed to parse tournament settings:', error);
+        return undefined;
+      }
+    }
+    return rawSettings;
+  }, [tournament, propTournament]);
+
+  useEffect(() => {
+    if (pairingInitialized.current) return;
+    if (!tournamentSettings) return;
+
+    const defaultMode =
+      tournamentSettings?.pairing_type === 'accelerated' ? 'accelerated_swiss' : 'fide_dutch';
+    setPairingMode(defaultMode);
+    pairingInitialized.current = true;
+  }, [tournamentSettings]);
+
+  const getAccelerationSettings = useCallback(() => {
+    if (pairingMode !== 'accelerated_swiss') {
+      return { enabled: false };
+    }
+
+    return {
+      enabled: true,
+      type: tournamentSettings?.acceleration_type || 'standard',
+      rounds: tournamentSettings?.acceleration_rounds ?? 2,
+      threshold: tournamentSettings?.acceleration_threshold ?? null,
+      breakPoint: tournamentSettings?.acceleration_break_point ?? null
+    };
+  }, [pairingMode, tournamentSettings]);
 
   const computeAvailableSections = useCallback((
     tournamentData?: any,
@@ -276,7 +318,11 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
       } else {
         // Call the API to generate pairings
         console.log('Generating pairings for section:', sectionName);
-        const response = await pairingApi.generateForSection(tournamentId, currentRound, sectionName);
+        const accelerationSettings = getAccelerationSettings();
+        const response = await pairingApi.generateForSection(tournamentId, currentRound, sectionName, {
+          pairingSystem: pairingMode,
+          accelerationSettings
+        });
         
         if (response.data.success) {
           // Reload pairings after generation
@@ -362,7 +408,11 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
     
     setIsLoading(true);
     try {
-      const response = await pairingApi.generateNextRound(tournamentId, selectedSection);
+      const accelerationSettings = getAccelerationSettings();
+      const response = await pairingApi.generateNextRound(tournamentId, selectedSection, {
+        pairingSystem: pairingMode,
+        accelerationSettings
+      });
       
       if (response.data.success) {
         console.log('Next round generated successfully');
@@ -390,6 +440,7 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
   };
 
   const stats = getCompletionStats();
+  const pairingModeLabel = pairingMode === 'accelerated_swiss' ? 'Accelerated' : 'Dutch';
 
   const getResultButtonClass = (result: string, currentResult?: string) => {
     const baseClass = "px-2 py-1 text-xs font-medium rounded transition-colors";
@@ -446,6 +497,31 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-700">Pairing Mode:</span>
+                <div className="inline-flex rounded-md shadow-sm border border-gray-300 bg-white">
+                  <button
+                    onClick={() => setPairingMode('fide_dutch')}
+                    className={`px-3 py-1 text-sm font-medium rounded-l-md transition-colors ${
+                      pairingMode === 'fide_dutch'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Dutch
+                  </button>
+                  <button
+                    onClick={() => setPairingMode('accelerated_swiss')}
+                    className={`px-3 py-1 text-sm font-medium rounded-r-md transition-colors ${
+                      pairingMode === 'accelerated_swiss'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Accelerated
+                  </button>
+                </div>
               </div>
               <button
                 onClick={() => propOnPrint && propOnPrint()}
@@ -521,7 +597,7 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
                     ) : (
                       <>
                         <Users className="h-4 w-4" />
-                        <span>Generate Round {currentRound}</span>
+                        <span>Generate {pairingModeLabel} Round {currentRound}</span>
                       </>
                     )}
                   </button>
@@ -542,7 +618,7 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
                     ) : (
                       <>
                         <Users className="h-4 w-4" />
-                        <span>Generate Round {currentRound + 1}</span>
+                        <span>Generate {pairingModeLabel} Round {currentRound + 1}</span>
                       </>
                     )}
                   </button>
@@ -574,14 +650,14 @@ const SectionPairingPage: React.FC<SectionPairingPageProps> = ({
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h4 className="text-lg font-medium text-gray-900 mb-2">No Pairings Yet</h4>
                 <p className="text-gray-500 mb-4">
-                  Click "Generate" to create pairings for this section.
+                  Click "Generate" to create {pairingModeLabel.toLowerCase()} pairings for this section.
                 </p>
                 <button
                   onClick={() => generatePairingsForSection(selectedSection)}
                   disabled={isLoading}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
                 >
-                  Generate {selectedSection} Section
+                  Generate {pairingModeLabel} {selectedSection} Section
                 </button>
               </div>
             ) : (

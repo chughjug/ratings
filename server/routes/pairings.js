@@ -13,6 +13,16 @@ const { cleanupTournamentData } = require('../services/dataCleanupService');
 const OnlineGameService = require('../services/onlineGameService');
 const router = express.Router();
 
+const ALLOWED_PAIRING_SYSTEMS = new Set([
+  'fide_dutch',
+  'accelerated_swiss',
+  'advanced_swiss',
+  'burstein',
+  'round_robin',
+  'single_elimination',
+  'quad'
+]);
+
 // ============================================================================
 // NEW ROBUST PAIRING STORAGE SYSTEM
 // ============================================================================
@@ -876,6 +886,17 @@ router.post('/generate', async (req, res) => {
 
   try {
     const currentRound = parseInt(round);
+
+    let parsedTournamentSettings;
+    if (tournament.settings) {
+      try {
+        parsedTournamentSettings =
+          typeof tournament.settings === 'string' ? JSON.parse(tournament.settings) : tournament.settings;
+      } catch (error) {
+        console.warn(`[PairingGeneration] Failed to parse tournament settings for ${tournamentId}:`, error.message);
+        parsedTournamentSettings = undefined;
+      }
+    }
     
     if (isNaN(currentRound) || currentRound < 1) {
       res.status(400).json({ 
@@ -1156,7 +1177,15 @@ async function sendPairingNotificationWebhook(tournamentId, round, pairings, tou
  * Generate pairings for a specific section
  */
 router.post('/generate/section', async (req, res) => {
-  const { tournamentId, round, sectionName, clearExisting = false, startingBoardNumber = 1 } = req.body;
+  const {
+    tournamentId,
+    round,
+    sectionName,
+    clearExisting = false,
+    startingBoardNumber = 1,
+    pairingSystem,
+    accelerationSettings
+  } = req.body;
 
   try {
     // Get tournament info
@@ -1345,6 +1374,25 @@ router.post('/generate/section', async (req, res) => {
     }
 
     // Create enhanced pairing system for this section only
+    const requestedPairingSystem =
+      typeof pairingSystem === 'string' && ALLOWED_PAIRING_SYSTEMS.has(pairingSystem)
+        ? pairingSystem
+        : parsedTournamentSettings?.pairing_type === 'accelerated'
+          ? 'accelerated_swiss'
+          : 'fide_dutch';
+    const resolvedAccelerationSettings =
+      accelerationSettings && typeof accelerationSettings === 'object'
+        ? accelerationSettings
+        : requestedPairingSystem === 'accelerated_swiss'
+          ? {
+              enabled: true,
+              type: parsedTournamentSettings?.acceleration_type || 'standard',
+              rounds: parsedTournamentSettings?.acceleration_rounds ?? 2,
+              threshold: parsedTournamentSettings?.acceleration_threshold ?? null,
+              breakPoint: parsedTournamentSettings?.acceleration_break_point ?? null
+            }
+          : { enabled: false };
+
     const sectionSystem = new EnhancedPairingSystem(playersWithPoints, {
       previousPairings,
       colorHistory: sectionColorHistory,
@@ -1352,7 +1400,8 @@ router.post('/generate/section', async (req, res) => {
       tournamentId,
       db,
       round: currentRound,
-      pairingSystem: 'advanced_swiss' // Use advanced Swiss system
+      pairingSystem: requestedPairingSystem || 'fide_dutch',
+      accelerationSettings: resolvedAccelerationSettings
     });
 
     // Generate pairings for this section only using bbpPairings
@@ -3482,6 +3531,7 @@ router.post('/tournament/:tournamentId/section/:sectionName/reset', async (req, 
  */
 router.post('/tournament/:tournamentId/section/:sectionName/generate-next', async (req, res) => {
   const { tournamentId, sectionName } = req.params;
+  const { pairingSystem, accelerationSettings } = req.body || {};
 
   try {
     // Get tournament info
@@ -3495,6 +3545,37 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
     if (!tournament) {
       return res.status(404).json({ error: 'Tournament not found' });
     }
+
+    let parsedTournamentSettings;
+    if (tournament.settings) {
+      try {
+        parsedTournamentSettings =
+          typeof tournament.settings === 'string' ? JSON.parse(tournament.settings) : tournament.settings;
+      } catch (error) {
+        console.warn(`[NextRoundGeneration] Failed to parse tournament settings for ${tournamentId}:`, error.message);
+        parsedTournamentSettings = undefined;
+      }
+    }
+
+    const requestedPairingSystem =
+      typeof pairingSystem === 'string' && ALLOWED_PAIRING_SYSTEMS.has(pairingSystem)
+        ? pairingSystem
+        : parsedTournamentSettings?.pairing_type === 'accelerated'
+          ? 'accelerated_swiss'
+          : 'fide_dutch';
+
+    const resolvedAccelerationSettings =
+      accelerationSettings && typeof accelerationSettings === 'object'
+        ? accelerationSettings
+        : requestedPairingSystem === 'accelerated_swiss'
+          ? {
+              enabled: true,
+              type: parsedTournamentSettings?.acceleration_type || 'standard',
+              rounds: parsedTournamentSettings?.acceleration_rounds ?? 2,
+              threshold: parsedTournamentSettings?.acceleration_threshold ?? null,
+              breakPoint: parsedTournamentSettings?.acceleration_break_point ?? null
+            }
+          : { enabled: false };
 
     // Get current round for this section
     const currentRound = await new Promise((resolve, reject) => {
@@ -3693,7 +3774,8 @@ router.post('/tournament/:tournamentId/section/:sectionName/generate-next', asyn
             tournamentId,
             db,
             round: nextRound,
-            pairingSystem: 'advanced_swiss' // Use advanced Swiss system
+            pairingSystem: requestedPairingSystem || 'fide_dutch',
+            accelerationSettings: resolvedAccelerationSettings
           });
 
           // Generate pairings for this section only using bbpPairings

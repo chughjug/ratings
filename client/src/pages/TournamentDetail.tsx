@@ -13,6 +13,7 @@ import GoogleImportModal from '../components/GoogleImportModal';
 import GoogleFormsConnector from '../components/GoogleFormsConnector';
 import UnifiedImportModal from '../components/UnifiedImportModal';
 import DBFExportModal from '../components/DBFExportModal';
+import TRFExportModal from '../components/TRFExportModal';
 import ImportClubMembersModal from '../components/ImportClubMembersModal';
 import PlayerInactiveRoundsModal from '../components/PlayerInactiveRoundsModal';
 import EditPlayerModal from '../components/EditPlayerModal';
@@ -106,6 +107,7 @@ const TournamentDetail: React.FC = () => {
   const [showUnifiedImport, setShowUnifiedImport] = useState(false);
   const [showImportClubMembers, setShowImportClubMembers] = useState(false);
   const [showDBFExport, setShowDBFExport] = useState(false);
+  const [showTRFExport, setShowTRFExport] = useState(false);
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
   const [showInactiveRounds, setShowInactiveRounds] = useState(false);
   const [showEditPlayer, setShowEditPlayer] = useState(false);
@@ -1343,28 +1345,37 @@ const TournamentDetail: React.FC = () => {
   };
 
   const handleSectionMergeComplete = useCallback(
-    async ({
-      sourceSection,
-      targetSection
-    }: {
-      sourceSection: string;
+    async (details: {
+      sourceSection?: string;
+      sourceSections?: string[];
       targetSection: string;
     }) => {
-      const sourceRound = sectionRounds[sourceSection] || 1;
+      const targetSection = details.targetSection;
+      const sourceSections = details.sourceSections && details.sourceSections.length
+        ? details.sourceSections
+        : details.sourceSection
+        ? [details.sourceSection]
+        : [];
+
       const targetRoundExisting = sectionRounds[targetSection] || 1;
-      const nextRound = Math.max(sourceRound, targetRoundExisting, 1);
+      const sourceRounds = sourceSections.map((section) => sectionRounds[section] || 1);
+      const computedNextRound = Math.max(targetRoundExisting, ...(sourceRounds.length ? sourceRounds : [1]));
 
       setSectionRounds((prev) => {
         const next = { ...prev };
-        next[targetSection] = nextRound;
-        delete next[sourceSection];
+        next[targetSection] = computedNextRound;
+        sourceSections.forEach((section) => {
+          if (section !== targetSection) {
+            delete next[section];
+          }
+        });
         return next;
       });
 
       setSelectedSection(targetSection);
 
       await Promise.all([fetchPlayers(), fetchStandings()]);
-      await fetchPairings(nextRound, targetSection);
+      await fetchPairings(computedNextRound, targetSection);
     },
     [sectionRounds, fetchPlayers, fetchStandings, fetchPairings]
   );
@@ -2131,6 +2142,13 @@ const TournamentDetail: React.FC = () => {
                       >
                         <Download className="h-4 w-4" />
                         <span>Export USCF</span>
+                      </button>
+                      <button
+                        onClick={() => setShowTRFExport(true)}
+                        className="inline-flex items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-600"
+                      >
+                        <Layers className="h-4 w-4" />
+                        <span>Export TRF</span>
                       </button>
                       <button
                         onClick={() => setShowGoogleFormsConnector(true)}
@@ -4889,6 +4907,16 @@ const TournamentDetail: React.FC = () => {
         isOpen={showUnifiedImport}
         onClose={() => setShowUnifiedImport(false)}
         tournamentId={id || ''}
+      />
+
+      {/* TRF Export Modal */}
+      <TRFExportModal
+        isOpen={showTRFExport}
+        onClose={() => setShowTRFExport(false)}
+        tournamentId={id || ''}
+        tournamentName={tournament?.name || ''}
+        totalRounds={tournament?.rounds || 0}
+        currentRound={currentRound}
       />
 
       {/* DBF Export Modal */}

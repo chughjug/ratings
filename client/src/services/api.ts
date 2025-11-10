@@ -226,6 +226,42 @@ export const tournamentApi = {
       `/tournaments/${id}/merge-sections`,
       { sourceSection, targetSection, removeSourceSection: removeSourceSection ?? false }
     ),
+  mergeSectionsToNew: (
+    id: string,
+    payload: {
+      sourceSections: string[];
+      newSection: { name: string; min_rating?: number; max_rating?: number; description?: string };
+      removeSourceSections?: boolean;
+    }
+  ) =>
+    api.post<{
+      success: boolean;
+      message: string;
+      data: {
+        newSection: { name: string; min_rating?: number; max_rating?: number; description?: string };
+        totals: {
+          playersUpdated: number;
+          pairingsUpdated: number;
+          registrationsUpdated: number;
+          teamsUpdated: number;
+          prizesUpdated: number;
+          prizeDistributionsUpdated: number;
+          sourceSectionsRemoved: string[];
+        };
+        perSection: Record<
+          string,
+          {
+            playersUpdated: number;
+            pairingsUpdated: number;
+            registrationsUpdated: number;
+            teamsUpdated: number;
+            prizesUpdated: number;
+            prizeDistributionsUpdated: number;
+          }
+        >;
+      };
+      error?: string;
+    }>(`/tournaments/${id}/merge-sections-bulk`, payload),
   // Team-related endpoints
   getTeamStandings: (id: string, params?: {type?: string, scoring_method?: string, top_n?: number}) => {
     const queryParams = new URLSearchParams();
@@ -493,8 +529,58 @@ export const pairingApi = {
       roundStatus: any;
     }>('/pairings/generate', { tournamentId, round, clearExisting }),
   
-  generateForSection: (tournamentId: string, round: number, sectionName: string, startingBoardNumber: number = 1) => 
-    api.post('/pairings/generate/section', { tournamentId, round, sectionName, startingBoardNumber }),
+  generateForSection: (
+    tournamentId: string,
+    round: number,
+    sectionName: string,
+    startingBoardNumberOrOptions?: number | {
+      startingBoardNumber?: number;
+      pairingSystem?: string;
+      accelerationSettings?: any;
+      clearExisting?: boolean;
+    },
+    maybeOptions?: {
+      pairingSystem?: string;
+      accelerationSettings?: any;
+      clearExisting?: boolean;
+    }
+  ) => {
+    let startingBoardNumber = 1;
+    let options: {
+      pairingSystem?: string;
+      accelerationSettings?: any;
+      clearExisting?: boolean;
+    } = {};
+
+    if (typeof startingBoardNumberOrOptions === 'number') {
+      startingBoardNumber = startingBoardNumberOrOptions;
+      if (maybeOptions && typeof maybeOptions === 'object') {
+        options = maybeOptions;
+      }
+    } else if (typeof startingBoardNumberOrOptions === 'object' && startingBoardNumberOrOptions !== null) {
+      options = startingBoardNumberOrOptions;
+      if (typeof options.startingBoardNumber === 'number') {
+        startingBoardNumber = options.startingBoardNumber;
+      }
+    }
+
+    const payload: any = {
+      tournamentId,
+      round,
+      sectionName,
+      startingBoardNumber,
+      clearExisting: options.clearExisting ?? false
+    };
+
+    if (options.pairingSystem) {
+      payload.pairingSystem = options.pairingSystem;
+    }
+    if (options.accelerationSettings) {
+      payload.accelerationSettings = options.accelerationSettings;
+    }
+
+    return api.post('/pairings/generate/section', payload);
+  },
   
   generateQuad: (tournamentId: string) =>
     api.post<{
@@ -592,8 +678,18 @@ export const pairingApi = {
   resetSection: (tournamentId: string, sectionName: string) =>
     api.post(`/pairings/tournament/${tournamentId}/section/${sectionName}/reset`),
 
-  generateNextRound: (tournamentId: string, sectionName: string) =>
-    api.post(`/pairings/tournament/${tournamentId}/section/${sectionName}/generate-next`),
+  generateNextRound: (
+    tournamentId: string,
+    sectionName: string,
+    options?: {
+      pairingSystem?: string;
+      accelerationSettings?: any;
+    }
+  ) =>
+    api.post(
+      `/pairings/tournament/${tournamentId}/section/${sectionName}/generate-next`,
+      options ?? {}
+    ),
 
   // Drag and drop pairing methods
   updatePairingPlayers: (pairingId: string, whitePlayerId: string, blackPlayerId: string, whitePlayer: any, blackPlayer: any) => 
@@ -713,6 +809,54 @@ export const exportApi = {
     api.get(`/export/uscf/${tournamentId}/download`, { responseType: 'blob' }),
   getExportStatus: (tournamentId: string) =>
     api.get(`/export/uscf/${tournamentId}/status`),
+  exportTRF: (
+    tournamentId: string,
+    options?: { round?: number; exportPath?: string }
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.round !== undefined) {
+      params.append('round', String(options.round));
+    }
+    if (options?.exportPath) {
+      params.append('exportPath', options.exportPath);
+    }
+    const query = params.toString();
+    return api.get(
+      `/export/trf/${tournamentId}${query ? `?${query}` : ''}`
+    );
+  },
+  exportAllTRF: (
+    tournamentId: string,
+    options?: { exportPath?: string }
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.exportPath) {
+      params.append('exportPath', options.exportPath);
+    }
+    const query = params.toString();
+    return api.get(
+      `/export/trf/${tournamentId}/all-rounds${query ? `?${query}` : ''}`
+    );
+  },
+  downloadTRF: (tournamentId: string, round?: number) => {
+    const params = new URLSearchParams();
+    if (round !== undefined) {
+      params.append('round', String(round));
+    }
+    const query = params.toString();
+    return api.get(
+      `/export/trf/${tournamentId}/download${query ? `?${query}` : ''}`,
+      { responseType: 'blob' }
+    );
+  },
+  downloadAllTRF: (tournamentId: string) =>
+    api.get(`/export/trf/${tournamentId}/download-all`, {
+      responseType: 'blob'
+    }),
+  getTRFContent: (tournamentId: string, round: number) =>
+    api.get(`/export/trf/${tournamentId}/content?round=${round}`),
+  validateTRF: (content: string) =>
+    api.post('/export/trf/validate', { content }),
 };
 
 

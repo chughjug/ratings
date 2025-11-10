@@ -305,6 +305,7 @@ router.get('/trf/:tournamentId', async (req, res) => {
           filePath: result.filePath,
           size: result.content.length
         },
+        content: result.content,
         metadata: result.metadata
       });
     } else {

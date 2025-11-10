@@ -247,8 +247,25 @@ class TRFParser {
       scoringSystem: trfData.scoringSystem
     });
 
+    const accelerationMap = this.extensions.getPlayerAccelerations();
+
     // Add players
     trfData.players.forEach(playerData => {
+      const accelerationKey = (() => {
+        if (playerData.id === undefined || playerData.id === null) return null;
+        const trimmed = String(playerData.id).trim();
+        if (trimmed && accelerationMap[trimmed]) {
+          return trimmed;
+        }
+        const numeric = parseInt(trimmed, 10);
+        if (!Number.isNaN(numeric) && accelerationMap[String(numeric)]) {
+          return String(numeric);
+        }
+        return null;
+      })();
+
+      const playerAccelerations = accelerationKey ? accelerationMap[accelerationKey] : undefined;
+
       const player = tournament.addPlayer({
         id: playerData.id,
         name: playerData.name,
@@ -258,14 +275,16 @@ class TRFParser {
         matches: playerData.matches,
         forbiddenPairs: this.extensions.getForbiddenPairs()
           .filter(pair => pair[0] === playerData.id || pair[1] === playerData.id)
-          .map(pair => pair[0] === playerData.id ? pair[1] : pair[0])
+          .map(pair => pair[0] === playerData.id ? pair[1] : pair[0]),
+        accelerations: Array.isArray(playerAccelerations) ? [...playerAccelerations] : []
       });
     });
 
     return {
       tournament,
       absentPlayers: this.extensions.getAbsentPlayers(),
-      acceleratedRounds: this.extensions.getAcceleratedRounds()
+      acceleratedRounds: this.extensions.getAcceleratedRounds(),
+      playerAccelerations: accelerationMap
     };
   }
 
