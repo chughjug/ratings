@@ -404,6 +404,9 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
       // Assign pairing numbers (global sequence by section order, seeded by rating desc then name)
       const pairingNumberMap = new Map();
       let nextPairNumber = 1;
+      const normalizeName = (value) =>
+        typeof value === 'string' && value.trim().length ? value : '';
+
       sections.forEach((sectionName) => {
         const sectionPlayers = playersBySection
           .get(sectionName)
@@ -411,7 +414,9 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
           .sort((a, b) => {
             const ratingDiff = (b.rating || 0) - (a.rating || 0);
             if (ratingDiff !== 0) return ratingDiff;
-            return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' });
+            const nameA = normalizeName(a.name);
+            const nameB = normalizeName(b.name);
+            return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
           });
 
         sectionPlayers.forEach((player) => {
@@ -601,9 +606,11 @@ async function createPlayerDetailFile(db, tournamentId, exportPath) {
         const sectionPlayers = playersBySection
           .get(sectionName)
           .slice()
-          .sort((a, b) =>
-            a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
-          );
+          .sort((a, b) => {
+            const nameA = normalizeName(a.name);
+            const nameB = normalizeName(b.name);
+            return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
+          });
         const sectionNumber = sectionNumberMap.get(sectionName);
 
         sectionPlayers.forEach((player) => {

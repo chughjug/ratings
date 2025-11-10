@@ -1170,6 +1170,7 @@ const PublicTournamentDisplay: React.FC = () => {
                   {activeTab === 'info' && <><FileText className="h-4 w-4" /><span>Info</span></>}
                   {activeTab === 'pairings' && <><Gamepad2 className="h-4 w-4" /><span>Pairings</span></>}
                   {activeTab === 'standings' && <><Trophy className="h-4 w-4" /><span>Standings</span></>}
+                  {activeTab === 'winners' && <><Crown className="h-4 w-4" /><span>Winners</span></>}
                   {activeTab === 'teams' && <><Users className="h-4 w-4" /><span>Teams</span></>}
                   {activeTab === 'prizes' && <><Award className="h-4 w-4" /><span>Prizes</span></>}
                   {activeTab === 'preregistered' && <><UserCheck className="h-4 w-4" /><span>Players</span></>}
@@ -1227,6 +1228,17 @@ const PublicTournamentDisplay: React.FC = () => {
                       <Trophy className="h-4 w-4" />
                       <span className="font-medium">Standings</span>
                       {activeTab === 'standings' && <span className="ml-auto text-blue-600">✓</span>}
+                    </button>
+                    
+                    <button
+                      onClick={() => { setActiveTab('winners'); setShowMobileTabs(false); }}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
+                        activeTab === 'winners' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <Crown className="h-4 w-4" />
+                      <span className="font-medium">Winners</span>
+                      {activeTab === 'winners' && <span className="ml-auto text-blue-600">✓</span>}
                     </button>
                     
                     <button
@@ -2545,6 +2557,17 @@ const PublicTournamentDisplay: React.FC = () => {
             >
               <Trophy className="h-5 w-5" />
               <span className="text-xs font-medium">Standings</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('winners')}
+              className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
+                activeTab === 'winners' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'
+              }`}
+              aria-label="Winners"
+            >
+              <Crown className="h-5 w-5" />
+              <span className="text-xs font-medium">Winners</span>
             </button>
             
             <a
