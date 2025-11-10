@@ -2467,6 +2467,13 @@ const TournamentDetail: React.FC = () => {
                         <span>Manage Byes</span>
                       </button>
                       <button
+                        onClick={() => setShowSectionManager(true)}
+                        className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                      >
+                        <Layers className="h-4 w-4" />
+                        <span>Manage Sections</span>
+                      </button>
+                      <button
                         onClick={() => setShowDeleteDuplicates(true)}
                         className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                       >
@@ -2488,6 +2495,7 @@ const TournamentDetail: React.FC = () => {
                   <div className="text-sm text-gray-600 mt-2">
                     <p>• Click ✏️ next to team names to edit them inline</p>
                     <p>• Select multiple players to assign them to teams or perform bulk operations</p>
+                    <p>• Use Manage Sections to merge or edit player sections directly</p>
                   </div>
                 </div>
               
