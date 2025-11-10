@@ -55,6 +55,7 @@ const TournamentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state, dispatch } = useTournament();
+  const tournament = state.currentTournament;
   const [activeTab, setActiveTab] = useState<'overview' | 'players' | 'pairings' | 'standings' | 'winners' | 'team-standings' | 'team-pairings' | 'registrations' | 'settings' | 'print'>('settings');
   const [printViewTab, setPrintViewTab] = useState<'pairings' | 'standings'>('pairings');
   const [pairingsViewMode, setPairingsViewMode] = useState<'player' | 'board'>('player');
@@ -259,7 +260,6 @@ const TournamentDetail: React.FC = () => {
   // Section grouping state
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
-  const tournament = state.currentTournament;
 
   // Sorting function
   const sortPlayers = (players: any[]) => {
